@@ -78,15 +78,14 @@ class SiteModel extends ModelAbstract
      */
     public function loadSiteData(Site $site)
     {
-        $sql = sprintf("SELECT s.*,m.menu_id, m.parent AS menu_parent_id FROM %s AS s
-                        LEFT JOIN %s m ON (s.site_id = m.site_id)
+        $sql = sprintf("SELECT * FROM %s AS site
                         WHERE (
                         (link IN ('%s') AND strict = 0)
                         OR (link = '%s' AND strict = 1)
-                        ) AND s.visible = 1
-                        ORDER BY s.site_id DESC LIMIT 1;"
+                        ) AND visible = 1
+                        ORDER BY site_id DESC LIMIT 1;"
             , S_TABLE_SITES
-            , S_TABLE_MENU
+//            , S_TABLE_SITE_TYPES
             , $this->getUrlId($site->getUrl(), $site->isUrlStrict())
             , $site->getUrl()
         );

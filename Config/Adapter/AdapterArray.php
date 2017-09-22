@@ -11,9 +11,8 @@
 
 namespace Wbengine\Config\Adapter;
 
-//require_once ROBOX_DIR . '/Config/Adapter/ArrayAbstract.php';
-
-Class AdapterArray {
+Class AdapterArray
+{
 
     /**
      * Whether modifications to configuration data are allowed.
@@ -49,162 +48,161 @@ Class AdapterArray {
     protected $test = array();
 
 
-
-    public function __construct( $resource, $allowModify = false )
+    public function __construct($resource, $allowModify = false)
     {
 
-	$this->allowModify = (bool) $allowModify;
+        $this->allowModify = (bool)$allowModify;
 
-	foreach ( $resource as $key => $value ) {
-	    if ( is_array($value) ) {
-		$this->data[$key] = new static($value, $this->allowModify);
-	    } else {
-		$this->data[$key] = $value;
-	    }
+        foreach ($resource as $key => $value) {
+            if (is_array($value)) {
+                $this->data[$key] = new static($value, $this->allowModify);
+            } else {
+                $this->data[$key] = $value;
+            }
 
-	    $this->count++;
-	}
+            $this->count++;
+        }
     }
 
 
-    public function get( $name, $default = null )
+    public function get($name, $default = null)
     {
-	if ( array_key_exists($name, $this->data) ) {
-	    return $this->data[$name];
-	}
+        if (array_key_exists($name, $this->data)) {
+            return $this->data[$name];
+        }
 
-	return $default;
+        return $default;
     }
 
 
-    public function __get( $name )
+    public function __get($name)
     {
-	return $this->get($name);
+        return $this->get($name);
     }
 
 
-    public function __set( $name, $value )
+    public function __set($name, $value)
     {
-	if ( $this->allowModify ) {
+        if ($this->allowModify) {
 
-	    if ( is_array($value) ) {
-		$value = new static($value, true);
-	    }
+            if (is_array($value)) {
+                $value = new static($value, true);
+            }
 
-	    if ( null === $name ) {
-		$this->data[] = $value;
-	    } else {
-		$this->data[$name] = $value;
-	    }
+            if (null === $name) {
+                $this->data[] = $value;
+            } else {
+                $this->data[$name] = $value;
+            }
 
-	    $this->count++;
-	} else {
-	    throw new Exception\RuntimeException('Config is read only');
-	}
+            $this->count++;
+        } else {
+            throw new Exception\RuntimeException('Config is read only');
+        }
     }
 
 
     public function toArray()
     {
-	$array = array();
-	$data = $this->data;
+        $array = array();
+        $data = $this->data;
 
-	/** @var AdapterArray $value */
-	foreach ( $data as $key => $value ) {
-	    if ( $value instanceof self ) {
-		$array[$key] = $value->toArray();
-	    } else {
-		$array[$key] = $value;
-	    }
-	}
+        /** @var AdapterArray $value */
+        foreach ($data as $key => $value) {
+            if ($value instanceof self) {
+                $array[$key] = $value->toArray();
+            } else {
+                $array[$key] = $value;
+            }
+        }
 
-	return $array;
+        return $array;
     }
 
 
-    public function __isset( $name )
+    public function __isset($name)
     {
-	return isset($this->data[$name]);
+        return isset($this->data[$name]);
     }
 
 
-    public function __unset( $name )
+    public function __unset($name)
     {
-	if ( !$this->allowModify ) {
-	    throw new Exception('Config is read only');
-	} elseif ( isset($this->data[$name]) ) {
-	    unset($this->data[$name]);
-	    $this->count--;
-	    $this->skipNextIteration = true;
-	}
+        if (!$this->allowModify) {
+            throw new Exception('Config is read only');
+        } elseif (isset($this->data[$name])) {
+            unset($this->data[$name]);
+            $this->count--;
+            $this->skipNextIteration = true;
+        }
     }
 
 
     public function count()
     {
-	return $this->count;
+        return $this->count;
     }
 
 
     public function key()
     {
-	return key($this->data);
+        return key($this->data);
     }
 
 
     public function valid()
     {
-	return ($this->key() !== null);
+        return ($this->key() !== null);
     }
 
 
-    public function merge( Config $merge )
+    public function merge(Config $merge)
     {
-	/** @var Config $value */
-	foreach ( $merge as $key => $value ) {
-	    if ( array_key_exists($key, $this->data) ) {
-		if ( is_int($key) ) {
-		    $this->data[] = $value;
-		} elseif ( $value instanceof self && $this->data[$key] instanceof self ) {
-		    $this->data[$key]->merge($value);
-		} else {
-		    if ( $value instanceof self ) {
-			$this->data[$key] = new static($value->toArray(), $this->allowModify);
-		    } else {
-			$this->data[$key] = $value;
-		    }
-		}
-	    } else {
-		if ( $value instanceof self ) {
-		    $this->data[$key] = new static($value->toArray(), $this->allowModify);
-		} else {
-		    $this->data[$key] = $value;
-		}
+        /** @var Config $value */
+        foreach ($merge as $key => $value) {
+            if (array_key_exists($key, $this->data)) {
+                if (is_int($key)) {
+                    $this->data[] = $value;
+                } elseif ($value instanceof self && $this->data[$key] instanceof self) {
+                    $this->data[$key]->merge($value);
+                } else {
+                    if ($value instanceof self) {
+                        $this->data[$key] = new static($value->toArray(), $this->allowModify);
+                    } else {
+                        $this->data[$key] = $value;
+                    }
+                }
+            } else {
+                if ($value instanceof self) {
+                    $this->data[$key] = new static($value->toArray(), $this->allowModify);
+                } else {
+                    $this->data[$key] = $value;
+                }
 
-		$this->count++;
-	    }
-	}
+                $this->count++;
+            }
+        }
 
-	return $this;
+        return $this;
     }
 
 
     public function setReadOnly()
     {
-	$this->allowModify = false;
+        $this->allowModify = false;
 
-	/** @var Config $value */
-	foreach ( $this->data as $value ) {
-	    if ( $value instanceof self ) {
-		$value->setReadOnly();
-	    }
-	}
+        /** @var Config $value */
+        foreach ($this->data as $value) {
+            if ($value instanceof self) {
+                $value->setReadOnly();
+            }
+        }
     }
 
 
     public function isReadOnly()
     {
-	return !$this->allowModify;
+        return !$this->allowModify;
     }
 
 }

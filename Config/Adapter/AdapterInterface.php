@@ -22,6 +22,8 @@ interface AdapterInterface {
 
     public static function getTemplateDirPath($type);
 
+    public static function getTemplatesPath();
+
     public static function getTimeZone();
 
     public static function getCdnPath();

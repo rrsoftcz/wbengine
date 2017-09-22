@@ -20,34 +20,12 @@ use Wbengine\Session\SessionAbstract;
 
 class Session extends SessionAbstract
 {
-
-
-    /**
-     * Stored class session instance.
-     * @var Class_Session_Abstract
-     */
-    private $_session = null;
-
-
-    /**
-     * Static class - cannot be instantiated.
-     */
-    final public function __construct()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-    }
-
-
     /**
      * Return instance of session object
-     * @return Class_Session
+     * @return SessionAbstract
      */
     public function getSession()
     {
         return $this;
     }
-
-
 }

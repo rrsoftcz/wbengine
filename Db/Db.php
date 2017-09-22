@@ -21,7 +21,8 @@ use Wbengine\Exception;
 
 //use Wbengine\Db\Exception;
 
-class Db {
+class Db
+{
 
     /**
      * Instance of Class_Cms
@@ -36,32 +37,24 @@ class Db {
     protected $adapter = NULL;
 
 
-
     /**
      * Create array with all variables needed for render site.
      * @param \Wbengine\Config\Adapter\AdapterAbstract
      */
-    public function __construct( $config )
+    public function __construct($config)
     {
-//        var_dump($config);
-//	if ( $config instanceof AdapterInterface ) {
-	    $this->dbCredentials = $config;
-//	} else {
-//
-//	    throw New DbAdapterException(__METHOD__
-//	    . ': Expects object instantiated to Wbengine\Config\Adapter\ConfigAdapterInterface.');
-//	}
+        $this->dbCredentials = $config;
     }
 
 
     public function getAdapter()
     {
-	if ( $this->adapter instanceof \Wbengine\Db\Adapter\DbAdapterInterface ) {
-	    return $this->adapter;
-	} else {
-	    $this->createAdapter();
-	    return $this->adapter->getAdapter();
-	}
+        if ($this->adapter instanceof \Wbengine\Db\Adapter\DbAdapterInterface) {
+            return $this->adapter;
+        } else {
+            $this->createAdapter();
+            return $this->adapter->getAdapter();
+        }
     }
 
 
@@ -72,28 +65,28 @@ class Db {
      * @throws Db\dbException
      */
     private function createAdapter()
-    {//var_dump($this->dbCredentials);die(qqqq);
-	if ( empty($this->dbCredentials->adapterName) ) {
-	    throw new DbException(__METHOD__ .
-	    ': adapter name cannot be empty.');
-	}
+    {
+        if (empty($this->dbCredentials->adapterName)) {
+            throw new DbException(__METHOD__ .
+                ': adapter name cannot be empty.');
+        }
 
-	$className = $this->buildClassName($this->dbCredentials->adapterName);
+        $className = $this->buildClassName($this->dbCredentials->adapterName);
 
-	if ( !class_exists($className, true) ) {
-	    throw new \Wbengine\Db\Exception\DbException(__METHOD__ .
-	    ': Cannot create adapter instance of \Wbengine\Db\Adapter\\' . $className);
-	}
+        if (!class_exists($className, true)) {
+            throw new \Wbengine\Db\Exception\DbException(__METHOD__ .
+                ': Cannot create adapter instance of \Wbengine\Db\Adapter\\' . $className);
+        }
 
-	try {
-	    /**
-	     * Create adapter object
-	     */
-	    $this->adapter = New $className($this->dbCredentials->toArray());
-	} catch (Exception\DbAdapterException $e) {
-	    throw New Exception\DbException(__METHOD__
-	    . ': Wbengine\Db\Exception\DbException with a message: ' . $e->getMessage());
-	}
+        try {
+            /**
+             * Create adapter object
+             */
+            $this->adapter = New $className((array)$this->dbCredentials);
+        } catch (Exception\DbAdapterException $e) {
+            throw New Exception\DbException(__METHOD__
+                . ': Wbengine\Db\Exception\DbException with a message: ' . $e->getMessage());
+        }
     }
 
 
@@ -102,10 +95,10 @@ class Db {
      * @param string $name
      * @return string
      */
-    private function buildClassName( $name )
+    private function buildClassName($name)
     {
-	return "Wbengine\Db\Adapter\\" .
-		ucfirst((string) $name);
+        return "Wbengine\Db\Adapter\\" .
+            ucfirst((string)$name);
     }
 
 }

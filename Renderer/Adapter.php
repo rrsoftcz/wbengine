@@ -110,7 +110,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface {
      */
     public function assign($varname, $var = NULL, $scope = NULL) {
 	$this->getAdapter()->assign($varname, $var, $scope);
-        return $this;
 
     }
 

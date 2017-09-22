@@ -27,21 +27,22 @@ abstract class ModelAbstract
 
 
     /**
+     * Set Zend_Db_Adapter_Pdo_Mysql
+     */
+    private function _setDb()
+    {
+        $db = New Db(Config::getDbCredentials());
+        $this->db = $db->getAdapter();
+        return $this->db;
+    }
+
+
+    /**
      * Instance of database connection
      * @var \Zend\Db\Adapter\Pdo_Mysql
      */
     private $db = NULL;
 
-
-
-    /**
-     * We do nothing on this constructor
-     */
-//    public function __construct(\Wbengine\Site $site) {
-//    public function __construct()
-//    {
-//	$this->db = $site->getParent()->getDbAdapter();
-//    }
 
     /**
      * Return parsed sql statement
@@ -55,23 +56,6 @@ abstract class ModelAbstract
         }
     }
 
-    /**
-     * Set Zend_Db_Adapter_Pdo_Mysql
-     */
-    private function _setDb()
-    {
-//        var_dump(Config::getDbCredentials());
-//        var_dump(Config::getAdapter()->getDbCredentials());
-        $db = New Db(Config::getDbCredentials());
-        $this->db = $db->getAdapter();
-//                                  var_dump( $db->getAdapter());
-        // prepare PDO connection...
-//        Registry::set("db", $db->getAdapter());
-
-//        $this->db = Wbengine\Registry::get("db");
-        return $this->db; //= $dbAdapter;
-    }
-
 
     /**
      * Return database connection.
@@ -80,13 +64,9 @@ abstract class ModelAbstract
     public function getDbAdapter()
     {
         $trace = debug_backtrace();
-//        var_dump($trace[2]['function']);
-//        var_dump($this->db);
         if (null === $this->db) {
-//            var_dump($this->_setDb());
             $this->_setDb();
         }
-
         return $this->db;
     }
 

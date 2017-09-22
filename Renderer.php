@@ -19,6 +19,7 @@
 namespace Wbengine;
 
 use Wbengine\Application\Application;
+use Wbengine\Application\ApplicationException;
 use Wbengine\Application\Path\Path;
 use Wbengine\Exception\RuntimeException;
 
@@ -38,14 +39,7 @@ class Renderer extends Renderer\Adapter
      * Given CMS class object
      * @var object
      */
-    private $_parent = NULL;
-
-
-    /**
-     * Given site class object
-     * @var object
-     */
-    private $_site = NULL;
+    private $_app = NULL;
 
 
     /**
@@ -70,10 +64,9 @@ class Renderer extends Renderer\Adapter
 
 
     /**
-     * Default template path
+     * Default html text formater is implemented...
      * @var string
      */
-    private $_templatePath = null;
     private $_formaterPath = 'vendor/Texy/';
 
 
@@ -87,19 +80,14 @@ class Renderer extends Renderer\Adapter
     function __construct(Application $App)
     {
         if ($App instanceof Application) {
-            $this->_parent = $App;
-//            $this->_site = $App->getSite();
-//            $this->_templatePath = $App->getTemplatesDir();
+            $this->_app = $App;
         } else {
             throw new Exception\RuntimeException('Require instance of Wbengine\Application, but NULL given.');
         }
-//var_dump($this->getTemplatesPath());
-        $this->setAdapterName($this->_rendererName);
-        $this->setCompileDir(APP_DIR . '/Cache/Renderer/');
+        $this->setAdapterName($this->getRendererAdapterName());
+        $this->setCompileDir($this->getRendererCacheDir());
         $this->setTemplateDir($this->getTemplatesPath());
-        $this->setConfigDir(APP_DIR . 'Config/');
-
-//        var_dump($App->getException());
+        $this->setConfigDir($this->getConfigDir());
     }
 
 
@@ -109,13 +97,13 @@ class Renderer extends Renderer\Adapter
      */
     public function getParent()
     {
-        return $this->_parent;
+        return $this->_app;
     }
 
 
     /**
      * Return site instance object
-     * @return Class_Site
+     * @return Site
      */
     public function getSite()
     {
@@ -134,21 +122,42 @@ class Renderer extends Renderer\Adapter
 
 
     /**
+     * Return Renderer adapter name
+     * Smary | Yum | etc
+     * @return string
+     */
+    public function getRendererAdapterName()
+    {
+        return $this->_rendererName;
+    }
+
+
+    /**
+     * Return default config directory
+     * @return null|string
+     */
+    public function getConfigDir()
+    {
+        return $this->getParent()->getConfigDir();
+    }
+
+
+    /**
+     * Return renderer default directory
+     * @return null|string
+     */
+    public function getRendererCacheDir()
+    {
+        return $this->getParent()->getRendererCacheDir();
+    }
+
+    /**
      * Return set templates path by parent application
      * @return string
      */
     public function getTemplatesPath()
     {
         return $this->getParent()->getTemplatesDir();
-//        if($this->_app->getTemplateDir() === null) {
-//            $this->_templatePath = APP_DIR . '/Src/View/Front/';
-////            var_dump(APP_DIR . '/Src/View/Front/');
-////            var_dump(var_dump(APP_DIR .$this->_app->getTemplateDir().$this->_app->getAppTypeId()));die();
-//        }else{
-//            $this->_templatePath = $this->_app->getTemplateDir().$this->_app->getAppTypeId()."/";
-//        }
-//
-//        return $this->_templatePath;
     }
 
 
@@ -172,22 +181,18 @@ class Renderer extends Renderer\Adapter
      * Return rendered main site template.
      * @return string as HTML content
      */
-    public function dispatch(\Wbengine\Application\Application $App)
+    public function dispatch(Application $App)
     {
-//	var_dump($webengine->getVars());
         try {
-            if ($App instanceof \Wbengine\Application\Application) {
+            if ($App instanceof Application) {
                 // assign all needed vars to templater..
                 $this->assign($App->getVars(), NULL, 'global');
-//                var_dump($this->_templatePath);
                 // ...and show content...
-//                $this->display('site' . $this->getExtension());
-//
-                if(Config::minimizeHtml()) {
-//                //@todo JUST TESTING TO MINIFI HTML...
+                if (Config::minimizeHtml()) {
+                    //@todo JUST TESTING TO MINIFY HTML...
                     $source = preg_replace("'\s+'ms", " ", $this->fetch('site' . $this->getExtension()));
                     echo($source);
-                }else{
+                } else {
                     $this->display('site' . $this->getExtension());
                 }
             } else {
@@ -274,7 +279,7 @@ class Renderer extends Renderer\Adapter
      */
     public function getErrorBox($exception = NULL)
     {
-        if ((int)$exception->getCode() === 0){
+        if ((int)$exception->getCode() === 0) {
             // @todo Do catch right if exception error code does not exist...
         }
 

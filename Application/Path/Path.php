@@ -31,6 +31,36 @@ class Path {
     private $_paths             = null;
 
 
+    /**
+     * Create object Path
+     * @param $name
+     * @param $path
+     */
+    private function _createPath($name, $path)
+    {
+        $path = (empty($path)) ? "/" : $path;
+        $this->_paths[] = New self($name, $path);
+    }
+
+
+    /**
+     * Merge two paths togather...
+     * @param string $path1
+     * @param string $path2
+     * @return string
+     */
+    private function _merge($path1, $path2){
+        return sprintf('%s/%s',rtrim($path1, '/'), ltrim($path2, '/'));
+    }
+
+
+    /**
+     * Store ptah arguments to local variables...
+     * Path constructor.
+     * @param null $name
+     * @param null $path
+     * @param bool $appBaseDir
+     */
     public function __construct($name = null, $path = null, $appBaseDir = false)
     {
         $this->_name = strtolower($name);
@@ -38,8 +68,15 @@ class Path {
         if($appBaseDir){
             $this->addPath($name, $path, $appBaseDir);
         }
+        return $this;
     }
 
+    /**
+     * Object getter ...
+     * @param $name
+     * @return mixed
+     * @throws PathException
+     */
     public function __get($name)
     {
         if(empty($name)) {
@@ -54,91 +91,154 @@ class Path {
             }
         }
         // @todo We should remove exception from this place...
-//        Throw New PathException(sprintf('%s : Path type "%s" has not been defined yet.', __CLASS__, $name));
     }
 
-    private function _craetePath($name, $path)
-    {//var_dump($path);
-        $path = (empty($path)) ? "/"  : $path;
-        $this->_paths[] = New self($name, $path);
+
+    /**
+     * Return raw patn value as string ...
+     * @return null
+     */
+    public function toString(){
+        return $this->_path;
     }
 
+    /**
+     * Get path name
+     * @return string
+     */
     public function getName(){
         return $this->_name;
     }
 
+
+    /**
+     * Add slash to path ...
+     * @param $path
+     * @return string
+     */
     public function addSlash($path){
         return sprintf('%s/', $path);
     }
 
+
+    /**
+     * Add path to collection od all paths...
+     * @param $name
+     * @param $path
+     * @param bool $appBaseDir
+     */
     public function addPath($name, $path, $appBaseDir = false)
-    {//var_dump($name."->".$path);
+    {
         if($appBaseDir === true){
             $this->_appBaseDir = $path;
-//            return;
         }
-        $this->_craetePath($name, $path);
+        $this->_createPath($name, $path);
     }
 
+
+    /**
+     * Return requested path...
+     * @param $name
+     * @param null $includePath
+     * @param bool $baseDir
+     * @return null|string
+     */
     public function getPath($name, $includePath = null, $baseDir = false)
     {
         $this->_tmp = null;
 
         if($baseDir === true){
             $this->_tmp = $this->getAppBaseDir();
-//            $this->_tmp = $this->_merge($this->_tmp, $this->getAppBaseDir());
         }
         if(!is_null($includePath)){
-//            $this->_tmp .= $this->__get($includePath);
             $this->_tmp = $this->_merge($this->_tmp, $this->__get($includePath));
         }
-
-//        $this->_tmp .= $this->__get($name);
         $this->_tmp = $this->_merge($this->_tmp, $this->__get($name));
 
         return $this->_tmp;
     }
 
-    private function _merge($path1, $path2){
-        return sprintf('%s/%s',rtrim($path1, '/'), ltrim($path2, '/'));
-    }
 
+    /**
+     * Return all paths ...
+     * @return array
+     */
     public function getAllPaths(){
         return $this->_paths;
     }
 
+
+    /**
+     * Return paths count ...
+     * @return int
+     */
     public function getPathCount(){
         return (int)sizeof($this->_paths);
     }
 
+
+    /**
+     * Initialize based app directory pah ...
+     * @param $appBaseDir
+     */
     public function addBaseAppDir($appBaseDir)
     {
         $this->_appBaseDir = $appBaseDir;
         $this->addPath(self::TYPE_BASE, $appBaseDir);
     }
 
+
+    /**
+     * Retuen app base dir.
+     * @return null|string
+     */
     public function getAppBaseDir(){
         return $this->getPath(self::TYPE_BASE);
     }
 
+
+    /**
+     * Return based path ...
+     * @return null|string
+     */
     public function getBasePath(){
         return $this->getPath(self::TYPE_BASE);
     }
 
+
+    /**
+     * Return app cache directory
+     * @return null|string
+     */
     public function getCacheDir(){
         return $this->getPath(self::TYPE_CACHE, self::TYPE_BASE, true);
     }
 
-    public function getRendererTempDir(){//var_dump($this->_paths);
+
+    /**
+     * Return app renderer base path ...
+     * @return null|string
+     */
+    public function getRendererTempDir(){
         return $this->getPath(self::TYPE_RENDERER_TEMP, self::TYPE_CACHE, true);
     }
 
+
+    /**
+     * Return app config path ...
+     * @return null|string
+     */
     public function getConfigDir(){
         return $this->getPath(self::TYPE_CONFIG, null, true);
     }
 
+
+    /**
+     * Return templates directory ...
+     * @return null|string
+     */
     public function getTemplatesDir(){
-        return $this->addSlash($this->getPath(self::TYPE_APP_BRAND, self::TYPE_TEMPLATES, true));
+        return $this->getPath(self::TYPE_APP_BRAND, self::TYPE_TEMPLATES, true);
     }
 
 }

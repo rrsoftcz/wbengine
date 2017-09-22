@@ -36,11 +36,6 @@ include_once dirname(__DIR__) . '/Application/Env/Const.php';
 
 abstract Class Application
 {
-//    CONST FRONT_ID = 0;
-//    CONST BACK_ID = -1;
-    CONST APPLICATION_TYPE_FRONT    = "Front";
-    CONST APPLICATION_TYPE_BACKEND  = "Admin";
-
     /**
      * Locale class
      * @var Class_Locale
@@ -123,12 +118,6 @@ abstract Class Application
 
     protected $isBackend = false;
 
-//    /**
-//     * Zend loader instance
-//     * @var Zend\Loader\StandardAutoloader
-//     */
-//    private $loader = NULL;
-
     private $dbConnection   = NULL;
 
     private $_templateDir   = NULL;
@@ -142,57 +131,27 @@ abstract Class Application
     private $_deviceType   = null;
 
 
-    public function getPath($name = null, $include = null, $appBaseDir = false)
+    /**
+     * Create object Class_Renderer
+     */
+    private function _setRenderer()
     {
-        return $this->_getObjectPath();
+        $this->_renderer = New Renderer($this);
     }
 
-    public function minimizeCssFiles($files, $path = null)
-    {
-        foreach ($files as $file){
-            $cssFile = New File($path.$file);
-            $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getRendererTempDir())->getFile(), true);
-
-            if (Utils::compareStrings(md5_file($cssFile->getFile()), $ef->getContent()) === false)
-            {
-//                var_dump("Minimalizing ". $cssFile->getFile());
-
-                $minFile = $cssFile->saveAsMinimized();
-                $minFile->replaceInFile('%_cdn_%', Config::getCdnPath());
-
-                if($minFile->getStatus() === true){
-                    $ef->saveEtag($cssFile);
-                }
-            }
-
-        }
-    }
-
-
-    public function setPath($name = null, $path, $appBaseDir = false)
-    {
-        return $this->_getObjectPath()->addPath($name, $path, $appBaseDir);
-    }
-
-    public function _getObjectPath()
-    {
-        if(null === $this->Path || !$this->Path instanceof Path){
-            $this->Path = New Path();
-        }
-        return $this->Path;
-    }
 
     /**
-     * Return instance of Mobile\Detector class
-     * @return null|Detector
+     * Create new session instance object if needed.
+     * @see Class_Session
      */
-    public function _getObjectMobileDetector()
+    private function _setSession()
     {
-        if(null === $this->Detector || !$this->Detector instanceof Detector){
-            $this->Detector = New Detector();
-        }
+        $this->_session = new Session();
 
-        return $this->Detector;
+        if (!$this->_session instanceof Session\SessionAbstract) {
+            throw New Exception\RuntimeException(__METHOD__
+                . ': given object is not the instance of Wbengine\Session\SessionAbstract.');
+        }
     }
 
 
@@ -211,6 +170,132 @@ abstract Class Application
         }else{
             $this->_deviceType = DEVICE_TYPE_DESKTOP;
         }
+    }
+
+
+    /**
+     * Create instance of object \Wbengine\Site
+     * @$this->_site
+     */
+    private function _createSite()
+    {
+        $this->_site = New Site(New Url($this));
+    }
+
+
+    /**
+     * Create instance of \Wbengine\Vars
+     * @void
+     */
+    private function _setClassVars()
+    {
+        $this->_classVars = New Vars($this);
+    }
+
+
+    /**
+     * Set user data to local variable for latest use.
+     * @param array $userData
+     */
+    private function _setUserData($userData)
+    {
+        $this->_userData = $userData;
+    }
+
+
+    /**
+     * Set user identities if needed.
+     * @see getIdentity
+     */
+    private function _setIdentity()
+    {
+        $this->_setUserData($this->getClassUser()->getIdentity());
+    }
+
+
+    /**
+     * Store locale class.
+     * @param \Wbengine\Locale\LocaleAbstract $locale
+     */
+    private function _setLocale(LocaleAbstract $locale)
+    {
+        $this->_locale = $locale;
+    }
+
+    /**
+     * @param string $name
+     * @param string $include
+     * @param bool $appBaseDir
+     * @return null|Path
+     */
+    public function getPath($name = null, $include = null, $appBaseDir = false)
+    {
+        return $this->_getObjectPath();
+    }
+
+
+    /**
+     * Minimize css file...
+     * @param $files
+     * @param null $path
+     * @return Void
+     */
+    public function minimizeCssFiles($files, $path = null)
+    {
+        foreach ($files as $file){
+            $cssFile = New File($path.$file);
+            $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getRendererTempDir())->getFile(), true);
+
+            if (Utils::compareStrings(md5_file($cssFile->getFile()), $ef->getContent()) === false)
+            {
+                $minFile = $cssFile->saveAsMinimized();
+                $minFile->replaceInFile('%_cdn_%', Config::getCdnPath());
+
+                if($minFile->getStatus() === true){
+                    $ef->saveEtag($cssFile);
+                }
+            }
+
+        }
+    }
+
+
+    /**
+     * Create instance of object class Path
+     * @param null $name
+     * @param $path
+     * @param bool $appBaseDir
+     */
+    public function setPath($name = null, $path, $appBaseDir = false)
+    {
+        return $this->_getObjectPath()->addPath($name, $path, $appBaseDir);
+    }
+
+
+    /**
+     * Return instance of object Path
+     * @return null|Path
+     */
+    public function _getObjectPath()
+    {
+        if(null === $this->Path || !$this->Path instanceof Path){
+            $this->Path = New Path();
+        }
+        return $this->Path;
+    }
+
+
+    /**
+     * Return instance of Mobile\Detector class
+     * @return null|Detector
+     */
+    public function _getObjectMobileDetector()
+    {
+        if(null === $this->Detector || !$this->Detector instanceof Detector){
+            $this->Detector = New Detector();
+        }
+
+        return $this->Detector;
     }
 
     /**
@@ -247,6 +332,7 @@ abstract Class Application
         return $this->getSite()->getSiteParentKey();
     }
 
+
     /**
      * Return detected device type as integer
      * DEVICE_TYPE_MOBILE | DEVICE_TYPE_TABLET | DEVICE_TYPE_DESKTOP
@@ -262,9 +348,6 @@ abstract Class Application
         return $this->_deviceType;
     }
 
-    public function ConfigSet(){
-        $this->_configPaths;
-    }
 
     /**
      * Return all defined redirections.
@@ -286,7 +369,6 @@ abstract Class Application
         return $this->debug;
     }
 
-
     /**
      * Setup app template directory (without last part
      * and must always end with slash).
@@ -301,8 +383,27 @@ abstract Class Application
      * @return string
      */
     public function getTemplatesDir(){
-        return $this->_getObjectPath()->getTemplatesDir($this);
+        return $this->_getObjectPath()->getTemplatesDir();
     }
+
+
+    /**
+     * Return Renderer cache directory
+     * @return null|string
+     */
+    public function getRendererCacheDir(){
+        return $this->_getObjectPath()->getRendererTempDir();
+    }
+
+
+    /**
+     * Return Config Directory
+     * @return null|string
+     */
+    public function getConfigDir(){
+        return $this->_getObjectPath()->getConfigDir();
+    }
+
 
     /**
      * Add given value to local vars.
@@ -348,16 +449,6 @@ abstract Class Application
 
 
     /**
-     * Create instance of \Wbengine\Vars
-     * @void
-     */
-    private function _setClassVars()
-    {
-        $this->_classVars = New Vars($this);
-    }
-
-
-    /**
      * Return CMS member object Exception
      * @return Exception
      */
@@ -399,36 +490,6 @@ abstract Class Application
 
 
     /**
-     * Set user data to local variable for latest use.
-     * @param array $userData
-     */
-    private function _setUserData($userData)
-    {
-        $this->_userData = $userData;
-    }
-
-
-    /**
-     * Set user identities if needed.
-     * @see getIdentity
-     */
-    private function _setIdentity()
-    {
-        $this->_setUserData($this->getClassUser()->getIdentity());
-    }
-
-
-    /**
-     * Store locale class.
-     * @param \Wbengine\Locale\LocaleAbstract $locale
-     */
-    private function _setLocale(LocaleAbstract $locale)
-    {
-        $this->_locale = $locale;
-    }
-
-
-    /**
      * Return created session instance.
      * @return \Wbengine\Session
      */
@@ -460,7 +521,7 @@ abstract Class Application
 
     /**
      * Return a config class object
-     * @return \Wbengine\Config\Adapter\AdapterInterface
+     * @return Config
      */
     public function getConfig()
     {
@@ -526,43 +587,15 @@ abstract Class Application
         return $this->errorHandler;
     }
 
+
+    /**
+     * Return Section object by given ID
+     * @param $id
+     * @return Section
+     */
     public function getSectionById($id) {
         $section = New Section($this->getSite());
         return $section->getSection($id);
-    }
-
-
-    /**
-     * Create object Class_Renderer
-     */
-    private function _setRenderer()
-    {
-        $this->_renderer = New Renderer($this);
-    }
-
-
-    /**
-     * Create new session instance object if needed.
-     * @see Class_Session
-     */
-    private function _setSession()
-    {
-        $this->_session = new Session();
-
-        if (!$this->_session instanceof Session\SessionAbstract) {
-            throw New Exception\RuntimeException(__METHOD__
-                . ': given object is not the instance of Wbengine\Session\SessionAbstract.');
-        }
-    }
-
-
-    /**
-     * Create instance of object \Wbengine\Site
-     * @$this->_site
-     */
-    private function _createSite()
-    {
-        $this->_site = New Site(New Url($this));
     }
 
 
@@ -593,30 +626,25 @@ abstract Class Application
 
     public function run($errorHandler = null)
     {
-
         try {
 
-//            $this->minimizeCssFiles();
-//            var_dump(Config::getCdnPath());
-        }catch (ApplicationExce $e){//die($e->getMessage());
-//            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+            if ($errorHandler===HTML_ERROR_410) {
+                $this->addException('Gone.', HTML_ERROR_410);
+                $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
+            }
+
+            if (!$this->getSite() instanceof Site || $this->getSite()->isLoaded() === false) {
+                $this->addException('Site not found.', HTML_ERROR_404);
+                $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
+            }
+
+            $this->getRenderer()->dispatch($this);
+
+        }catch (ApplicationException $e){
             $this->addException($e->getMessage(), $e->getCode());
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
         }
 
-        if ($errorHandler===HTML_ERROR_410) {
-            $this->addException('Gone.', HTML_ERROR_410);
-            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
-        }
-
-        if (!$this->getSite() instanceof Site || $this->getSite()->isLoaded() === false) {
-            $this->addException('Site not found.', HTML_ERROR_404);
-//            $this->setValue(HTML_HEADER_SECTION, $this->getRenderer()->render("Central/slider"));
-            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
-        }
-
-        $this->getRenderer()->dispatch($this);
     }
-
 
 }

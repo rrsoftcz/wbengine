@@ -27,27 +27,53 @@ class BoxTemplate
     private $modelCache = null;
 
     /**
-     * @var \Wbengine\Box\BoxTemplate
+     * @var BoxTemplate
      */
     private $_box = null;
+
+    /**
+     * Create box's own model object
+     * @Return \Wbengine\Model\ModelAbstract
+     */
+    private function _setModel($namespace)
+    {
+        $classname = "\\" . trim($namespace) . '\Model';
+
+        $createdModel = New $classname($this);
+        $this->modelCache[$this->clearNamespace($namespace)] = $createdModel;
+
+        return $createdModel;
+    }
+
+
+    /**
+     * Clear namespace from slashes
+     * @param $namespace
+     * @return string
+     */
+    private function _clearNamespace($namespace)
+    {
+        return str_replace('\\', '_', trim($namespace));
+    }
+
 
     /**
      * @var Exception
      */
     private $_exception = null;
 
-
     /**
      * @var array
      */
     private $_routes = null;
+
 
     /**
      * Return instance of Box object
      * @param \Wbengine\Box $box
      * @internal param $
      */
-    public function __construct(Box $box = null)
+    public function __construct(Box $box)
     {
         $this->site = $box->getSite();
         $this->_box = $box;
@@ -82,7 +108,6 @@ class BoxTemplate
         return $this->_routes;
     }
 
-
     /**
      * register routes for given box
      * @param array $routes
@@ -90,6 +115,7 @@ class BoxTemplate
     public function setRoutes(array $routes){
         $this->_routes = $routes;
     }
+
 
     /**
      * Return section model
@@ -109,32 +135,6 @@ class BoxTemplate
         } else {
             return $this->modelCache[$this->clearNamespace($namespace)];
         }
-    }
-
-
-    /**
-     * Create box's own model object
-     * @Return \Wbengine\Model\ModelAbstract
-     */
-    private function _setModel($namespace)
-    {
-        $classname = "\\" . trim($namespace) . '\Model';
-
-        $createdModel = New $classname($this);
-        $this->modelCache[$this->clearNamespace($namespace)] = $createdModel;
-
-        return $createdModel;
-    }
-
-
-    /**
-     * Clear namespace from slashes
-     * @param $namespace
-     * @return string
-     */
-    private function clearNamespace($namespace)
-    {
-        return str_replace('\\', '_', trim($namespace));
     }
 
 
@@ -189,6 +189,10 @@ class BoxTemplate
      */
     public function getSiteParamsFromUrl() {
         return $this->getSite()->getUrlParams();
+    }
+
+    public function getBoxTemplatePath(){
+        return $this->getBox()->getSection()->getName() . '/' . $this->getBox()->getBoxName();
     }
 
 }

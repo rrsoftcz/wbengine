@@ -55,7 +55,11 @@ abstract class SessionAbstract
      */
     private $_model = NULL;
 
-    private $_session = array();
+    /**
+     * Stored class session instance.
+     * @var SessionAbstract
+     */
+    private $_session = null;
 
 
     /**
@@ -63,6 +67,10 @@ abstract class SessionAbstract
      */
     function __construct()
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         $this->_isCookieEnabled = $this->_getIsCookieEnabled();
     }
 

@@ -22,17 +22,18 @@ use Wbengine\Config\Adapter\AdapterArray;
 use Wbengine\Config\Adapter\AdapterInterface;
 use Wbengine\Config\Adapter\Exception\ConfigException;
 use Wbengine\Config\Adapter\AdapterAbstract;
+use Wbengine\Config\Value;
 
-abstract class Config implements AdapterInterface
+class Config
 {
-    CONST CONFIG_FILE_DEVEL             = 'Devel.cfg.php';
-    CONST CONFIG_FILE_PRODUCCTION       = 'Default.cfg.php';
+    CONST CONFIG_FILE_DEVEL             = 'Devel.json';
+    CONST CONFIG_FILE_PRODUCCTION       = 'Production.json';
     CONST DETECT_ENV_TYPE_BY_IP         = 2;
     CONST DETECT_ENV_TYPE_BY_HOSTNAME   = 3;
 
     CONST CONFIG_TYPE_ARRAY             = 'php';
     CONST CONFIG_TYPE_INI               = 'ini';
-    CONST CONFIG_TYPE_JASON             = 'jason';
+    CONST CONFIG_TYPE_JASON             = 'json';
     CONST CONFIG_TYPE_XML               = 'xml';
     CONST CONFIG_TYPE_YAML              = 'yaml';
 
@@ -110,42 +111,11 @@ abstract class Config implements AdapterInterface
 
 
     /**
-     * return stored config adapter
-     * @return AdapterInterface
-     * @throws ConfigException
+     * Loaded and stored configuration as array ...
+     * @var array
      */
-    public static function getConfigAdapter()
-    {
-        if(is_null(self::$adapter)){
+    static $config           = array();
 
-            if(!empty(self::$configFilePath)){
-                // ...is deffined? Try to load ...
-                if(self::load(New File(self::$configFilePath))){
-                    return self::$adapter;
-                }
-            }else{
-                // ...probably wrong filename, so maybe try autoload...?
-                if(self::load(New File(self::DEFAULT_CONFIG_DIR_NAME . self::autodetectEnvironment(FALSE), true))){
-                    return self::$adapter;
-                }
-
-                throw new ConfigException(
-                    sprintf('%s->%s: The configuration file is empty or not set.'
-                        , __CLASS__
-                        , __FUNCTION__
-                    )
-                );
-            }
-            // so adapter is empty and config file is not set or unknown...
-            throw new ConfigException(
-                sprintf('%s->%s: The config adapter is not set or not loaded...'
-                    , __CLASS__
-                    , __FUNCTION__
-                )
-            );
-        }
-        return self::$adapter;
-    }
 
     /**
      * This method ceate config adapter by
@@ -156,69 +126,12 @@ abstract class Config implements AdapterInterface
      * @return Config\Adapter\AdapterInterface
      * @throws ConfigException
      */
-    static function load( File $configFile = null)
+    public static function load(File $configFile)
     {
-
-//        var_dump($App->getPath(Path::TYPE_BASE).$App->getPath(Path::TYPE_CONFIG));
-//        var_dump($App->getPath(Path::TYPE_CONFIG, Path::TYPE_BASE));
-//        var_dump($App->getPath(Path::TYPE_BASE));
-//        var_dump($App->getPath(Path::TYPE_CONFIG));
-        //@todo Create config path object class...
-//        self::$configFilePath = $App . DEFAULT_APP_DIR.DEFAULT_APP_CONFIG_DIR.DEFAULT_APP_CONFIG_FILE_NAME_DEVEL;
-
-
-//        self::$configFilePath = $App->getPath(Path::TYPE_CONFIG, Path::TYPE_BASE);
-
-
-
-//        $App =self::$configFilePath;
-//var_dump(self::$configFilePath);
-//        if (is_null($App)) {
-//
-//            throw new Exception\RuntimeException(__METHOD__ .
-//                ': Config file path cannot be null!');
-//        }
-//        if (is_null($adapterType)) {
-//
-//            throw new Exception\RuntimeException(__METHOD__ .
-//                ': Config adapter type cannot be null!');
-//        }
-
-
-//        self::$configAdapter = $adapterType;
-
-//        if(!$configFile instanceof File){
-//            throw new ConfigException(
-//                sprintf('%s->%s: The argument must be instance of Wbengine\Application\Path\File but %s given.'
-//                    , __CLASS__
-//                    , __FUNCTION__
-//                    , gettype($configFile)
-//                )
-//            );
-//
-//        }
-
         //@TODO - Define more adapters...
         self::setConfigAdapter($configFile);
-;
-        return self::getConfigAdapter();
+//        return self::getConfigAdapter();
     }
-
-
-
-
-//    /**
-//     * Return curent file extension
-//     * @return string
-//     */
-//    private static function createFileExtension($adapterType)
-//    {
-//        if ($adapterType === self::CONFIG_TYPE_ARRAY) {
-//
-//            return '.' . substr(strrchr(__FILE__, '.'), 1);
-//        }
-//        return '.' . $adapterType;
-//    }
 
     static function addEnvironmentSafeKeyword($keyword){
         self::$_safeHostKeywords[] = $keyword;
@@ -226,10 +139,6 @@ abstract class Config implements AdapterInterface
 
     static function addEnvironmentSafeIp($iprange){
         self::$_safeIpRanges[] = $iprange;
-    }
-
-    static function setConfigFilePath($filename){
-        self::$configFilePath = $filename;
     }
 
     /**
@@ -242,12 +151,8 @@ abstract class Config implements AdapterInterface
      */
     private static function setConfigAdapter( File $filename)
     {
-//        $filename = dirname(__DIR__)
-//            . '/wbengine/Config/Adapter/AdapterConfig'
-//            . ucfirst($adapterType)
-//            . self::createFileExtension($adapterType);
-
-
+//        var_dump($filename->exist());
+//        var_dump($filename->getDirectory());
         if ($filename->exist() == false) {
             throw new ConfigException(
                 sprintf('%s->%s: The Configuration file "%s" not found.'
@@ -268,17 +173,14 @@ abstract class Config implements AdapterInterface
             );
         }
 
-//        $className = self::createClassName($adapterType);
-//        if(is_null($configFileType)) {
-//            $configFileType = self::_detectConfigTypeByName($filename->getFile());
-//        }
-
         // @todo create more adapters...
         switch (strtolower($filename->getFileExtension()))
         {
-            case self::CONFIG_TYPE_ARRAY:
+            case self::CONFIG_TYPE_JASON;
 
-                self::$adapter = (New AdapterArray(include $filename->getFile(), FALSE));
+                self::$config = json_decode($filename->getContent());
+
+//                var_dump(json_decode($filename->getContent()));
 
                 break;
 
@@ -292,14 +194,11 @@ abstract class Config implements AdapterInterface
                 );
                 break;
         }
-//        var_dump($configFileType);
-//        die(self::CONFIG_TYPE_ARRAY);
     }
 
     private static function _detectConfigTypeByName($filename)
     {
         $extension = substr(strrchr($filename, '.'), 1);
-//        $directory = dirname($filename);
         if(array_key_exists($extension, self::$_supporteConfigTyes)){
             return self::$_supporteConfigTyes[$extension];
         }else{
@@ -383,72 +282,55 @@ abstract class Config implements AdapterInterface
     }
 
 
-
-
-    public static function getFoo(){
-        return self::getConfigAdapter()->dbAdapterDefinition;
-    }
-
-
     public static function getCdnPath(){
-        return self::getConfigAdapter()->cdnPath;
+        return self::$config->cdnPath;
     }
-
 
     public static function getDbCredentials()
     {
-        return self::getConfigAdapter()->dbAdapterDefinition;
+        return self::$config->dbAdapterDefinition;
     }
 
 
     public static function getHtmlHeaderCharset()
     {
-        return self::getConfigAdapter()->codePage;
+        return self::$config->codePage;
     }
-
 
     public static function getCssCollection()
     {
-        return self::getConfigAdapter()->cssFiles;
+        return self::$config->cssFiles;
     }
-
 
     public static function getAdminIpCollection()
     {
-        return self::getConfigAdapter()->ipAdmins;
+        return self::$config->ipAdmins;
     }
-
 
     public static function getIsDebugEnabled()
     {
-        return boolval(self::getConfigAdapter()->debug);
+        return (boolean)self::$config->debug;
     }
-
-    public static function getTemplateDirPath($type)
-    {
-        return self::getConfigAdapter()->templateDirPath . ucfirst($type) . '/';
-    }
-
 
     public static function getTimeZone()
     {
-        return self::getConfigAdapter()->timeZone;
+        return self::$config->timeZone;
     }
 
     public static function minimizeCss(){
-        return self::getConfigAdapter()->minimizeCss;
+        return self::$config->minimizeCss;
     }
 
     public static function minimizeHtml(){
-        return self::getConfigAdapter()->minimizeHtml;
+        return self::$config->minimizeHtml;
     }
 
     public static function minimizejs(){
-        return self::getConfigAdapter()->minimizeJs;
+        return self::$config->minimizeJs;
     }
 
     public static function toArray(){
-        return self::getConfigAdapter()->toArray;
+        return (array) self::$config;
     }
 
 

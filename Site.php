@@ -14,11 +14,9 @@
 
 namespace Wbengine;
 
-//use Wbengine\Site\Menu;
 use Wbengine\Application\Application;
 use Wbengine\Site\SiteException;
 use Wbengine\Url;
-//use Wbengine\Site\Menu;
 
 Class Site
 {
@@ -76,7 +74,7 @@ Class Site
      * Site ID cannot be a null;site_id 0 = administratin
      * @var null
      */
-    private $_menu = NULL;
+    private $_app = NULL;
 
 
     /**
@@ -240,13 +238,6 @@ Class Site
         return (int)$this->site_id;
     }
 
-    public function getMenuParent(){
-        return $this->_resource[menu_parent_id];
-    }
-
-    public function getSiteMenuId(){
-        return (int)$this->_resource[menu_id];
-    }
 
     /**
      * Return site's Parent ID (sitetype DB)
@@ -351,14 +342,13 @@ Class Site
 //        var_dump($this->get("site_id"));
 //        var_dump($this->site_id);
 //	$this->test = $this->_resource;
-//        return $this;
+        return $this;
 
-        if (empty($this->_resource)) {
-            throw new SiteException('Site not found',404);
+//        if (empty($this->_resource)) {
 //            return false;
-        } else {
-            return $this;
-        }
+//        } else {
+//            return $this;
+//        }
     }
 
     /**
@@ -552,21 +542,8 @@ Class Site
      */
     public function getMenu()
     {
-        return $this->getObjectMenu()->getSiteRootItems();
+        return $this->getModel()->getMenu($this);
     }
-
-    public function getSubmenuItems(){
-        return $this->getObjectMenu()->getMenuSubitems($this->getSiteMenuId());
-    }
-
-    public function getObjectMenu()
-    {
-        if($this->_menu === null){
-            $this->_menu = New Site\Menu($this);
-        }
-        return $this->_menu;
-    }
-
 
     /**
      * Return site's menu
@@ -669,23 +646,14 @@ Class Site
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
 
-//        var_dump($this->getObjectMenu()->getMenuitem(7)->toArray());
-//        $this->getObjectMenu()->getMenuitem($this->getSiteMenuId());
-//        var_dump($this->getMenuObject()->current()->subitems);
-//        var_dump($this->getObjectMenu()->getMenuitem($this->getSiteMenuId())->toArray());
-
-//        var_dump($this->getSubmenuItems());
         // Save some essential site template variables...
         $this->setVariable('url', $this->getLink());
         $this->setVariable('device_type', $this->getParent()->getDeviceType());
-//        $this->setVariable('site_home_url', $this->getHomeUrl());
+        $this->setVariable('site_home_url', $this->getHomeUrl());
         $this->setVariable('html_surfix', $this->getTemplateClassSurfix());
-//        $this->setVariable('breadcrump', $this->getNavigation());
-//        $this->setVariable('menu', $this->getMenuObject()->getItems($this->getSiteId()));
+        $this->setVariable('breadcrump', $this->getNavigation());
         $this->setVariable('menu', $this->getMenu());
-//        $this->setVariable('submenu', $this->getSubMenu());
-//        $this->setVariable('submenu', $this->getObjectMenu()->getMenuitem($this->getSiteMenuId())->getMenuItems());
-//        $this->setVariable('submenu', $this->getSubmenuItems());
+        $this->setVariable('submenu', $this->getSubMenu());
         $this->setVariable('site_id', $this->getSiteId());
         $this->setVariable('hostname', Config::getCdnPath(), 'cdn');
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
