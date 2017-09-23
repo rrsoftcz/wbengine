@@ -50,13 +50,6 @@ class Renderer extends Renderer\Adapter
 
 
     /**
-     * Default renderer class anme
-     * @var string
-     */
-    private $_rendererName = 'Smarty';
-
-
-    /**
      * Default formater class name
      * @var string
      */
@@ -68,6 +61,13 @@ class Renderer extends Renderer\Adapter
      * @var string
      */
     private $_formaterPath = 'vendor/Texy/';
+
+    private $_rendererTemplatesDir = null;
+    private $_rendererCompiledDir = null;
+    private $_rendererConfigDir = null;
+    private $_rendererAdapterName = null;
+
+    private $_path  = null;
 
 
     /**
@@ -81,12 +81,13 @@ class Renderer extends Renderer\Adapter
     {
         if ($App instanceof Application) {
             $this->_app = $App;
+            $this->_path = $App->_getObjectPath();
         } else {
             throw new Exception\RuntimeException('Require instance of Wbengine\Application, but NULL given.');
         }
         $this->setAdapterName($this->getRendererAdapterName());
+        $this->setTemplateDir($this->getRendererTemplatesPath());
         $this->setCompileDir($this->getRendererCacheDir());
-        $this->setTemplateDir($this->getTemplatesPath());
         $this->setConfigDir($this->getConfigDir());
     }
 
@@ -100,6 +101,13 @@ class Renderer extends Renderer\Adapter
         return $this->_app;
     }
 
+    /**
+     * Return instance of object Path created by parent Application
+     * @return null|Path
+     */
+    public function Path(){
+        return $this->_path;
+    }
 
     /**
      * Return site instance object
@@ -128,7 +136,7 @@ class Renderer extends Renderer\Adapter
      */
     public function getRendererAdapterName()
     {
-        return $this->_rendererName;
+        return Config::getRendererAdapterName();
     }
 
 
@@ -138,7 +146,11 @@ class Renderer extends Renderer\Adapter
      */
     public function getConfigDir()
     {
-        return $this->getParent()->getConfigDir();
+        if(null === $this->_rendererConfigDir) {
+            $this->Path()->addPath(Path::TYPE_CONFIG, Config::getRendererConfigDir(), true);
+            $this->_rendererConfigDir = $this->Path()->getConfigDir();
+        }
+        return $this->_rendererConfigDir;
     }
 
 
@@ -148,16 +160,24 @@ class Renderer extends Renderer\Adapter
      */
     public function getRendererCacheDir()
     {
-        return $this->getParent()->getRendererCacheDir();
+        if(null === $this->_rendererCompiledDir) {
+            $this->Path()->addPath(Path::TYPE_RENDERER_TEMP, Config::getRendererCompiledDir(), true);
+            $this->_rendererCompiledDir = $this->Path()->getRendererCompiledDir();
+        }
+        return $this->_rendererCompiledDir;
     }
 
     /**
      * Return set templates path by parent application
      * @return string
      */
-    public function getTemplatesPath()
+    public function getRendererTemplatesPath()
     {
-        return $this->getParent()->getTemplatesDir();
+        if(null === $this->_rendererTemplatesDir) {
+            $this->Path()->addPath(Path::TYPE_TEMPLATES, Config::getRendererTemplatesDir(), true);
+            $this->_rendererTemplatesDir = $this->Path()->getTemplatesDir();
+        }
+        return $this->_rendererTemplatesDir;
     }
 
 
@@ -221,15 +241,14 @@ class Renderer extends Renderer\Adapter
      */
     public function render($template = NULL, $vars = NULL)
     {
-        $_path = $this->getTemplatesPath() . $template . $this->getExtension();
+        $_path =  $template . $this->getExtension();
 
         if (NULL === $template) {
             throw New Exception\RuntimeException(__METHOD__
                 . ': Template name string expected, but null given.');
         }
 
-
-        if (!file_exists($_path)) {
+        if (!file_exists($this->getParent()->_getObjectPath()->getPath(Path::TYPE_TEMPLATES,true).$_path)) {
             throw New Exception\RuntimeException(__METHOD__
                 . ': Template file "' . $_path . '" not exist.');
         }

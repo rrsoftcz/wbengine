@@ -291,10 +291,29 @@ class Config
         return self::$config->dbAdapterDefinition;
     }
 
-
     public static function getHtmlHeaderCharset()
     {
         return self::$config->codePage;
+    }
+
+    public static function getRendererTemplatesDir()
+    {
+        return self::$config->renderer->templatesDir;
+    }
+
+    public static function getRendererConfigDir()
+    {
+        return self::$config->renderer->configDir;
+    }
+
+    public static function getRendererAdapterName()
+    {
+        return self::$config->renderer->adapterName;
+    }
+
+    public static function getRendererCompiledDir()
+    {
+        return self::$config->renderer->compiledDir;
     }
 
     public static function getCssCollection()
@@ -307,7 +326,7 @@ class Config
         return self::$config->ipAdmins;
     }
 
-    public static function getIsDebugEnabled()
+    public static function isDebugEnabled()
     {
         return (boolean)self::$config->debug;
     }

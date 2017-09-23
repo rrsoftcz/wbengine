@@ -366,7 +366,7 @@ abstract Class Application
      */
     public function isDebugOn()
     {
-        return $this->debug;
+        return Config::isDebugEnabled();
     }
 
     /**
@@ -377,33 +377,6 @@ abstract Class Application
     public function setTemplateDir($path = null) {
         $this->_templateDir = $path;
     }
-
-    /**
-     * Return app teplate path as string...
-     * @return string
-     */
-    public function getTemplatesDir(){
-        return $this->_getObjectPath()->getTemplatesDir();
-    }
-
-
-    /**
-     * Return Renderer cache directory
-     * @return null|string
-     */
-    public function getRendererCacheDir(){
-        return $this->_getObjectPath()->getRendererTempDir();
-    }
-
-
-    /**
-     * Return Config Directory
-     * @return null|string
-     */
-    public function getConfigDir(){
-        return $this->_getObjectPath()->getConfigDir();
-    }
-
 
     /**
      * Add given value to local vars.

@@ -211,7 +211,7 @@ class Path {
      * @return null|string
      */
     public function getCacheDir(){
-        return $this->getPath(self::TYPE_CACHE, self::TYPE_BASE, true);
+        return $this->getPath(self::TYPE_CACHE, true);
     }
 
 
@@ -219,7 +219,7 @@ class Path {
      * Return app renderer base path ...
      * @return null|string
      */
-    public function getRendererTempDir(){
+    public function getRendererCompiledDir(){
         return $this->getPath(self::TYPE_RENDERER_TEMP, self::TYPE_CACHE, true);
     }
 
@@ -238,7 +238,7 @@ class Path {
      * @return null|string
      */
     public function getTemplatesDir(){
-        return $this->getPath(self::TYPE_APP_BRAND, self::TYPE_TEMPLATES, true);
+        return $this->getPath(self::TYPE_TEMPLATES, true);
     }
 
 }

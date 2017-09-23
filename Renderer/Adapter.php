@@ -18,7 +18,8 @@ namespace Wbengine\Renderer;
 //use Exception;
 //require_once dirname(__FILE__) . '/RendererInterface.php';
 
-class Adapter implements \Wbengine\Renderer\RendererInterface {
+class Adapter implements \Wbengine\Renderer\RendererInterface
+{
 
 
     /**
@@ -34,152 +35,139 @@ class Adapter implements \Wbengine\Renderer\RendererInterface {
     private $_adapterName = NULL;
 
 
-
     /**
      * Set adapter name
      * @param string $name
      */
-    public function setAdapterName($name) {
-	$this->_adapterName = $name;
+    public function setAdapterName($name)
+    {
+        $this->_adapterName = $name;
 
     }
-
 
 
     /**
      * Return adapter name
      * @return string
      */
-    public function getAdapterName() {
-	return $this->_adapterName;
+    public function getAdapterName()
+    {
+        return $this->_adapterName;
 
     }
-
 
 
     /**
      * Return created object instance
      * @return Class_Renderer_Interface
      */
-    private function getAdapter() {
-	if ($this->_adapter && is_object($this->_adapter))
-	    return $this->_adapter;
-
-	$name = '\\'.ucfirst($this->getAdapterName());
-
-//	$adaFile = "/vendor/{$name}/{$name}.class.php";
-
-//	if (is_readable($adaFile)) {
-//	    require_once $adaFile;
-//var_dump($name);
-	    $this->_adapter = new $name();
-//var_dump($this->_adapter);
-	    return $this->_adapter;
-//	} else {
-////	    require_once 'RendererException.php';
-//	    throw new \RuntimeException('File ' . $adaFile . ' does not exist!');
-//	}
-
+    private function getAdapter()
+    {
+        if ($this->_adapter && is_object($this->_adapter))
+            return $this->_adapter;
+        $name = '\\' . ucfirst($this->getAdapterName());
+        $this->_adapter = new $name();
+        return $this->_adapter;
     }
-
 
 
     /**
      * Returns the template output
      * @return string
      */
-    public function fetch($template, $cache_id = NULL, $compile_id = NULL) {
-	return $this->getAdapter()->fetch($template, $cache_id, $compile_id);
+    public function fetch($template, $cache_id = NULL, $compile_id = NULL)
+    {
+        return $this->getAdapter()->fetch($template, $cache_id, $compile_id);
 
     }
-
 
 
     /**
      * Displays the template
      */
-    public function display($template, $cache_id = NULL, $compile_id = NULL) {
-	$this->getAdapter()->display($template, $cache_id, $compile_id);
+    public function display($template, $cache_id = NULL, $compile_id = NULL)
+    {
+        $this->getAdapter()->display($template, $cache_id, $compile_id);
 
     }
-
 
 
     /**
      * Assign values to the templates
      */
-    public function assign($varname, $var = NULL, $scope = NULL) {
-	$this->getAdapter()->assign($varname, $var, $scope);
+    public function assign($varname, $var = NULL, $scope = NULL)
+    {
+        $this->getAdapter()->assign($varname, $var, $scope);
 
     }
-
 
 
     /**
      * Set compiling files directory
      */
-    public function setCompileDir($path) {
-	$this->getAdapter()->compile_dir = (string) $path;
+    public function setCompileDir($path)
+    {
+        $this->getAdapter()->compile_dir = (string)$path;
 
     }
-
 
 
     /**
      * Set Template files directory
      */
-    public function setTemplateDir($path) {
-	$this->getAdapter()->template_dir = (string) $path;
+    public function setTemplateDir($path)
+    {
+        $this->getAdapter()->template_dir = (string)$path;
 
     }
-
 
 
     /**
      * set Config directory
      */
-    public function setConfigDir($path) {
-	$this->getAdapter()->config_dir = (string) $path;
+    public function setConfigDir($path)
+    {
+        $this->getAdapter()->config_dir = (string)$path;
 
     }
-
 
 
     /**
      * set cache directory
      */
-    public function setCacheDir($path) {
-	$this->getAdapter()->cache_dir = (string) $path;
+    public function setCacheDir($path)
+    {
+        $this->getAdapter()->cache_dir = (string)$path;
 
     }
-
 
 
     /**
      * set SMARTY left delimiter
      */
-    public function setLeftDelimiter($value) {
-	$this->getAdapter()->left_delimiter = (string) $value;
+    public function setLeftDelimiter($value)
+    {
+        $this->getAdapter()->left_delimiter = (string)$value;
 
     }
-
 
 
     /**
      * set SMARTY right delimiter
      */
-    public function setRightDelimiter($value) {
-	$this->getAdapter()->right_delimiter = (string) $value;
+    public function setRightDelimiter($value)
+    {
+        $this->getAdapter()->right_delimiter = (string)$value;
 
     }
-
 
 
     /**
      * register object to SMARTY template
      */
-    public function registerObject($name, $value) {
-	$this->getAdapter()->assignByRef($name, $value);
+    public function registerObject($name, $value)
+    {
+        $this->getAdapter()->assignByRef($name, $value);
 
     }
 
