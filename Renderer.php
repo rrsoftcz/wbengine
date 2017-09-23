@@ -245,7 +245,7 @@ class Renderer extends Renderer\Adapter
 
         if (NULL === $template) {
             throw New Exception\RuntimeException(__METHOD__
-                . ': Template name string expected, but null given.');
+                . ': Expected template name as string, but null given.');
         }
 
         if (!file_exists($this->getParent()->_getObjectPath()->getPath(Path::TYPE_TEMPLATES,true).$_path)) {
@@ -260,11 +260,7 @@ class Renderer extends Renderer\Adapter
             $this->assign($valueName, $vars);
         }
 
-        if (is_null($template)) {
-            return $this->fetch('index.tpl');
-        } else {
-            return $this->fetch($template . $this->_extension);
-        }
+        return $this->fetch($template . $this->_extension);
     }
 
 

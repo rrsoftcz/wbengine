@@ -24,15 +24,6 @@ use Wbengine\Model\ModelAbstract;
 
 class SiteModel extends ModelAbstract
 {
-
-
-    public function __construct(Site $site)
-    {
-//        $this->db = $site->getParent()->getDbAdapter();
-//	parent::__construct($site);
-    }
-
-
     /**
      * Return cleaned url.
      * If url stricted mode is "TRUE" then all possible

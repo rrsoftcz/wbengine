@@ -114,7 +114,6 @@ abstract Class Application
      */
     private $_redirections = array();
 
-    protected $appType   = null;
 
     protected $isBackend = false;
 
@@ -298,27 +297,6 @@ abstract Class Application
         return $this->Detector;
     }
 
-    /**
-     * Return application type identificator as integer.
-     * The zero (0) site id allways is administration,
-     * so in menu db table must be admin menu identified as -1.
-     * @see BACK_ID, FRONT_ID
-     * @return int
-     */
-    public function getAppType()
-    {
-        return $this->appType;
-    }
-
-
-    /**
-     * Return Application type Backend/Frontend
-     * @return bool
-     */
-    public function isBackend(){
-        return $this->isBackend;
-    }
-
 
     /**
      * Return site type prefix as string.
@@ -369,14 +347,6 @@ abstract Class Application
         return Config::isDebugEnabled();
     }
 
-    /**
-     * Setup app template directory (without last part
-     * and must always end with slash).
-     * @param string $path
-     */
-    public function setTemplateDir($path = null) {
-        $this->_templateDir = $path;
-    }
 
     /**
      * Add given value to local vars.

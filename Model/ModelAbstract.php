@@ -27,21 +27,10 @@ abstract class ModelAbstract
 
 
     /**
-     * Set Zend_Db_Adapter_Pdo_Mysql
-     */
-    private function _setDb()
-    {
-        $db = New Db(Config::getDbCredentials());
-        $this->db = $db->getAdapter();
-        return $this->db;
-    }
-
-
-    /**
      * Instance of database connection
      * @var \Zend\Db\Adapter\Pdo_Mysql
      */
-    private $db = NULL;
+    private static $_db = NULL;
 
 
     /**
@@ -58,16 +47,31 @@ abstract class ModelAbstract
 
 
     /**
+     * Set Zend_Db_Adapter_Pdo_Mysql
+     */
+    private function _setDb()
+    {
+//        $e = new \Exception();
+//        echo('<pre>');
+//        print_r($e->getTraceAsString());
+//        echo('</pre>');
+
+        $db = New Db(Config::getDbCredentials());
+        self::$_db = $db->getAdapter();
+        return self::$_db;
+    }
+
+
+    /**
      * Return database connection.
      * @return \Zend\Db\Adapter\Adapter
      */
     public function getDbAdapter()
     {
-        $trace = debug_backtrace();
-        if (null === $this->db) {
+        if (null === self::$_db) {
             $this->_setDb();
         }
-        return $this->db;
+        return self::$_db;
     }
 
 
