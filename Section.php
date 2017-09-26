@@ -98,11 +98,12 @@ class Section
     private function _getSections()
     {
         $sections = $this->getModel()->getSections();
+
         if (sizeof($sections) === 0) {
             return null;
         }
         foreach ($sections as $section) {
-            $this->_sections[] = $this->_getSection($section->section_id);
+            $this->_sections[] = $this->_getSection($section['section_id']);
         }
 
         return $this->_sections;
@@ -165,7 +166,7 @@ class Section
      */
     public function getName()
     {
-        return $this->_section['title'];
+        return $this->_section->title;
     }
 
 
@@ -175,7 +176,7 @@ class Section
      */
     public function getDescription()
     {
-        return $this->_section['description'];
+        return $this->_section->description;
     }
 
 
@@ -195,7 +196,7 @@ class Section
      */
     public function isActive()
     {
-        return $this->_section['active'];
+        return $this->_section->active;
     }
 
 
@@ -227,7 +228,7 @@ class Section
      */
     public function getSection($sectionId)
     {
-        $this->_section = $this->getModel()->getSectionById($sectionId)->current();
+        $this->_section = $this->getModel()->getSectionById($sectionId);
         return $this;
     }
 

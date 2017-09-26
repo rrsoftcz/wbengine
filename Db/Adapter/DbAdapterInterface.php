@@ -12,4 +12,5 @@ interface DbAdapterInterface {
     public function getConnection();
     public function query($sqlString);
     public function fetchRow($sqlString);
+    public function getAllAssoc($sqlString);
 }

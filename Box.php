@@ -236,7 +236,7 @@ class Box
      */
     public function getModuleName()
     {
-        return $this->_box->module;
+        return $this->_box['module'];
     }
 
 
@@ -246,7 +246,7 @@ class Box
      */
     public function getMethodName()
     {
-        return $this->_box->method;
+        return $this->_box['method'];
     }
 
 
@@ -366,6 +366,7 @@ class Box
                 $tmp .= $_boxObj->$_method($this->getSite());
             } else {
                 $tmp .= $this->getRenderer()->getFormater()->process($_boxObj->$_method($this->getSite()));
+//                $tmp .= $this->getRenderer()->getFormater()->process($_boxObj->$_method($this->getSite()));
             }
 
         } else {

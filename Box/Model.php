@@ -16,6 +16,7 @@
 namespace Wbengine\Box;
 
 use Wbengine\Box;
+use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
 
 class Model extends ModelAbstract {
@@ -30,13 +31,13 @@ class Model extends ModelAbstract {
     public function getBoxById( Box $box )
     {
 	$sql = sprintf("SELECT * FROM %s b
-			WHERE b.id = ?
-			LIMIT 1;"
-		, S_TABLE_BOXES
+			WHERE b.id = %d
+			LIMIT 1;",
+        S_TABLE_BOXES,
+        $box->getBoxId()
 	);
 
-	return $this->getDbAdapter()->query($sql, array(
-		    $box->getBoxId()))->current();
+        return Db::query($sql)->fetch_assoc();
     }
 
 }

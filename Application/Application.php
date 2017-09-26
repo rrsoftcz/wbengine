@@ -56,7 +56,7 @@ abstract Class Application
 
     /**
      * Created session object
-     * @var Class_Session
+     * @var Session
      */
     private $_session = NULL;
 
@@ -143,14 +143,9 @@ abstract Class Application
      * Create new session instance object if needed.
      * @see Class_Session
      */
-    private function _setSession()
+    private function _createSession()
     {
         $this->_session = new Session();
-
-        if (!$this->_session instanceof Session\SessionAbstract) {
-            throw New Exception\RuntimeException(__METHOD__
-                . ': given object is not the instance of Wbengine\Session\SessionAbstract.');
-        }
     }
 
 
@@ -438,11 +433,11 @@ abstract Class Application
      */
     public function getSession()
     {
-        if (NULL === $this->_session) {
-            $this->_setSession();
-
-            $this->_session->init(TRUE);
+        if ($this->_session instanceof Section) {
+            return $this->_session;
         }
+        $this->_createSession();
+//        $this->_session->init(TRUE);
 
         return $this->_session;
     }

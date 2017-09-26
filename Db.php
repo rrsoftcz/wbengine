@@ -22,7 +22,7 @@ use Wbengine\Exception;
 
 //use Wbengine\Db\Exception;
 
-class Db
+abstract class Db
 {
 
     /**
@@ -48,27 +48,33 @@ class Db
      * Create array with all variables needed for render site.
      * @param \Wbengine\Config\Adapter\AdapterAbstract
      */
-    public function __construct($config)
-    {
-        $this->dbCredentials = $config;
+//    public function __construct($config)
+//    {
+//        $this->dbCredentials = $config;
+//    }
+
+    private static function updateStats($sql = null){
+        self::$_qcount++;
+        if($sql) {
+            self::$_qarray[] = $sql;
+        }
     }
 
-
     public static function setCredentials($credentials){
-        var_dump($credentials);die();
+//        var_dump($credentials);die();
         self::$dbCredentials = $credentials;
         return self;
     }
 
-    public function isConnected(){
-        return ($this->_adapter instanceof DbAdapterInterface);
+    public static function isConnected(){
+        return (self::$_adapter instanceof DbAdapterInterface);
     }
 
     /**
      * @return DbAdapterInterface
      */
     public static function getAdapter(){
-        if(null === self::$_adapter){
+        if(!self::isConnected()){
             self::createAdapter();
         }
         return self::$_adapter;
@@ -81,7 +87,7 @@ class Db
 //        } else {
 //            return self::$_adapter;
 //        }
-        var_dump(self::getAdapter());
+//        var_dump(self::getAdapter());
         return self::getAdapter()->getConnection();
     }
 
@@ -94,13 +100,14 @@ class Db
      */
     private static function createAdapter()
     {
-        self::$_adapterName = self::$dbCredentials->adapterName;
-        if (empty(self::$_adapterName)) {
-            throw new DbException(__METHOD__ .
-                ': adapter name cannot be empty.');
-        }
+//        self::$dbCredentials = Config::getDbCredentials();
+//        self::$_adapterName = ;
+//        if (empty(self::$_adapterName)) {
+//            throw new DbException(__METHOD__ .
+//                ': adapter name cannot be empty.');
+//        }
 
-        $className = self::buildClassName(self::$dbCredentials->adapterName);
+        $className = self::buildClassName(self::getAdapterName());
 
         if (!class_exists($className, true)) {
             throw new \Wbengine\Db\Exception\DbException(__METHOD__ .
@@ -130,33 +137,75 @@ class Db
             ucfirst((string)$name);
     }
 
+    private static function getAdapterName(){
+        if(self::$dbCredentials === null){
+            self::$dbCredentials = Config::getDbCredentials();
+        }
+
+        self::$_adapterName = self::$dbCredentials->adapterName;
+
+        if(empty(self::$_adapterName)){
+            Throw New DbException(sprintf("%s -> %s: Get DB adapter name Error!",
+                __CLASS__,
+                __FUNCTION__),
+                DbException::ERROR_DB_ADAPTER_NAME);
+        }else{
+            return self::$_adapterName;
+        }
+    }
+
+    public static function getQueriesCount(){
+        return self::$_qcount;
+    }
 
     public static function getAllQueries(){
         return self::$_qarray;
     }
 
+    public function dumpAllQueries(){
+        foreach (self::getAllQueries() as $query){
+            echo('<pre>');
+            print_r($query);
+            echo('</pre>');
+        }
+    }
+
+    /**
+     * @param $sql
+     * @return \mysqli_result
+     */
     public static function query($sql){
-        self::$_qcount++;
-        self::$_qarray[] = $sql;
-
-        var_dump(self::getConnection()->query($sql));
-
+        self::updateStats($sql);
+//        $e = new \Exception();
+//        echo('<pre>');
+//        print_r($e->getTraceAsString());
+//        echo('</pre>');
+//        die();
         return self::getConnection()->query($sql);
     }
 
     public function fetchRow($sql){
+        self::updateStats($sql);
         return $this->getConnection()->query($sql)->fetch_row();
     }
 
     public function fetchOne($sql){
+        self::updateStats($sql);
         return $this->getConnection()->query($sql)->fetch_field();
     }
 
     public function fetchAll($sql){
+        self::updateStats($sql);
         return $this->getConnection()->query($sql)->fetch_all();
     }
 
+    public static function fetchAllAssoc($sql){
+        self::updateStats($sql);
+        return self::getAdapter()->getAllAssoc($sql);
+    }
+
     public function fetchAssoc($sql){
+        self::updateStats($sql);
         return $this->getConnection()->query($sql)->fetch_assoc();
     }
 

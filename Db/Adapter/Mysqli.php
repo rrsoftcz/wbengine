@@ -89,7 +89,11 @@ class Mysqli implements DbAdapterInterface
     public function fetchRow($sql){
         return $this->getConnection()->query($sql)->fetch_row();
     }
-//
+
+    public function getAllAssoc($sql){
+        return mysqli_fetch_all($this->getConnection()->query($sql),MYSQLI_ASSOC);
+    }
+    //
 //    public function fetchOne($sql){
 //        return $this->getConnection()->query($sql)->fetch_field();
 //    }

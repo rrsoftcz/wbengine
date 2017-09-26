@@ -21,7 +21,7 @@ use Wbengine\Registry;
 use Wbengine\Db;
 
 
-abstract class ModelAbstract
+class ModelAbstract
 {
 
 
@@ -39,7 +39,7 @@ abstract class ModelAbstract
 //        echo('</pre>');
 
 //        $this->_db = Db::getAdapter();
-        var_dump(Config::getDbCredentials());die(xxx);
+//        var_dump(Config::getDbCredentials());die(xxx);
         $this->_db = Db::setCredentials(Config::getDbCredentials());
 //        return self::$_db;
     }
@@ -63,7 +63,7 @@ abstract class ModelAbstract
      * Return database connection.
      * @return Db
      */
-    public function getConnection()
+    public function getConnectionx()
     {
 //        var_dump(self::_getDb()->getConnection());die();
 //        if (null === self::$_db) {
@@ -73,8 +73,8 @@ abstract class ModelAbstract
     }
 
     public function query($query){
-        Wbengine\Application\Env\Stac\Utils::dump(Db::query($query));die();
-//        return $this->_getDb()::query($query);
+//        Wbengine\Application\Env\Stac\Utils::dump(Db::query($query),true);
+        return Db::query($query);
     }
 
 

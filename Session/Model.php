@@ -16,6 +16,7 @@
 namespace Wbengine\Session;
 
 use Wbengine\Application\Env\Stac\Utils;
+use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
 use Zend\Db\Sql\Sql;
 
@@ -48,23 +49,24 @@ class Model extends ModelAbstract
 //                'user_ip' => Utils::getUserIp(),
 //                'user_salt' => substr(md5(Utils::getUserAgent()), 0, 10))
 //        );
-        $y = ($this->getConnection()->query($sql)->fetch_row());
+        $y = (Db::query($sql)->fetch_assoc());
+//        Utils::dump($y);
         return $y;
 
-        $e = new \Exception();
-        echo('<pre>');
-        print_r($y);
-        echo('</pre>');
-        die();
-
-        print_r($this->getConnection()->query($sql)->fetch_row());die($sql);
-return null;
-        $statement = $sql->prepareStatementForSqlObject($select);
-        $results = $statement->execute();
-        var_dump($results->current());
-        return ($results->getAffectedRows())
-            ? $results->current()
-            : null;
+//        $e = new \Exception();
+//        echo('<pre>');
+//        print_r($y);
+//        echo('</pre>');
+//        die();
+//
+//        print_r($this->getConnection()->query($sql)->fetch_row());die($sql);
+//return null;
+//        $statement = $sql->prepareStatementForSqlObject($select);
+//        $results = $statement->execute();
+//        var_dump($results->current());
+//        return ($results->getAffectedRows())
+//            ? $results->current()
+//            : null;
     }
 
 
@@ -91,31 +93,31 @@ return null;
             substr(md5(Utils::getUserAgent()), 0, 10)
         );
 
-        return (boolean)$this->getConnection()->query($query);
-        var_dump($x);die();
-
-        $dbAdapter = $this->getDbAdapter();
-        $oSQL = new Sql($dbAdapter);
-        $insert = $oSQL->insert(S_TABLE_SESSIONS);
-        $newData = array(
-            'session_id' => session_id(),
-            'user_id' => ($user_id = $session->getValue('user_id'))
-                    ? ANONYMOUS
-                    : (int)$user_id,
-            'session_data' => serialize($session->getCache()),
-            'user_agent' => Utils::getUserAgent(),
-            'user_ip' => Utils::getUserIp(),
-            'session_updated' => time(),
-            'session_expire' => $session->getExpirationTime(),
-            'user_salt' => substr(md5(Utils::getUserAgent()), 0, 10)
-        );
-
-        $insert->values($newData);
-
-        $selectString = $oSQL->getSqlStringForSqlObject($insert);
-        $results = $dbAdapter->query($selectString, $dbAdapter::QUERY_MODE_EXECUTE);
-
-        return $results->count();
+        return Db::query($query);
+//        var_dump($x);die();
+//
+//        $dbAdapter = $this->getDbAdapter();
+//        $oSQL = new Sql($dbAdapter);
+//        $insert = $oSQL->insert(S_TABLE_SESSIONS);
+//        $newData = array(
+//            'session_id' => session_id(),
+//            'user_id' => ($user_id = $session->getValue('user_id'))
+//                    ? ANONYMOUS
+//                    : (int)$user_id,
+//            'session_data' => serialize($session->getCache()),
+//            'user_agent' => Utils::getUserAgent(),
+//            'user_ip' => Utils::getUserIp(),
+//            'session_updated' => time(),
+//            'session_expire' => $session->getExpirationTime(),
+//            'user_salt' => substr(md5(Utils::getUserAgent()), 0, 10)
+//        );
+//
+//        $insert->values($newData);
+//
+//        $selectString = $oSQL->getSqlStringForSqlObject($insert);
+//        $results = $dbAdapter->query($selectString, $dbAdapter::QUERY_MODE_EXECUTE);
+//
+//        return $results->count();
         //	var_dump($insert->getSqlString($this->getDbAdapter()->getPlatform()));
 
     }
@@ -129,15 +131,21 @@ return null;
      */
     public function cleanSessions($limit = 3600)
     {
-        $dbAdapter = $this->getDbAdapter();
-
-        $sql = new Sql($dbAdapter);
-        $delete = $sql->delete(S_TABLE_SESSIONS);
-        $delete->where(array('session_expire < ?' => time() - $limit));
-
-        $deleteString = $sql->getSqlStringForSqlObject($delete);
-        $results = $dbAdapter->query($deleteString, $dbAdapter::QUERY_MODE_EXECUTE);
-        return $results;
+        $sql = sprintf("DELETE FROM %s WHERE session_expire < '%s';",
+            S_TABLE_SESSIONS,
+            time() - $limit
+        );
+        Db::query($sql);
+        return mysqli_affected_rows(Db::getConnection());
+//        $dbAdapter = $this->getDbAdapter();
+//
+//        $sql = new Sql($dbAdapter);
+//        $delete = $sql->delete(S_TABLE_SESSIONS);
+//        $delete->where(array('session_expire < ?' => time() - $limit));
+//
+//        $deleteString = $sql->getSqlStringForSqlObject($delete);
+//        $results = $dbAdapter->query($deleteString, $dbAdapter::QUERY_MODE_EXECUTE);
+//        return $results;
     }
 
 

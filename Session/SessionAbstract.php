@@ -18,7 +18,9 @@
 
 namespace Wbengine\Session;
 
+use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Locale;
+use Wbengine\Session;
 use Wbengine\Session\Exception\SessionException;
 
 abstract class SessionAbstract
@@ -59,7 +61,7 @@ abstract class SessionAbstract
      * Stored class session instance.
      * @var SessionAbstract
      */
-    private $_session = null;
+    private static $_session = null;
 
 
     /**
@@ -74,13 +76,17 @@ abstract class SessionAbstract
         $this->_isCookieEnabled = $this->_getIsCookieEnabled();
     }
 
+    private static function _getSession(){
+        return self::$_session;
+    }
+
     /**
      * Return what's cookie is enabled
      * @return boolean
      */
     private function _getIsCookieEnabled()
     {
-        return (($_COOKIE["PHPSESSID"] == session_id()));
+        return (($_COOKIE["PHPSESSID"] === session_id()));
     }
 
     /**
@@ -124,7 +130,7 @@ abstract class SessionAbstract
         }
 //        die(ddd);
 //        die(var_dump($this->_cache));
-        $this->getModel()->insertSessionData($this);
+//        var_dump($this->getModel()->insertSessionData($this));
 //        die(var_dump($this->_cache));
         $this->init(TRUE);
     }
@@ -179,13 +185,13 @@ abstract class SessionAbstract
     public function open()
     {
         $this->_session = $this->getModel()->getSessionData();
-
-        if (NULL === $this->_session) {
+//var_dump($this->_session);die();
+        if ($this->_session === null) {
             $this->create();
         }
-
+//        Utils::dump($this->_session);
         if (array_key_exists('session_data', $this->_session)) {
-            $this->_cache = unserialize($this->_session[session_data]);
+            $this->_cache = unserialize($this->_session['session_data']);
         }
 
     }
@@ -207,7 +213,7 @@ abstract class SessionAbstract
      */
     private function _getClassLocale($locale)
     {
-        if ($this->_locale instanceof Class_Locale) {
+        if ($this->_locale instanceof Locale) {
             return $this->_locale;
         } else {
             $this->_setClassLocale();
@@ -236,22 +242,23 @@ abstract class SessionAbstract
      * @throws Exception\SessionException
      * @return mixed
      */
-    public function getValue($sName, $sDefault = "")
+    public static function getValue($sName, $defaultValue = null)
     {
 
         if (empty($sName)) {
-            throw New SessionException(__METHOD__ . ': Variable name cannot be empty.');
+            return $defaultValue;
         }
 
-        if (NULL === $this->_cache) {
-            $this->open();
+        if (self::$_session instanceof Session) {
+            self::_getSession();
         }
-
-        if (array_key_exists($sName, $this->_cache)) {
-            return $this->_cache[$sName];
-        } else {
-            return $sDefault;
-        }
+//        $this->open();
+//var_dump($this->_cache);
+//        if (array_key_exists($sName, $this->_cache)) {
+//            return $this->_cache[$sName];
+//        } else {
+//            return $sDefault;
+//        }
     }
 
     /**

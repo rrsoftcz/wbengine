@@ -15,7 +15,10 @@
 
 namespace Wbengine\Site;
 
+use Wbengine\Application\ApplicationException;
 use Wbengine\Application\Env\Stac\Utils;
+use Wbengine\Db;
+use Wbengine\Session;
 use Wbengine\Site;
 use Wbengine\Model\ModelAbstract;
 
@@ -94,8 +97,7 @@ class SiteModel extends ModelAbstract
 //	$x = $this->getDbAdapter()->query($sql, array(
 //	    $this->getUrlId($site->getUrl(), $site->isUrlStrict()),
 //	    $site->getUrl()));
-
-        return self::query($sql)->fetch_row();
+        return self::query($sql)->fetch_assoc();
 
 //        var_dump($statement->fetch_row());die();
 //        /** @var $results Zend\Db\ResultSet\ResultSet */
@@ -121,17 +123,13 @@ class SiteModel extends ModelAbstract
     public function getTitleByUrl($part)
     {
         $sql = sprintf("SELECT title FROM %s
-			WHERE link='/%s/'
+			WHERE link='%s'
 			LIMIT 1;"
             , S_TABLE_SITES
-            , $part
+            , ($part)?"/".$part."/":"/"
         );
-//        var_dump($this->query($sql)->fetch_field()->title);die();
-        $title = $this->query($sql)->fetch_row();
-//        var_dump($title->title);
-
-        return $this->query($sql)->fetch_field()->title;
-//        return $title->title;
+        $title = $this->query($sql)->fetch_object()->title;
+        return $title;
     }
 
 
@@ -173,20 +171,25 @@ class SiteModel extends ModelAbstract
 //        var_dump($site->getSiteParentId());die($site->getSiteParentId());
 //        $statement = $this->getDbAdapter()->createStatement($sql);
 //        $result = $statement->execute();
-$result = $this->query($sql)->fetch_assoc();
+//$result = $this->query($sql);
+//        $data = mysqli_fetch_all($result,MYSQLI_ASSOC);
+        $data = Db::fetchAllAssoc($sql);
+//        Utils::dump($data);die();
         $con = $site->getParent();
 //	$x = $this->getDbAdapter()->prepare($sql);
 //	var_dump($site->getParent()->getAppType());
 //	$menuItems = $this->getDbAdapter()->query($sql);
 
-        foreach ($result as $row) {
-
-            if ($site->isMenuSelected($row['site_id'])) {
-                $row['selected'] = 'selected';
-            }
+        foreach ($data as $row) {
+//            Utils::dump($row);
+            $selected = $site->isMenuSelected($row['site_id']);
+//            if ($site->isMenuSelected($row['site_id'])) {
+                $row['selected'] = ($selected)?1:0;
+//            }
             $menu[$row['menu_id']]['name'] = $row['name'];
             $menu[$row['menu_id']]['url'] = "/" . trim($row['link'], "/") . "/";
 //	    $menu[$row['menu_id']]['url'] = "/".$row['link'];
+//            var_dump($row['selected']);
             $menu[$row['menu_id']]['description'] = $row['description'];
             $menu[$row['menu_id']]['selected'] = $row['selected'];
 
@@ -198,6 +201,7 @@ $result = $this->query($sql)->fetch_assoc();
                 }
             }
         }
+//        Utils::dump($menu);die();
 //        die();
         return $menu;
     }
@@ -224,7 +228,7 @@ $result = $this->query($sql)->fetch_assoc();
                         AND (m.site_id = %d
                         OR m.site_id = %d
                         OR s.menu_id = (SELECT menu_id FROM cms_submenu
-                        WHERE site_id = ?))
+                        WHERE site_id = %d))
                         ORDER BY s.menuorder ASC;"
             , S_TABLE_SUBMENU
             , S_TABLE_MENU
@@ -234,33 +238,42 @@ $result = $this->query($sql)->fetch_assoc();
             , $site->getSiteParentId()
             , $site->getSiteId()
         );
+        var_dump(Session::getValue('user_locale'));
 //var_dump($site->getSessionValue());
 //        var_dump($site->getSession());
 //var_dump($site->getSession()->getValue("user_locale"));
-        $res = $this->getDbAdapter()->query($sql, $where);
+//        try {
+//        Utils::dump($sql);die();
+            $res = Db::query($sql);
+//            Utils::dump($res->fetch_assoc());die();
+            if(Db::getConnection()->affected_rows) {
 //var_dump($res->fetchAll());
-        foreach ($res as $row) {
-            if ((int)$row['site_id'] === $site->getSiteId()) {
-                $row['selected'] = 'selected';
-            }
+                foreach ($res->fetch_assoc() as $row) {
+                    if ((int)$row['site_id'] === $site->getSiteId()) {
+                        $row['selected'] = 'selected';
+                    }
 
-            if ($this->getMenuSubitems($site, $row['submenu_id']) && (int)$row['site_id'] !== $site->getSiteId()) {
-                $row['selected'] = 'sel_down';
-            }
+                    if ($this->getMenuSubitems($site, $row['submenu_id']) && (int)$row['site_id'] !== $site->getSiteId()) {
+                        $row['selected'] = 'sel_down';
+                    }
 
-            if ($this->getMenuSubitems($site, $row['submenu_id']) && (int)$row['site_id'] === $site->getSiteId()) {
-                $row['selected'] = 'selected noborder';
-            }
+                    if ($this->getMenuSubitems($site, $row['submenu_id']) && (int)$row['site_id'] === $site->getSiteId()) {
+                        $row['selected'] = 'selected noborder';
+                    }
 
-            $submenu[$row['submenu_id']]['name'] = $row['title'];
-            $submenu[$row['submenu_id']]['url'] = $site->getHomeUrl() . $row['url'];
-            $submenu[$row['submenu_id']]['selected'] = $row['selected'];
-            $submenu[$row['submenu_id']]['site_id'] = (int)$row['site_id'];
+                    $submenu[$row['submenu_id']]['name'] = $row['title'];
+                    $submenu[$row['submenu_id']]['url'] = $site->getHomeUrl() . $row['url'];
+                    $submenu[$row['submenu_id']]['selected'] = $row['selected'];
+                    $submenu[$row['submenu_id']]['site_id'] = (int)$row['site_id'];
 //var_dump($this->getMenuSubitems($site, $row['submenu_id']));
-            $submenu[$row['submenu_id']]['menuitems'] = $this->getMenuSubitems($site, $row['submenu_id']);
-        }
+                    $submenu[$row['submenu_id']]['menuitems'] = $this->getMenuSubitems($site, $row['submenu_id']);
+                }
 
-        return $submenu;
+                return $submenu;
+            }else{
+                return null;
+            }
+//        }
     }
 
 

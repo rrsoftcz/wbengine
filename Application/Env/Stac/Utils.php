@@ -288,7 +288,10 @@ class Utils {
 
     }
 
-    public static function dump($var){
-        print_r('<pre>'.$var.'</pre>');
+    public static function dump($var, $stop = false){
+        echo('<pre>');
+        print_r($var);
+        echo('</pre>');
+        if($stop)die('__STOPPED__');
     }
 }

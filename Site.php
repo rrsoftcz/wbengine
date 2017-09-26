@@ -647,20 +647,15 @@ Class Site
         $this->loadSiteResource();
 
         // Save some essential site template variables...
-        $this->setVariable('url', $this->getLink());
         $this->setVariable('device_type', $this->getParent()->getDeviceType());
-        $this->setVariable('site_home_url', $this->getHomeUrl());
         $this->setVariable('html_surfix', $this->getTemplateClassSurfix());
         $this->setVariable('breadcrump', $this->getNavigation());
         $this->setVariable('menu', $this->getMenu());
         $this->setVariable('submenu', $this->getSubMenu());
         $this->setVariable('site_id', $this->getSiteId());
-        $this->setVariable('hostname', Config::getCdnPath(), 'cdn');
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
-        $this->setVariable('full_url', $this->getUrl());
-
 
         $this->_setSections($this->getSections());
 
