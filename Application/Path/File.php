@@ -88,7 +88,7 @@ class File {
         if($this->exist())
         {
             $this->_file_exist = TRUE;
-            $this->_file[info] = stat($this->getFile());
+            $this->_file['info'] = stat($this->getFile());
         }else{
             $this->_file_exist = FALSE;
             if($asNew === FALSE) {
@@ -323,19 +323,19 @@ class File {
     }
 
     public function getFileExtension(){
-        return $this->_file[extension];
+        return $this->_file['extension'];
     }
 
     public function getDirectory(){
-        return $this->_file[dirname];
+        return $this->_file['dirname'];
     }
 
     public function getFileName(){
-        return $this->_file[basename];
+        return $this->_file['basename'];
     }
 
     public function getFileBaseName(){
-        return $this->_file[filename];
+        return $this->_file['filename'];
     }
 
     public function getFile(){

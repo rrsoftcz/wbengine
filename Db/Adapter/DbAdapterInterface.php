@@ -9,10 +9,7 @@
 namespace Wbengine\Db\Adapter;
 
 interface DbAdapterInterface {
-
-
-    /**
-     * @return Driver\DriverInterface
-     */
-    public function getAdapter();
+    public function getConnection();
+    public function query($sqlString);
+    public function fetchRow($sqlString);
 }

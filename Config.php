@@ -23,6 +23,7 @@ use Wbengine\Config\Adapter\AdapterInterface;
 use Wbengine\Config\Adapter\Exception\ConfigException;
 use Wbengine\Config\Adapter\AdapterAbstract;
 use Wbengine\Config\Value;
+use Wbengine\Config\Valuex;
 
 class Config
 {
@@ -153,7 +154,7 @@ class Config
     {
 //        var_dump($filename->exist());
 //        var_dump($filename->getDirectory());
-        if ($filename->exist() == false) {
+        if ($filename->exist() === false) {
             throw new ConfigException(
                 sprintf('%s->%s: The Configuration file "%s" not found.'
                     , __CLASS__
@@ -163,7 +164,7 @@ class Config
             );
         }
 
-        if ($filename->isReadable() == false) {
+        if ($filename->isReadable() === false) {
             throw new ConfigException(
                 sprintf('%s->%s: The Config file "%s" exist, but probably is not readable.'
                     , __CLASS__
@@ -288,7 +289,7 @@ class Config
 
     public static function getDbCredentials()
     {
-        return self::$config->dbAdapterDefinition;
+        return new Value(self::$config->dbAdapterDefinition);
     }
 
     public static function getHtmlHeaderCharset()
@@ -328,12 +329,13 @@ class Config
 
     public static function isDebugEnabled()
     {
-        return (boolean)self::$config->debug;
+        return self::$config->debug;
     }
 
     public static function getTimeZone()
     {
-        return self::$config->timeZone;
+        return self::_getValueTimeZone()->asString();
+//        return self::$config->timeZone;
     }
 
     public static function minimizeCss(){
@@ -348,9 +350,8 @@ class Config
         return self::$config->minimizeJs;
     }
 
-    public static function toArray(){
-        return (array) self::$config;
+    private static function _getValueTimeZone(){
+        return new Value(self::$config->timeZone);
     }
-
 
 }

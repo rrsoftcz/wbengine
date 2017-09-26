@@ -95,15 +95,15 @@ class SiteModel extends ModelAbstract
 //	    $this->getUrlId($site->getUrl(), $site->isUrlStrict()),
 //	    $site->getUrl()));
 
+        return self::query($sql)->fetch_row();
 
-        $statement = $this->getDbAdapter()->query($sql);
-
+//        var_dump($statement->fetch_row());die();
 //        /** @var $results Zend\Db\ResultSet\ResultSet */
-        $results = $statement->execute();
+//        $results = $statement->execute();
 
 //	$results = $x->execute();
 //	var_dump($results->current());
-        return $results->current();
+//        return $results->current();
 //	return $this->getDbAdapter()->query($sql, array(
 //		    $this->getUrlId($site->getUrl(), $site->isUrlStrict()),
 //		    $site->getUrl()));
@@ -126,10 +126,12 @@ class SiteModel extends ModelAbstract
             , S_TABLE_SITES
             , $part
         );
-
-        $title = $this->getDbAdapter()->query($sql, array())->current();
+//        var_dump($this->query($sql)->fetch_field()->title);die();
+        $title = $this->query($sql)->fetch_row();
 //        var_dump($title->title);
-        return $title->title;
+
+        return $this->query($sql)->fetch_field()->title;
+//        return $title->title;
     }
 
 
@@ -169,9 +171,9 @@ class SiteModel extends ModelAbstract
 //        var_dump($sql);
 //var_dump($site->getSiteParentId());
 //        var_dump($site->getSiteParentId());die($site->getSiteParentId());
-        $statement = $this->getDbAdapter()->createStatement($sql);
-        $result = $statement->execute();
-
+//        $statement = $this->getDbAdapter()->createStatement($sql);
+//        $result = $statement->execute();
+$result = $this->query($sql)->fetch_assoc();
         $con = $site->getParent();
 //	$x = $this->getDbAdapter()->prepare($sql);
 //	var_dump($site->getParent()->getAppType());
@@ -196,7 +198,7 @@ class SiteModel extends ModelAbstract
                 }
             }
         }
-
+//        die();
         return $menu;
     }
 
@@ -339,7 +341,7 @@ class SiteModel extends ModelAbstract
             , $url
         );
 
-        return (int)$this->getDbAdapter()->query($sql)->site_id;
+        return (int)$this->query($sql)->fetch_field()->site_id;
     }
 
 

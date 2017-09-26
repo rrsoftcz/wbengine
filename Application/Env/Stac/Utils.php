@@ -287,4 +287,8 @@ class Utils {
         }
 
     }
+
+    public static function dump($var){
+        print_r('<pre>'.$var.'</pre>');
+    }
 }

@@ -15,16 +15,20 @@ class Value
     private $_childrens = null;
 
     public function __construct($value)
-    {
+    {//var_dump($value);
         $this->_value = $value;
+        return $this;
     }
 
     public function __get($name)
-    {
-        if (array_key_exists($name, $this->_value)) {
-            return $this->_value->$name;
+    {//var_dump($this->_value->$name);
+        if(is_object($this->_value)) {
+            if (array_key_exists($name, $this->_value)) {
+                return $this->_value->$name;
+            }
+            return null;
         }
-        return null;
+        return $this->_value;
     }
 
     public function getChildrens(){
@@ -44,6 +48,23 @@ class Value
             return $this->_value;
         }
     }
+
+    public function asString(){
+        return (string) $this->getValue();
+    }
+
+    public function asInt(){
+        return (int) $this->getValue();
+    }
+
+    public function asArray(){
+        return (array) $this->getValue();
+    }
+
+    public function asObject(){
+        return new \stdClass($this->getValue());
+    }
+
 
     public function isArray(){
         return is_array($this->_value);

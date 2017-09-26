@@ -6,8 +6,8 @@
 
 namespace Wbengine\Db\Adapter\Exception;
 
-//require_once dirname(__DIR__) . '/SessionException.php';
+use Wbengine\Db\Exception\DbException;
 
-class DbAdapterException extends \Exception {
+class DbAdapterException extends DbException {
 
 }

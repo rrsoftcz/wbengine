@@ -23,24 +23,45 @@ class Model extends ModelAbstract
 {
 
 
-    /**
-     * Load and return session data stored in the database.
-     * @return array
-     */
     public function getSessionData()
     {
 //        var_dump($this->getDbAdapter());
-        $sql = New Sql($this->getDbAdapter());
-        $select = $sql->select();
-        $select->from(S_TABLE_SESSIONS);
-        $select->where(array(
-                'session_id' => session_id(),
-                'user_ip' => Utils::getUserIp(),
-                'user_salt' => substr(md5(Utils::getUserAgent()), 0, 10))
+        $sql = sprintf("SELECT * FROM %s s
+                        WHERE s.session_id = '%s'
+                        AND s.user_ip = '%s'
+                        AND s.user_salt = '%s'
+                        LIMIT 1;"
+            , S_TABLE_SESSIONS
+            , session_id()
+            , Utils::getUserIp()
+            , substr(md5(Utils::getUserAgent()), 0, 10)
         );
 
+//        var_dump(self::getConnection()->query($sql)->fetch_assoc);die();
+//        return (self::_ fetchRow($sql));die();
+
+//        $sql = New Sql($this->getDbAdapter());
+//        $select = $sql->select();
+//        $select->from(S_TABLE_SESSIONS);
+//        $select->where(array(
+//                'session_id' => session_id(),
+//                'user_ip' => Utils::getUserIp(),
+//                'user_salt' => substr(md5(Utils::getUserAgent()), 0, 10))
+//        );
+        $y = ($this->getConnection()->query($sql)->fetch_row());
+        return $y;
+
+        $e = new \Exception();
+        echo('<pre>');
+        print_r($y);
+        echo('</pre>');
+        die();
+
+        print_r($this->getConnection()->query($sql)->fetch_row());die($sql);
+return null;
         $statement = $sql->prepareStatementForSqlObject($select);
         $results = $statement->execute();
+        var_dump($results->current());
         return ($results->getAffectedRows())
             ? $results->current()
             : null;
@@ -54,6 +75,25 @@ class Model extends ModelAbstract
      */
     public function insertSessionData(SessionAbstract $session)
     {
+        $query = sprintf("INSERT INTO %s " .
+            " (`session_id`, `user_id`, `session_data`, `user_agent`, `user_ip`, `session_updated`,`session_expire`, `user_salt`) " .
+            " VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
+            S_TABLE_SESSIONS,
+            session_id(),
+            ($user_id = $session->getValue('user_id'))
+                ? ANONYMOUS
+                : (int)$user_id,
+            serialize($session->getCache()),
+            Utils::getUserAgent(),
+            Utils::getUserIp(),
+            time(),
+            $session->getExpirationTime(),
+            substr(md5(Utils::getUserAgent()), 0, 10)
+        );
+
+        return (boolean)$this->getConnection()->query($query);
+        var_dump($x);die();
+
         $dbAdapter = $this->getDbAdapter();
         $oSQL = new Sql($dbAdapter);
         $insert = $oSQL->insert(S_TABLE_SESSIONS);

@@ -18,8 +18,7 @@ namespace Wbengine\Model;
 use Wbengine;
 use Wbengine\Config;
 use Wbengine\Registry;
-use Zend\Db\Sql\Select;
-use Wbengine\Db\Db;
+use Wbengine\Db;
 
 
 abstract class ModelAbstract
@@ -27,28 +26,11 @@ abstract class ModelAbstract
 
 
     /**
-     * Instance of database connection
-     * @var \Zend\Db\Adapter\Pdo_Mysql
+     * @var Db
      */
-    private static $_db = NULL;
+    private $_db = NULL;
 
 
-    /**
-     * Return parsed sql statement
-     * @param $select Select
-     * @return mixed
-     */
-    public function getSqlString($select)
-    {
-        if ($select instanceof Select) {
-            return $select->getSqlString($this->getDbAdapter()->getPlatform());
-        }
-    }
-
-
-    /**
-     * Set Zend_Db_Adapter_Pdo_Mysql
-     */
     private function _setDb()
     {
 //        $e = new \Exception();
@@ -56,23 +38,45 @@ abstract class ModelAbstract
 //        print_r($e->getTraceAsString());
 //        echo('</pre>');
 
-        $db = New Db(Config::getDbCredentials());
-        self::$_db = $db->getAdapter();
-        return self::$_db;
+//        $this->_db = Db::getAdapter();
+        var_dump(Config::getDbCredentials());die(xxx);
+        $this->_db = Db::setCredentials(Config::getDbCredentials());
+//        return self::$_db;
     }
+
+    public function dumpAll(){
+        foreach ($this->_db->getAllQueries() as $query){
+            print_r("<pre>".$query."</pre>");
+        }
+    }
+
+    private function _getDb(){
+        if (null === $this->_db) {
+            $this->_setDb();
+        }
+        return $this->_db;
+    }
+
 
 
     /**
      * Return database connection.
-     * @return \Zend\Db\Adapter\Adapter
+     * @return Db
      */
-    public function getDbAdapter()
+    public function getConnection()
     {
-        if (null === self::$_db) {
-            $this->_setDb();
-        }
-        return self::$_db;
+//        var_dump(self::_getDb()->getConnection());die();
+//        if (null === self::$_db) {
+//            self::_setDb();
+//        }
+        return $this->_getDb()->getConnection();
     }
+
+    public function query($query){
+        Wbengine\Application\Env\Stac\Utils::dump(Db::query($query));die();
+//        return $this->_getDb()::query($query);
+    }
+
 
 
 }
