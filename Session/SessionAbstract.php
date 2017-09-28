@@ -20,18 +20,23 @@ namespace Wbengine\Session;
 
 use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Locale;
+use Wbengine\Section;
 use Wbengine\Session;
 use Wbengine\Session\Exception\SessionException;
 
 abstract class SessionAbstract
 {
 
-
-    /**
-     * Local data cache.
-     * @var array
-     */
-    private $_cache = null;
+    CONST USER_AGENT        = 'user_agent';
+    CONST USER_IP           = 'user_ip';
+    CONST USER_ID           = 'user_id';
+    CONST USER_SALT         = 'user_salt';
+    CONST USER_LOCALE       = 'user_locale';
+    CONST USER_LOGGED       = 'user_is_logged';
+    CONST SESSION_ID        = 'session_id';
+    CONST SESSION_DATA      = 'session_data';
+    CONST SESSION_UPDATED   = 'session_updated';
+    CONST SESSION_EXPIRE    = 'session_expire';
 
     /**
      * Locale class instance.
@@ -46,12 +51,6 @@ abstract class SessionAbstract
     private $_expirationTime = 3600;
 
     /**
-     * Cookie enabled state.
-     * @var boolean
-     */
-    private $_isCookieEnabled = FALSE;
-
-    /**
      * Session's data model.
      * @var Class_Session_Model
      */
@@ -63,31 +62,95 @@ abstract class SessionAbstract
      */
     private static $_session = null;
 
-
     /**
      * Set cookie state to local variable.
      */
-    function __construct()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+//    function __construct()
+//    {
+//        if (session_status() === PHP_SESSION_NONE) {
+//            session_start();
+//        }
+//
+//        $this->_isCookieEnabled = $this->_getIsCookieEnabled();
+//    }
 
-        $this->_isCookieEnabled = $this->_getIsCookieEnabled();
+//    public function setSessionAutoClean($state){
+//        $this->_getSession()->setAutoClean((boolean)$state);
+//    }
+//
+//    public function isAutoCleanOn(){
+//        return self::_getSession()->isAutoCleanOn();
+//    }
+
+//    public function isOpen(){
+//        if($this->_getSession()->getSessionId()){
+//            return true;
+//        }else{
+//            return false;
+//        }
+////        if(is_array($this->_session_data)) {
+////            if (array_key_exists('session_id', $this->_session_data)) {
+////                return true;
+//////                return $this->_session_data[self::SESSION_ITEM_SESSION_ID];
+////            }else{
+////                return false;
+////            }
+////        }
+//    }
+
+    public function isValid($session_id){
+        if (session_status() === PHP_SESSION_NONE) {
+//            session_start();
+            return false;
+        }else{
+            if(session_id() === $session_id){
+                return true;
+            }else{
+//                $this->destroy($session_id);
+                return false;
+            }
+        }
     }
 
-    private static function _getSession(){
-        return self::$_session;
+    public function sessionStart(){
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+            return session_id();
+        }else{
+            session_regenerate_id(true);
+            return session_id();
+        }
     }
 
     /**
-     * Return what's cookie is enabled
-     * @return boolean
+     * Return Instance of class Session
+     * @return Session
      */
-    private function _getIsCookieEnabled()
-    {
-        return (($_COOKIE["PHPSESSID"] === session_id()));
+    private function _getSession(){
+        if(self::$_session instanceof Section) {
+            return self::$_session;
+        }else{
+            return self::_createSession();
+        }
     }
+
+    private function _createSession(){
+        $this->_session = new Session();
+        return self::$_session;
+    }
+
+    private function _getSessionData(){
+        return self::_getSession()->getSessionData();
+    }
+
+    public function isCookieEnabled(){
+        return $this->_getSession()->_isCookieEnabled();
+    }
+
+    public function generateUserSalt(){
+        return substr(md5(Utils::getUserAgent()), 0, 10);
+    }
+
 
     /**
      * Return created default or created expiration time due to
@@ -107,33 +170,24 @@ abstract class SessionAbstract
 
 
     /**
-     * Return local session cache
-     * @return array
-     */
-    public function getCache()
-    {
-        return $this->_cache;
-    }
-
-    /**
      * Method create a new session and save values to
      * database.
      *
      * @return boolean
      */
-    public function create()
-    {
-        if (!$this->_cache['user_id']) {
-            $this->_cache['user_id'] = ANONYMOUS;
-            $this->_cache['user_is_logged'] = FALSE;
-            $this->_cache['user_locale'] = DEFAULT_LOCALE;
-        }
-//        die(ddd);
-//        die(var_dump($this->_cache));
-//        var_dump($this->getModel()->insertSessionData($this));
-//        die(var_dump($this->_cache));
-        $this->init(TRUE);
-    }
+//    public function create()
+//    {
+//        if (!$this->_cache['user_id']) {
+//            $this->_cache['user_id'] = ANONYMOUS;
+//            $this->_cache['user_is_logged'] = FALSE;
+//            $this->_cache['user_locale'] = DEFAULT_LOCALE;
+//        }
+////        die(ddd);
+////        die(var_dump($this->_cache));
+////        var_dump($this->getModel()->insertSessionData($this));
+////        die(var_dump($this->_cache));
+//        $this->init(TRUE);
+//    }
 
     /**
      * Get or create session class instance.
@@ -158,22 +212,22 @@ abstract class SessionAbstract
     }
 
 
-    /**
-     * Initialisation method create new session instance
-     * if needed.
-     * @param boolean $clean
-     */
-    public function init($clean = TRUE)
-    {
-        if (NULL === $this->_session) {
-            $this->open();
-        }
-
-        If ($clean === TRUE) {
-            $this->clean();
-        }
-    }
-
+//    /**
+//     * Initialisation method create new session instance
+//     * if needed.
+//     * @param boolean $clean
+//     */
+//    public function init()
+//    {
+////        if(!self::isOpen()) {
+////            self::open();
+////        }
+////        die(init);
+////        If (self::isAutoCleanOn()) {die(autoclean);
+////            $this->clean();
+////        }
+//    }
+//
 
     /**
      * We try to load current session data from the Database.
@@ -182,19 +236,19 @@ abstract class SessionAbstract
      *
      * @return \Wbengine\Session
      */
-    public function open()
-    {
-        $this->_session = $this->getModel()->getSessionData();
-//var_dump($this->_session);die();
-        if ($this->_session === null) {
-            $this->create();
-        }
-//        Utils::dump($this->_session);
-        if (array_key_exists('session_data', $this->_session)) {
-            $this->_cache = unserialize($this->_session['session_data']);
-        }
-
-    }
+//    public function open()
+//    {
+//        $this->_session = $this->getModel()->getSessionData();
+////var_dump($this->_session);die();
+//        if ($this->_session === null) {
+//            $this->create();
+//        }
+////        Utils::dump($this->_session);
+//        if (array_key_exists('session_data', $this->_session)) {
+//            $this->_cache = unserialize($this->_session['session_data']);
+//        }
+//
+//    }
 
     /**
      * Return session locale
@@ -242,16 +296,24 @@ abstract class SessionAbstract
      * @throws Exception\SessionException
      * @return mixed
      */
-    public static function getValue($sName, $defaultValue = null)
-    {
+//    public function getValue($sName, $defaultValue = null)
+//    {
+//
+//        if (empty($sName)) {
+//            return $defaultValue;
+//        }
 
-        if (empty($sName)) {
-            return $defaultValue;
-        }
-
-        if (self::$_session instanceof Session) {
-            self::_getSession();
-        }
+//        self::init();
+//        if (self::$_session instanceof Session) {
+//            if(self::isOpen()){
+//        $this->setValue('user_ip','172.16.24.0/24');
+//        $this->setValue('user_xx','172.16.24.0/24');
+//        Utils::dump($this);
+//        var_dump($this->getUserIp());
+//        var_dump($this->getUserIp());
+//            }
+//        }
+//        self::$_session = new Session();
 //        $this->open();
 //var_dump($this->_cache);
 //        if (array_key_exists($sName, $this->_cache)) {
@@ -259,47 +321,28 @@ abstract class SessionAbstract
 //        } else {
 //            return $sDefault;
 //        }
-    }
+//    }
 
     /**
      * This method do logout user from the existing
      * session and destroy them.
      * @void
      */
-    public function destroy()
+    public function destroy($session_id = null)
     {
+        $session_id = ($session_id)
+            ? $session_id
+            : session_id();
+
         $this->setValue("user_name", "");
         $this->setValue("user_pass", "");
 
-        $this->getModel()->deleteSession();
+        $this->getModel()->deleteSession($session_id);
 
         session_unset();
         session_destroy();
     }
 
-    /**
-     * Store value to session under given variable name.
-     *
-     * @param string $sName
-     * @param mixed $sValue
-     * @throws Class_Session_Exception
-     * @return boolean
-     */
-    public function setValue($sName, $sValue)
-    {//$sName=null;
-//        $x = $this[0];
-        $sName = (string)$sName;
-
-        if (empty($sName)) {
-            throw new SessionException(__CLASS__.'->'.__FUNCTION__ . '() with a message: The value name is empty.', 3008);
-        }
-
-        // As first we put them in to cache..
-        $this->_cache[$sName] = $sValue;
-
-        // Then store it to db..
-        $this->getModel()->updateSession($this);
-    }
 
 
     /**

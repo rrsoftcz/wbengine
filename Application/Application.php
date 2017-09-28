@@ -140,12 +140,25 @@ abstract Class Application
 
 
     /**
+     * Return created session instance.
+     * @return \Wbengine\Session
+     */
+    public function getSession()
+    {
+        if ($this->_session instanceof Session) {
+            return $this->_session;
+        }
+        return $this->_createSession();
+    }
+
+
+    /**
      * Create new session instance object if needed.
      * @see Class_Session
      */
     private function _createSession()
     {
-        $this->_session = new Session();
+        return $this->_session = new Session();
     }
 
 
@@ -206,7 +219,6 @@ abstract Class Application
         $this->_setUserData($this->getClassUser()->getIdentity());
     }
 
-
     /**
      * Store locale class.
      * @param \Wbengine\Locale\LocaleAbstract $locale
@@ -215,6 +227,7 @@ abstract Class Application
     {
         $this->_locale = $locale;
     }
+
 
     /**
      * @param string $name
@@ -424,22 +437,6 @@ abstract Class Application
         }
 
         return $this->_userData;
-    }
-
-
-    /**
-     * Return created session instance.
-     * @return \Wbengine\Session
-     */
-    public function getSession()
-    {
-        if ($this->_session instanceof Section) {
-            return $this->_session;
-        }
-        $this->_createSession();
-//        $this->_session->init(TRUE);
-
-        return $this->_session;
     }
 
 

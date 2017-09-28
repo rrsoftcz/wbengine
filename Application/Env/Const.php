@@ -21,6 +21,8 @@ define('DEVICE_TYPE_DESKTOP', 3);
 // User related
 define('ANONYMOUS', 1);
 // User default locale
+define('USER_LOGGED', 1);
+define('USER_NOT_LOGGED', 0);
 define('DEFAULT_LOCALE', 1);
 define('DEFAULT_AGE', 31557600);
 define('HTML_STATIC', 1);

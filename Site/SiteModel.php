@@ -238,7 +238,7 @@ class SiteModel extends ModelAbstract
             , $site->getSiteParentId()
             , $site->getSiteId()
         );
-        var_dump(Session::getValue('user_locale'));
+//        var_dump(Session::getValue('user_locale'));
 //var_dump($site->getSessionValue());
 //        var_dump($site->getSession());
 //var_dump($site->getSession()->getValue("user_locale"));

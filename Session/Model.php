@@ -18,26 +18,28 @@ namespace Wbengine\Session;
 use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
+use Wbengine\Session;
+use Wbengine\Session\SessionData;
 use Zend\Db\Sql\Sql;
 
 class Model extends ModelAbstract
 {
 
 
-    public function getSessionData()
+    public function getSessionData(Session $session)
     {
 //        var_dump($this->getDbAdapter());
-        $sql = sprintf("SELECT * FROM %s s
+        $sql = sprintf("SELECT id,user_id,session_id,session_data,user_agent,user_ip,session_updated,session_expire,user_salt FROM %s s
                         WHERE s.session_id = '%s'
                         AND s.user_ip = '%s'
                         AND s.user_salt = '%s'
                         LIMIT 1;"
             , S_TABLE_SESSIONS
-            , session_id()
-            , Utils::getUserIp()
-            , substr(md5(Utils::getUserAgent()), 0, 10)
+            , $session->getSessionId()
+            , $session->getUserIp()
+            , $session->getUserSalt()
         );
-
+//Utils::dump($sql,true);
 //        var_dump(self::getConnection()->query($sql)->fetch_assoc);die();
 //        return (self::_ fetchRow($sql));die();
 
@@ -49,9 +51,9 @@ class Model extends ModelAbstract
 //                'user_ip' => Utils::getUserIp(),
 //                'user_salt' => substr(md5(Utils::getUserAgent()), 0, 10))
 //        );
-        $y = (Db::query($sql)->fetch_assoc());
-//        Utils::dump($y);
-        return $y;
+        return Db::query($sql)->fetch_object();
+//        Utils::dump($sql);
+//        return $y;
 
 //        $e = new \Exception();
 //        echo('<pre>');
@@ -75,24 +77,22 @@ class Model extends ModelAbstract
      * @param \Wbengine\Session\SessionAbstract $session
      * @return int
      */
-    public function insertSessionData(SessionAbstract $session)
-    {
+    public function insertSessionData(Session $session)
+    {//tils::dump($session->getSessionData(),true);
         $query = sprintf("INSERT INTO %s " .
             " (`session_id`, `user_id`, `session_data`, `user_agent`, `user_ip`, `session_updated`,`session_expire`, `user_salt`) " .
             " VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
             S_TABLE_SESSIONS,
-            session_id(),
-            ($user_id = $session->getValue('user_id'))
-                ? ANONYMOUS
-                : (int)$user_id,
-            serialize($session->getCache()),
-            Utils::getUserAgent(),
-            Utils::getUserIp(),
-            time(),
-            $session->getExpirationTime(),
-            substr(md5(Utils::getUserAgent()), 0, 10)
+            $session->getSessionId(),
+            $session->getUserId(),
+            serialize($session->getSessionData()),
+            $session->getUserAgent(),
+            $session->getUserIp(),
+            $session->getSessionLastUpdated(),
+            $session->getSessionExpireTime(),
+            $session->getUserSalt()
         );
-
+//        Utils::dump($query,true);
         return Db::query($query);
 //        var_dump($x);die();
 //
@@ -149,30 +149,20 @@ class Model extends ModelAbstract
     }
 
 
-    /**
-     * Update session data in database.
-     * @param Class_Session_Abstract|SessionAbstract $session
-     * @throws Exception\SessionException
-     */
-    public function updateSession(SessionAbstract $session)
+    public function updateSession(Session $session)
     {
-        $userId = $session->getValue('user_id');
-
-        $sql = sprintf("UPDATE %s SET session_data = '%s', user_id = %d
+        $query = sprintf("UPDATE %s SET session_data = '%s'
                             WHERE session_id = '%s'
                             AND user_ip = '%s'
                             AND user_salt = '%s';"
             , S_TABLE_SESSIONS
-            , serialize($session->getCache())
-            , (empty($userId))
-                ? ANONYMOUS
-                : (int)$userId
-            , session_id()
-            , Utils::getUserIp()
-            , substr(md5(Utils::getUserAgent()), 0, 10)
+            , serialize($session->getSessionData())
+            , $session->getSessionId()
+            , $session->getUserIp()
+            , $session->getUserSalt()
         );
 
-        $this->getDbAdapter()->query($sql);
+        return Db::query($query);
     }
 
 
@@ -180,17 +170,18 @@ class Model extends ModelAbstract
      * Delete session from the database.
      * @return boolean
      */
-    public function deleteSession()
+    public function deleteSession($session_id)
     {
         $sql = sprintf("DELETE FROM %s WHERE session_id = '%s'"
             , S_TABLE_SESSIONS
-            , session_id()
+            , $session_id
         );
 
-        $result = $this->getDbAdapter()->query($sql)->rowCount();
-        return ($result)
-            ? TRUE
-            : FALSE;
+        return Db::query($sql);
+//        $result = $this->getDbAdapter()->query($sql)->rowCount();
+//        return ($result)
+//            ? TRUE
+//            : FALSE;
     }
 
 

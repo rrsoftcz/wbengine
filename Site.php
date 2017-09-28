@@ -15,6 +15,7 @@
 namespace Wbengine;
 
 use Wbengine\Application\Application;
+use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Site\SiteException;
 use Wbengine\Url;
 
@@ -132,29 +133,38 @@ Class Site
 
 
     /**
-     * return a parent object
-     * @return \Wbengine\Application\Application
+     * Return a parent object Application
+     * @return Application
      */
     public function getParent()
     {
         return $this->_parent;
     }
 
+    private function _getSession(){
+        return $this->getParent()->getSession();
+    }
 
-    /**
-     * Return Class_session object instance
-     * @see Class_Cms_Abstract::getSession()
-     */
+    public function getValueFromSession($name){
+        return $this->_getSession()->getValue($name);
+    }
+
+    public function setValueToSession($name, $value){
+        $this->_getSession()->setValue($name,$value);
+    }
+
     public function getSessionValue($name = null)
     {
-        return $this->getParent()->getSession()->getValue($name);
+//        $this->_getSession()->setValue('test', 'some value');
+//        $this->_getSession()->setValue('ddddtest', 'some value');
+//        $this->_getSession()->setValue('class', new \stdClass());
+//        Utils::dump($this->_getSession());
+
+//        return $this->_getSession()->getUserIp();
+        return $this->_getSession()->getValue($name);
     }
 
 
-    /**
-     * Return instance of classRenderer object
-     * @see Class_Cms_Abstract::getRenderer()
-     */
     public function getRenderer()
     {
         return $this->getParent()->getRenderer();
@@ -645,13 +655,17 @@ Class Site
 
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
-
+//        $this->_getSession()->setValue('__DATA', 'some DATA');
+//        $this->_getSession()->setValue('test', 'some test');
+//        $this->_getSession()->setValue('user_locale', 2);
+//        Utils::dump($this->getSessionValue('user_locale'));
+//        Utils::dump($this->_getSession());
         // Save some essential site template variables...
         $this->setVariable('device_type', $this->getParent()->getDeviceType());
         $this->setVariable('html_surfix', $this->getTemplateClassSurfix());
         $this->setVariable('breadcrump', $this->getNavigation());
         $this->setVariable('menu', $this->getMenu());
-        $this->setVariable('submenu', $this->getSubMenu());
+//        $this->setVariable('submenu', $this->getSubMenu());
         $this->setVariable('site_id', $this->getSiteId());
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
