@@ -29,14 +29,14 @@ class Section
 
     /**
      * Model instance
-     * @var object
+     * @var Model
      */
     private $_model = NULL;
 
 
     /**
      * Raw model data
-     * @var Zend\Db\ResultSet\ResultSet
+     * @var Section
      */
     private $_section = NULL;
 
@@ -70,7 +70,7 @@ class Section
 
     /**
      * Set Model instance
-     * @return ModelAbstract
+     * @return Model
      */
     private function _setModel()
     {
@@ -97,12 +97,12 @@ class Section
      */
     private function _getSections()
     {
-        $sections = $this->getModel()->getSections();
+        $_sections = $this->getModel()->getSections();
 
-        if (sizeof($sections) === 0) {
+        if (!is_array($_sections)) {
             return null;
         }
-        foreach ($sections as $section) {
+        foreach ($_sections as $section) {
             $this->_sections[] = $this->_getSection($section['section_id']);
         }
 

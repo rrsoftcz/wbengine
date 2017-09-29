@@ -79,37 +79,10 @@ class SiteModel extends ModelAbstract
                         ) AND visible = 1
                         ORDER BY site_id DESC LIMIT 1;"
             , S_TABLE_SITES
-//            , S_TABLE_SITE_TYPES
             , $this->getUrlId($site->getUrl(), $site->isUrlStrict())
             , $site->getUrl()
         );
-//        var_dump($sql);
-//	$sql = 'SELECT * FROM cms_sites WHERE (link IN (?) AND strict = 0)
-//                        OR (link = ? AND strict = 1)
-//                        AND visible = 1
-//                        ORDER BY site_id DESC LIMIT 1;';
-//	die(__CLASS__ . __METHOD__);
-//	$db = new Zend\Db\Table("cms_sites");
-//        var_dump($sql);
-//	$xxx = $this->getDbAdapter()->guery($sql);
-//	var_dump($this->getDbAdapter()->fetch($sql));
-//	$x = $this->getUrlId($site->getUrl(), $site->isUrlStrict());
-//	$x = $this->getDbAdapter()->query($sql, array(
-//	    $this->getUrlId($site->getUrl(), $site->isUrlStrict()),
-//	    $site->getUrl()));
-        return self::query($sql)->fetch_assoc();
-
-//        var_dump($statement->fetch_row());die();
-//        /** @var $results Zend\Db\ResultSet\ResultSet */
-//        $results = $statement->execute();
-
-//	$results = $x->execute();
-//	var_dump($results->current());
-//        return $results->current();
-//	return $this->getDbAdapter()->query($sql, array(
-//		    $this->getUrlId($site->getUrl(), $site->isUrlStrict()),
-//		    $site->getUrl()));
-//	var_dump($result);
+        return Db::fetchAssoc($sql);
     }
 
 
@@ -128,8 +101,11 @@ class SiteModel extends ModelAbstract
             , S_TABLE_SITES
             , ($part)?"/".$part."/":"/"
         );
-        $title = $this->query($sql)->fetch_object()->title;
-        return $title;
+        $_res = Db::fetchObject($sql);
+        return (is_object($_res))
+            ? $_res->title
+            : null;
+
     }
 
 
@@ -353,6 +329,7 @@ class SiteModel extends ModelAbstract
             , S_TABLE_SITES
             , $url
         );
+//        Utils::dump($sql,true);
 
         return (int)$this->query($sql)->fetch_field()->site_id;
     }

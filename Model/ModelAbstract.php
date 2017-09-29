@@ -17,7 +17,6 @@ namespace Wbengine\Model;
 
 use Wbengine;
 use Wbengine\Config;
-use Wbengine\Registry;
 use Wbengine\Db;
 
 
@@ -33,15 +32,7 @@ class ModelAbstract
 
     private function _setDb()
     {
-//        $e = new \Exception();
-//        echo('<pre>');
-//        print_r($e->getTraceAsString());
-//        echo('</pre>');
-
-//        $this->_db = Db::getAdapter();
-//        var_dump(Config::getDbCredentials());die(xxx);
         $this->_db = Db::setCredentials(Config::getDbCredentials());
-//        return self::$_db;
     }
 
     public function dumpAll(){

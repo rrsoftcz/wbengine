@@ -63,44 +63,12 @@ class Model extends ModelAbstract {
      */
     public function getSections()
     {
-
-
-//	$esqeel = ($this->getDbAdapter());
-//	$sresultSet = $esqeel->select();
-//	$sql = new Sql($this->getDbAdapter(), S_TABLE_SECTIONS);
-//	$select = $sql->select();
-//	$select->where(array('active' => 1));
-//	$x = $this->getDbAdapter();
-//	$statement = $sql->prepareStatementForSqlObject($select);
-//	$result = $statement->execute();
-//	var_dump($result);
-
-	$sql = sprintf("SELECT * FROM %s
-			WHERE active = %d;",
-        S_TABLE_SECTIONS,
-    1
-	);
-//        echo('<pre>');
-//        print_r(Db::fetchAllAssoc($sql));
-//        echo('</pre>');
-//	var_dump($this->getDbAdapter()->fetchAll($sql));
-	return Db::fetchAllAssoc($sql);
-//	$rows = $this->getDbAdapter()->query($sql);
-//	var_dump($rows);
-//	if ( $rows instanceof \PDOStatement ) {
-//	    foreach ( $rows as $row ) {
-//		var_dump($row);
-//	    }
-//	}
-//	var_dump($statement);
-//	/* @var $results Zend\Db\ResultSet\ResultSet */
-//	$results = $statement->execute(array('active' => 0));
-//	$row = $results->current();
-//	$name = $row['title'];
-//	$rowData = $resultSet->current()->getArrayCopy();
-//	var_dump($row);
-//	$res = $this->getDbAdapter()->query($sql);
-//	return $res->fetch();
+        $sql = sprintf("SELECT s.section_id,s.title,s.description,s.active,s.key,s.return_error_code 
+                FROM %s AS s
+                WHERE active = 1;",
+            S_TABLE_SECTIONS
+        );
+        return Db::fetchAllAssoc($sql);
     }
 
 

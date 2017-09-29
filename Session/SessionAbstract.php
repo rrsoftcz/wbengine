@@ -52,61 +52,28 @@ abstract class SessionAbstract
 
     /**
      * Session's data model.
-     * @var Class_Session_Model
+     * @var Model
      */
     private $_model = NULL;
 
     /**
      * Stored class session instance.
-     * @var SessionAbstract
+     * @var Session
      */
     private static $_session = null;
 
-    /**
-     * Set cookie state to local variable.
-     */
-//    function __construct()
-//    {
-//        if (session_status() === PHP_SESSION_NONE) {
-//            session_start();
-//        }
-//
-//        $this->_isCookieEnabled = $this->_getIsCookieEnabled();
-//    }
 
-//    public function setSessionAutoClean($state){
-//        $this->_getSession()->setAutoClean((boolean)$state);
-//    }
-//
-//    public function isAutoCleanOn(){
-//        return self::_getSession()->isAutoCleanOn();
-//    }
-
-//    public function isOpen(){
-//        if($this->_getSession()->getSessionId()){
-//            return true;
-//        }else{
-//            return false;
-//        }
-////        if(is_array($this->_session_data)) {
-////            if (array_key_exists('session_id', $this->_session_data)) {
-////                return true;
-//////                return $this->_session_data[self::SESSION_ITEM_SESSION_ID];
-////            }else{
-////                return false;
-////            }
-////        }
-//    }
-
-    public function isValid($session_id){
+    public function isValid($session_id, $expiration){
         if (session_status() === PHP_SESSION_NONE) {
-//            session_start();
             return false;
         }else{
             if(session_id() === $session_id){
+                if(
+                    $expiration < time()){
+                    return false;
+                }
                 return true;
             }else{
-//                $this->destroy($session_id);
                 return false;
             }
         }
@@ -139,10 +106,6 @@ abstract class SessionAbstract
         return self::$_session;
     }
 
-    private function _getSessionData(){
-        return self::_getSession()->getSessionData();
-    }
-
     public function isCookieEnabled(){
         return $this->_getSession()->_isCookieEnabled();
     }
@@ -155,39 +118,14 @@ abstract class SessionAbstract
     /**
      * Return created default or created expiration time due to
      * first argument.
-     *
-     * @param boolean $create
-     * @return integer
+     * @return int
+     * @internal param bool $create
      */
-    public function getExpirationTime($create = TRUE)
+    public function getExpirationTime()
     {
-        if ($create === TRUE) {
-            return time() + (int)$this->_expirationTime;
-        } else {
-            return (int)$this->_expirationTime;
-        }
+        return time() + (int)$this->_expirationTime;
     }
 
-
-    /**
-     * Method create a new session and save values to
-     * database.
-     *
-     * @return boolean
-     */
-//    public function create()
-//    {
-//        if (!$this->_cache['user_id']) {
-//            $this->_cache['user_id'] = ANONYMOUS;
-//            $this->_cache['user_is_logged'] = FALSE;
-//            $this->_cache['user_locale'] = DEFAULT_LOCALE;
-//        }
-////        die(ddd);
-////        die(var_dump($this->_cache));
-////        var_dump($this->getModel()->insertSessionData($this));
-////        die(var_dump($this->_cache));
-//        $this->init(TRUE);
-//    }
 
     /**
      * Get or create session class instance.
@@ -212,47 +150,9 @@ abstract class SessionAbstract
     }
 
 
-//    /**
-//     * Initialisation method create new session instance
-//     * if needed.
-//     * @param boolean $clean
-//     */
-//    public function init()
-//    {
-////        if(!self::isOpen()) {
-////            self::open();
-////        }
-////        die(init);
-////        If (self::isAutoCleanOn()) {die(autoclean);
-////            $this->clean();
-////        }
-//    }
-//
-
-    /**
-     * We try to load current session data from the Database.
-     * New session record will be created, when session data
-     * does not exist.
-     *
-     * @return \Wbengine\Session
-     */
-//    public function open()
-//    {
-//        $this->_session = $this->getModel()->getSessionData();
-////var_dump($this->_session);die();
-//        if ($this->_session === null) {
-//            $this->create();
-//        }
-////        Utils::dump($this->_session);
-//        if (array_key_exists('session_data', $this->_session)) {
-//            $this->_cache = unserialize($this->_session['session_data']);
-//        }
-//
-//    }
-
     /**
      * Return session locale
-     * @return integer
+     * @return Locale
      */
     public function getLocale()
     {
@@ -263,7 +163,7 @@ abstract class SessionAbstract
     /**
      * Return locale class related to given locale's id.
      * @param integer $locale
-     * @return Class_Locale
+     * @return Locale
      */
     private function _getClassLocale($locale)
     {
@@ -282,46 +182,9 @@ abstract class SessionAbstract
      */
     public function _setClassLocale()
     {
-        $this->_locale = new Locale($this);
+        $this->_locale = new Locale();
     }
 
-    /**
-     * Function return the requested value
-     * by given value name.
-     * Default value will be returnd when
-     * value does not exist or is null.
-     *
-     * @param string $sName
-     * @param mixed $sDefault
-     * @throws Exception\SessionException
-     * @return mixed
-     */
-//    public function getValue($sName, $defaultValue = null)
-//    {
-//
-//        if (empty($sName)) {
-//            return $defaultValue;
-//        }
-
-//        self::init();
-//        if (self::$_session instanceof Session) {
-//            if(self::isOpen()){
-//        $this->setValue('user_ip','172.16.24.0/24');
-//        $this->setValue('user_xx','172.16.24.0/24');
-//        Utils::dump($this);
-//        var_dump($this->getUserIp());
-//        var_dump($this->getUserIp());
-//            }
-//        }
-//        self::$_session = new Session();
-//        $this->open();
-//var_dump($this->_cache);
-//        if (array_key_exists($sName, $this->_cache)) {
-//            return $this->_cache[$sName];
-//        } else {
-//            return $sDefault;
-//        }
-//    }
 
     /**
      * This method do logout user from the existing
@@ -342,33 +205,5 @@ abstract class SessionAbstract
         session_unset();
         session_destroy();
     }
-
-
-
-    /**
-     * This method remove all expired sessions
-     * from database.
-     * @void
-     */
-    public function clean()
-    {
-        $this->getModel()->cleanSessions($this->_expirationTime);
-    }
-
-
-    public function getSessionUpdated()
-    {
-        if ($this->_session == NULL)
-            $this->_loadResource();
-
-        return $this->_session["session_updated"];
-    }
-
-
-    private function _loadResource()
-    {
-        $this->_session = $this->getModel()->getSessionResource();
-    }
-
 
 }

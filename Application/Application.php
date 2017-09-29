@@ -17,12 +17,12 @@
 namespace Wbengine\Application;
 
 use Wbengine\Application\Env\Stac\Utils;
-use Wbengine\Application\Path\File;
 use Wbengine\Application\Mobile\Detector;
+use Wbengine\Application\Path\File;
 use Wbengine\Application\Path\Path;
 use Wbengine\Config;
 use Wbengine\Error;
-use Wbengine\Exception\RuntimeException;
+use Wbengine\Locale;
 use Wbengine\Locale\LocaleAbstract;
 use Wbengine\Section;
 use Wbengine\Site;
@@ -38,7 +38,7 @@ abstract Class Application
 {
     /**
      * Locale class
-     * @var Class_Locale
+     * @var int
      */
     private $_locale = NULL;
 
@@ -50,7 +50,7 @@ abstract Class Application
 
     /**
      * Instance of user class
-     * @var Class_User
+     * @var User
      */
     private $_classUser = NULL;
 
@@ -61,12 +61,6 @@ abstract Class Application
     private $_session = NULL;
 
     /**
-     * Just debugging trigger
-     * @var boolean
-     */
-    private $debug = FALSE;
-
-    /**
      * Instance of Class_Config
      * @var \Wbengine\Config
      */
@@ -74,60 +68,51 @@ abstract Class Application
 
     /**
      * Instance of Class_Renderer
-     * @var Class_Renderer
+     * @var Renderer
      */
     private $_renderer = NULL;
 
     /**
      * Error handler
-     * @var Class_Error_Handler
+     * @var Error\Handler
      */
     private $errorHandler = NULL;
 
     /**
-     * Instance of Class_Site_Url
-     * @var Class_Site_Url
-     */
-    private $_classUrl = NULL;
-
-    /**
      * CMS member object exception
-     * @var Exception
+     * @var ApplicationException
      */
     private $_exception = NULL;
 
     /**
      * Instance of object Class_Site
-     * @var type Class_Site
+     * @var Site
      */
     private $_site = NULL;
 
     /**
      * Site Vars
-     * @var Class_Vars
+     * @var Vars
      */
     private $_classVars = NULL;
 
     /**
      * URL redirection array
-     * @var type array
+     * @var array
      */
-    private $_redirections = array();
+    private $_redirections  = array();
 
+    /**
+     * Instance of object Detector
+     * @var Detector
+     */
+    private $_detector;
 
-    protected $isBackend = false;
-
-    private $dbConnection   = NULL;
-
-    private $_templateDir   = NULL;
-
-    private $_configPaths   = array();
-
-    private $Path           = null;
-
-    private $Detector   = null;
-
-    private $_deviceType   = null;
+    /**
+     * Device type as integer
+     * @var int
+     */
+    private $_deviceType;
 
 
     /**
@@ -164,11 +149,11 @@ abstract Class Application
 
     /**
      * Set Device type as integer
-     * @See Wbengine\Application\Mobile\Detector
+     * @See Wbengine\Application\Mobile\_detector
      */
     private function _setApplicationTypeByDevice()
     {
-        $_device = $this->_getObjectMobileDetector();
+        $_device = $this->_getObjectMobile_detector();
 
         if($_device->isTablet()){
             $this->_deviceType = DEVICE_TYPE_TABLET;
@@ -244,13 +229,13 @@ abstract Class Application
     /**
      * Minimize css file...
      * @param $files
-     * @param null $path
+     * @param null $_path
      * @return Void
      */
-    public function minimizeCssFiles($files, $path = null)
+    public function minimizeCssFiles($files, $_path = null)
     {
         foreach ($files as $file){
-            $cssFile = New File($path.$file);
+            $cssFile = New File($_path.$file);
             $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getRendererTempDir())->getFile(), true);
 
             if (Utils::compareStrings(md5_file($cssFile->getFile()), $ef->getContent()) === false)
@@ -270,12 +255,12 @@ abstract Class Application
     /**
      * Create instance of object class Path
      * @param null $name
-     * @param $path
+     * @param $_path
      * @param bool $appBaseDir
      */
-    public function setPath($name = null, $path, $appBaseDir = false)
+    public function setPath($name = null, $_path, $appBaseDir = false)
     {
-        return $this->_getObjectPath()->addPath($name, $path, $appBaseDir);
+        return $this->_getObjectPath()->addPath($name, $_path, $appBaseDir);
     }
 
 
@@ -293,16 +278,16 @@ abstract Class Application
 
 
     /**
-     * Return instance of Mobile\Detector class
+     * Return instance of Mobile\_detector class
      * @return null|Detector
      */
-    public function _getObjectMobileDetector()
+    public function _getObjectMobile_detector()
     {
-        if(null === $this->Detector || !$this->Detector instanceof Detector){
-            $this->Detector = New Detector();
+        if(null === $this->_detector || !$this->_detector instanceof Detector){
+            $this->_detector = New Detector();
         }
 
-        return $this->Detector;
+        return $this->_detector;
     }
 
 
@@ -401,7 +386,7 @@ abstract Class Application
 
     /**
      * Return CMS member object Exception
-     * @return Exception
+     * @return ApplicationException
      */
     public function getException()
     {
@@ -416,10 +401,8 @@ abstract Class Application
     public function getClassUser()
     {
         if (!$this->_classUser instanceof User) {
-
-            $this->_classUser = new User($this);
+            $this->_classUser = new User();
         }
-
         return $this->_classUser;
     }
 
@@ -435,14 +418,13 @@ abstract Class Application
         } else {
             $this->_setIdentity();
         }
-
         return $this->_userData;
     }
 
 
     /**
      * Return a created locale instance.
-     * @return \Wbengine\Locale\LocaleAbstract
+     * @return int
      */
     public function getLocale()
     {
@@ -546,16 +528,6 @@ abstract Class Application
             $this->_createSite();
         }
         return $this->_site;
-    }
-
-
-    /**
-     * Return database connection adapter
-     * @return null
-     */
-    public function getDbAdapter()
-    {
-        return $this->dbConnection;
     }
 
 

@@ -199,7 +199,9 @@ class Renderer extends Renderer\Adapter
 
     /**
      * Return rendered main site template.
+     * @param Application $App
      * @return string as HTML content
+     * @throws RuntimeException
      */
     public function dispatch(Application $App)
     {

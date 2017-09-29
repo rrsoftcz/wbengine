@@ -14,24 +14,28 @@
 
 namespace Wbengine;
 
-use Wbengine\Application\Env\Stac\Utils;
-use Wbengine\Config\Adapter\AdapterInterface;
+use Wbengine\Config\Value;
 use Wbengine\Db\Adapter\DbAdapterInterface;
+use Wbengine\Db\Adapter\Exception\DbAdapterException;
+use Wbengine\Db\Adapter\Mysqli;
+use Wbengine\Db\DbInterface;
 use Wbengine\Db\Exception\DbException;
-use Wbengine\Exception;
 
-//use Wbengine\Db\Exception;
 
-abstract class Db
+abstract class Db implements DbInterface
 {
 
     /**
      * Instance of Class_Cms
-     * @var \Wbengine\Config\Adapter\AdapterAbstract
+     * @var Value
      */
     private static $dbCredentials = NULL;
 
 
+    /**
+     * Database adapter name as string
+     * @var string
+     */
     private static $_adapterName = null;
 
 
@@ -40,30 +44,19 @@ abstract class Db
      */
     private static $_adapter = NULL;
 
+    /**
+     * Return Queries count as integer
+     * @var int
+     */
     private static $_qcount    = 0;
     private static $_qarray    = array();
 
 
-    /**
-     * Create array with all variables needed for render site.
-     * @param \Wbengine\Config\Adapter\AdapterAbstract
-     */
-//    public function __construct($config)
-//    {
-//        $this->dbCredentials = $config;
-//    }
-
-    private static function updateStats($sql = null){
+    private static function updateStats($query = null, $time = null){
         self::$_qcount++;
-        if($sql) {
-            self::$_qarray[] = $sql;
+        if($query) {
+            self::$_qarray[] = array('query'=>$query,'time'=>$time);
         }
-    }
-
-    public static function setCredentials($credentials){
-//        var_dump($credentials);die();
-        self::$dbCredentials = $credentials;
-        return self;
     }
 
     public static function isConnected(){
@@ -80,37 +73,22 @@ abstract class Db
         return self::$_adapter;
     }
 
+    /**
+     * Return Db connection as adapter object...
+     * @return Mysqli
+     */
     public static function getConnection()
     {
-//        if (self::$_adapter === null) {
-//            self::createAdapter();
-//        } else {
-//            return self::$_adapter;
-//        }
-//        var_dump(self::getAdapter());
         return self::getAdapter()->getConnection();
     }
 
 
-    /**
-     *
-     * @param type $config
-     * @return DbAdapterInterface
-     * @throws Db\dbException
-     */
     private static function createAdapter()
     {
-//        self::$dbCredentials = Config::getDbCredentials();
-//        self::$_adapterName = ;
-//        if (empty(self::$_adapterName)) {
-//            throw new DbException(__METHOD__ .
-//                ': adapter name cannot be empty.');
-//        }
-
         $className = self::buildClassName(self::getAdapterName());
 
         if (!class_exists($className, true)) {
-            throw new \Wbengine\Db\Exception\DbException(__METHOD__ .
+            throw new DbException(__METHOD__ .
                 ': Cannot create adapter instance of \Wbengine\Db\Adapter\\' . $className);
         }
 
@@ -119,8 +97,8 @@ abstract class Db
              * Create adapter object
              */
             self::$_adapter = New $className(self::$dbCredentials);
-        } catch (Exception\DbAdapterException $e) {
-            throw New Exception\DbException(__METHOD__
+        } catch (DbException $e) {
+            throw New DbAdapterException(__METHOD__
                 . ': Wbengine\Db\Exception\DbException with a message: ' . $e->getMessage());
         }
     }
@@ -154,11 +132,11 @@ abstract class Db
         }
     }
 
-    public static function getQueriesCount(){
+    public function getQueriesCount(){
         return self::$_qcount;
     }
 
-    public static function getAllQueries(){
+    public function getAllQueries(){
         return self::$_qarray;
     }
 
@@ -175,38 +153,37 @@ abstract class Db
      * @return \mysqli_result
      */
     public static function query($sql){
-        self::updateStats($sql);
-//        $e = new \Exception();
-//        echo('<pre>');
-//        print_r($e->getTraceAsString());
-//        echo('</pre>');
-//        die();
-        return self::getConnection()->query($sql);
+        $start = microtime(true);
+        $res= self::getConnection()->query($sql);
+        $end = microtime(true);
+        $time = ($end-$start);
+        self::updateStats($sql, sprintf('%f', $time));
+        return $res;
     }
 
     public function fetchRow($sql){
-        self::updateStats($sql);
-        return $this->getConnection()->query($sql)->fetch_row();
+        return self::query($sql)->fetch_row();
     }
 
     public function fetchOne($sql){
-        self::updateStats($sql);
-        return $this->getConnection()->query($sql)->fetch_field();
+        return self::query($sql)->fetch_field();
     }
 
     public function fetchAll($sql){
-        self::updateStats($sql);
-        return $this->getConnection()->query($sql)->fetch_all();
+        return self::query($sql)->fetch_all();
+    }
+
+    public static function fetchObject($sql){
+        return self::query($sql)->fetch_object();
+    }
+
+    public static function fetchAssoc($sql){
+        return self::query($sql)->fetch_assoc();
     }
 
     public static function fetchAllAssoc($sql){
         self::updateStats($sql);
         return self::getAdapter()->getAllAssoc($sql);
-    }
-
-    public function fetchAssoc($sql){
-        self::updateStats($sql);
-        return $this->getConnection()->query($sql)->fetch_assoc();
     }
 
 

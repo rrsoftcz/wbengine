@@ -17,7 +17,7 @@ namespace Wbengine;
 use Wbengine\Application\Application;
 use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Site\SiteException;
-use Wbengine\Url;
+use Wbengine\Site\SiteModel;
 
 Class Site
 {
@@ -31,7 +31,7 @@ Class Site
 
     /**
      * Stored  Url object
-     * @var Class_Url
+     * @var Url
      */
     private $_classUrl = NULL;
 
@@ -52,30 +52,23 @@ Class Site
 
     /**
      * Return cite parent
-     * @var Class_Cms
+     * @var Application
      */
     public $_parent = NULL;
 
 
     /**
      * Return site's model
-     * @var Class_Site_Model
+     * @var SiteModel
      */
     private $_model = NULL;
 
 
     /**
      * Class site exception object
-     * @var type Class_Site_Exception
+     * @exception SiteException
      */
     public $_exception = NULL;
-
-
-    /**
-     * Site ID cannot be a null;site_id 0 = administratin
-     * @var null
-     */
-    private $_app = NULL;
 
 
     /**
@@ -94,7 +87,6 @@ Class Site
         if (!$this->_resource) {
             return $default;
         }
-//var_dump($name);
         if (array_key_exists($name, $this->_resource)) {
             return $this->_resource[$name];
         }
@@ -105,19 +97,12 @@ Class Site
 
     public function __get($name)
     {
-//        var_dump($this->_resource);
-//        var_dump($this->get($name));
         return $this->get($name);
     }
 
 
     public function __set($name, $value)
     {
-//	if ($this->allowModify) {
-//	if (is_array($value)) {
-//	    $value = new static($value, true);
-//	}
-
         if (null === $name) {
             $this->_resource[] = $value;
         } else {
@@ -125,10 +110,6 @@ Class Site
         }
 
         $this->count++;
-//	} else {
-//	    throw new Exception\RuntimeException('Config is read only');
-//	}
-//
     }
 
 
@@ -155,12 +136,6 @@ Class Site
 
     public function getSessionValue($name = null)
     {
-//        $this->_getSession()->setValue('test', 'some value');
-//        $this->_getSession()->setValue('ddddtest', 'some value');
-//        $this->_getSession()->setValue('class', new \stdClass());
-//        Utils::dump($this->_getSession());
-
-//        return $this->_getSession()->getUserIp();
         return $this->_getSession()->getValue($name);
     }
 
@@ -169,7 +144,6 @@ Class Site
     {
         return $this->getParent()->getRenderer();
     }
-
 
     /**
      * Return instance of Wbengine Class Url
@@ -180,11 +154,10 @@ Class Site
         if ($this->_classUrl instanceof Url) {
             return $this->_classUrl;
         } else {
-            $this->_classUrl = New Url($this);
+            $this->_classUrl = New Url($this->getParent());
         }
         return $this->_classUrl;
     }
-
 
     /**
      * Retutn Sites fill URL
@@ -195,7 +168,6 @@ Class Site
         return $this->getClassUrl()->getUrl();
     }
 
-
     /**
      * Return exploded url as each parts.
      * @return array
@@ -205,8 +177,6 @@ Class Site
         return $this->getClassUrl()->getUrlParts();
     }
 
-
-
     /**
      * Return posted params from site url.
      * @return array
@@ -215,8 +185,6 @@ Class Site
     {
         return $this->getClassUrl()->getUrlParams();
     }
-
-
 
     /**
      * Return all url parts as full url path.
@@ -228,7 +196,6 @@ Class Site
         return $this->getClassUrl()->getUrlPairs();
     }
 
-
     /**
      * Return relevant site link.
      * @return string
@@ -238,7 +205,6 @@ Class Site
         return $this->link;
     }
 
-
     /**
      * Return site's ID
      * @return integer
@@ -247,7 +213,6 @@ Class Site
     {
         return (int)$this->site_id;
     }
-
 
     /**
      * Return site's Parent ID (sitetype DB)
@@ -259,16 +224,6 @@ Class Site
     }
 
     /**
-     * Return site's Parent ID (sitetype DB)
-     * @return integer
-     */
-    public function getSiteParentKey()
-    {
-        return (string)$this->get(site_type_key);
-    }
-
-
-    /**
      * Return site's HTML meta title.
      * @return string
      */
@@ -276,7 +231,6 @@ Class Site
     {
         return (string)$this->html_title;
     }
-
 
     /**
      * Return site's HTML meta description.
@@ -287,7 +241,6 @@ Class Site
         return (string)$this->html_description;
     }
 
-
     /**
      * Return if site URl is stricted or dynamic.
      * @return boolean
@@ -297,7 +250,6 @@ Class Site
         return (boolean)$this->strict;
     }
 
-
     /**
      * Return site's meta keywords.
      * @return string
@@ -306,7 +258,6 @@ Class Site
     {
         return (string)$this->html_keywords;
     }
-
 
     /**
      * Return site data model
@@ -321,16 +272,14 @@ Class Site
         return $this->_model;
     }
 
-
     /**
      * Set data model if needed
      * @see Class_Site_Model
      */
     private function setModel()
     {
-        $this->_model = new Site\SiteModel($this);
+        $this->_model = new SiteModel();
     }
-
 
     /**
      * Return state of loaded site resource
@@ -340,7 +289,6 @@ Class Site
         return (empty($this->_resource) || null === $this->_resource)? false:true;
     }
 
-
     /**
      * Load and set site data to local variable
      * for a latest use.
@@ -348,22 +296,12 @@ Class Site
     private function loadSiteResource()
     {
         $this->_resource = $this->getModel()->loadSiteData($this);
-//	var_dump($this->_resource);
-//        var_dump($this->get("site_id"));
-//        var_dump($this->site_id);
-//	$this->test = $this->_resource;
         return $this;
-
-//        if (empty($this->_resource)) {
-//            return false;
-//        } else {
-//            return $this;
-//        }
     }
 
     /**
-     * @param \Wbengine\Section $sections
-     * @return null
+     * @param Section $sections
+     * @return void
      */
     private function _setSections($sections)
     {
@@ -372,9 +310,6 @@ Class Site
         }
 
         foreach ($sections as $section) {
-//	    var_dump($section->getKey());
-//	    var_dump($section->getContent());
-
             $this->setVariable($section->getKey(), $section->getContent());
         }
     }
@@ -428,31 +363,27 @@ Class Site
     /**
      * Return actual site navigation as paired array.
      * @return array
+     * @todo Resolve this navigation as object without db load...
      */
     public function getNavigation()
     {
         $path = array();
 
         if ($this->getClassUrl()->getLink() != 'front') {
-//            $path[] = array(
-//                'url' => '/',
-//                'name' => 'Home',
-//            );
-
             $parts = '';
-
             $_urlParts = $this->getUrlParts();
 
-            if (!is_array($_urlParts) || empty($_urlParts))
-                return;
+            if (!is_array($_urlParts) || empty($_urlParts)){
+                return null;
+            }
 
             foreach ($_urlParts as $part) {
+                if(empty($part))return null;
+
                 $parts .= '/'.$part . '/';
                 $urlName = $this->getTitleFromLink($part);
-//                var_dump($urlName);
 
                 if ($urlName) {
-//                    die($urlName);
                     $path[] = array(
                         'url' => '/' . $parts,
                         'name' => strtolower($urlName),
@@ -460,7 +391,6 @@ Class Site
                 }
             }
         }
-
         return $path;
     }
 
@@ -473,17 +403,17 @@ Class Site
      */
     public function getUrlPairsWithSiteId()
     {
+        $_tmp = null;
         $pairs = $this->getUrlPairs();
 
         if (FALSE == is_array($pairs))
-            return NULL;
+            return null;
 
         foreach ($pairs as $pair) {
             $_tmp[] = array(
                 'url' => $pair,
                 'site_id' => $this->getModel()->getSiteIdByUrl($pair));
         }
-
         return $_tmp;
     }
 
@@ -513,7 +443,6 @@ Class Site
         return FALSE;
     }
 
-
     /**
      * Return apropirate HTML class name due
      * to given URL
@@ -523,7 +452,6 @@ Class Site
     {
         return ($this->getUrl() === '/') ? FRONT_SURFIX_CLASS_NAME : "";
     }
-
 
     /**
      * Return appropriate HTML title by given URL part
@@ -535,7 +463,6 @@ Class Site
         return $this->getModel()->getTitleByUrl($part);
     }
 
-
     /**
      * Return boolena value due site url is grouped.
      * @return boolean
@@ -544,7 +471,6 @@ Class Site
     {
         return $this->_urlStrict;
     }
-
 
     /**
      * Return site's menu
@@ -564,7 +490,6 @@ Class Site
         return $this->getModel()->getSiteTypeKey($this);
     }
 
-
     /**
      * Return site's submenu
      * @return array
@@ -574,16 +499,14 @@ Class Site
         return $this->getModel()->getSubMenu($this);
     }
 
-
     /**
-     * return defined sections from DB
-     * @return \Wbengine\Section
+     * Retur sections collection loaded from Db ...
+     * @return array
      */
     public function getSections()
     {
         return $this->_getSections();
     }
-
 
     /**
      * Return Site home URL with default protocol
@@ -595,12 +518,9 @@ Class Site
             , strtolower($_SERVER['SERVER_PROTOCOL']));
     }
 
-
     /**
      * Return array colection of Class_Site_Section.
-     * Class_Site_Section
-     *
-     * @return \Wbengine\Section
+     * @return array
      */
     private function _getSections()
     {
@@ -611,14 +531,12 @@ Class Site
         $clsSection = new Section($this);
 
         $this->_sections = $clsSection->getSections();
-//        var_dump(sizeof($this->_sections));
         if (sizeof($this->_sections) === 0) {
             $this->_addException('No active sections found', SiteException::ERROR_NO_SECTIONS);
         }
 
         return $this->_sections;
     }
-
 
     /**
      * Create parent object exception with given message and code.
@@ -632,16 +550,14 @@ Class Site
         throw new SiteException($message, $code);
     }
 
-
     /**
      * Return CMS member object Exception
-     * @return Exception
+     * @return SiteException
      */
     public function getException()
     {
         return $this->_exception;
     }
-
 
     /**
      * This method load all needed data from model and assign
@@ -655,17 +571,13 @@ Class Site
 
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
-//        $this->_getSession()->setValue('__DATA', 'some DATA');
-//        $this->_getSession()->setValue('test', 'some test');
-//        $this->_getSession()->setValue('user_locale', 2);
-//        Utils::dump($this->getSessionValue('user_locale'));
-//        Utils::dump($this->_getSession());
+//        $this->setValueToSession('test','test');
         // Save some essential site template variables...
         $this->setVariable('device_type', $this->getParent()->getDeviceType());
         $this->setVariable('html_surfix', $this->getTemplateClassSurfix());
         $this->setVariable('breadcrump', $this->getNavigation());
         $this->setVariable('menu', $this->getMenu());
-//        $this->setVariable('submenu', $this->getSubMenu());
+        $this->setVariable('submenu', $this->getSubMenu());
         $this->setVariable('site_id', $this->getSiteId());
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');

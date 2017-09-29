@@ -14,19 +14,18 @@ use Wbengine\Db\Adapter\Exception\DbAdapterException;
 
 class Mysqli implements DbAdapterInterface
 {
-    protected $_username    = null;
-    protected $_password    = null;
-    protected $_hostname    = null;
-    protected $_database    = null;
-    private $_connection    = null;
+    protected $_username;
+    protected $_password;
+    protected $_hostname;
+    protected $_database;
+    protected $_connection;
 
-    private $query_count    = 0;
-    private $queries        = array();
+//    private $query_count    = 0;
+//    private $queries        = array();
 
     public function __construct(Value $config = null)
     {
         if ($config instanceof Value) {
-//            var_dump($config->hostsss);die();
             $this->_username = $this->Validate($config->username, 'username');
             $this->_password = $this->Validate($config->password, 'password');
             $this->_hostname = $this->Validate($config->hostname, 'hostname');
@@ -52,7 +51,6 @@ class Mysqli implements DbAdapterInterface
     }
 
     private function Validate($value, $name = null){
-//        var_dump($name);
         if(is_null($value)){
             throw New DbAdapterException(
                 __CLASS__ . "->" . __FUNCTION__ .
@@ -70,40 +68,24 @@ class Mysqli implements DbAdapterInterface
             $this->_password,
             $this->_database
         );
-//        $this->_connection->query('')->fetch_assoc();
         if (mysqli_connect_error()) {
             die('Connect Error (' . mysqli_connect_errno() . ') '
                 . mysqli_connect_error());
         }
     }
 
-    public function query($sql){
-        $this->query_count++;
-        $this->queries[] = $sql;
-
-        var_dump($this->query_count);
-
-        return $this->getConnection()->query($sql);
-    }
-//
-    public function fetchRow($sql){
-        return $this->getConnection()->query($sql)->fetch_row();
-    }
+//    public function queryx($sql){
+////        $this->query_count++;
+////        $this->queries[] = $sql;
+//        die($sql);
+//        $x = microtime();
+//        $_rs = $this->getConnection()->query($sql);
+//        $y = microtime();
+//        var_dump(($y-$x));die();
+//        return $_rs;
+//    }
 
     public function getAllAssoc($sql){
         return mysqli_fetch_all($this->getConnection()->query($sql),MYSQLI_ASSOC);
     }
-    //
-//    public function fetchOne($sql){
-//        return $this->getConnection()->query($sql)->fetch_field();
-//    }
-//
-//    public function fetchAll($sql){
-//        return $this->getConnection()->query($sql)->fetch_all();
-//    }
-//
-//    public function fetchAssoc($sql){
-//        return $this->getConnection()->query($sql)->fetch_assoc();
-//    }
-
 }

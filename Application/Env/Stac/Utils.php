@@ -288,10 +288,17 @@ class Utils {
 
     }
 
-    public static function dump($var, $stop = false){
+    public static function dump($var, $stop = false)
+    {
         echo('<pre>');
         print_r($var);
         echo('</pre>');
-        if($stop)die('__STOPPED__');
+        if($stop) {
+            $e = new \Exception;
+            echo('<pre>');
+            print_r($e->getTraceAsString());
+            echo('</pre>');
+            die('__STOPPED__');
+        }
     }
 }
