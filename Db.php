@@ -50,6 +50,7 @@ abstract class Db implements DbInterface
      */
     private static $_qcount    = 0;
     private static $_qarray    = array();
+    private static $_qtime     = 0;
 
 
     private static function updateStats($query = null, $time = null){
@@ -132,12 +133,19 @@ abstract class Db implements DbInterface
         }
     }
 
-    public function getQueriesCount(){
+    public static function getQueriesCount(){
         return self::$_qcount;
     }
 
-    public function getAllQueries(){
+    public static function getAllQueries(){
         return self::$_qarray;
+    }
+
+    public static function getAllQueriesEstimatedTime(){
+        foreach (self::getAllQueries() as $query){
+            self::$_qtime =+ $query['time'];
+        }
+        return self::$_qtime;
     }
 
     public function dumpAllQueries(){
@@ -154,7 +162,7 @@ abstract class Db implements DbInterface
      */
     public static function query($sql){
         $start = microtime(true);
-        $res= self::getConnection()->query($sql);
+        $res = self::getConnection()->query($sql);
         $end = microtime(true);
         $time = ($end-$start);
         self::updateStats($sql, sprintf('%f', $time));

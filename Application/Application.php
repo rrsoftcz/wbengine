@@ -21,6 +21,7 @@ use Wbengine\Application\Mobile\Detector;
 use Wbengine\Application\Path\File;
 use Wbengine\Application\Path\Path;
 use Wbengine\Config;
+use Wbengine\Db;
 use Wbengine\Error;
 use Wbengine\Locale;
 use Wbengine\Locale\LocaleAbstract;
@@ -113,6 +114,9 @@ abstract Class Application
      * @var int
      */
     private $_deviceType;
+
+    private $_starttime;
+    private $_endtime;
 
 
     /**
@@ -515,6 +519,29 @@ abstract Class Application
         return $section->getSection($id);
     }
 
+
+    public function setStartTime($starttime){
+        $this->_starttime = $starttime;
+    }
+
+    public function setEndtime($endtime){
+        $this->_endtime = $endtime;
+    }
+
+    public function getStartTime(){
+        return $this->_starttime;
+    }
+
+    public function getEndTime(){
+        return $this->_endtime;
+    }
+
+    public function getAllQueriesCount(){
+        return Db::getQueriesCount();
+    }
+    public function getAllQueriesTime(){
+        return Db::getAllQueriesEstimatedTime();
+    }
 
     /**
      * Return site object instance

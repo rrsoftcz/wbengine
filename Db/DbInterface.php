@@ -18,7 +18,8 @@ interface DbInterface
     public static function fetchObject($sql);
     public static function fetchAllAssoc($sql);
     public static function fetchAssoc($sql);
-    public function getQueriesCount();
-    public function getAllQueries();
+    public static function getQueriesCount();
+    public static function getAllQueries();
     public function dumpAllQueries();
+    public static function getAllQueriesEstimatedTime();
 }
