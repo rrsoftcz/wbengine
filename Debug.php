@@ -13,8 +13,8 @@ use Wbengine\Application\Application;
 
 class Debug
 {
-    CONST COLS_LG_MODIFIER = '2';
-    CONST CONTAINER_STYLE = '
+    CONST COLS_LG_MODIFIER  = '2';
+    CONST CONTAINER_STYLE   = '
         padding: 6px 0 6px 6px;
         border-top: 1px solid #c0c0c0;
         border-bottom: 1px solid #c0c0c0;
@@ -23,12 +23,9 @@ class Debug
         width: 1170px;
         margin:0 auto;';
 
-    private $estimate_time   = 0;
-    private $queries_count   = 0;
-    private $start_time      = 0;
-    private $end_time        = 0;
-    private $application     = null;
-    private $queries         = array();
+    private $start_time     = 0;
+    private $end_time       = 0;
+    private $application    = null;
     public $enabled         = false;
 
 
@@ -38,7 +35,6 @@ class Debug
         $this->start_time = $application->getStartTime();
         $this->end_time = $application->getEndTime();
         $this->enabled = $application->isDebugOn();
-//        $this->estimate_time = floor(($this->end_time - $this->start_time) * 1000);
     }
 
     private function _getContainer($content,$queries = null){
@@ -115,8 +111,16 @@ class Debug
         );
     }
 
+    private function _getSystemInfo($siteid){
+        return sprintf('<div class="col-lg-%s"><b>System:</b> %s</div>',
+            self::COLS_LG_MODIFIER,
+            $siteid
+        );
+    }
+
     public function show(){
         $_cols = '';
+        $_cols .= $this->_getSystemInfo(phpversion());
         $_cols .= $this->_getAppTime($this->getSumTime());
         $_cols .= $this->_getPhpCoreTime($this->getEstimatedTime());
         $_cols .= $this->_getDbQueries($this->getDbQueriesCount(),$this->getDbQueriesTimeSum());
@@ -180,10 +184,10 @@ class Debug
         $i = 0;
         foreach ($queries as $query){
             $i++;
-            ($i%2) ? $bg = '#E6E6FA' : $bg='#E0FFFF';
+            ($i%2) ? $bg = '#fff' : $bg='#e3e3e3';
             $tmp.='<div class="row" style="font-size: 12px;background-color:'.$bg.';">
-                    <div class="col-lg-12" style="border-bottom: 1px solid #DCDCDC; padding: 6px;">'
-                        .$query['query']
+                    <div class="col-lg-12" style="border-bottom: 1px solid #9fa8a3; padding: 6px;"><b>'
+                        .$i.'.</b> '.$query['query']
                         .' <span style="color: #9B410E">('
                         .$query['time']
                         .' ms</span>)

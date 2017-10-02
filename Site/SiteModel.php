@@ -145,13 +145,14 @@ class SiteModel extends ModelAbstract
      * @param \Wbengine\Site|\Wbengine\Site\Class_Site $site
      * @return array
      */
-    public function getMenu(Site $site)
+    public function getSiteMenu(Site $site)
     {
         $menu = array();
 
-        $sql = sprintf('SELECT m.*, s.link FROM %s m
+        $sql = sprintf('SELECT m.menu_id, m.site_id, m.name, m.type, m.description, m.visible, m.order, m.parent, s.link FROM %s m
                         LEFT JOIN %s s ON (s.site_id = m.site_id)
                         WHERE m.visible = 1
+                        AND m.parent = 0
                         AND m.type = %s
                         ORDER BY m.order ASC;'
             , S_TABLE_MENU
@@ -165,7 +166,7 @@ class SiteModel extends ModelAbstract
 //        $result = $statement->execute();
 //$result = $this->query($sql);
 //        $data = mysqli_fetch_all($result,MYSQLI_ASSOC);
-        $data = Db::fetchAllAssoc($sql);
+        return $data = Db::fetchAllAssoc($sql);
 //        Utils::dump($data);die();
         $con = $site->getParent();
 //	$x = $this->getDbAdapter()->prepare($sql);

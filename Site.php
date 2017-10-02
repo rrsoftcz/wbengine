@@ -33,42 +33,49 @@ Class Site
      * Stored  Url object
      * @var Url
      */
-    private $_classUrl = NULL;
+    private $_classUrl;
 
 
     /**
      * Indicate that given URL is strict or dynamic
      * @var boolean
      */
-    private $_urlStrict = FALSE;
+    private $_urlStrict;
 
 
     /**
      * The collection of existing sections
      * @var array
      */
-    private $_sections = NULL;
+    private $_sections;
 
 
     /**
      * Return cite parent
      * @var Application
      */
-    public $_parent = NULL;
+    public $_parent;
 
 
     /**
      * Return site's model
      * @var SiteModel
      */
-    private $_model = NULL;
+    private $_model;
 
 
     /**
      * Class site exception object
      * @exception SiteException
      */
-    public $_exception = NULL;
+    public $_exception;
+
+
+    /**
+     * Site menu collection
+     * @var array
+     */
+    public $_menus;
 
 
     /**
@@ -344,6 +351,25 @@ Class Site
     }
 
 
+    public function getMenuCollection(){
+        if($this->_menus && is_array($this->_menus)){
+            return $this->_menus;
+        }
+
+        $menus = $this->getModel()->getSiteMenu($this);
+
+        if(is_array($menus)){
+            foreach ($menus as $menu){
+                $_menu = new Menu($menu);
+                $_menu->setSite($this);
+                $this->_menus[] = $_menu;
+            }
+        }
+        return $this->_menus;
+    }
+
+
+
     /**
      * Return actual site navigation as paired array.
      * @return array
@@ -463,7 +489,7 @@ Class Site
      */
     public function getMenu()
     {
-        return $this->getModel()->getMenu($this);
+        return $this->getModel()->getSiteMenu($this);
     }
 
     /**
@@ -586,12 +612,12 @@ Class Site
         $this->loadSiteResource();
 //        $this->setValueToSession('test','test');
         // Save some essential site template variables...
-        $this->setVariable('device_type', $this->getParent()->getDeviceType());
+//        $this->setVariable('device_type', $this->getParent()->getDeviceType());
         $this->setVariable('html_surfix', $this->getTemplateClassSurfix());
         $this->setVariable('breadcrump', $this->getNavigation());
-        $this->setVariable('menu', $this->getMenu());
-        $this->setVariable('submenu', $this->getSubMenu());
-        $this->setVariable('site_id', $this->getSiteId());
+        $this->setVariable('menu', $this->getMenuCollection());
+//        $this->setVariable('submenu', $this->getSubMenu());
+//        $this->setVariable('site_id', $this->getSiteId());
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
