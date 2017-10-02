@@ -23,7 +23,6 @@ use Wbengine\Application\Path\Path;
 use Wbengine\Config;
 use Wbengine\Db;
 use Wbengine\Error;
-use Wbengine\Locale;
 use Wbengine\Locale\LocaleAbstract;
 use Wbengine\Section;
 use Wbengine\Site;
@@ -118,7 +117,8 @@ abstract Class Application
     private $_path;
     private $_starttime;
     private $_endtime;
-
+    private $_config_file;
+    private $_env;
 
     /**
      * Create object Class_Renderer
@@ -496,17 +496,37 @@ abstract Class Application
         return $this->errorHandler;
     }
 
-
-    /**
-     * Return Section object by given ID
-     * @param $id
-     * @return Section
-     */
-    public function getSectionById($id) {
-        $section = New Section($this->getSite());
-        return $section->getSection($id);
+    public function getBoxesCount(){
+        /**
+         * @var $section Section
+         */
+        $boxes = 0;
+        foreach ($this->getSections() as $section){
+            $boxes += (int)$section->getBoxesCount();
+        }
+        return $boxes;
     }
 
+    public function getEnv(){
+        return $this->_env;
+    }
+
+    public function setConfigFile($filename){
+        $this->_env = (boolean)preg_match('/(devel)/',strtolower($filename));
+        $this->_config_file = $filename;
+    }
+
+    public function getConfigFile(){
+        return $this->_config_file;
+    }
+
+    public function getSectionsCount(){
+        return sizeof($this->getSections());
+    }
+
+    public function getSections(){
+        return $this->getSite()->getSections();
+    }
 
     public function setStartTime($starttime){
         $this->_starttime = $starttime;

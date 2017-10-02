@@ -190,8 +190,12 @@ abstract class Db implements DbInterface
     }
 
     public static function fetchAllAssoc($sql){
-        self::updateStats($sql);
-        return self::getAdapter()->getAllAssoc($sql);
+        $start = microtime(true);
+        $res = self::getAdapter()->getAllAssoc($sql);
+        $end = microtime(true);
+        $time = ($end-$start);
+        self::updateStats($sql, sprintf('%f', $time));
+        return $res;
     }
 
 

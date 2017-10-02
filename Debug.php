@@ -13,13 +13,15 @@ use Wbengine\Application\Application;
 
 class Debug
 {
-    CONST COLS_LG_MODIFIER       = '2';
+    CONST COLS_LG_MODIFIER = '2';
     CONST CONTAINER_STYLE = '
-        padding: 5px;
+        padding: 6px 0 6px 6px;
         border-top: 1px solid #c0c0c0;
         border-bottom: 1px solid #c0c0c0;
         font-size: 12px;
-        margin-top: 20px;';
+        margin-top: 20px;
+        width: 1170px;
+        margin:0 auto;';
 
     private $estimate_time   = 0;
     private $queries_count   = 0;
@@ -39,12 +41,15 @@ class Debug
 //        $this->estimate_time = floor(($this->end_time - $this->start_time) * 1000);
     }
 
-    private function _getContainer($content){
+    private function _getContainer($content,$queries = null){
         $html = '';
-        $html .= '<div class="container" style="'.self::CONTAINER_STYLE.'">';
+        $html .= '<div style="'.self::CONTAINER_STYLE.'">';
         $html .= '<div class="row">';
         $html .= $content;
         $html .= '</div>';
+        $html .= '</div>';
+        $html .= '<div id="sql" style="width: 1140px;margin: 0 auto;display: none;">';
+        $html .= $this->getQueries();
         $html .= '</div>';
 
         return $html;
@@ -64,10 +69,11 @@ class Debug
         );
     }
 
-    private function _getDbQueries($value){
-        return sprintf('<div class="col-lg-%s"><b>Queries:</b> %s</div>',
+    private function _getDbQueries($count, $time){
+        return sprintf('<div class="col-lg-%s"><a id="db" href="#"><b>DB:</b> %s queries (%s ms)</a></div>',
             self::COLS_LG_MODIFIER,
-            $value
+            $count,
+            $time
         );
     }
 
@@ -78,12 +84,46 @@ class Debug
         );
     }
 
+    private function _getSectionsCount($value){
+        return sprintf('<div class="col-lg-%s"><b>Sections:</b> %s</div>',
+            self::COLS_LG_MODIFIER,
+            $value
+        );
+    }
+
+    private function _getBoxesCount($value){
+        return sprintf('<div class="col-lg-%s"><b>Boxes:</b> %s</div>',
+            self::COLS_LG_MODIFIER,
+            $value
+        );
+    }
+
+    private function _getEnvironment($env, $config){
+        return sprintf('<div class="col-lg-%s"><b>Devel:</b> %s (%s)</div>',
+            self::COLS_LG_MODIFIER,
+            ($env)?'True':'False',
+            $config
+        );
+    }
+
+    private function _getSiteInfo($siteid, $sections,$boxes){
+        return sprintf('<div class="col-lg-%s"><b>Site ID:</b> %s | Sectons: %s | Boxes: %s</div>',
+            self::COLS_LG_MODIFIER,
+            $siteid,
+            $sections,
+            $boxes
+        );
+    }
+
     public function show(){
         $_cols = '';
         $_cols .= $this->_getAppTime($this->getSumTime());
         $_cols .= $this->_getPhpCoreTime($this->getEstimatedTime());
-        $_cols .= $this->_getDbQueries($this->getDbQueriesCount());
-        $_cols .= $this->_getDbQTime($this->getDbQueriesTimeSum());
+        $_cols .= $this->_getDbQueries($this->getDbQueriesCount(),$this->getDbQueriesTimeSum());
+        $_cols .= $this->_getSiteInfo($this->application->getSite()->getSiteId(),$this->getSectionsCount(),$this->getBoxesCount());
+        $_cols .= $this->_getEnvironment($this->getEnv(), $this->getConFigFile());
+
+        $_cols.= $this->_getJs();
 
         return $this->_getContainer($_cols);
     }
@@ -92,6 +132,22 @@ class Debug
         $std = new \stdClass();
         $std->estimatedtime = $this->getEstimatedTime();
         return $std;
+    }
+
+    public function getConFigFile(){
+        return $this->application->getConfigFile();
+    }
+
+    public function getEnv(){
+        return $this->application->getEnv();
+    }
+
+    public function getSectionsCount(){
+        return $this->application->getSectionsCount();
+    }
+
+    public function getBoxesCount(){
+        return $this->application->getBoxesCount();
     }
 
     public function setStartTime($start_time){
@@ -116,6 +172,38 @@ class Debug
 
     public function getDbQueriesTimeSum(){
         return round($this->application->getAllQueriesTime()*1000,2);
+    }
+
+    public function getQueries(){
+        $queries = Db::getAllQueries();
+        $tmp = '';
+        $i = 0;
+        foreach ($queries as $query){
+            $i++;
+            ($i%2) ? $bg = '#E6E6FA' : $bg='#E0FFFF';
+            $tmp.='<div class="row" style="font-size: 12px;background-color:'.$bg.';">
+                    <div class="col-lg-12" style="border-bottom: 1px solid #DCDCDC; padding: 6px;">'
+                        .$query['query']
+                        .' <span style="color: #9B410E">('
+                        .$query['time']
+                        .' ms</span>)
+                    </div>
+                   </div>';
+        }
+        return $tmp;
+    }
+
+    /**
+     * @return string
+     */
+    private function _getJs(){
+        $tmp = '';
+        $tmp .= '<script>
+        $( "#db" ).click(function() {
+            $( "#sql" ).toggle();
+        });
+        </script>';
+        return $tmp;
     }
 
 

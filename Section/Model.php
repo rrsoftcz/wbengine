@@ -15,6 +15,7 @@
 
 namespace Wbengine\Section;
 
+use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
 use Wbengine\Section\Model\Exception;
@@ -96,6 +97,7 @@ class Model extends ModelAbstract {
         $section->getSectionId()
         , (int) $section->getSite()->getParent()->getDeviceType()
 	);
+//	Utils::dump($sql);
     return Db::fetchAllAssoc($sql);
 //	print_r($sql);die();
 //	return $this->getDbAdapter()->query($sql, array(

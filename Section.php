@@ -18,6 +18,7 @@
 
 namespace Wbengine;
 
+use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Box;
 use Wbengine\Model\ModelAbstract;
 use Wbengine\Section\Model;
@@ -78,36 +79,36 @@ class Section
     }
 
 
-    /**
-     * Return instance of section class
-     * @param integer $sectionId
-     * @return Section
-     */
-    private function _getSection($sectionId)
-    {
-        $newSection = new Section($this->getSite());
+//    /**
+//     * Return instance of section class
+//     * @param integer $sectionId
+//     * @return Section
+//     */
+//    private function _getSection($sectionId)
+//    {
+//        $newSection = new Section($this->getSite());
+//
+//        return $newSection->getSection($sectionId);
+//    }
 
-        return $newSection->getSection($sectionId);
-    }
 
-
-    /**
-     * Return collection of Class_Site_Section object.
-     * @return array
-     */
-    private function _getSections()
-    {
-        $_sections = $this->getModel()->getSections();
-
-        if (!is_array($_sections)) {
-            return null;
-        }
-        foreach ($_sections as $section) {
-            $this->_sections[] = $this->_getSection($section['section_id']);
-        }
-
-        return $this->_sections;
-    }
+//    /**
+//     * Return collection of Class_Site_Section object.
+//     * @return array
+//     */
+//    private function _getSections()
+//    {
+//        $_sections = $this->getModel()->getSections();
+//
+//        if (!is_array($_sections)) {
+//            return null;
+//        }
+//        foreach ($_sections as $section) {
+//            $this->_sections[] = $this->_getSection($section['section_id']);
+//        }
+//
+//        return $this->_sections;
+//    }
 
 
     /**
@@ -116,11 +117,13 @@ class Section
      */
     private function _getBoxes()
     {
+        if ($this->_boxes) {
+            return $this->_boxes;
+        }
+
         $boxes = $this->getModel()->getBoxes($this);
 
-        if (sizeof($boxes) === 0) {
-            return null;
-        }
+        if(!sizeof($boxes)) return null;
 
         foreach ($boxes as $box) {
             $clsBox = New Box($this);
@@ -225,31 +228,27 @@ class Section
      * @param integer $sectionId
      * @return \Wbengine\Section
      */
-    public function getSection($sectionId)
-    {
-//        $this->_section = $this->getModel()->getSectionById($sectionId);
-        return $this->_section;
-    }
+//    public function getSection($sectionId)
+//    {
+////        $this->_section = $this->getModel()->getSectionById($sectionId);
+//        return $this->_section;
+//    }
 
 
     /**
      * Return Box content
+     * @param $site
      * @return string
-     * @throws SectionException
      */
     public function getContent($site)
     {
         $this->_site = $site;
-        $boxes = $this->getBoxes();
 
-        if ($boxes === null) {
-            return;
-        }
+        if(!$boxes = $this->getBoxes()) return '';
 
-        if (sizeof($boxes) === 0) {
-            return NULL;
-        }
-
+        /**
+         * @var $box \Wbengine\Box
+         */
         foreach ($boxes as $box) {
             $this->_content .= $box->getContent();
         }
@@ -257,27 +256,23 @@ class Section
         return $this->_content;
     }
 
+    public function getBoxesCount(){
+        return sizeof($this->getBoxes());
+    }
+
     /**
      * Return Boxes collections
-     * @return \Wbengine\Box
+     * @return array
      */
     public function getBoxes()
     {
-        if (NULL === $this->_boxes) {
-            $this->_boxes = $this->_getBoxes();
-        }
-
-        /**
-         * @todo Create exception in debug mode, when any boxes returned.
-         */
-        return $this->_boxes;
+        return $this->_getBoxes();
     }
 
 
     public function getBoxById($id)
     {
-
-        $box = New \Wbengine\Box($this);
+        $box = New Box($this);
         $this->_boxes = $box->getBox($id);
         return $box;
     }

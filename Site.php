@@ -530,10 +530,10 @@ Class Site
      * @throws SiteException
      * @internal param string $mesage
      */
-    private function _addException($message, $code = NULL)
-    {
-        throw new SiteException($message, $code);
-    }
+//    private function _addException($message, $code = NULL)
+//    {
+//        throw new SiteException($message, $code);
+//    }
 
     /**
      * Return CMS member object Exception
@@ -551,14 +551,15 @@ Class Site
         }
 
         /**
-         * $section Section
+         * @var $section Section
          */
         foreach ($sections as $section) {
             $this->setVariable($section->getKey(), $section->getContent($this));
         }
     }
 
-    public function getSections(){
+    public function getSections()
+    {
         if($this->_sections && is_array($this->_sections)){
             return $this->_sections;
         }
