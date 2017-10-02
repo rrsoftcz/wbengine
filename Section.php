@@ -130,13 +130,12 @@ class Section
     }
 
 
-    /**
-     * Assign Site object as aprent object
-     * @param \Wbengine\Site $site
-     */
-    public function __construct(Site $site)
+    public function __construct($section)
     {
-        $this->_site = $site;
+        $this->_section = new \stdClass();
+        foreach ($section as $key=>$value){
+            $this->_section->$key = $value;
+        }
     }
 
 
@@ -215,10 +214,10 @@ class Section
      * The array items are instance of Class_Site_Section
      * @return array
      */
-    public function getSections()
-    {
-        return $this->_getSections();
-    }
+//    public function getSections()
+//    {
+//        return $this->_getSections();
+//    }
 
 
     /**
@@ -228,8 +227,8 @@ class Section
      */
     public function getSection($sectionId)
     {
-        $this->_section = $this->getModel()->getSectionById($sectionId);
-        return $this;
+//        $this->_section = $this->getModel()->getSectionById($sectionId);
+        return $this->_section;
     }
 
 
@@ -238,8 +237,9 @@ class Section
      * @return string
      * @throws SectionException
      */
-    public function getContent()
+    public function getContent($site)
     {
+        $this->_site = $site;
         $boxes = $this->getBoxes();
 
         if ($boxes === null) {

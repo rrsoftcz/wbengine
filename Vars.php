@@ -72,7 +72,10 @@ class Vars
     public function addValue($key, $value = NULL, $parentKey = NULL)
     {
         if (NULL === $key) {
-            throw new VarsException('The key can not be NULL.', VarsException::ERRROR_VALUE_KEY_IS_EMPTY);
+            Throw New VarsException(sprintf("%s -> %s: The key value cannot be empty!",
+                __CLASS__,
+                __FUNCTION__),
+                VarsException::ERRROR_VALUE_KEY_IS_EMPTY);
         }
 
         if (!empty($parentKey)) {

@@ -27,6 +27,22 @@ use Wbengine\Model\ModelAbstract;
 
 class SiteModel extends ModelAbstract
 {
+
+
+    /**
+     * Return site sections as assoc array.
+     * @return array
+     */
+    public function getSections()
+    {
+        $sql = sprintf("SELECT s.section_id,s.title,s.description,s.active,s.key,s.return_error_code 
+                FROM %s AS s
+                WHERE active = 1;",
+            S_TABLE_SECTIONS
+        );
+        return Db::fetchAllAssoc($sql);
+    }
+
     /**
      * Return cleaned url.
      * If url stricted mode is "TRUE" then all possible

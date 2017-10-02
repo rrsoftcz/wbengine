@@ -39,37 +39,37 @@ class Model extends ModelAbstract {
      * @param string $url
      * @return integer
      */
-    public function getSectionById( $sectionId )
-    {
-	$sql = sprintf("SELECT * FROM %s
-			WHERE section_id = %d 
-			LIMIT 1;"
-		, S_TABLE_SECTIONS,
-        $sectionId
-	);
-                $e = new \Exception();
+//    public function getSectionById( $sectionId )
+//    {
+//	$sql = sprintf("SELECT * FROM %s
+//			WHERE section_id = %d
+//			LIMIT 1;"
+//		, S_TABLE_SECTIONS,
+//        $sectionId
+//	);
+//                $e = new \Exception();
+//
+////        echo('<pre>');
+////        print_r($sql);
+////        echo('</pre>');die();
+////var_dump(Db::query($sql)->fetch_object());die();
+//	return Db::query($sql)->fetch_object();
+//    }
 
-//        echo('<pre>');
-//        print_r($sql);
-//        echo('</pre>');die();
-//var_dump(Db::query($sql)->fetch_object());die();
-	return Db::query($sql)->fetch_object();
-    }
 
-
-    /**
-     * Return site sections as assoc array.
-     * @return array
-     */
-    public function getSections()
-    {
-        $sql = sprintf("SELECT s.section_id,s.title,s.description,s.active,s.key,s.return_error_code 
-                FROM %s AS s
-                WHERE active = 1;",
-            S_TABLE_SECTIONS
-        );
-        return Db::fetchAllAssoc($sql);
-    }
+//    /**
+//     * Return site sections as assoc array.
+//     * @return array
+//     */
+//    public function getSections()
+//    {
+//        $sql = sprintf("SELECT s.section_id,s.title,s.description,s.active,s.key,s.return_error_code
+//                FROM %s AS s
+//                WHERE active = 1;",
+//            S_TABLE_SECTIONS
+//        );
+//        return Db::fetchAllAssoc($sql);
+//    }
 
 
     /**

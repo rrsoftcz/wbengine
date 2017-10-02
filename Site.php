@@ -299,25 +299,9 @@ Class Site
         return $this;
     }
 
-    /**
-     * @param Section $sections
-     * @return void
-     */
-    private function _setSections($sections)
-    {
-        if (sizeof($sections) === 0) {
-            return null;
-        }
-
-        foreach ($sections as $section) {
-            $this->setVariable($section->getKey(), $section->getContent());
-        }
-    }
-
     public function setVariable($name, $value = null, $parent = null){
         $this->getParent()->getClassVars()->addValue($name, $value, $parent);
     }
-
 
     /**
      * Set HTML title to site object.
@@ -443,6 +427,7 @@ Class Site
         return FALSE;
     }
 
+
     /**
      * Return apropirate HTML class name due
      * to given URL
@@ -503,10 +488,10 @@ Class Site
      * Retur sections collection loaded from Db ...
      * @return array
      */
-    public function getSections()
-    {
-        return $this->_getSections();
-    }
+//    public function getSections()
+//    {
+//        return $this->_getSections();
+//    }
 
     /**
      * Return Site home URL with default protocol
@@ -522,21 +507,21 @@ Class Site
      * Return array colection of Class_Site_Section.
      * @return array
      */
-    private function _getSections()
-    {
-        if (sizeof($this->_sections)) {
-            return $this->_sections;
-        }
-
-        $clsSection = new Section($this);
-
-        $this->_sections = $clsSection->getSections();
-        if (sizeof($this->_sections) === 0) {
-            $this->_addException('No active sections found', SiteException::ERROR_NO_SECTIONS);
-        }
-
-        return $this->_sections;
-    }
+//    private function _getSections()
+//    {
+//        if (sizeof($this->_sections)) {
+//            return $this->_sections;
+//        }
+//
+//        $clsSection = new Section($this);
+//
+//        $this->_sections = $clsSection->getSections();
+//        if (sizeof($this->_sections) === 0) {
+//            $this->_addException('No active sections found', SiteException::ERROR_NO_SECTIONS);
+//        }
+//
+//        return $this->_sections;
+//    }
 
     /**
      * Create parent object exception with given message and code.
@@ -557,6 +542,33 @@ Class Site
     public function getException()
     {
         return $this->_exception;
+    }
+
+    private function _setSections($sections)
+    {
+        if (sizeof($sections) === 0) {
+            return null;
+        }
+
+        /**
+         * $section Section
+         */
+        foreach ($sections as $section) {
+            $this->setVariable($section->getKey(), $section->getContent($this));
+        }
+    }
+
+    public function getSections(){
+        if($this->_sections && is_array($this->_sections)){
+            return $this->_sections;
+        }
+
+        $sections = $this->getModel()->getSections();
+
+        foreach ($sections as $section){
+            $this->_sections[] = new Section($section);
+        }
+        return $this->_sections;
     }
 
     /**

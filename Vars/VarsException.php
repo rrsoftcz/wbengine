@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @see Class_Site_Exception
- */
 
 namespace Wbengine\Vars;
 

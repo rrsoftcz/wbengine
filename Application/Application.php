@@ -115,6 +115,7 @@ abstract Class Application
      */
     private $_deviceType;
 
+    private $_path;
     private $_starttime;
     private $_endtime;
 
@@ -274,10 +275,10 @@ abstract Class Application
      */
     public function _getObjectPath()
     {
-        if(null === $this->Path || !$this->Path instanceof Path){
-            $this->Path = New Path();
+        if(null === $this->_path || !$this->_path instanceof Path){
+            $this->_path = New Path();
         }
-        return $this->Path;
+        return $this->_path;
     }
 
 
@@ -292,19 +293,6 @@ abstract Class Application
         }
 
         return $this->_detector;
-    }
-
-
-    /**
-     * Return site type prefix as string.
-     * We using this prefix in renderer for right app template path,
-     * but feel free use it for whatever you want.
-     * @see getAppType()
-     * @return string
-     */
-    public function getAppTypeId()
-    {
-        return $this->getSite()->getSiteParentKey();
     }
 
 
