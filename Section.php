@@ -34,28 +34,17 @@ class Section
      */
     private $_model = NULL;
 
-
     /**
      * Raw model data
      * @var Section
      */
     private $_section = NULL;
 
-
-    /**
-     * Collection of object all
-     * existing sections
-     * @var array
-     */
-    private $_sections = NULL;
-
-
     /**
      * Boxes collection
      * @var array
      */
     private $_boxes = NULL;
-
 
     /**
      * Object site
@@ -73,51 +62,19 @@ class Section
      * Set Model instance
      * @return Model
      */
-    private function _setModel()
-    {
+    private function _setModel(){
         $this->_model = new Model();
     }
 
 
-//    /**
-//     * Return instance of section class
-//     * @param integer $sectionId
-//     * @return Section
-//     */
-//    private function _getSection($sectionId)
-//    {
-//        $newSection = new Section($this->getSite());
-//
-//        return $newSection->getSection($sectionId);
-//    }
-
-
-//    /**
-//     * Return collection of Class_Site_Section object.
-//     * @return array
-//     */
-//    private function _getSections()
-//    {
-//        $_sections = $this->getModel()->getSections();
-//
-//        if (!is_array($_sections)) {
-//            return null;
-//        }
-//        foreach ($_sections as $section) {
-//            $this->_sections[] = $this->_getSection($section['section_id']);
-//        }
-//
-//        return $this->_sections;
-//    }
-
 
     /**
-     * Return collection of Class_Site_Box objects.
+     * Return collection of object Box.
      * @return array
      */
     private function _getBoxes()
     {
-        if ($this->_boxes) {
+        if (is_array($this->_boxes)) {
             return $this->_boxes;
         }
 
@@ -126,13 +83,18 @@ class Section
         if(!sizeof($boxes)) return null;
 
         foreach ($boxes as $box) {
-            $clsBox = New Box($this);
-            $this->_boxes[] = $clsBox->getBox($box['id']);
+            $Box = New Box($this);
+            $Box->setBox($box);
+            $this->_boxes[] = $Box->getBox();
         }
         return $this->_boxes;
     }
 
 
+    /**
+     * Section constructor.
+     * @param array $section
+     */
     public function __construct($section)
     {
         $this->_section = new \stdClass();
@@ -146,8 +108,7 @@ class Section
      * Return instance of Site class
      * @return Site
      */
-    public function getSite()
-    {
+    public function getSite(){
         return $this->_site;
     }
 
@@ -156,8 +117,7 @@ class Section
      * Return section id
      * @return integer
      */
-    public function getSectionId()
-    {
+    public function getSectionId(){
         return $this->_section->section_id;
     }
 
@@ -166,8 +126,7 @@ class Section
      * Return section title
      * @return string
      */
-    public function getName()
-    {
+    public function getName(){
         return $this->_section->title;
     }
 
@@ -176,8 +135,7 @@ class Section
      * Return section's description
      * @return string
      */
-    public function getDescription()
-    {
+    public function getDescription(){
         return $this->_section->description;
     }
 
@@ -186,8 +144,7 @@ class Section
      * Return section unique key
      * @return mixed
      */
-    public function getKey()
-    {
+    public function getKey(){
         return $this->_section->key;
     }
 
@@ -196,8 +153,7 @@ class Section
      * Return true/false if section is active
      * @return boolean
      */
-    public function isActive()
-    {
+    public function isActive(){
         return $this->_section->active;
     }
 
@@ -206,33 +162,9 @@ class Section
      * Return section's error code if defined
      * @return mixed
      */
-    public function getErrorCode()
-    {
+    public function getErrorCode(){
         return $this->_section['return_error_code'];
     }
-
-
-    /**
-     * Reurn collection of sections.
-     * The array items are instance of Class_Site_Section
-     * @return array
-     */
-//    public function getSections()
-//    {
-//        return $this->_getSections();
-//    }
-
-
-    /**
-     * Return Instance of Site section
-     * @param integer $sectionId
-     * @return \Wbengine\Section
-     */
-//    public function getSection($sectionId)
-//    {
-////        $this->_section = $this->getModel()->getSectionById($sectionId);
-//        return $this->_section;
-//    }
 
 
     /**
@@ -256,20 +188,30 @@ class Section
         return $this->_content;
     }
 
+
+    /**
+     * Return Section boxes sum as integer
+     * @return int
+     */
     public function getBoxesCount(){
         return sizeof($this->getBoxes());
     }
+
 
     /**
      * Return Boxes collections
      * @return array
      */
-    public function getBoxes()
-    {
+    public function getBoxes(){
         return $this->_getBoxes();
     }
 
 
+    /**
+     * Return new instance of object Box
+     * @param $id
+     * @return \Wbengine\Box
+     */
     public function getBoxById($id)
     {
         $box = New Box($this);
@@ -282,13 +224,12 @@ class Section
      * Return section model
      * @return Model
      */
-    public function getModel()
-    {
+    public function getModel(){
         if (NULL === $this->_model) {
             $this->_setModel();
         }
-
         return $this->_model;
     }
+
 
 }

@@ -49,10 +49,25 @@ abstract class Db implements DbInterface
      * @var int
      */
     private static $_qcount    = 0;
+
+    /**
+     * Array of executed DB queries
+     * @var array
+     */
     private static $_qarray    = array();
+
+    /**
+     * Query execution time as microtime
+     * @var int
+     */
     private static $_qtime     = 0;
 
 
+    /**
+     * Update query statistic ...
+     * @param null $query
+     * @param null $time
+     */
     private static function updateStats($query = null, $time = null){
         self::$_qcount++;
         if($query) {
@@ -60,9 +75,15 @@ abstract class Db implements DbInterface
         }
     }
 
+
+    /**
+     * Get state of db connected
+     * @return bool
+     */
     public static function isConnected(){
         return (self::$_adapter instanceof DbAdapterInterface);
     }
+
 
     /**
      * @return DbAdapterInterface
@@ -74,6 +95,7 @@ abstract class Db implements DbInterface
         return self::$_adapter;
     }
 
+
     /**
      * Return Db connection as adapter object...
      * @return Mysqli
@@ -84,6 +106,11 @@ abstract class Db implements DbInterface
     }
 
 
+    /**
+     * Create DB adapter by name from config file
+     * @throws DbAdapterException
+     * @throws DbException
+     */
     private static function createAdapter()
     {
         $className = self::buildClassName(self::getAdapterName());
@@ -116,6 +143,12 @@ abstract class Db implements DbInterface
             ucfirst((string)$name);
     }
 
+
+    /**
+     * Return adapter name defined in config file
+     * @return null|string
+     * @throws DbException
+     */
     private static function getAdapterName(){
         if(self::$dbCredentials === null){
             self::$dbCredentials = Config::getDbCredentials();
@@ -133,14 +166,29 @@ abstract class Db implements DbInterface
         }
     }
 
+
+    /**
+     * Return executed queries count
+     * @return int
+     */
     public static function getQueriesCount(){
         return self::$_qcount;
     }
 
+
+    /**
+     * Return array of all executed queries
+     * @return array
+     */
     public static function getAllQueries(){
         return self::$_qarray;
     }
 
+
+    /**
+     * Return time sum of allexecuted queries
+     * @return int
+     */
     public static function getAllQueriesEstimatedTime(){
         foreach (self::getAllQueries() as $query){
             self::$_qtime =+ $query['time'];
@@ -148,6 +196,11 @@ abstract class Db implements DbInterface
         return self::$_qtime;
     }
 
+
+    /**
+     * Dump all queries to screen
+     * @var void
+     */
     public function dumpAllQueries(){
         foreach (self::getAllQueries() as $query){
             echo('<pre>');
@@ -156,39 +209,77 @@ abstract class Db implements DbInterface
         }
     }
 
+
     /**
      * @param $sql
      * @return \mysqli_result
      */
-    public static function query($sql){
+    public static function query($sql)
+    {
         $start = microtime(true);
         $res = self::getConnection()->query($sql);
         $end = microtime(true);
         $time = ($end-$start);
         self::updateStats($sql, sprintf('%f', $time));
+
         return $res;
     }
 
+    /**
+     * Return DB data as array
+     * @param $sql
+     * @return mixed
+     */
     public function fetchRow($sql){
         return self::query($sql)->fetch_row();
     }
 
+
+    /**
+     * Return DB item as object
+     * @param $sql
+     * @return object
+     */
     public function fetchOne($sql){
         return self::query($sql)->fetch_field();
     }
 
+
+    /**
+     * Return DB data as array
+     * @param $sql
+     * @return mixed
+     */
     public function fetchAll($sql){
         return self::query($sql)->fetch_all();
     }
 
+
+    /**
+     * Return DB data as object
+     * @param $sql
+     * @return object|\stdClass
+     */
     public static function fetchObject($sql){
         return self::query($sql)->fetch_object();
     }
 
+
+    /**
+     * Return DB data as assoc array
+     * @param $sql
+     * @return array
+     */
     public static function fetchAssoc($sql){
         return self::query($sql)->fetch_assoc();
     }
 
+
+    /**
+     * Return DB data all records as assoc array
+     * @param $sql
+     * @return mixed
+     */
     public static function fetchAllAssoc($sql){
         $start = microtime(true);
         $res = self::getAdapter()->getAllAssoc($sql);

@@ -124,8 +124,7 @@ Class Site
      * Return a parent object Application
      * @return Application
      */
-    public function getParent()
-    {
+    public function getParent(){
         return $this->_parent;
     }
 
@@ -138,11 +137,10 @@ Class Site
     }
 
     public function setValueToSession($name, $value){
-        $this->_getSession()->setValue($name,$value);
+        $this->_getSession()->setValue($name, $value);
     }
 
-    public function getSessionValue($name = null)
-    {
+    public function getSessionValue($name){
         return $this->_getSession()->getValue($name);
     }
 
@@ -369,42 +367,6 @@ Class Site
     }
 
 
-
-    /**
-     * Return actual site navigation as paired array.
-     * @return array
-     * @todo Resolve this navigation as object without db load...
-     */
-    public function getNavigation()
-    {
-        $path = array();
-
-        if ($this->getClassUrl()->getLink() != 'front') {
-            $parts = '';
-            $_urlParts = $this->getUrlParts();
-
-            if (!is_array($_urlParts) || empty($_urlParts)){
-                return null;
-            }
-
-            foreach ($_urlParts as $part) {
-                if(empty($part))return null;
-
-                $parts .= '/'.$part . '/';
-                $urlName = $this->getTitleFromLink($part);
-
-                if ($urlName) {
-                    $path[] = array(
-                        'url' => '/' . $parts,
-                        'name' => strtolower($urlName),
-                    );
-                }
-            }
-        }
-        return $path;
-    }
-
-
     /**
      * Return associated array with URL parts
      * paired with site ID.
@@ -501,23 +463,6 @@ Class Site
         return $this->getModel()->getSiteTypeKey($this);
     }
 
-    /**
-     * Return site's submenu
-     * @return array
-     */
-    public function getSubMenu()
-    {
-        return $this->getModel()->getSubMenu($this);
-    }
-
-    /**
-     * Retur sections collection loaded from Db ...
-     * @return array
-     */
-//    public function getSections()
-//    {
-//        return $this->_getSections();
-//    }
 
     /**
      * Return Site home URL with default protocol
@@ -529,37 +474,6 @@ Class Site
             , strtolower($_SERVER['SERVER_PROTOCOL']));
     }
 
-    /**
-     * Return array colection of Class_Site_Section.
-     * @return array
-     */
-//    private function _getSections()
-//    {
-//        if (sizeof($this->_sections)) {
-//            return $this->_sections;
-//        }
-//
-//        $clsSection = new Section($this);
-//
-//        $this->_sections = $clsSection->getSections();
-//        if (sizeof($this->_sections) === 0) {
-//            $this->_addException('No active sections found', SiteException::ERROR_NO_SECTIONS);
-//        }
-//
-//        return $this->_sections;
-//    }
-
-    /**
-     * Create parent object exception with given message and code.
-     * @param $message
-     * @param integer $code
-     * @throws SiteException
-     * @internal param string $mesage
-     */
-//    private function _addException($message, $code = NULL)
-//    {
-//        throw new SiteException($message, $code);
-//    }
 
     /**
      * Return CMS member object Exception
@@ -604,20 +518,18 @@ Class Site
      * @param Application $app
      * @return $this
      */
-    public function initialize(Application $app)
+    public function initialize($app)
     {
         $this->_parent = $app;
 
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
-//        $this->setValueToSession('test','test');
         // Save some essential site template variables...
 //        $this->setVariable('device_type', $this->getParent()->getDeviceType());
+//        var_dump($this->getSessionValue('test'));
+//        $this->getParent()->getLocale(1);
         $this->setVariable('html_surfix', $this->getTemplateClassSurfix());
-        $this->setVariable('breadcrump', $this->getNavigation());
         $this->setVariable('menu', $this->getMenuCollection());
-//        $this->setVariable('submenu', $this->getSubMenu());
-//        $this->setVariable('site_id', $this->getSiteId());
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');

@@ -23,7 +23,6 @@ use Wbengine\Locale\Exception\LocaleException;
 abstract class LocaleAbstract
 {
 
-
     public function __get($name)
     {
         $name = strtoupper($name);

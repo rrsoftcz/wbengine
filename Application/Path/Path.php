@@ -127,8 +127,7 @@ class Path {
      * @param $path
      * @param bool $appBaseDir
      */
-    public function addPath($name, $path, $appBaseDir = false)
-    {
+    public function addPath($name, $path, $appBaseDir = false){
         if($appBaseDir === true){
             $this->_appBaseDir = $path;
         }

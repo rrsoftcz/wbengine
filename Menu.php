@@ -23,16 +23,28 @@ class Menu
      */
     private $_site;
 
-    public function __construct($menu)
-    {
+    /**
+     * Menu constructor.
+     * @param $menu
+     */
+    public function __construct($menu){
         $this->_menu = $menu;
     }
 
-    public function __set($name, $value)
-    {
+    /**
+     * Class setter ...
+     * @param $name
+     * @param $value
+     */
+    public function __set($name, $value){
         $this->_menu[$name] = $value;
     }
 
+    /**
+     * Class getter...
+     * @param $name
+     * @return mixed|null
+     */
     public function __get($name)
     {
         if(is_array($this->_menu)){
@@ -43,6 +55,11 @@ class Menu
         return null;
     }
 
+
+    /**
+     * Return menu state
+     * @return bool
+     */
     public function selected(){
         if($this->_site instanceof Site) {
             if((int) $this->site_id === $this->getSite()->getSiteId()){
@@ -54,6 +71,11 @@ class Menu
     }
 
 
+    /**
+     * Set instance of class Site
+     * @param $site
+     * @throws MenuException
+     */
     public function setSite($site){
         if($site instanceof Site) {
             $this->_site = $site;
@@ -67,38 +89,83 @@ class Menu
         }
     }
 
+
+    /**
+     * Reurn instance of object Site
+     * @return Site
+     */
     public function getSite(){
         return $this->_site;
     }
 
+
+    /**
+     * Return Menu Site ID
+     * @return string|null
+     */
     public function getMenuSiteId(){
         return $this->site_id;
     }
 
+
+    /**
+     * Return Menu ID
+     * @return integer|null
+     */
     public function getMenuId(){
         return $this->menu_id;
     }
 
+
+    /**
+     * Return Menu name
+     * @return string|null
+     */
     public function getName(){
         return $this->name;
     }
 
+
+    /**
+     * Return menu description
+     * @return string|null
+     */
     public function getDescription(){
         return $this->description;
     }
 
+
+    /**
+     * Return menu visible state
+     * @return integer|null
+     */
     public function isVisible(){
         return $this->visible;
     }
 
+
+    /**
+     * Return menu order
+     * @return int|null
+     */
     public function GetMenuOrder(){
         return $this->order;
     }
 
+
+    /**
+     * Return menu url link
+     * @return string|null
+     */
     public function GetMenuLink(){
         return $this->link;
     }
 
+
+    /**
+     * Return Menu parent ID as integer
+     * @return int|null
+     */
     public function GetMenuParent(){
         return $this->parent;
     }

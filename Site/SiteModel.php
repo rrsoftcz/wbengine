@@ -147,8 +147,6 @@ class SiteModel extends ModelAbstract
      */
     public function getSiteMenu(Site $site)
     {
-        $menu = array();
-
         $sql = sprintf('SELECT m.menu_id, m.site_id, m.name, m.type, m.description, m.visible, m.order, m.parent, s.link FROM %s m
                         LEFT JOIN %s s ON (s.site_id = m.site_id)
                         WHERE m.visible = 1
@@ -159,152 +157,8 @@ class SiteModel extends ModelAbstract
             , S_TABLE_SITES
             , ($site->getSiteParentId())?$site->getSiteParentId():1
         );
-//        var_dump($sql);
-//var_dump($site->getSiteParentId());
-//        var_dump($site->getSiteParentId());die($site->getSiteParentId());
-//        $statement = $this->getDbAdapter()->createStatement($sql);
-//        $result = $statement->execute();
-//$result = $this->query($sql);
-//        $data = mysqli_fetch_all($result,MYSQLI_ASSOC);
+
         return $data = Db::fetchAllAssoc($sql);
-//        Utils::dump($data);die();
-        $con = $site->getParent();
-//	$x = $this->getDbAdapter()->prepare($sql);
-//	var_dump($site->getParent()->getAppType());
-//	$menuItems = $this->getDbAdapter()->query($sql);
-
-        foreach ($data as $row) {
-//            Utils::dump($row);
-            $selected = $site->isMenuSelected($row['site_id']);
-//            if ($site->isMenuSelected($row['site_id'])) {
-                $row['selected'] = ($selected)?1:0;
-//            }
-            $menu[$row['menu_id']]['name'] = $row['name'];
-            $menu[$row['menu_id']]['url'] = "/" . trim($row['link'], "/") . "/";
-//	    $menu[$row['menu_id']]['url'] = "/".$row['link'];
-//            var_dump($row['selected']);
-            $menu[$row['menu_id']]['description'] = $row['description'];
-            $menu[$row['menu_id']]['selected'] = $row['selected'];
-
-            if ((int)$row['site_id'] === 0){
-                if(empty($row['dyna_tag']) == true){
-                    $menu[$row['menu_id']]['url'] .= strtolower(Utils::createSeo($row['name']) ."/");
-                }else{
-                    $menu[$row['menu_id']]['url'] .= strtolower($row['dyna_tag'])."/";
-                }
-            }
-        }
-//        Utils::dump($menu);die();
-//        die();
-        return $menu;
-    }
-
-
-    /**
-     * Return site submenus as assoc array
-     * depending up to main menu.
-     *
-     * @param \Wbengine\Site|\Wbengine\Site\Class_Site $site
-     * @return array
-     */
-    public function getSubMenu(Site $site)
-    {
-        $submenu = array();
-        $part = $site->getUrlParts();
-        $where = array($site->getSiteId());
-        $sql = sprintf("SELECT s.*, si.link AS url FROM %s s
-			LEFT JOIN %s m ON (m.menu_id = s.menu_id)
-                        LEFT JOIN %s si ON (s.site_id = si.site_id)
-                        WHERE locale = %d
-                        AND s.visible = 1
-                        AND s.parent = 0
-                        AND (m.site_id = %d
-                        OR m.site_id = %d
-                        OR s.menu_id = (SELECT menu_id FROM cms_submenu
-                        WHERE site_id = %d))
-                        ORDER BY s.menuorder ASC;"
-            , S_TABLE_SUBMENU
-            , S_TABLE_MENU
-            , S_TABLE_SITES
-            , $site->getSessionValue('user_locale')
-            , $site->getSiteId()
-            , $site->getSiteParentId()
-            , $site->getSiteId()
-        );
-//        var_dump(Session::getValue('user_locale'));
-//var_dump($site->getSessionValue());
-//        var_dump($site->getSession());
-//var_dump($site->getSession()->getValue("user_locale"));
-//        try {
-//        Utils::dump($sql);die();
-            $res = Db::query($sql);
-//            Utils::dump($res->fetch_assoc());die();
-            if(Db::getConnection()->affected_rows) {
-//var_dump($res->fetchAll());
-                foreach ($res->fetch_assoc() as $row) {
-                    if ((int)$row['site_id'] === $site->getSiteId()) {
-                        $row['selected'] = 'selected';
-                    }
-
-                    if ($this->getMenuSubitems($site, $row['submenu_id']) && (int)$row['site_id'] !== $site->getSiteId()) {
-                        $row['selected'] = 'sel_down';
-                    }
-
-                    if ($this->getMenuSubitems($site, $row['submenu_id']) && (int)$row['site_id'] === $site->getSiteId()) {
-                        $row['selected'] = 'selected noborder';
-                    }
-
-                    $submenu[$row['submenu_id']]['name'] = $row['title'];
-                    $submenu[$row['submenu_id']]['url'] = $site->getHomeUrl() . $row['url'];
-                    $submenu[$row['submenu_id']]['selected'] = $row['selected'];
-                    $submenu[$row['submenu_id']]['site_id'] = (int)$row['site_id'];
-//var_dump($this->getMenuSubitems($site, $row['submenu_id']));
-                    $submenu[$row['submenu_id']]['menuitems'] = $this->getMenuSubitems($site, $row['submenu_id']);
-                }
-
-                return $submenu;
-            }else{
-                return null;
-            }
-//        }
-    }
-
-
-    /**
-     * Return site submenus as assoc array
-     * depending up to main menu.
-     *
-     * @param \Wbengine\Site|\Wbengine\Site\Class_Site $site
-     * @param integer $submenuId
-     * @return array
-     */
-    public function getMenuSubitems(Site $site, $submenuId)
-    {
-        $submenu = array();
-
-        $where = array($submenuId, $site->getSiteParentId(), $submenuId, $site->getSiteId(), 1);
-
-        $sql = sprintf("SELECT s1.*, si.link AS url FROM %s s1
-                        LEFT JOIN %s s2 ON (s1.parent = s2.submenu_id)
-                        LEFT JOIN %s si ON (s1.site_id = si.site_id)
-                        WHERE (s1.parent = ? AND s2.site_id = ? AND s1.visible = 1)
-                        OR (s1.parent = ? AND s2.site_id = ?)
-                        AND s1.visible = ?
-                        ORDER BY s1.menuorder ASC;"
-            , S_TABLE_SUBMENU
-            , S_TABLE_SUBMENU
-            , S_TABLE_SITES
-        );
-
-        $res = $this->getDbAdapter()->query($sql, $where);
-//var_dump($res->current());
-        return $res->toArray();
-//        var_dump($res->current());
-        return ($res)
-            ? $res->current()
-            : null;
-
-//        return $res;
     }
 
 
@@ -351,34 +205,5 @@ class SiteModel extends ModelAbstract
         return (int)$this->query($sql)->fetch_field()->site_id;
     }
 
-
-    /**
-     * Return data from given section.
-     *
-     * @param \Wbengine\Site|\Wbengine\Site\Class_Site $site
-     * @param integer $section_id
-     * @return array
-     */
-    public function getSectionsContent(Site $site, $section_id = NULL)
-    {
-        $sql = sprintf("SELECT box.module, box.method, sec.key, box.static
-			FROM %s ord
-			LEFT JOIN %s box ON (box.id = ord.box_id)
-                        LEFT JOIN %s sec ON (box.section_id = sec.section_id)
-			WHERE (ord.site_id = %s OR box.shared = 1)
-                        AND box.section_id = %d
-                        GROUP BY box.id
-			ORDER BY ord.order ASC;"
-            , S_TABLE_BOX_ORDERS
-            , S_TABLE_BOXES
-            , S_TABLE_SECTIONS
-            , $site->getSiteId()
-            , (int)$section_id
-        );
-
-        $res = $this->getDbAdapter()->query($sql);
-
-        return $res->fetchAll();
-    }
 
 }

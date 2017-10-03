@@ -19,9 +19,10 @@
 namespace Wbengine;
 
 use Wbengine\Locale\Exception\LocaleException;
+use Wbengine\Locale\LocaleAbstract;
 use Wbengine\Locale\Model;
 
-class Locale
+class Locale extends LocaleAbstract
 {
 
 
@@ -100,7 +101,11 @@ class Locale
     public function getLocale($locale_id)
     {
         if (!(int)$locale_id) {
-            throw new LocaleException(__METHOD__ . ': The locale id cannot be null.');
+            Throw New LocaleException(sprintf("%s -> %s: The locale ID cannot be null!",
+                __CLASS__,
+                __FUNCTION__),
+                LocaleException::ERROR_LOCALE_NULL);
+
         }
 
         if (is_object($this->_locale)) {

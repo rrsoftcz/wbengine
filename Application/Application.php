@@ -23,6 +23,7 @@ use Wbengine\Application\Path\Path;
 use Wbengine\Config;
 use Wbengine\Db;
 use Wbengine\Error;
+use Wbengine\Locale;
 use Wbengine\Locale\LocaleAbstract;
 use Wbengine\Section;
 use Wbengine\Site;
@@ -114,11 +115,43 @@ abstract Class Application
      */
     private $_deviceType;
 
+    /**
+     * Object of class Path
+     * @var Path
+     */
     private $_path;
+
+    /**
+     * Start time as microtime
+     * @var double
+     */
     private $_starttime;
+
+    /**
+     * End time as microtime
+     * @var double
+     */
     private $_endtime;
+
+    /**
+     * Config filename
+     * @var string
+     */
     private $_config_file;
+
+    /**
+     * Production environment
+     * True = Development \ False = Production
+     * @var bool
+     */
     private $_env;
+
+    protected static $APP_BASE_DIR;
+    protected static $APP_TYPE_CACHE;
+    protected static $APP_CONFIG_PATH;
+    protected static $APP_TEMPLATE_PATH;
+    protected static $ENV_TYPE_PRODUCTION;
+    protected static $APP_TYPE_RENDERER_TEMP;
 
     /**
      * Create object Class_Renderer
@@ -133,8 +166,7 @@ abstract Class Application
      * Return created session instance.
      * @return \Wbengine\Session
      */
-    public function getSession()
-    {
+    public function getSession(){
         if ($this->_session instanceof Session) {
             return $this->_session;
         }
@@ -146,8 +178,7 @@ abstract Class Application
      * Create new session instance object if needed.
      * @see Class_Session
      */
-    private function _createSession()
-    {
+    private function _createSession(){
         return $this->_session = new Session();
     }
 
@@ -174,8 +205,7 @@ abstract Class Application
      * Create instance of object \Wbengine\Site
      * @$this->_site
      */
-    private function _createSite()
-    {
+    private function _createSite(){
         $this->_site = New Site(New Url($this));
     }
 
@@ -184,8 +214,7 @@ abstract Class Application
      * Create instance of \Wbengine\Vars
      * @void
      */
-    private function _setClassVars()
-    {
+    private function _setClassVars(){
         $this->_classVars = New Vars($this);
     }
 
@@ -194,8 +223,7 @@ abstract Class Application
      * Set user data to local variable for latest use.
      * @param array $userData
      */
-    private function _setUserData($userData)
-    {
+    private function _setUserData($userData){
         $this->_userData = $userData;
     }
 
@@ -204,29 +232,27 @@ abstract Class Application
      * Set user identities if needed.
      * @see getIdentity
      */
-    private function _setIdentity()
-    {
+    private function _setIdentity(){
         $this->_setUserData($this->getClassUser()->getIdentity());
     }
 
+
     /**
      * Store locale class.
-     * @param \Wbengine\Locale\LocaleAbstract $locale
+     * @param LocaleAbstract $locale
      */
-    private function _setLocale(LocaleAbstract $locale)
-    {
+    private function _setLocale(LocaleAbstract $locale){
         $this->_locale = $locale;
     }
 
 
     /**
-     * @param string $name
-     * @param string $include
-     * @param bool $appBaseDir
      * @return null|Path
+     * @internal param string $name
+     * @internal param string $include
+     * @internal param bool $appBaseDir
      */
-    public function getPath($name = null, $include = null, $appBaseDir = false)
-    {
+    public function getPath(){
         return $this->_getObjectPath();
     }
 
@@ -263,8 +289,7 @@ abstract Class Application
      * @param $_path
      * @param bool $appBaseDir
      */
-    public function setPath($name = null, $_path, $appBaseDir = false)
-    {
+    public function setPath($name = null, $_path, $appBaseDir = false){
         return $this->_getObjectPath()->addPath($name, $_path, $appBaseDir);
     }
 
@@ -273,8 +298,7 @@ abstract Class Application
      * Return instance of object Path
      * @return null|Path
      */
-    public function _getObjectPath()
-    {
+    public function _getObjectPath(){
         if(null === $this->_path || !$this->_path instanceof Path){
             $this->_path = New Path();
         }
@@ -286,8 +310,7 @@ abstract Class Application
      * Return instance of Mobile\_detector class
      * @return null|Detector
      */
-    public function _getObjectMobile_detector()
-    {
+    public function _getObjectMobile_detector(){
         if(null === $this->_detector || !$this->_detector instanceof Detector){
             $this->_detector = New Detector();
         }
@@ -302,8 +325,7 @@ abstract Class Application
      *
      * @return null|Integer
      */
-    public function getDeviceType()
-    {
+    public function getDeviceType(){
         if($this->_deviceType === null){
             $this->_setApplicationTypeByDevice();
         }
@@ -316,8 +338,7 @@ abstract Class Application
      * Return all defined redirections.
      * @return array
      */
-    public function getRedirections()
-    {
+    public function getRedirections(){
         return $this->_redirections;
     }
 
@@ -327,8 +348,7 @@ abstract Class Application
      * @internal param bool $debug
      * @return \Wbengine\Application\boolean
      */
-    public function isDebugOn()
-    {
+    public function isDebugOn(){
         return Config::isDebugEnabled();
     }
 
@@ -341,8 +361,7 @@ abstract Class Application
      * @param mixed $value
      * @param string $parentKey
      */
-    public function setValue($key, $value = NULL, $parentKey = NULL)
-    {
+    public function setValue($key, $value = NULL, $parentKey = NULL){
         if (!empty($parentKey)) {
             $this->getClassVars()->addValue($key, $value, $parentKey);
         } else {
@@ -355,8 +374,7 @@ abstract Class Application
      * Return all assigned site variables.
      * @return array
      */
-    public function getVars()
-    {
+    public function getVars(){
         return $this->getClassVars()->getValues();
     }
 
@@ -365,8 +383,7 @@ abstract Class Application
      * Return instance of Object Vars
      * @return \Wbengine\Vars
      */
-    public function getClassVars()
-    {
+    public function getClassVars(){
         if ($this->_classVars instanceof Vars) {
             return $this->_classVars;
         }
@@ -380,8 +397,7 @@ abstract Class Application
      * Return CMS member object Exception
      * @return ApplicationException
      */
-    public function getException()
-    {
+    public function getException(){
         return $this->_exception;
     }
 
@@ -390,8 +406,7 @@ abstract Class Application
      * Return instance of class User.
      * @return \Wbengine\User
      */
-    public function getClassUser()
-    {
+    public function getClassUser(){
         if (!$this->_classUser instanceof User) {
             $this->_classUser = new User();
         }
@@ -403,8 +418,7 @@ abstract Class Application
      * Return user's data loaded for an session.
      * @return array
      */
-    public function getIdentity()
-    {
+    public function getIdentity(){
         if (is_array($this->_userData) && sizeof($this->_userData)) {
             return $this->_userData;
         } else {
@@ -418,13 +432,16 @@ abstract Class Application
      * Return a created locale instance.
      * @return int
      */
-    public function getLocale()
-    {
-        if (NULL === $this->_locale) {
-            $this->_setLocale($this->getSession()->getLocale());
+    public function getLocale(){
+        if (!$this->_locale instanceof Locale) {
+            $this->_createLocale();
         }
-
         return $this->_locale;
+    }
+
+
+    private function _createLocale(){
+        $this->_locale = new Locale();
     }
 
 
@@ -432,8 +449,7 @@ abstract Class Application
      * Return a config class object
      * @return Config
      */
-    public function getConfig()
-    {
+    public function getConfig(){
         return $this->config;
     }
 
@@ -442,8 +458,7 @@ abstract Class Application
      * Set Config adapter
      * @param \Wbengine\Config\Adapter\AdapterInterface $config
      */
-    public function setConfig($config)
-    {
+    public function setConfig($config){
         $this->config = $config;
     }
 
@@ -452,8 +467,7 @@ abstract Class Application
      * Return created object renderer
      * @return \Wbengine\Renderer
      */
-    public function getRenderer()
-    {
+    public function getRenderer(){
         If (NULL === $this->_renderer) {
             $this->_setRenderer();
         }
@@ -467,8 +481,7 @@ abstract Class Application
      * @param string $message
      * @param integer $code
      */
-    public function addException($message, $code = null)
-    {
+    public function addException($message, $code = null){
         $this->_exception = new ApplicationException($message, $code);
     }
 
@@ -477,8 +490,7 @@ abstract Class Application
      * Return instance of Class_Url
      * @return Url
      */
-    public function getClassUrl()
-    {
+    public function getClassUrl(){
         return $this->getSite()->getClassUrl();
     }
 
@@ -487,8 +499,7 @@ abstract Class Application
      * Return instance of \Wbengine\Error\Handler
      * @return \Wbengine\Error\Handler
      */
-    public function getErrorHandler()
-    {
+    public function getErrorHandler(){
         if (NULL === $this->errorHandler) {
             $this->errorHandler = New Error\Handler();
         }
@@ -496,6 +507,11 @@ abstract Class Application
         return $this->errorHandler;
     }
 
+
+    /**
+     * Return Boxes count as sum of all sections boxes
+     * @return int
+     */
     public function getBoxesCount(){
         /**
          * @var $section Section
@@ -507,65 +523,148 @@ abstract Class Application
         return $boxes;
     }
 
+
+    /**
+     * Return App name as path ...
+     * @param bool $noSlashes
+     * @return string
+     */
+    public static function _getAppDir($noSlashes = false){
+        return ($noSlashes)?ltrim(self::$APP_BASE_DIR,'/'):self::$APP_BASE_DIR;
+    }
+
+
+    /**
+     * Return Web app directory
+     * @param $noSlash
+     * @return string
+     */
+    public function getAppDir($noSlash){
+        return self::_getAppDir($noSlash);
+    }
+
+
+    /**
+     * Return Application environment
+     * @return boolean
+     */
     public function getEnv(){
         return $this->_env;
     }
 
+
+    /**
+     * Set config filename and create (set) environment type
+     * derived from config name
+     * @param $filename
+     */
     public function setConfigFile($filename){
         $this->_env = (boolean)preg_match('/(devel)/',strtolower($filename));
         $this->_config_file = $filename;
     }
 
+
+    /**
+     * Return config filename
+     * @return string
+     */
     public function getConfigFile(){
         return $this->_config_file;
     }
 
+
+    /**
+     * Return sections count
+     * @return int
+     */
     public function getSectionsCount(){
         return sizeof($this->getSections());
     }
 
+
+    /**
+     * Return Sections as array collection
+     * @return array
+     */
     public function getSections(){
         return $this->getSite()->getSections();
     }
 
+
+    /**
+     * Set start time as microtime
+     * @param $starttime
+     */
     public function setStartTime($starttime){
         $this->_starttime = $starttime;
     }
 
+
+    /**
+     * Set end time as microtime
+     * @param $endtime
+     */
     public function setEndtime($endtime){
         $this->_endtime = $endtime;
     }
 
+
+    /**
+     * Return start time
+     * @return mixed
+     */
     public function getStartTime(){
         return $this->_starttime;
     }
 
+
+    /**
+     * Return end time
+     * @return mixed
+     */
     public function getEndTime(){
         return $this->_endtime;
     }
 
+
+    /**
+     * Return all executed queries as array
+     * @see Db
+     * @return int
+     */
     public function getAllQueriesCount(){
         return Db::getQueriesCount();
     }
+
+
+    /**
+     * Return sum of executed queries time
+     * @see Db
+     * @return int
+     */
     public function getAllQueriesTime(){
         return Db::getAllQueriesEstimatedTime();
     }
+
 
     /**
      * Return site object instance
      * @return \Wbengine\Site
      */
-    public function getSite()
-    {
-        if ($this->_site instanceof Site) {
+    public function getSite(){
+        if ($this->_site instanceof Site){
             return $this->_site;
-        } else {
+        }else{
             $this->_createSite();
         }
         return $this->_site;
     }
 
 
+    /**
+     * Run the application ...
+     * @param null $errorHandler
+     */
     public function run($errorHandler = null)
     {
         try {

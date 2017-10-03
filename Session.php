@@ -55,11 +55,6 @@ class Session extends SessionAbstract
         $this->_autoclean = $state;
     }
 
-    private function _inicialized()
-    {
-        return !(is_null($this->_data->id));
-    }
-
     private function _create()
     {
         $this->getModel()->insertSessionData($this);

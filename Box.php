@@ -28,7 +28,7 @@ class Box
 
     /**
      * Model instance
-     * @var object
+     * @var ModelAbstract
      */
     private $_model = null;
 
@@ -49,14 +49,14 @@ class Box
 
     /**
      * Instance of site's renderer
-     * @var Class_Renderer
+     * @var Renderer
      */
     private $_renderer = null;
 
 
     /**
      * The module name
-     * @var string
+     * @var BoxTemplate
      */
     private $_module = null;
 
@@ -82,12 +82,6 @@ class Box
     private $_className = null;
 
 
-    /**
-     * initialy box ID
-     * @var integer
-     */
-    private $_boxId = null;
-
 
     /**
      * Create and return module box object
@@ -95,14 +89,13 @@ class Box
      *
      * @param $section
      * @param string $name
-     * @return object
-     * @throws AppException
-     * @throws Box\Exception\BoxException
+     * @return BoxTemplate
+     * @throws BoxException
      */
     private function _getModuleBox($section, $name)
     {
         $className = $this->_buildNamespace(
-            $this->getNamespace(), $this->getSection()->getKey(), $this->getModuleName());
+            $this->getAppBaseDirName(), $this->getSection()->getKey(), $this->getModuleName());
         if (!class_exists($className, true)) {
             Throw New BoxException(
                 sprintf('%s->%s : Cannot create instance of Box "%s". Class not found'
@@ -118,6 +111,14 @@ class Box
     }
 
 
+    /**
+     * Build module namespace by given module references...
+     * @param $namespace
+     * @param $section
+     * @param $moduleName
+     * @return string
+     * @throws BoxException
+     */
     private function _buildNamespace($namespace, $section, $moduleName)
     {
         if (empty($namespace)) {
@@ -140,10 +141,10 @@ class Box
 
 
     /**
+     * Return Box model instance...
      * @return ModelAbstract
      */
-    private function _setModel()
-    {
+    private function _setModel(){
         $this->_model = new Model();
     }
 
@@ -156,6 +157,8 @@ class Box
      */
     private function _createMethodName($method)
     {
+        $_tmp = '';
+
         if (strstr($method, "-")) {
             $_uparts = explode("-", $method);
 
@@ -172,9 +175,9 @@ class Box
 
     /**
      * Just assign parent objects to local variables.
-     * @param Class_Site_Section $section
+     * @param Section $section
      */
-    public function __construct(\Wbengine\Section $section)
+    public function __construct(Section $section)
     {
         $this->_section = $section;
     }
@@ -286,19 +289,25 @@ class Box
      */
     public function getBoxId()
     {
-        return ((int)$this->_box['id']) ? $this->_box['id'] : $this->_boxId;
+        return (int)$this->_box['id'];
+    }
+
+
+    /**
+     * Return App basedir path.
+     * @return null|string
+     */
+    public function getAppBaseDirName(){
+        return $this->getSite()->getParent()->getAppDir(true);
     }
 
 
     /**
      * Return Instance of Site section
-     * @param integer $boxId
      * @return Box
+     * @internal param int $boxId
      */
-    public function getBox($boxId)
-    {
-        $this->_boxId = $boxId;
-        $this->_box = $this->getModel()->getBoxById($this);
+    public function getBox(){
         return $this;
     }
 
@@ -307,12 +316,10 @@ class Box
      * Return section model
      * @return ModelAbstract
      */
-    public function getModel()
-    {
+    public function getModel(){
         if (NULL === $this->_model) {
             $this->_setModel();
         }
-
         return $this->_model;
     }
 
@@ -321,9 +328,17 @@ class Box
      * Return Box namespace If set
      * @return string
      */
-    public function getNamespace()
-    {
+    public function getNamespace(){
         return $this->_box['location'];
+    }
+
+
+    /**
+     * Set box data as array
+     * @param array $box
+     */
+    public function setBox($box){
+        $this->_box = $box;
     }
 
 
@@ -331,12 +346,10 @@ class Box
      * Return created object renderer
      * @return Renderer
      */
-    public function getRenderer()
-    {
+    public function getRenderer(){
         If (NULL === $this->_renderer) {
             $this->_renderer = $this->getSite()->getRenderer();
         }
-
         return $this->_renderer;
     }
 
@@ -366,7 +379,6 @@ class Box
                 $tmp .= $_boxObj->$_method($this->getSite());
             } else {
                 $tmp .= $this->getRenderer()->getFormater()->process($_boxObj->$_method($this->getSite()));
-//                $tmp .= $this->getRenderer()->getFormater()->process($_boxObj->$_method($this->getSite()));
             }
 
         } else {

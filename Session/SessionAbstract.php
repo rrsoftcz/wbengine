@@ -27,16 +27,17 @@ use Wbengine\Session\Exception\SessionException;
 abstract class SessionAbstract
 {
 
-    CONST USER_AGENT        = 'user_agent';
-    CONST USER_IP           = 'user_ip';
-    CONST USER_ID           = 'user_id';
-    CONST USER_SALT         = 'user_salt';
-    CONST USER_LOCALE       = 'user_locale';
-    CONST USER_LOGGED       = 'user_is_logged';
-    CONST SESSION_ID        = 'session_id';
-    CONST SESSION_DATA      = 'session_data';
-    CONST SESSION_UPDATED   = 'session_updated';
-    CONST SESSION_EXPIRE    = 'session_expire';
+    CONST USER_AGENT                = 'user_agent';
+    CONST USER_IP                   = 'user_ip';
+    CONST USER_ID                   = 'user_id';
+    CONST USER_SALT                 = 'user_salt';
+    CONST USER_LOCALE               = 'user_locale';
+    CONST USER_LOGGED               = 'user_is_logged';
+    CONST SESSION_ID                = 'session_id';
+    CONST SESSION_DATA              = 'session_data';
+    CONST SESSION_UPDATED           = 'session_updated';
+    CONST SESSION_EXPIRE            = 'session_expire';
+    CONST SESSION_DEFALT_LOCALE     = DEFAULT_LOCALE;
 
     /**
      * Locale class instance.
@@ -63,6 +64,13 @@ abstract class SessionAbstract
     private static $_session = null;
 
 
+
+    /**
+     * Validate session by given vars
+     * @param $session_id
+     * @param $expiration
+     * @return bool
+     */
     public function isValid($session_id, $expiration){
         if (session_status() === PHP_SESSION_NONE) {
             return false;
@@ -79,6 +87,11 @@ abstract class SessionAbstract
         }
     }
 
+
+    /**
+     * Start the session ad return session ID
+     * @return string
+     */
     public function sessionStart(){
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
@@ -88,6 +101,7 @@ abstract class SessionAbstract
             return session_id();
         }
     }
+
 
     /**
      * Return Instance of class Session
@@ -101,15 +115,30 @@ abstract class SessionAbstract
         }
     }
 
+
+    /**
+     * Create object Session
+     * @return Session
+     */
     private function _createSession(){
         $this->_session = new Session();
         return self::$_session;
     }
 
+
+    /**
+     * Return state of cookies enabled
+     * @return boolean
+     */
     public function isCookieEnabled(){
         return $this->_getSession()->_isCookieEnabled();
     }
 
+
+    /**
+     * Return users salt as string
+     * @return string
+     */
     public function generateUserSalt(){
         return substr(md5(Utils::getUserAgent()), 0, 10);
     }
@@ -121,8 +150,7 @@ abstract class SessionAbstract
      * @return int
      * @internal param bool $create
      */
-    public function getExpirationTime()
-    {
+    public function getExpirationTime(){
         return time() + (int)$this->_expirationTime;
     }
 
@@ -131,12 +159,10 @@ abstract class SessionAbstract
      * Get or create session class instance.
      * @return \Wbengine\Session\Model
      */
-    public function getModel()
-    {
+    public function getModel(){
         if (NULL === $this->_model) {
             $this->_setModel();
         }
-
         return $this->_model;
     }
 
@@ -144,45 +170,43 @@ abstract class SessionAbstract
      * Create new instance of Class_Session_Model.
      * @void
      */
-    private function _setModel()
-    {
+    private function _setModel(){
         $this->_model = new Model();
     }
 
 
     /**
      * Return session locale
+     * @param $local_id
      * @return Locale
      */
-    public function getLocale()
-    {
-        return $this->_getClassLocale(
-            $this->getValue('user_locale', DEFAULT_LOCALE));
+    public function getLocale($local_id){
+        return $this->_getClassLocale($local_id);
     }
+
 
     /**
      * Return locale class related to given locale's id.
      * @param integer $locale
      * @return Locale
      */
-    private function _getClassLocale($locale)
-    {
+    private function _getClassLocale($locale){
         if ($this->_locale instanceof Locale) {
             return $this->_locale;
         } else {
-            $this->_setClassLocale();
+            $this->_setClassLocale($locale);
         }
-
         return $this->_locale->getLocale($locale);
     }
+
 
     /**
      * Create and set instance object of Class_Locale
      * @void
      */
-    public function _setClassLocale()
-    {
-        $this->_locale = new Locale();
+    public function _setClassLocale($locale_id){
+        $locale = (is_int($locale_id))?$locale_id:self::SESSION_DEFALT_LOCALE;
+        $this->_locale = new Locale($locale);
     }
 
 
@@ -191,8 +215,7 @@ abstract class SessionAbstract
      * session and destroy them.
      * @void
      */
-    public function destroy($session_id = null)
-    {
+    public function destroy($session_id = null){
         $session_id = ($session_id)
             ? $session_id
             : session_id();

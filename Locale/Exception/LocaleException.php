@@ -13,5 +13,5 @@ namespace Wbengine\Locale\Exception;
 use Wbengine\Exception\RuntimeException;
 
 class LocaleException extends RuntimeException {
-
+    CONST ERROR_LOCALE_NULL = 33;
 }
