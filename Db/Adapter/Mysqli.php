@@ -73,7 +73,6 @@ class Mysqli implements DbAdapterInterface
     }
 
     public function getAllAssoc($sql){
-        var_dump($sql);
         return mysqli_fetch_all($this->getConnection()->query($sql), MYSQLI_ASSOC);
     }
 }
