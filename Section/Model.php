@@ -35,7 +35,7 @@ class Model extends ModelAbstract {
                 WHERE (ord.site_id = %d OR box.shared = 1)
                 AND box.section_id = %d
                 AND ((box.device_min <= %4$d AND box.device_strict = 0) OR (box.device_min = %4$d AND box.device_strict = 1))
-                GROUP BY box.id	ORDER BY ord.order ASC;'
+                GROUP BY box.id, ord.order	ORDER BY ord.order ASC;'
             , S_TABLE_BOX_ORDERS
             , S_TABLE_BOXES
             , S_TABLE_SECTIONS,

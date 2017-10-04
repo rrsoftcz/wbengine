@@ -20,8 +20,6 @@ class Mysqli implements DbAdapterInterface
     protected $_database;
     protected $_connection;
 
-//    private $query_count    = 0;
-//    private $queries        = array();
 
     public function __construct(Value $config = null)
     {
@@ -74,18 +72,8 @@ class Mysqli implements DbAdapterInterface
         }
     }
 
-//    public function queryx($sql){
-////        $this->query_count++;
-////        $this->queries[] = $sql;
-//        die($sql);
-//        $x = microtime();
-//        $_rs = $this->getConnection()->query($sql);
-//        $y = microtime();
-//        var_dump(($y-$x));die();
-//        return $_rs;
-//    }
-
     public function getAllAssoc($sql){
-        return mysqli_fetch_all($this->getConnection()->query($sql),MYSQLI_ASSOC);
+        var_dump($sql);
+        return mysqli_fetch_all($this->getConnection()->query($sql), MYSQLI_ASSOC);
     }
 }
