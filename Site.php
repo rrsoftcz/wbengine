@@ -525,11 +525,7 @@ Class Site
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
         // Save some essential site template variables...
-//        $this->setVariable('device_type', $this->getParent()->getDeviceType());
-//        var_dump($this->getSessionValue('test'));
-//        $this->getParent()->getLocale(1);
-        //$this->setVariable('html_surfix', $this->getTemplateClassSurfix());
-        //$this->setVariable('menu', $this->getMenuCollection());
+        $this->setVariable('menu', $this->getMenuCollection());
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
