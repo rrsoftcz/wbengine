@@ -1,0 +1,34 @@
+{
+  "name": "wbengine/wbengine",
+  "description": "Wbengine is open source PHP Library that is easy to use for creating websites or intranet applications.",
+  "version": "v1.3.0-dev",
+  "keywords": [
+    "wbengine",
+    "webengine",
+    "framework"
+  ],
+  "homepage": "http://www.wbengine.com",
+  "license": [
+    "MIT"
+  ],
+  "type": "library",
+  "authors": [
+    {
+      "name": "Radek Roža",
+      "email": "roza@rrsoft.cz",
+      "homepage": "http://www.rrsoft.cz/",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=7.0",
+    "smarty/smarty": "3.1.*",
+    "texy/texy": "2.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Wbengine\\": ""
+    }
+  }
+}
+
