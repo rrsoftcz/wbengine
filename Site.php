@@ -528,8 +528,8 @@ Class Site
 //        $this->setVariable('device_type', $this->getParent()->getDeviceType());
 //        var_dump($this->getSessionValue('test'));
 //        $this->getParent()->getLocale(1);
-        $this->setVariable('html_surfix', $this->getTemplateClassSurfix());
-        $this->setVariable('menu', $this->getMenuCollection());
+        //$this->setVariable('html_surfix', $this->getTemplateClassSurfix());
+        //$this->setVariable('menu', $this->getMenuCollection());
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
