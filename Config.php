@@ -152,8 +152,6 @@ class Config
      */
     private static function setConfigAdapter( File $filename)
     {
-//        var_dump($filename->exist());
-//        var_dump($filename->getDirectory());
         if ($filename->exist() === false) {
             throw new ConfigException(
                 sprintf('%s->%s: The Configuration file "%s" not found.'

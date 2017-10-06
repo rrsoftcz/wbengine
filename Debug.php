@@ -13,7 +13,7 @@ use Wbengine\Application\Application;
 
 class Debug
 {
-    CONST COLS_LG_MODIFIER  = '2';
+    CONST COLS_LG_MODIFIER  = '3';
     CONST CONTAINER_STYLE   = '
         padding: 6px 0 6px 6px;
         border-top: 1px solid #c0c0c0;
@@ -111,21 +111,28 @@ class Debug
         );
     }
 
-    private function _getSystemInfo($siteid){
-        return sprintf('<div class="col-lg-%s"><b>System:</b> %s</div>',
+    private function _getAppSpeedInfo(){
+        return sprintf('<div class="col-lg-%s"><b>Speed:</b> PHP: %s ms | Sum: %s ms</div>',
             self::COLS_LG_MODIFIER,
-            $siteid
+            $this->getEstimatedTime(),
+            $this->getSumTime()
+        );
+    }
+
+    private function _getSystemInfo($info){
+        return sprintf('<div class="col-lg-%s"><b>Env:</b> %s | Config: %s</div>',
+            self::COLS_LG_MODIFIER,
+            $info,
+            $this->getConFigFile()
         );
     }
 
     public function show(){
         $_cols = '';
         $_cols .= $this->_getSystemInfo(phpversion());
-        $_cols .= $this->_getAppTime($this->getSumTime());
-        $_cols .= $this->_getPhpCoreTime($this->getEstimatedTime());
+        $_cols .= $this->_getAppSpeedInfo($this->getSumTime());
         $_cols .= $this->_getDbQueries($this->getDbQueriesCount(),$this->getDbQueriesTimeSum());
         $_cols .= $this->_getSiteInfo($this->application->getSite()->getSiteId(),$this->getSectionsCount(),$this->getBoxesCount());
-        $_cols .= $this->_getEnvironment($this->getEnv(), $this->getConFigFile());
 
         $_cols.= $this->_getJs();
 

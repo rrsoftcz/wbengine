@@ -12,7 +12,7 @@ use Wbengine\Box\Exception;
 use Wbengine\Box;
 use Wbengine\Box\Exception\BoxException;
 
-class BoxTemplate
+Abstract class BoxTemplate
 {
 
     /**
@@ -40,7 +40,7 @@ class BoxTemplate
         $classname = "\\" . trim($namespace) . '\Model';
 
         $createdModel = New $classname($this);
-        $this->modelCache[$this->clearNamespace($namespace)] = $createdModel;
+        $this->modelCache[$this->_clearNamespace($namespace)] = $createdModel;
 
         return $createdModel;
     }
@@ -129,11 +129,11 @@ class BoxTemplate
             throw New BoxException(__METHOD__
                 . ': excepts argument namespace as string but null given.');
         }
-        if (NULL === $this->modelCache[$this->clearNamespace($namespace)]) {
+        if (NULL === $this->modelCache[$this->_clearNamespace($namespace)]) {
 
             return $this->_setModel($namespace);
         } else {
-            return $this->modelCache[$this->clearNamespace($namespace)];
+            return $this->modelCache[$this->_clearNamespace($namespace)];
         }
     }
 
@@ -154,8 +154,7 @@ class BoxTemplate
      * @param int $code
      * @throws RuntimeException
      */
-    public function createException($message = NULL, $code = NULL)
-    {
+    public function createException($message = NULL, $code = NULL){
         $this->_exception = New BoxException($message, $code);
     }
 
@@ -192,7 +191,7 @@ class BoxTemplate
     }
 
     public function getBoxTemplatePath(){
-        return $this->getBox()->getSection()->getName() . '/' . $this->getBox()->getBoxName();
+        return ucfirst($this->getBox()->getSection()->getKey()) . '/' . ucfirst($this->getBox()->getMethodName());
     }
 
 }

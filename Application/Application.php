@@ -156,8 +156,7 @@ abstract Class Application
     /**
      * Create object Class_Renderer
      */
-    private function _setRenderer()
-    {
+    private function _setRenderer(){
         $this->_renderer = New Renderer($this);
     }
 
@@ -267,9 +266,9 @@ abstract Class Application
     {
         foreach ($files as $file){
             $cssFile = New File($_path.$file);
-            $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getRendererTempDir())->getFile(), true);
+            $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getCacheDir())->getFile(), true);
 
-            if (Utils::compareStrings(md5_file($cssFile->getFile()), $ef->getContent()) === false)
+            if (!$ef->exist() || Utils::compareStrings(md5_file($cssFile->getFile()), $ef->getContent()) === false)
             {
                 $minFile = $cssFile->saveAsMinimized();
                 $minFile->replaceInFile('%_cdn_%', Config::getCdnPath());
@@ -529,7 +528,7 @@ abstract Class Application
      * @param bool $noSlashes
      * @return string
      */
-    public static function _getAppDir($noSlashes = false){
+    public static function _getAppDir($noSlashes){
         return ($noSlashes)?ltrim(self::$APP_BASE_DIR,'/'):self::$APP_BASE_DIR;
     }
 
@@ -539,7 +538,7 @@ abstract Class Application
      * @param $noSlash
      * @return string
      */
-    public function getAppDir($noSlash){
+    public function getAppDir($noSlash = false){
         return self::_getAppDir($noSlash);
     }
 

@@ -13,8 +13,10 @@ use Wbengine\Application\Env\Stac\Utils;
 
 Abstract class Env
 {
-    CONST DETECT_ENV_TYPE_BY_IP         = 2;
     CONST DETECT_ENV_TYPE_BY_HOSTNAME   = 3;
+    CONST DETECT_ENV_TYPE_BY_IP         = 2;
+    CONST ENV_PRODUCTION                = 1;
+    CONST ENV_DEVEL                     = 0;
 
     /**
      * Safe IP NOT production Subnets
@@ -23,9 +25,10 @@ Abstract class Env
      */
     private static $_safeIpRanges   = array
     (
-        '127.0.0.1',
+        '127.0.0.1/0',
         '10.0.0.0/16',
-        '172.0.0.0/16',
+        '172.16.0.0/16',
+        '192.0.0.0/16',
     );
 
 
@@ -64,50 +67,40 @@ Abstract class Env
      * Return predefined config name a string.
      *
      * Possible values
-     * 0 = CONFIG_TYPE_PRODUCCTION
-     * 1 = CONFIG_TYPE_DEVEL
-     * 2 = DETECT_ENV_TYPE_BY_IP
-     * 3 = DETECT_ENV_TYPE_BY_HOSTNAME
+     * 1 = DETECT_ENV_TYPE_BY_IP
+     * 2 = DETECT_ENV_TYPE_BY_HOSTNAME
      *
-     * @param bool|int $type
-     * @return string
+     * @param int $type
+     * @return boolean
      * @ToDo: Detect environments even by more aspects.
      */
-    static function autodetectEnvironment($type = FALSE)
+    static function autodetectEnvironment($type = null)
     {
-        if($type === TRUE)
-        {
-            return self::CONFIG_FILE_DEVEL;
-        }
-        elseif($type === FALSE)
-        {
-            return self::CONFIG_FILE_PRODUCCTION;
-        }
-        else
-        {
-            if ($type === self::DETECT_ENV_TYPE_BY_IP)
-            {
+        switch ($type){
+            case self::DETECT_ENV_TYPE_BY_IP:
                 if (is_array(self::$_safeIpRanges)) {
                     foreach (self::$_safeIpRanges as $range) {
-                        if (Utils::ipInRange($_SERVER[SERVER_ADDR], $range)) {
-                            return self::CONFIG_FILE_DEVEL;
+                        if (Utils::ipInRange($_SERVER['SERVER_ADDR'], $range)) {
+                            return self::ENV_DEVEL;die(dd);
                         }
                     }
-                    return self::CONFIG_FILE_PRODUCCTION;
+                    return self::ENV_PRODUCTION;
+                }else{
+                    return self::ENV_PRODUCTION;
                 }
-            }
-            else
-            {
+
+            case self::DETECT_ENV_TYPE_BY_HOSTNAME:
                 if (is_array(self::$_safeHostKeywords))
                 {
                     foreach (self::$_safeHostKeywords as $keyword) {
-                        if (Utils::resolveEnvironmentByHostname($_SERVER['SERVER_NAME'], $keyword) == TRUE) {
-                            return self::CONFIG_FILE_DEVEL;
+                        if (Utils::resolveEnvironmentByHostname($_SERVER['SERVER_NAME'], $keyword) == true) {
+                            return self::ENV_DEVEL;
                         }
                     }
-                    return self::CONFIG_FILE_PRODUCCTION;
                 }
-            }
+            default:
+                    return self::ENV_PRODUCTION;
+
         }
     }
 

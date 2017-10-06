@@ -3,9 +3,6 @@
 /**
  * leave this...
  */
-if (!defined('IN_CMS')) {
-	exit ('Fuck');
-}
 
 
 define('FRONT_SURFIX_CLASS_NAME', '_front');

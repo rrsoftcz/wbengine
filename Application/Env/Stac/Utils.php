@@ -8,19 +8,19 @@
 
 namespace Wbengine\Application\Env\Stac;
 
-//die(dirname(__DIR__) . "/Wbengine/Etc/Seo.inc");
 
+use Wbengine\Application\ApplicationException;
 
-class Utils {
+class Utils
+{
 
 
     /**
      * Static class - cannot be instantiated.
      */
-    final public function __construct()
-    {
-	require_once 'Class/SessionException.php';
-	throw new Wbengine_Class_Exception("Cannot instantiate static class " . get_class($this));
+    final public function __construct(){
+        require_once 'Class/SessionException.php';
+        throw new ApplicationException("Cannot instantiate static class " . get_class($this));
     }
 
 
@@ -28,9 +28,8 @@ class Utils {
      * return User's agent.
      * @return string
      */
-    static function getUserAgent()
-    {
-	return $_SERVER['HTTP_USER_AGENT'];
+    static function getUserAgent(){
+        return $_SERVER['HTTP_USER_AGENT'];
     }
 
 
@@ -39,9 +38,8 @@ class Utils {
      * @param type $protocol
      * @return string
      */
-    static function getHost( $protocol = NULL )
-    {
-	return (empty($protocol)) ? "http://" . $_SERVER['HTTP_HOST'] : $protocol . "://" . $_SERVER['HTTP_HOST'];
+    static function getHost($protocol = NULL){
+        return (empty($protocol)) ? "http://" . $_SERVER['HTTP_HOST'] : $protocol . "://" . $_SERVER['HTTP_HOST'];
     }
 
 
@@ -51,13 +49,13 @@ class Utils {
      */
     static function getUserIp()
     {
-	if ( isset($_SERVER["REMOTE_ADDR"]) ) {
-	    return $_SERVER["REMOTE_ADDR"];
-	} elseif ( isset($_SERVER["HTTP_X_FORWARDED_FOR"]) ) {
-	    return $_SERVER["HTTP_X_FORWARDED_FOR"];
-	} elseif ( isset($_SERVER["HTTP_CLIENT_IP"]) ) {
-	    return $_SERVER["HTTP_CLIENT_IP"];
-	}
+        if (isset($_SERVER["REMOTE_ADDR"])) {
+            return $_SERVER["REMOTE_ADDR"];
+        } elseif (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
+            return $_SERVER["HTTP_X_FORWARDED_FOR"];
+        } elseif (isset($_SERVER["HTTP_CLIENT_IP"])) {
+            return $_SERVER["HTTP_CLIENT_IP"];
+        }
     }
 
 
@@ -67,55 +65,18 @@ class Utils {
      * @param string $email
      * @return boolean
      */
-    static function checkValidEmail( $email )
+    static function checkValidEmail($email)
     {
-	if ( preg_match("/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/", $email) ) {
-	    list($username, $domain) = explode('@', $email);
-	    if ( !checkdnsrr($domain, 'MX') ) {
-		return false;
-	    }
-	    return true;
-	}
-
-	return false;
+        if (preg_match("/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/", $email)) {
+            list($username, $domain) = explode('@', $email);
+            if (!checkdnsrr($domain, 'MX')) {
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
-
-//    static function minimizeFile($source, $target = null, $path = null)
-//    {
-//        $source = $path . $source;
-//
-//        if(empty($target)){
-//            $target = $source."-min";
-//        }
-//
-//var_dump(pathinfo($source));
-//        if (file_exists($source) && is_readable($source))
-//        {
-//            $content = file_get_contents($source);
-//
-//            if(!empty($content)) {
-//                $minimized = self::minimize($content);
-//
-//                return file_put_contents($path . $target, $minimized);
-//            }else{
-//                // @todo Maybe create exception here....
-//                return false;
-//            }
-//        }
-//        // @todo Maybe create exception here....
-//        return false;
-//
-//    }
-
-//    /**
-//     * Minimize string by removing spaces...
-//     * @param $string
-//     * @return mixed
-//     */
-//    static function minimize($string){
-//        return preg_replace("'\\s+'ms", " ", $string);
-//    }
 
     /**
      * Create URL from given string related to url.
@@ -123,98 +84,21 @@ class Utils {
      * @param string $html
      * @return string
      */
-    static function createUrl( $url, $html = false )
-    {
-	return $tmp = self::createSeo($url) . (($html) ? '.html' : '/');
-//	return ( substr($tmp, 0, 0) === '/' ) ? '' : '/' . $tmp;
-    }
-
-
-    /**
-     * Create SEO relevant name from given string.
-     * @param string $string
-     * @return string
-     */
-    static function createSeo( $string = NULL )
-    {
-//        var_dump(dirname(__DIR__).'/../../');
-	require_once dirname(__DIR__).'/../../' . "/Etc/Seo.inc";
-//	var_dump(function_exists('create_filename_from_text'));
-//	die();
-	if ( function_exists('create_filename_from_text') ) {
-	    return create_filename_from_text($string);
-//	    die(create_filename_from_text($string));
-	} else {
-	    return $string;
-	}
-    }
-
-
-    static function emailSend( $message, $subject, $email )
-    {
-	$tmp = "Formular conten't:\n----------------------------------\n";
-	foreach ( $_POST as $key => &$value ) {
-	    if ( strtoupper($key) == "MESSAGE" )
-		$tmp .= "\n\n";
-
-	    $tmp .= "$key: $value.\n";
-	}
-
-	$tmp .= "\n\n\nForm was sent from IP:" . $_SERVER['REMOTE_ADDR'] . " at " . date("Y-m-d H:i:s");
-
-	// Create transport
-	$config = array(
-	    'ssl' => 'tls',
-	    'port' => 587,
-	    'auth' => 'login',
-	    'username' => 'bajtlamer@gmail.com',
-	    'password' => 'bajtfaskoadmin'
-	);
-
-
-	include_once 'Zend/Mail/Transport/Smtp.php';
-	include_once 'Zend/Mail.php';
-	$transport = new Zend_Mail_Transport_Smtp('smtp.gmail.com', $config);
-
-	Zend_Mail::setDefaultFrom('form@menimepodnikani.cz', 'Web Form');
-
-	try {
-	    $mail = new Zend_Mail('UTF-8');
-	    $mail->addTo($email);
-
-	    $mail->setSubject($subject);
-
-//		$mail->setBodyText($message);
-	    $mail->setBodyHtml($message);
-
-	    $mail->send($transport);
-	} catch (Exception $e) {
-	    return $e->getMessage();
-	}
-
-	// Reset defaults
-	Zend_Mail::clearDefaultFrom();
-	Zend_Mail::clearDefaultReplyTo();
-	return true;
-    }
-
-    static function resolveEnvironmentByHostname($hostname, $keyword){
-        if(preg_match("/{$keyword}/", $hostname, $mathes)){
-            return $mathes;
-        }
+    static function createUrl($url, $html = false){
+        return $tmp = self::createSeo($url) . (($html) ? '.html' : '/');
     }
 
 
     public static function compareStrings($expected, $actual)
     {
-        $expected     = (string) $expected;
-        $actual       = (string) $actual;
+        $expected = (string)$expected;
+        $actual = (string)$actual;
         if (function_exists('hash_equals')) {
             return hash_equals($expected, $actual);
         }
-        $lenExpected  = strlen($expected);
-        $lenActual    = strlen($actual);
-        $len          = min($lenExpected, $lenActual);
+        $lenExpected = strlen($expected);
+        $lenActual = strlen($actual);
+        $len = min($lenExpected, $lenActual);
         $result = 0;
         for ($i = 0; $i < $len; $i++) {
             $result |= ord($expected[$i]) ^ ord($actual[$i]);
@@ -288,12 +172,18 @@ class Utils {
 
     }
 
+    static function resolveEnvironmentByHostname($hostname, $keyword){
+        if(preg_match("/{$keyword}/", $hostname, $mathes)){
+            return (boolean)$mathes;
+        }
+    }
+
     public static function dump($var, $stop = false)
     {
         echo('<pre>');
         print_r($var);
         echo('</pre>');
-        if($stop) {
+        if ($stop) {
             $e = new \Exception;
             echo('<pre>');
             print_r($e->getTraceAsString());

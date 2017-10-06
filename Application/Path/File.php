@@ -137,7 +137,7 @@ class File {
         }
     }
 
-    public function getMinimizedName($handler = '-min' )
+    public function getMinimizedName($handler = '.min' )
     {
         return $this->getFileBaseName().$handler. '.' .$this->getFileExtension();
     }
@@ -203,7 +203,7 @@ class File {
                 $newFile->writeToFile($this->getContent(), self::MINIMIZED);
             }else{
                 Throw New FileException(
-                    sprintf('%s->%s: Target file %s is not writable.'
+                    sprintf('%s->%s: Cannot write to file "%s".'
                         , __CLASS__
                         , __FUNCTION__
                         , $newFile->getFile()

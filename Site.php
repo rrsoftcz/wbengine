@@ -529,6 +529,8 @@ Class Site
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
+        $this->setVariable('host', Config::getCdnPath(), 'cdn');
+        $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
 
         $this->_setSections($this->getSections());
 
