@@ -20,11 +20,13 @@ use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Application\Mobile\Detector;
 use Wbengine\Application\Path\File;
 use Wbengine\Application\Path\Path;
+use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Config;
 use Wbengine\Db;
 use Wbengine\Error;
 use Wbengine\Locale;
 use Wbengine\Locale\LocaleAbstract;
+use Wbengine\Router;
 use Wbengine\Section;
 use Wbengine\Site;
 use Wbengine\Renderer;
@@ -35,7 +37,7 @@ use Wbengine\Vars;
 
 include_once dirname(__DIR__) . '/Application/Env/Const.php';
 
-abstract Class Application
+abstract Class Application implements ComponentParentInterface
 {
     /**
      * Locale class
@@ -657,6 +659,11 @@ abstract Class Application
             $this->_createSite();
         }
         return $this->_site;
+    }
+
+    Public function get($user_rouute, $function, $callable){
+        $router = new Router($this);
+        var_dump($router->match($user_rouute));
     }
 
 

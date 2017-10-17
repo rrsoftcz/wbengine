@@ -1,0 +1,9 @@
+.DS_Store
+*.swp
+*~.nib
+._*
+.svn/
+.idea/
+composer.lock
+App/Config/*.*
+vendor/

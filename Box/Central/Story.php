@@ -16,9 +16,9 @@
 
 namespace Wbengine\Box\Central;
 
-use Wbengine\Box\BoxTemplate;
+use Wbengine\Box\ControllerTemplate;
 
-class Story extends BoxTemplate
+class Story extends ControllerTemplate
 {
 
 

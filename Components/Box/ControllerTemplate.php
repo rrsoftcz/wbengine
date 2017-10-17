@@ -1,18 +1,19 @@
 <?php
 
 /**
- * Description of BoxTemplate
+ * Description of ControllerTemplate
  *
  * @author roza
  */
 
-namespace Wbengine\Box;
+namespace Wbengine\Components\Box;
 
 use Wbengine\Box\Exception;
 use Wbengine\Box;
 use Wbengine\Box\Exception\BoxException;
+use Wbengine\Components\ComponentParentInterface;
 
-Abstract class BoxTemplate
+Abstract class ControllerTemplate implements ComponentParentInterface
 {
 
     /**
@@ -27,7 +28,7 @@ Abstract class BoxTemplate
     private $modelCache = null;
 
     /**
-     * @var BoxTemplate
+     * @var ControllerTemplate
      */
     private $_box = null;
 
@@ -140,7 +141,7 @@ Abstract class BoxTemplate
 
     /**
      * Return instance of object Box
-     * @return Box|BoxTemplate
+     * @return Box|ControllerTemplate
      */
     public function getBox()
     {

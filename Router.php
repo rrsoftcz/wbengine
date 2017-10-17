@@ -15,7 +15,8 @@
 
     namespace Wbengine;
 
-    use Wbengine\Box\BoxTemplate;
+    use Wbengine\Box\ControllerTemplate;
+    use Wbengine\Components\ComponentParentInterface;
     use Wbengine\Router\Route;
     use Wbengine\Router\RouterException;
 
@@ -43,7 +44,7 @@
         private $match = FALSE;
 
         /**
-         * @var null|Box\BoxTemplate
+         * @var null|Box\ControllerTemplate
          */
         private $box = NULL;
 
@@ -52,14 +53,18 @@
          */
         private $boxRemainurl = NULL;
 
+        private $parent;
+
 
 
         /**
-         * @param BoxTemplate $box
+         * @param ControllerTemplate $parent
          */
-        public function __construct(BoxTemplate $box)
+        public function __construct(ComponentParentInterface $parent = null)
         {
-            $this->box = $box;
+            if($parent instanceof ComponentParentInterface) {
+                $this->parent = $parent;
+            }
         }
 
 
@@ -72,20 +77,32 @@
          */
         public function match($boxRemainUrl = NULL)
         {
+            // Replace user patern to regular expression...
+            $pattern = preg_replace('/\{[a-z0-9]+\}/','([A-Za-z0-9]+)', $route);
+//            $pattern = sprintf("/^%s$/", preg_replace('/\//','\/',self::$pattern));
+            self::$pattern = sprintf("/^%s$/", preg_replace('/\//','\/',$pattern));
+//            Utils::dump(preg_split('/\{[a-z0-9]+\}/', $route, $params));
+            preg_match_all('/\{[a-z0-9]+\}/', $route, $params);
+            preg_match(self::$pattern, $_SERVER['REQUEST_URI'], $match);
+//            Utils::dump(self::$pattern);
+//            Utils::dump($_SERVER['REQUEST_URI']);
+            array_shift($match);
+//            for($i=0;$i<sizeof($match);$i++){
+////                var_dump($i);
+//                $p[$params[0][$i]] = $match[$i];
+////                Utils::dump($m);
+//            }
+            $p = array_combine(
+                array_map(function($value){
+                    return preg_replace('/\{|\}/','', $value);
+                }, $params[0]), $match
+            );
 
-            if (!empty($boxRemainUrl))
-            {
-                $this->boxRemainurl = $boxRemainUrl;
-            }
-
-            if ($this->_matchRoute() === FALSE)
-            {
-                return NULL;
-            }
-
-            $this->_setRouteParams();
-
-            return $this->route;
+            Utils::dump($params);
+            Utils::dump($match);
+            Utils::dump($p);
+//            var_dump($pattern);
+//            var_dump($x);           return $this->route;
         }
 
 
@@ -253,14 +270,14 @@
         private function _getBoxRemainUrl()
         {
 
-            if ($this->box instanceof BoxTemplate)
+            if ($this->box instanceof ControllerTemplate)
             {
                 return $this->box->getBoxRemainUrl();
             }
             else
             {
                 throw New RouterException(__METHOD__
-                    . ': Stored box object seems to be not instance of BoxTemplate or is null.');
+                    . ': Stored box object seems to be not instance of ControllerTemplate or is null.');
             }
         }
 

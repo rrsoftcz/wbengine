@@ -19,7 +19,7 @@
 namespace Wbengine;
 
 use Wbengine\Box\Model;
-use Wbengine\Box\BoxTemplate;
+use Wbengine\Box\ControllerTemplate;
 use Wbengine\Box\Exception\BoxException;
 use Wbengine\Model\ModelAbstract;
 
@@ -56,7 +56,7 @@ class Box
 
     /**
      * The module name
-     * @var BoxTemplate
+     * @var ControllerTemplate
      */
     private $_module = null;
 
@@ -89,7 +89,7 @@ class Box
      *
      * @param $section
      * @param string $name
-     * @return BoxTemplate
+     * @return ControllerTemplate
      * @throws BoxException
      */
     private function _getModuleBox($section, $name)
@@ -367,7 +367,7 @@ class Box
         $_method = $this->_createMethodName($this->getMethodName());
         $_boxObj = $this->_getModuleBox($this->getSection()->getKey(), $this->getModuleName());
 
-        if (!$this->_module instanceof BoxTemplate) {
+        if (!$this->_module instanceof ControllerTemplate) {
             throw New BoxException(__METHOD__
                 . ': Given object must be instance of \Wbengine\BoxTemplate.');
         }
