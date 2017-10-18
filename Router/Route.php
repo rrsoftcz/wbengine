@@ -14,6 +14,7 @@
      */
 
     namespace Wbengine\Router;
+    use Wbengine\Application\Env\Stac\Utils;
 
     /**
      * Class Route
@@ -23,46 +24,58 @@
     class Route
     {
 
-        /**
-         * @var array|null
-         */
-        private $route = NULL;
 
         /**
-         * @var null
+         * Created route as stdClass object
+         * @var \stdClass
          */
-        private $options = NULL;
+        private $route;
 
+
+    
+        
+        
         /**
-         * @var null
+         * Route constructor.
+         * @param string|null $user_route
          */
-        private $pattern = NULL;
-
-        /**
-         * @var
-         */
-        private $params;
-
-
-
-        /**
-         * @param array $route
-         */
-        public function __construct(array $route)
+        public function __construct($user_route = null)
         {
-            $this->route   = $route;
-            $this->pattern = $route[0];
-            $this->options = $route[1];
+            if($user_route){
+                $this->user_route = $user_route;
+            }
         }
 
 
         /**
-         * @internal param array $params
-         * @param $params
+         * Class setter ...
+         * @param $name
+         * @param $value
          */
-        public function setParams($params)
+        public function __set($name, $value)
         {
-            $this->params = $params;
+            $this->route->$name = $value;
+        }
+
+
+        /**
+         * Class getter ...
+         * @param $name
+         * @return mixed
+         */
+        public function __get($name)
+        {
+            return $this->route->$name;
+        }
+
+
+        
+        /**
+         * Set user's route template.
+         * @param string $user_route
+         */
+        public function setUserRoute($user_route){
+            $this->user_route = $user_route;
         }
 
 
@@ -74,89 +87,110 @@
          */
         public function getParams($param = NULL)
         {
-            if (!empty($param))
-            {
-                if (array_key_exists($param, $this->params))
-                {
-                    return $this->params[$param];
-                } else
-                {
-                    throw New RouterException(__METHOD__
-                        . ': Requested Route parameter [' . $param . '] does not exist.');
-                }
-            }
-
-            return $this->params;
+//            preg_match_all('/\{[a-z0-9]+\}/', $this->route->user_route, $this->params);
+            return $this->args;
         }
 
 
 
         /**
-         * @return null
+         * Parse given user route and create regex pattern
+         * @return string
          */
-        public function getOptions()
-        {
-            return $this->options;
-        }
-
-
-
-        /**
-         * @return null
-         */
-        public function getPattern()
-        {
+        public function getPattern(){
+            $this->preg_pattern = preg_replace('/\{[a-z0-9]+\}/','([A-Za-z0-9]+)', $this->getUserRoute());
+            $this->pattern = sprintf("~^%s$~", $this->route->preg_pattern);
             return $this->pattern;
         }
 
 
 
         /**
+         * Try to match route ...
+         * @param $uri
          * @return $this
          */
-        public function getRoute()
+        public function compare($uri)
         {
+            $this->uri = $uri;
+            if($this->is_matched = preg_match($this->getPattern(), $uri, $matches)) {
+                $this->_parse($matches);
+            }
             return $this;
         }
 
 
 
         /**
-         * @return int
+         * Return is matched state as boolean.
+         * @return bool
          */
-        public function getRequestedParamsCount()
-        {
-            return sizeof($this->getParamsDefinition());
+        public function isMatched(){
+            return (boolean) $this->is_matched;
         }
 
 
 
         /**
-         * @return mixed
+         * Parse all route params if route matched ...
+         * @param $matches
          */
-        public function getParamsDefinition()
+        private function _parse($matches)
         {
-            return $this->options[params];
+            preg_match_all('/\{[a-z0-9]+\}/', $this->getUserRoute(), $params);
+
+            $this->uri = array_shift($matches);
+            $this->matches = $matches;
+            $this->params = $params[0];
+            $this->args = array_combine(
+                array_map(function($value){
+                    return preg_replace(
+                        '/\{|\}/',
+                        '',
+                        $value
+                    );
+                }, $this->params), $matches
+            );
+
         }
 
 
 
         /**
-         * @return mixed
+         * Return given user route
+         * @return string|null
          */
-        public function getAction()
-        {
-            return $this->options[action];
+        public function getUserRoute(){
+            return $this->route->user_route;
         }
 
 
 
         /**
-         * @return mixed
+         * Return Controller's method name
+         * @return string|null
          */
-        public function getController()
-        {
-            return $this->options[controller];
+        public function getMethod(){
+            return $this->methodname;
+        }
+
+
+
+        /**
+         * Return Box controller name
+         * @return string|null
+         */
+        public function getController(){
+            return $this->controller;
+        }
+
+
+
+        /**
+         * Dump self object as string
+         */
+        public function toString(){
+            Utils::dump($this);
         }
 
     }

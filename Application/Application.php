@@ -663,7 +663,9 @@ abstract Class Application implements ComponentParentInterface
 
     Public function get($user_rouute, $function, $callable){
         $router = new Router($this);
-        var_dump($router->match($user_rouute));
+//        var_dump($router->match($user_rouute));
+//        $router->match($user_rouute);
+        return $callable($router->match($user_rouute));
     }
 
 

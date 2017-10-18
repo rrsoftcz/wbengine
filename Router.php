@@ -15,6 +15,7 @@
 
     namespace Wbengine;
 
+    use Wbengine\Application\Env\Stac\Utils;
     use Wbengine\Box\ControllerTemplate;
     use Wbengine\Components\ComponentParentInterface;
     use Wbengine\Router\Route;
@@ -54,6 +55,8 @@
         private $boxRemainurl = NULL;
 
         private $parent;
+        private $pattern;
+        private $params;
 
 
 
@@ -75,32 +78,46 @@
          * @param string $boxRemainUrl
          * @return $this|null
          */
-        public function match($boxRemainUrl = NULL)
+        public function match($user_route)
         {
+//            $route = new Route($user_route);
+            return $this->createRoute($user_route)->compare(htmlspecialchars($_SERVER['REQUEST_URI']));
+
+//            $route->setUserRoute($user_route);
+//            var_dump($this->getRoute()->getUserRoute());
             // Replace user patern to regular expression...
-            $pattern = preg_replace('/\{[a-z0-9]+\}/','([A-Za-z0-9]+)', $route);
+//            $pattern = preg_replace('/\{[a-z0-9]+\}/','([A-Za-z0-9]+)', $user_route);
 //            $pattern = sprintf("/^%s$/", preg_replace('/\//','\/',self::$pattern));
-            self::$pattern = sprintf("/^%s$/", preg_replace('/\//','\/',$pattern));
+//            $this->pattern = sprintf("/^%s$/", preg_replace('/\//','\/',$pattern));
 //            Utils::dump(preg_split('/\{[a-z0-9]+\}/', $route, $params));
-            preg_match_all('/\{[a-z0-9]+\}/', $route, $params);
-            preg_match(self::$pattern, $_SERVER['REQUEST_URI'], $match);
+//            preg_match_all('/\{[a-z0-9]+\}/', $user_route, $params);
+//            $match = preg_match($route->getPattern(), $_SERVER['REQUEST_URI'], $matches);
 //            Utils::dump(self::$pattern);
 //            Utils::dump($_SERVER['REQUEST_URI']);
-            array_shift($match);
+
+//            var_dump($route->match($_SERVER['REQUEST_URI'])->isMatched());
+
+//            array_shift($matches);
 //            for($i=0;$i<sizeof($match);$i++){
 ////                var_dump($i);
 //                $p[$params[0][$i]] = $match[$i];
 ////                Utils::dump($m);
 //            }
-            $p = array_combine(
-                array_map(function($value){
-                    return preg_replace('/\{|\}/','', $value);
-                }, $params[0]), $match
-            );
+//            $p = array_combine(
+//                array_map(function($value){
+//                    return preg_replace('/\{|\}/','', $value);
+//                }, $params[0]), $matches
+//            );
 
-            Utils::dump($params);
-            Utils::dump($match);
-            Utils::dump($p);
+//            $this->route = new Route();
+//            $this->route->pattern = $this->pattern;
+//            $this->route->match = $match;
+//            $this->route->params = $p;
+//            Utils::dump($route->toString());
+//            return $this->route;
+//            Utils::dump($params);
+//            Utils::dump($match);
+//            Utils::dump($p);
 //            var_dump($pattern);
 //            var_dump($x);           return $this->route;
         }
@@ -233,7 +250,7 @@
          * @return Route
          * @throws Router\RouterException
          */
-        public function getRoute()
+        public function createRoute($user_route)
         {
             if ($this->route instanceof Route)
             {
@@ -241,10 +258,9 @@
             }
             else
             {
-                throw New RouterException(__METHOD__
-                    . ': Instance of object \Wbengine\Router\Route required, but not given.');
-
+                $this->route = new Route($user_route);
             }
+            return $this->route;
         }
 
 
