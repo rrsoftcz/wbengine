@@ -125,7 +125,7 @@
          * Return is matched state as boolean.
          * @return bool
          */
-        public function isMatched(){
+        public function isRouteMatch(){
             return (boolean) $this->is_matched;
         }
 

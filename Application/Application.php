@@ -661,11 +661,16 @@ abstract Class Application implements ComponentParentInterface
         return $this->_site;
     }
 
-    Public function get($user_rouute, $function, $callable){
+    Public function get($user_route, $function, $callable){
         $router = new Router($this);
-//        var_dump($router->match($user_rouute));
-//        $router->match($user_rouute);
-        return $callable($router->match($user_rouute));
+        if($router->match($user_route)->isRouteMatch() === true){
+            if(is_callable($callable)){
+                return $callable('found');
+            }
+        }
+        return false;
+//        return ($router->match($user_route)->isRouteMatch() === true)?$callable($router->match($user_route)):false;
+//        return $callable($router->match($user_route)->isRouteMatch());
     }
 
 
