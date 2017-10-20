@@ -153,8 +153,10 @@
          */
         private function _setLink()
         {
-            $this->_link = trim($_REQUEST['link'] . $this->_ext, '/');
-            $this->_link = $_REQUEST['link'] . $this->_ext;
+            if(isset($_REQUEST['link'])){
+                $this->_link = trim($_REQUEST['link'] . $this->_ext, '/');
+                $this->_link = $_REQUEST['link'] . $this->_ext;
+            }
         }
 
 

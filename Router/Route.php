@@ -14,14 +14,17 @@
      */
 
     namespace Wbengine\Router;
+    use App\App;
     use Wbengine\Application\Env\Stac\Utils;
+    use Wbengine\Components\ComponentParentInterface;
+    use Wbengine\Site;
 
     /**
      * Class Route
      *
      * @package Wbengine\Router
      */
-    class Route
+    class Route implements ComponentParentInterface
     {
 
 
@@ -41,6 +44,8 @@
          */
         public function __construct($user_route = null)
         {
+            $this->route = new \stdClass();
+            
             if($user_route){
                 $this->user_route = $user_route;
             }
@@ -52,8 +57,7 @@
          * @param $name
          * @param $value
          */
-        public function __set($name, $value)
-        {
+        public function __set($name, $value){
             $this->route->$name = $value;
         }
 
@@ -98,7 +102,7 @@
          * @return string
          */
         public function getPattern(){
-            $this->preg_pattern = preg_replace('/\{[a-z0-9]+\}/','([A-Za-z0-9]+)', $this->getUserRoute());
+            $this->preg_pattern = preg_replace('/\{[a-z0-9\_]+\}/','([A-Za-z0-9\_]+)', $this->getUserRoute());
             $this->pattern = sprintf("~^%s$~", $this->route->preg_pattern);
             return $this->pattern;
         }
@@ -111,7 +115,7 @@
          * @return $this
          */
         public function compare($uri)
-        {
+        {//var_dump($this->getPattern());
             $this->uri = $uri;
             if($this->is_matched = preg_match($this->getPattern(), $uri, $matches)) {
                 $this->_parse($matches);
@@ -137,7 +141,7 @@
          */
         private function _parse($matches)
         {
-            preg_match_all('/\{[a-z0-9]+\}/', $this->getUserRoute(), $params);
+            preg_match_all('/\{[a-z0-9\_]+\}/', $this->getUserRoute(), $params);
 
             $this->uri = array_shift($matches);
             $this->matches = $matches;
@@ -154,6 +158,42 @@
 
         }
 
+        public function getStaticBox($constructor){
+            return $this->_createBox($constructor);
+        }
+
+
+
+        private function _createBox($constructor){
+            $values = explode('@',$constructor);
+            if(is_array($values)){
+                if(preg_match('/\\\\/', $values[0])){
+                    $namespace = $values[0];
+                }else{
+                    $namespace = "\App\Box\\" . ucfirst($values[0]);
+                }
+
+                if($values[1]){
+                    $method = $values[1];
+                }
+
+            }
+
+            if(class_exists($namespace)){
+                if(method_exists($namespace, $method)){
+                    $box = new $namespace($this);
+                    return $box;
+                }
+            }
+            return;
+        }
+
+
+
+        public function getSite()
+        {
+            return new Site();
+        }
 
 
         /**

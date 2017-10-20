@@ -79,10 +79,6 @@ class Path {
      */
     public function __get($name)
     {
-        if(empty($name)) {
-            Throw New PathException(__CLASS__.': Empty path name');
-        }
-
         if(is_array($this->_paths)) {
             foreach ($this->_paths as $i => $p) {
                 if ($p->_name == $name) {
@@ -90,7 +86,7 @@ class Path {
                 }
             }
         }
-        // @todo We should remove exception from this place...
+        return null;
     }
 
 

@@ -16,7 +16,7 @@
     namespace Wbengine;
 
     use Wbengine\Application\Env\Stac\Utils;
-    use Wbengine\Box\ControllerTemplate;
+    use Wbengine\Box\WbengineBoxAbstract;
     use Wbengine\Components\ComponentParentInterface;
     use Wbengine\Router\Route;
     use Wbengine\Router\RouterException;
@@ -32,7 +32,7 @@
         /**
          * @var \Wbengine\Router\Route
          */
-        private $route = NULL;
+        private static $route = NULL;
 
         /**
          * @var array|null
@@ -45,7 +45,7 @@
         private $match = FALSE;
 
         /**
-         * @var null|Box\ControllerTemplate
+         * @var null|Box\WbengineBoxAbstract
          */
         private $box = NULL;
 
@@ -61,7 +61,7 @@
 
 
         /**
-         * @param ControllerTemplate $parent
+         * @param WbengineBoxAbstract $parent
          */
         public function __construct(ComponentParentInterface $parent = null)
         {
@@ -71,6 +71,20 @@
         }
 
 
+        public static function get($path, $function, $callable){
+            $route = self::match($path);
+            if($route->isRouteMatch() === true){
+                if(is_callable($callable)){
+                    $callable(self::getRoute()->getStaticBox($function));
+//                    return $callable('found');
+//                    var_dump(self::getRoute()->createBox($function));
+//                    return self::_createBox($function);
+                }
+            }
+//            self::getRoute()->toString();
+            return false;
+        }
+
 
         /**
          * Try to match route by given box url
@@ -78,10 +92,12 @@
          * @param string $boxRemainUrl
          * @return $this|null
          */
-        public function match($user_route)
+        public static function match($user_route)
         {
 //            $route = new Route($user_route);
-            return $this->createRoute($user_route)->compare(htmlspecialchars($_SERVER['REQUEST_URI']));
+//            Utils::dump(self::createRoute($user_route)->compare(htmlspecialchars($_SERVER['REQUEST_URI'])));
+
+            return self::createRoute($user_route)->compare(htmlspecialchars($_SERVER['REQUEST_URI']));
 
 //            $route->setUserRoute($user_route);
 //            var_dump($this->getRoute()->getUserRoute());
@@ -145,124 +161,21 @@
         }
 
 
-
-        /**
-         * Return box routes
-         *
-         * @return array|null
-         */
-        public function getRoutes()
-        {
-            if ($this->_routes === NULL)
-            {
-                $this->_routes = $this->box->getRoutes();
-            }
-
-            return $this->_routes;
+        public function getParent(){
+            return $this->parent;
         }
-
-
-
-        /**
-         * Return remain parts from url
-         *
-         * @return null|string
-         */
-        public function getBoxRemainUrl()
-        {
-            if ($this->boxRemainurl === NULL)
-            {
-                $this->boxRemainurl = $this->_getBoxRemainUrl();
-            }
-
-            return $this->boxRemainurl;
-        }
-
-
-
-        /**
-         * This function fill parsed params from remain url
-         * to stored array for latest use.
-         * @use $this->params
-         */
-        private function _setRouteParams()
-        {
-            if ($this->route->getRequestedParamsCount() >= 1)
-            {
-
-                $paramsRequest = $this->route->getParamsDefinition();
-
-                if (!is_array($paramsRequest))
-                {
-                    throw New RouterException(__METHOD__
-                        . ': Route params definition must be an array.');
-                }
-
-                $boxUrlParts = explode("/", $this->getBoxRemainUrl());
-                $patterns    = explode("/", $this->route->getPattern());
-
-
-                foreach (array_keys($this->route->getParamsDefinition()) as $key)
-                {
-                    $i                   = (int)$paramsRequest[$key];
-                    $match               = preg_replace("/^{$patterns[$i]}/", '$1', $boxUrlParts[$i]);
-                    $paramsRequest[$key] = $match;
-                }
-
-                $this->getRoute()->setParams($paramsRequest);
-            }
-            else
-            {
-                $this->getRoute()->setParams(NULL);
-            }
-        }
-
-
-
-        /**
-         * This private method loop all routes in array and
-         * try match route by given remain url part.
-         *
-         * @see \Wbengine\Router\Route
-         * @return $this|bool
-         */
-        private function _matchRoute()
-        {
-            foreach ($this->getRoutes() as $route)
-            {
-                $this->route = New Route($route);
-                if (preg_match(json_encode($this->route->getPattern()), $this->getBoxRemainUrl()))
-                {
-                    $this->match = TRUE;
-
-                    return $this;
-                }
-            }
-
-            $this->match = FALSE;
-
-            return FALSE;
-        }
-
-
 
         /**
          * @return Route
          * @throws Router\RouterException
          */
-        public function createRoute($user_route)
-        {
-            if ($this->route instanceof Route)
-            {
-                return $this->route;
-            }
-            else
-            {
-                $this->route = new Route($user_route);
-            }
-            return $this->route;
+        public static function createRoute($user_route){
+            return self::$route = new Route($user_route);
         }
 
+        public static function getRoute(){
+            return self::$route;
+        }
 
 
         /**
@@ -276,6 +189,33 @@
         }
 
 
+//        private static function _createBox($constructor){
+//            $values = explode('@',$constructor);
+//            if(is_array($values)){
+//                if(preg_match('/\\\\/', $values[0])){
+//                    $namespace = $values[0];
+//                }else{
+//                    $namespace = "\App\Box\\" . ucfirst($values[0]);
+//                }
+//
+//                if($values[1]){
+//                    $method = $values[1];
+//                }
+//
+//            }
+////            var_dump(__NAMESPACE__);
+//            Utils::dump($method);
+////            var_dump(class_exists($namespace));
+//
+//            if(class_exists($namespace)){
+//                if(method_exists($namespace, $method)){
+//                    $box = new $namespace(self);
+//                    return $box;
+//                }
+//            }
+//            return;
+//        }
+
 
         /**
          * Return remain part url from given box.
@@ -286,14 +226,14 @@
         private function _getBoxRemainUrl()
         {
 
-            if ($this->box instanceof ControllerTemplate)
+            if ($this->box instanceof WbengineBoxAbstract)
             {
                 return $this->box->getBoxRemainUrl();
             }
             else
             {
                 throw New RouterException(__METHOD__
-                    . ': Stored box object seems to be not instance of ControllerTemplate or is null.');
+                    . ': Stored box object seems to be not instance of WbengineBoxAbstract or is null.');
             }
         }
 

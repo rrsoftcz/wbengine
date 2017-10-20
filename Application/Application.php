@@ -279,6 +279,7 @@ abstract Class Application implements ComponentParentInterface
                     $ef->saveEtag($cssFile);
                 }
             }
+            //@TODO NEKDE JE TU CHYBA, POKUD NEEXISTUJE CSS SOUBOR, ZADANY V CONFIGU...!
 
         }
     }
@@ -531,7 +532,7 @@ abstract Class Application implements ComponentParentInterface
      * @return string
      */
     public static function _getAppDir($noSlashes){
-        return ($noSlashes)?ltrim(self::$APP_BASE_DIR,'/'):self::$APP_BASE_DIR;
+        return ($noSlashes) ? ltrim(self::$APP_BASE_DIR,'/') : self::$APP_BASE_DIR;
     }
 
 
@@ -551,17 +552,6 @@ abstract Class Application implements ComponentParentInterface
      */
     public function getEnv(){
         return $this->_env;
-    }
-
-
-    /**
-     * Set config filename and create (set) environment type
-     * derived from config name
-     * @param $filename
-     */
-    public function setConfigFile($filename){
-        $this->_env = (boolean)preg_match('/(devel)/',strtolower($filename));
-        $this->_config_file = $filename;
     }
 
 
@@ -661,18 +651,6 @@ abstract Class Application implements ComponentParentInterface
         return $this->_site;
     }
 
-    Public function get($user_route, $function, $callable){
-        $router = new Router($this);
-        if($router->match($user_route)->isRouteMatch() === true){
-            if(is_callable($callable)){
-                return $callable('found');
-            }
-        }
-        return false;
-//        return ($router->match($user_route)->isRouteMatch() === true)?$callable($router->match($user_route)):false;
-//        return $callable($router->match($user_route)->isRouteMatch());
-    }
-
 
     /**
      * Run the application ...
@@ -681,6 +659,14 @@ abstract Class Application implements ComponentParentInterface
     public function run($errorHandler = null)
     {
         try {
+
+            /**
+             * 3. FIST TIME INIT OBJECT SITE
+             */
+
+            $this->getSite()->initialize($this);
+
+
 
             if ($errorHandler===HTML_ERROR_410) {
                 $this->addException('Gone.', HTML_ERROR_410);
@@ -691,6 +677,15 @@ abstract Class Application implements ComponentParentInterface
                 $this->addException('Site not found.', HTML_ERROR_404);
                 $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
             }
+
+
+            /**
+             * 4. THE MINIMALIZE CSS FILE OPTION ...
+             */
+            if((boolean)Config::minimizeCss()){
+                $this->minimizeCssFiles(Config::getCssCollection(),  APP_DIR);
+            }
+
 
             $this->getRenderer()->dispatch($this);
 

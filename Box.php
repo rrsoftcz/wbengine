@@ -19,11 +19,12 @@
 namespace Wbengine;
 
 use Wbengine\Box\Model;
-use Wbengine\Box\ControllerTemplate;
+use Wbengine\Box\WbengineBoxAbstract;
 use Wbengine\Box\Exception\BoxException;
+use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Model\ModelAbstract;
 
-class Box
+class Box implements ComponentParentInterface
 {
 
     /**
@@ -56,7 +57,7 @@ class Box
 
     /**
      * The module name
-     * @var ControllerTemplate
+     * @var WbengineBoxAbstract
      */
     private $_module = null;
 
@@ -89,7 +90,7 @@ class Box
      *
      * @param $section
      * @param string $name
-     * @return ControllerTemplate
+     * @return WbengineBoxAbstract
      * @throws BoxException
      */
     private function _getModuleBox($section, $name)
@@ -367,9 +368,9 @@ class Box
         $_method = $this->_createMethodName($this->getMethodName());
         $_boxObj = $this->_getModuleBox($this->getSection()->getKey(), $this->getModuleName());
 
-        if (!$this->_module instanceof ControllerTemplate) {
+        if (($this->_module instanceof WbengineBoxAbstract) === false) {
             throw New BoxException(__METHOD__
-                . ': Given object must be instance of \Wbengine\BoxTemplate.');
+                . ': Given object must be instance of "\Wbengine\WbengineBoxAbstract".');
         }
 
         //@todo Given object must implement a box interfce!

@@ -1,26 +1,30 @@
 <?php
 
 /**
- * Description of ControllerTemplate
+ * Description of WbengineBoxAbstract
  *
  * @author roza
  */
 
-namespace Wbengine\Components\Box;
+namespace Wbengine\Box;
 
+use App\App;
 use Wbengine\Box\Exception;
 use Wbengine\Box;
 use Wbengine\Box\Exception\BoxException;
 use Wbengine\Components\ComponentParentInterface;
+use Wbengine\Config;
+use Wbengine\Renderer;
+use Wbengine\Site;
 
-Abstract class ControllerTemplate implements ComponentParentInterface
+Abstract class WbengineBoxAbstract
 {
 
     /**
      * Object Site
      * @var \Wbengine\Site
      */
-    private $site = null;
+    private $_parent = null;
 
     /**
      * @var array
@@ -28,9 +32,35 @@ Abstract class ControllerTemplate implements ComponentParentInterface
     private $modelCache = null;
 
     /**
-     * @var ControllerTemplate
+     * @var WbengineBoxAbstract
      */
     private $_box = null;
+    private $_renderer;
+
+    /**
+     * @var Exception
+     */
+    private $_exception = null;
+
+    /**
+     * @var array
+     */
+    private $_routes = null;
+
+
+    /**
+     * Return instance of Box object
+     * @param \Wbengine\Box $box
+     * @internal param $
+     */
+    public function __construct(ComponentParentInterface $parent)
+    {
+        if($parent instanceof App) {
+            $this->_parent = $parent;
+        }
+    }
+
+
 
     /**
      * Create box's own model object
@@ -59,35 +89,16 @@ Abstract class ControllerTemplate implements ComponentParentInterface
 
 
     /**
-     * @var Exception
-     */
-    private $_exception = null;
-
-    /**
-     * @var array
-     */
-    private $_routes = null;
-
-
-    /**
-     * Return instance of Box object
-     * @param \Wbengine\Box $box
-     * @internal param $
-     */
-    public function __construct(Box $box)
-    {
-        $this->site = $box->getSite();
-        $this->_box = $box;
-    }
-
-
-    /**
      * Return instance of selected renderer
      * @return \Wbengine\Renderer
      */
     public function getRenderer()
     {
-        return $this->site->getRenderer();
+        if(method_exists($this->_parent,'getRenderer')) {
+            return $this->_parent->getRenderer();
+        }
+        $this->_parent = new App();
+        return $this->_renderer = $this->_parent->init()->getRenderer();
     }
 
 
@@ -97,7 +108,7 @@ Abstract class ControllerTemplate implements ComponentParentInterface
      */
     public function getSite()
     {
-        return $this->site;
+        return $this->_parent;
     }
 
 
@@ -141,7 +152,7 @@ Abstract class ControllerTemplate implements ComponentParentInterface
 
     /**
      * Return instance of object Box
-     * @return Box|ControllerTemplate
+     * @return Box|WbengineBoxAbstract
      */
     public function getBox()
     {

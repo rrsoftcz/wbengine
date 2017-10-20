@@ -27,8 +27,7 @@ use Wbengine\Config\Valuex;
 
 class Config
 {
-    CONST CONFIG_FILE_DEVEL             = 'Devel.json';
-    CONST CONFIG_FILE_PRODUCCTION       = 'Production.json';
+    CONST CONFIG_FILE                   = 'Settings.json';
     CONST DETECT_ENV_TYPE_BY_IP         = 2;
     CONST DETECT_ENV_TYPE_BY_HOSTNAME   = 3;
 

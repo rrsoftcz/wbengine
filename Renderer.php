@@ -21,6 +21,7 @@ namespace Wbengine;
 use Wbengine\Application\Application;
 use Wbengine\Application\ApplicationException;
 use Wbengine\Application\Path\Path;
+use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Exception\RuntimeException;
 
 //use Wbengine\Renderer;
@@ -74,17 +75,17 @@ class Renderer extends Renderer\Adapter
      * Create HTML templater object and
      * assign all defined variables.
      *
-     * @param object|Application $App
+     * @param object|Application $parent
      * @throws RuntimeException
      */
-    function __construct(Application $App)
+    function __construct(ComponentParentInterface $parent)
     {
-        if ($App instanceof Application) {
-            $this->_app = $App;
-            $this->_path = $App->_getObjectPath();
-        } else {
-            throw new Exception\RuntimeException('Require instance of Wbengine\Application, but NULL given.');
+
+        if ($parent instanceof Application) {
+            $this->_app = $parent;
+            $this->_path = $parent->_getObjectPath();
         }
+
         $this->setAdapterName($this->getRendererAdapterName());
         $this->setTemplateDir($this->getRendererTemplatesPath());
         $this->setCompileDir($this->getRendererCacheDir());
@@ -106,7 +107,10 @@ class Renderer extends Renderer\Adapter
      * @return null|Path
      */
     public function Path(){
-        return $this->_path;
+        if($this->_path instanceof Path) {
+            return $this->_path;
+        }
+        return $this->_path = new Path();
     }
 
     /**
@@ -250,7 +254,7 @@ class Renderer extends Renderer\Adapter
                 . ': Expected template name as string, but null given.');
         }
 
-        if (!file_exists($this->getParent()->_getObjectPath()->getPath(Path::TYPE_TEMPLATES,true).$_path)) {
+        if (!file_exists($this->Path()->getPath(Path::TYPE_TEMPLATES, null,true).$_path)) {
             throw New Exception\RuntimeException(__METHOD__
                 . ': Template file "' . $_path . '" not exist.');
         }
