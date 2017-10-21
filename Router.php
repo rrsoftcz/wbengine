@@ -15,6 +15,7 @@
 
     namespace Wbengine;
 
+    use Wbengine\Application\Env\Http;
     use Wbengine\Application\Env\Stac\Utils;
     use Wbengine\Box\WbengineBoxAbstract;
     use Wbengine\Components\ComponentParentInterface;
@@ -71,11 +72,30 @@
         }
 
 
-        public static function get($path, $function, $callable){
+        public static function get($path, $callable){
+            if(Http::type() !== 'GET') return;
+
             $route = self::match($path);
             if($route->isRouteMatch() === true){
                 if(is_callable($callable)){
-                    $callable(self::getRoute()->getStaticBox($function));
+                    return $callable(self::getRoute());
+//                    $callable(self::getRoute()->getStaticBox($function));
+//                    return $callable('found');
+//                    var_dump(self::getRoute()->createBox($function));
+//                    return self::_createBox($function);
+                }
+            }
+//            self::getRoute()->toString();
+            return self::getRoute();
+        }
+
+        public static function post($path, $function, $callable){
+            if(Http::type() !== 'POST') return;
+
+            $route = self::match($path);
+            if($route->isRouteMatch() === true){
+                if(is_callable($callable)){
+                    return $callable(self::getRoute()->getParams());
 //                    return $callable('found');
 //                    var_dump(self::getRoute()->createBox($function));
 //                    return self::_createBox($function);

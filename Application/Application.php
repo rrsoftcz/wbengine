@@ -21,9 +21,11 @@ use Wbengine\Application\Mobile\Detector;
 use Wbengine\Application\Path\File;
 use Wbengine\Application\Path\Path;
 use Wbengine\Components\ComponentParentInterface;
+use Wbengine\Components\HttpResponseInterface;
 use Wbengine\Config;
 use Wbengine\Db;
 use Wbengine\Error;
+use Wbengine\Exception\RuntimeException;
 use Wbengine\Locale;
 use Wbengine\Locale\LocaleAbstract;
 use Wbengine\Router;
@@ -34,10 +36,11 @@ use Wbengine\Session;
 use Wbengine\Url;
 use Wbengine\User;
 use Wbengine\Vars;
+use Wbengine\Application\Http\ResponseInterface;
 
 include_once dirname(__DIR__) . '/Application/Env/Const.php';
 
-abstract Class Application implements ComponentParentInterface
+abstract Class Application implements ComponentParentInterface, ResponseInterface
 {
     /**
      * Locale class
@@ -652,6 +655,47 @@ abstract Class Application implements ComponentParentInterface
     }
 
 
+    public function get($path, $callable)
+    {
+        try {
+
+            $callable(Router::get($path, function ($route) {
+                return $route;
+            }), $this);
+        }catch (RuntimeException $e){
+            $this->addException($e->getMessage(), $e->getCode());
+            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+            $this->dispatch();
+            echo(
+                sprintf(
+                    file_get_contents(
+                        (__DIR__) . '/Exception.html'),
+                    get_class($e),
+                    $e->getCode(),
+                    $e->getMessage(),
+                    $e->getFile(),
+                    $e->getLine(),
+                    $e->getTraceAsString()));
+        }
+    }
+
+
+    public function dispatch($content = null){
+        //@TODO Try to avoid multipple calls of init() function...
+        $this->init();
+        try {
+            if ($content) {
+                $this->setValue(HTML_CENTRAL_SECTION, $content);
+            }
+            $this->getRenderer()->dispatch($this);
+        }catch (ApplicationException $e){
+            $this->addException($e->getMessage(), $e->getCode());
+            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+
+
+        }
+    }
+
     /**
      * Run the application ...
      * @param null $errorHandler
@@ -687,7 +731,7 @@ abstract Class Application implements ComponentParentInterface
             }
 
 
-            $this->getRenderer()->dispatch($this);
+            $this->dispatch();
 
         }catch (ApplicationException $e){
             $this->addException($e->getMessage(), $e->getCode());

@@ -1,0 +1,26 @@
+<style>
+    /*#fof {background-color: #FF6600;color: #fff;}*/
+    #fof .insider {margin-left: 5px;}
+    #fof {display:block; position:relative; width: auto; margin: 30px; text-align:left;}
+    #fof .positioned{display:block; width:auto; margin:0 auto; padding:60px; border-top:1px solid #CCCCCC;border-bottom:1px solid #CCCCCC;}
+    #fof .positioned h1{margin:0 0 0 2px; padding:0; display:inline; font-size:60px; text-transform:uppercase;}
+    #fof .positioned p{margin:25px 0 0 0; padding:0; font-size:16px;}
+    #fof h2 {font-size: 30px;}
+    #fof pre {font-size: 14px; line-height: 22px;}
+</style>
+<div class="wrapper row2">
+    <div id="container" class="clear">
+        <div id="fof" class="clear">
+            <div class="positioned">
+                <h1>Wbengine Caught Exception:</h1>
+                <div class="insider">
+                    <h2>Called by: %s</h2>
+                    <h3>Error(%s): %s</h3>In file %s (%s)
+                    <p class="trace"><pre>%s</pre>
+                    </p>
+                    <p>Debug info: </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

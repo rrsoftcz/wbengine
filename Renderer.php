@@ -211,11 +211,11 @@ class Renderer extends Renderer\Adapter
     {
         try {
             if ($App instanceof Application) {
-                // assign all needed vars to templater..
+                // assign all application vars to templater ...
                 $this->assign($App->getVars(), NULL, 'global');
                 // ...and show content...
                 if (Config::minimizeHtml()) {
-                    //@todo JUST TESTING TO MINIFY HTML...
+                    //@TODO JUST TESTING TO MINIFY HTML SOURCE CODE...
                     $source = preg_replace("'\s+'ms", " ", $this->fetch('site' . $this->getExtension()));
                     echo($source);
                 } else {
@@ -255,6 +255,7 @@ class Renderer extends Renderer\Adapter
         }
 
         if (!file_exists($this->Path()->getPath(Path::TYPE_TEMPLATES, null,true).$_path)) {
+            var_dump(__DIR__.'/Application/'.$_path);
             throw New Exception\RuntimeException(__METHOD__
                 . ': Template file "' . $_path . '" not exist.');
         }

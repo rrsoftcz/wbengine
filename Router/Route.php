@@ -14,9 +14,12 @@
      */
 
     namespace Wbengine\Router;
+
     use App\App;
     use Wbengine\Application\Env\Stac\Utils;
+    use Wbengine\Application\Http\RequestInterface;
     use Wbengine\Components\ComponentParentInterface;
+    use Wbengine\Router\Route\RouteException;
     use Wbengine\Site;
 
     /**
@@ -24,7 +27,7 @@
      *
      * @package Wbengine\Router
      */
-    class Route implements ComponentParentInterface
+    class Route implements ComponentParentInterface, RequestInterface
     {
 
 
@@ -90,7 +93,7 @@
          * @return array|mixed
          */
         public function getParams($param = NULL)
-        {
+        {var_dump($param);
 //            preg_match_all('/\{[a-z0-9]+\}/', $this->route->user_route, $this->params);
             return $this->args;
         }
@@ -182,7 +185,15 @@
             if(class_exists($namespace)){
                 if(method_exists($namespace, $method)){
                     $box = new $namespace($this);
-                    return $box;
+                    return $box->$method();
+                }else{
+                    Throw New RouteException(sprintf("%s -> %s: No class method found '%s::%s'!",
+                        __CLASS__,
+                        __FUNCTION__,
+                        $namespace,
+                        $method
+                    ), RouteException::ROUTE_ERROR_NO_MEZHOD_FOUND);
+
                 }
             }
             return;
