@@ -167,6 +167,13 @@ class Renderer extends Renderer\Adapter
         if(null === $this->_rendererCompiledDir) {
             $this->Path()->addPath(Path::TYPE_RENDERER_TEMP, Config::getRendererCompiledDir(), true);
             $this->_rendererCompiledDir = $this->Path()->getRendererCompiledDir();
+            if(!file_exists($this->_rendererCompiledDir)){
+                $this->_rendererCompiledDir = '/tmp/';
+                // Throw New Exception\RuntimeException(sprintf("%s -> %s: Not accessible renderer compile dir '%s'!",
+                // __CLASS__,
+                // __FUNCTION__,
+                // $this->_rendererCompiledDir));
+            }
         }
         return $this->_rendererCompiledDir;
     }
@@ -247,17 +254,9 @@ class Renderer extends Renderer\Adapter
      */
     public function render($template = NULL, $vars = NULL)
     {
-        $_path =  $template . $this->getExtension();
-
         if (NULL === $template) {
             throw New Exception\RuntimeException(__METHOD__
                 . ': Expected template name as string, but null given.');
-        }
-
-        if (!file_exists($this->Path()->getPath(Path::TYPE_TEMPLATES, null,true).$_path)) {
-            var_dump(__DIR__.'/Application/'.$_path);
-            throw New Exception\RuntimeException(__METHOD__
-                . ': Template file "' . $_path . '" not exist.');
         }
 
         // Assign given vars ..?
@@ -267,8 +266,23 @@ class Renderer extends Renderer\Adapter
 
             $this->assign($valueName, $vars);
         }
+        
+        // Check if file extension presents...
+        if(!preg_match('/\..+$/', $template)){
+            $template .= $this->getExtension();
+        }
 
-        return $this->fetch($template . $this->_extension);
+        // First, try to locate template source file inside application folder ...
+        if (file_exists($this->getAppTeplatePath($template))){
+            return $this->fetch($this->getAppTeplatePath($template));
+            // second, try to locate source template file localy ...
+        }elseif(file_exists($this->getLocalTeplatePath($template))){
+            return $this->fetch($this->getLocalTeplatePath($template));
+        }else{
+            throw New Exception\RuntimeException(__METHOD__
+                    . ': Template file "' . $template . '" not found.');
+        }
+        
     }
 
 
@@ -287,6 +301,21 @@ class Renderer extends Renderer\Adapter
         }
 
         $this->assign($name, $value);
+    }
+
+
+    /**
+     * Return filename with local templates path
+     *
+     * @param string $filename
+     * @return string
+     */
+    public function getLocalTeplatePath($filename){
+        return __DIR__ . '/Application/' . $filename;
+    }
+
+    public function getAppTeplatePath($filename){
+        return $this->Path()->getPath(Path::TYPE_TEMPLATES, null, true) . $filename;
     }
 
 

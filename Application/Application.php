@@ -665,7 +665,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
         }catch (RuntimeException $e){
             $this->addException($e->getMessage(), $e->getCode());
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
-            $this->dispatch();
+            //$this->dispatch();
             echo(
                 sprintf(
                     file_get_contents(
