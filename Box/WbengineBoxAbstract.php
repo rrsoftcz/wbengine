@@ -15,6 +15,7 @@ use Wbengine\Box\Exception\BoxException;
 use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Config;
 use Wbengine\Renderer;
+use Wbengine\Router\Route;
 use Wbengine\Site;
 
 Abstract class WbengineBoxAbstract
@@ -47,16 +48,19 @@ Abstract class WbengineBoxAbstract
      */
     private $_routes = null;
 
+    public $route;
 
     /**
      * Return instance of Box object
      * @param \Wbengine\Box $box
      * @internal param $
      */
-    public function __construct(ComponentParentInterface $parent)
+    public function __construct($parent)
     {
         if($parent instanceof App) {
             $this->_parent = $parent;
+        }elseif ($parent instanceof Route){
+            $this->route = $parent;
         }
     }
 

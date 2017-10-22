@@ -20,12 +20,13 @@ namespace Wbengine;
 
 use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Box;
+use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Model\ModelAbstract;
 use Wbengine\Section\Model;
 use Wbengine\Site;
 use Wbengine\Section\Exception\SectionException;
 
-class Section
+class Section implements ComponentParentInterface
 {
 
     /**
@@ -57,6 +58,10 @@ class Section
      * @var string
      */
     private $_content = NULL;
+
+    private $_parent;
+
+
 
     /**
      * Set Model instance
@@ -95,9 +100,11 @@ class Section
      * Section constructor.
      * @param array $section
      */
-    public function __construct($section)
+    public function __construct(array $section, ComponentParentInterface $parent)
     {
+        $this->_parent = $parent;
         $this->_section = new \stdClass();
+
         foreach ($section as $key=>$value){
             $this->_section->$key = $value;
         }
@@ -109,9 +116,16 @@ class Section
      * @return Site
      */
     public function getSite(){
-        return $this->_site;
+        if($this->_site instanceof Site) {
+            return $this->_site;
+        }
+        return $this->_site = new Site($this);
     }
 
+
+    public function getParent(){
+        return $this->_parent;
+    }
 
     /**
      * Return section id

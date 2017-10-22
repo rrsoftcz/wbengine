@@ -99,7 +99,7 @@ class Box implements ComponentParentInterface
             $this->getAppBaseDirName(), $this->getSection()->getKey(), $this->getModuleName());
         if (!class_exists($className, true)) {
             Throw New BoxException(
-                sprintf('%s->%s : Cannot create instance of Box "%s". Class not found'
+                sprintf('%s->%s : Cannot create instance of "%s". Class not found.'
                     , __CLASS__
                     , __FUNCTION__
                     , $className)
@@ -342,6 +342,10 @@ class Box implements ComponentParentInterface
         $this->_box = $box;
     }
 
+
+    public function getParent(){
+        return $this->_section;
+    }
 
     /**
      * Return created object renderer

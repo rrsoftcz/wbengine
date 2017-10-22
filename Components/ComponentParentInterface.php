@@ -12,4 +12,5 @@ namespace Wbengine\Components;
 interface ComponentParentInterface
 {
     public function getSite();
+    public function getParent();
 }

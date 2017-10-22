@@ -102,7 +102,7 @@ class Debug
         );
     }
 
-    private function _getSiteInfo($siteid, $sections,$boxes){
+    private function _getSiteInfo($siteid, $sections, $boxes){
         return sprintf('<div class="col-lg-%s"><b>Site ID:</b> %s | Sectons: %s | Boxes: %s</div>',
             self::COLS_LG_MODIFIER,
             $siteid,

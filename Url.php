@@ -17,9 +17,10 @@
     namespace Wbengine;
 
     use Wbengine\Application\Application;
+    use Wbengine\Components\ComponentParentInterface;
     use Wbengine\Site;
 
-    class Url
+    class Url implements ComponentParentInterface
     {
 
 
@@ -134,6 +135,10 @@
         }
 
 
+
+        public function getParent(){
+            return $this->_parent;
+        }
 
         /**
          * Store url extension if exist.

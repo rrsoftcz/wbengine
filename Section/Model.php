@@ -41,7 +41,7 @@ class Model extends ModelAbstract {
             , S_TABLE_SECTIONS,
             $section->getSite()->getSiteId(),
             $section->getSectionId()
-            , (int) $section->getSite()->getParent()->getDeviceType()
+            , (int) 1//$section->getSite()->getParent()->getDeviceType()
         );
 
         return Db::fetchAllAssoc($sql);

@@ -319,6 +319,19 @@ class Renderer extends Renderer\Adapter
     }
 
 
+    public function showException(\Exception $e){
+        die(
+        sprintf(
+            file_get_contents(
+                $this->getLocalTeplatePath('exception.tpl')),
+            get_class($e),
+            $e->getCode(),
+            $e->getMessage(),
+            $e->getFile(),
+            $e->getLine(),
+            $e->getTraceAsString()));
+    }
+
     /**
      * Return html error box created from given
      * exception object.
@@ -371,7 +384,7 @@ class Renderer extends Renderer\Adapter
                 break;
 
             default:
-                $tmp = $this->render(HTML_ERROR, $error);
+                $tmp = $this->showException($exception);
                 break;
         }
 

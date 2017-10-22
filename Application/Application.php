@@ -151,6 +151,8 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
      */
     private $_env;
 
+    private $_routes = array();
+
     protected static $APP_BASE_DIR;
     protected static $APP_TYPE_CACHE;
     protected static $APP_CONFIG_PATH;
@@ -162,9 +164,13 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
      * Create object Class_Renderer
      */
     private function _setRenderer(){
-        $this->_renderer = New Renderer($this);
+        $this->_renderer = new Renderer($this);
     }
 
+
+    public function getParent(){
+        return $this;
+    }
 
     /**
      * Return created session instance.
@@ -210,7 +216,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
      * @$this->_site
      */
     private function _createSite(){
-        $this->_site = New Site(New Url($this));
+        $this->_site = new Site($this);
     }
 
 
@@ -219,7 +225,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
      * @void
      */
     private function _setClassVars(){
-        $this->_classVars = New Vars($this);
+        $this->_classVars = new Vars($this);
     }
 
 
@@ -487,7 +493,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
      * @param integer $code
      */
     public function addException($message, $code = null){
-        $this->_exception = new ApplicationException($message, $code);
+        return $this->_exception = new ApplicationException($message, $code);
     }
 
 
@@ -641,6 +647,10 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
     }
 
 
+    public function addRoute($route){
+        $this->_routes[] = $route;
+    }
+
     /**
      * Return site object instance
      * @return \Wbengine\Site
@@ -657,11 +667,21 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
 
     public function get($path, $callable)
     {
-        try {
+        $this->addRoute($path);
 
-            $callable(Router::get($path, function ($route) {
+        try {
+            $req = Router::get($path, function ($route) {
                 return $route;
-            }), $this);
+            });
+//            var_dump($req);
+            if($req) {
+                $callable($req, $this);
+//                $callable = $callable->bindTo($this);
+//                Utils::dump($req);
+            }else{
+                return;
+            }
+
         }catch (RuntimeException $e){
             $this->addException($e->getMessage(), $e->getCode());
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
@@ -680,7 +700,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
     }
 
 
-    public function dispatch($content = null){
+    public function display($content = null){
         //@TODO Try to avoid multipple calls of init() function...
         $this->init();
         try {
@@ -688,7 +708,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
                 $this->setValue(HTML_CENTRAL_SECTION, $content);
             }
             $this->getRenderer()->dispatch($this);
-        }catch (ApplicationException $e){
+        }catch (ApplicationException $e){die(error);
             $this->addException($e->getMessage(), $e->getCode());
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
 
@@ -708,16 +728,18 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
              * 3. FIST TIME INIT OBJECT SITE
              */
 
-            $this->getSite()->initialize($this);
+            if(empty($this->getClassVars()->getValue('central'))) {
+                $this->getSite()->initialize($this);
+            }
 
 
 
-            if ($errorHandler===HTML_ERROR_410) {
+            if ($errorHandler === HTML_ERROR_410) {
                 $this->addException('Gone.', HTML_ERROR_410);
                 $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
             }
 
-            if (!$this->getSite() instanceof Site || $this->getSite()->isLoaded() === false) {
+            if ((!$this->getSite() instanceof Site || $this->getSite()->isLoaded() === false) && sizeof($this->_routes) === 0) {
                 $this->addException('Site not found.', HTML_ERROR_404);
                 $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
             }
@@ -730,12 +752,14 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
                 $this->minimizeCssFiles(Config::getCssCollection(),  APP_DIR);
             }
 
+//            var_dump($this->getVars());
+            $this->getRenderer()->dispatch($this);
 
-            $this->dispatch();
-
-        }catch (ApplicationException $e){
-            $this->addException($e->getMessage(), $e->getCode());
-            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+        }catch (RuntimeException $e){
+            $this->addException($e->getMessage(), $e->getCode())->show();
+//            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+//            $this->getRenderer()->dispatch($this);
+//            die($this->getRenderer()->getErrorBox($e));
         }
 
     }

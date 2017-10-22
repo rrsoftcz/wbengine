@@ -64,18 +64,20 @@
         /**
          * @param WbengineBoxAbstract $parent
          */
-        public function __construct(ComponentParentInterface $parent = null)
-        {
-            if($parent instanceof ComponentParentInterface) {
-                $this->parent = $parent;
-            }
-        }
+//        public function __construct(ComponentParentInterface $parent)
+//        {
+//            if($parent instanceof ComponentParentInterface) {
+//                $this->parent = $parent;
+//            }
+//        }
 
 
         public static function get($path, $callable){
             if(Http::type() !== 'GET') return;
 
             $route = self::match($path);
+//            Utils::dump($route);
+//            var_dump($path);
             if($route->isRouteMatch() === true){
                 if(is_callable($callable)){
                     return $callable(self::getRoute());
@@ -86,7 +88,8 @@
                 }
             }
 //            self::getRoute()->toString();
-            return self::getRoute();
+
+//            return; //self::getRoute();
         }
 
         public static function post($path, $function, $callable){
@@ -181,9 +184,9 @@
         }
 
 
-        public function getParent(){
-            return $this->parent;
-        }
+//        public function getParent(){
+//            return $this->parent;
+//        }
 
         /**
          * @return Route

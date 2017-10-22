@@ -27,7 +27,7 @@
      *
      * @package Wbengine\Router
      */
-    class Route implements ComponentParentInterface, RequestInterface
+    class Route implements RequestInterface
     {
 
 
@@ -36,6 +36,8 @@
          * @var \stdClass
          */
         private $route;
+
+        private $_parent;
 
 
     
@@ -72,7 +74,7 @@
          */
         public function __get($name)
         {
-            return $this->route->$name;
+            return (isset($this->route->$name))?$this->route->$name : null;
         }
 
 
@@ -93,7 +95,7 @@
          * @return array|mixed
          */
         public function getParams($param = NULL)
-        {var_dump($param);
+        {
 //            preg_match_all('/\{[a-z0-9]+\}/', $this->route->user_route, $this->params);
             return $this->args;
         }
@@ -201,9 +203,13 @@
 
 
 
-        public function getSite()
-        {
+        public function getSite(){
             return new Site();
+        }
+
+
+        public function getParent(){
+            return $this->_parent;
         }
 
 

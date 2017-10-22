@@ -16,10 +16,11 @@ namespace Wbengine;
 
 use Wbengine\Application\Application;
 use Wbengine\Application\Env\Stac\Utils;
+use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Site\SiteException;
 use Wbengine\Site\SiteModel;
 
-Class Site
+Class Site implements ComponentParentInterface
 {
 
     /**
@@ -82,9 +83,8 @@ Class Site
      * In constructor we parse URL and create all
      * needed variables.
      */
-    public function __construct(Url $url)
-    {
-        $this->_classUrl = $url;
+    public function __construct(ComponentParentInterface $parent = null){
+        $this->_parent = $parent;
     }
 
 
@@ -119,6 +119,10 @@ Class Site
         $this->count++;
     }
 
+
+    public function getSite(){
+        return $this;
+    }
 
     /**
      * Return a parent object Application
@@ -159,9 +163,8 @@ Class Site
         if ($this->_classUrl instanceof Url) {
             return $this->_classUrl;
         } else {
-            $this->_classUrl = New Url($this->getParent());
+            return $this->_classUrl = new Url($this->getParent());
         }
-        return $this->_classUrl;
     }
 
     /**
@@ -507,7 +510,7 @@ Class Site
         $sections = $this->getModel()->getSections();
 
         foreach ($sections as $section){
-            $this->_sections[] = new Section($section);
+            $this->_sections[] = new Section($section, $this);
         }
         return $this->_sections;
     }
