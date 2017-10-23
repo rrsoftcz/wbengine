@@ -37,10 +37,11 @@ use Wbengine\Url;
 use Wbengine\User;
 use Wbengine\Vars;
 use Wbengine\Application\Http\ResponseInterface;
+use Wbengine\Debug;
 
 include_once dirname(__DIR__) . '/Application/Env/Const.php';
 
-abstract Class Application implements ComponentParentInterface, ResponseInterface
+class Application implements ComponentParentInterface, ResponseInterface
 {
     /**
      * Locale class
@@ -153,12 +154,130 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
 
     private $_routes = array();
 
-    protected static $APP_BASE_DIR;
-    protected static $APP_TYPE_CACHE;
-    protected static $APP_CONFIG_PATH;
-    protected static $APP_TEMPLATE_PATH;
-    protected static $ENV_TYPE_PRODUCTION;
-    protected static $APP_TYPE_RENDERER_TEMP;
+
+
+    const APP_BASE_DIR              = '/App';
+    const APP_CONFIG_PATH           = '/Config/';
+    const APP_TEMPLATE_PATH         = '/Src/View';
+    const APP_TYPE_CACHE            = '/Cache';
+    const APP_TYPE_RENDERER_TEMP    = '/Renderer';
+
+
+
+
+
+    public function __construct($appBaseDir)
+    {
+        if (!is_string($appBaseDir) || empty($appBaseDir)) {
+            throw new ApplicationException(
+                sprintf('%s->%s: Application base dir must be a string.'
+                    , __CLASS__
+                    , __FUNCTION__
+                )
+            );
+        }
+
+
+        try {
+
+        /**
+         * 1. LOAD CONFIGURATION
+         * Setup config file example over class setter...
+         */
+        $this->setConfig(
+            Config::load(new File(
+                    $appBaseDir .
+                    self::APP_CONFIG_PATH .
+                    Config::CONFIG_FILE,
+                    true)
+            )
+        );
+
+        if($this->isDebugOn() === true){
+            ini_set('display_errors', 1);
+            $this->setStartTime(microtime());
+        }
+
+
+
+            /**
+             * Set application BASE path as firs ...
+             */
+            $this->setPath(Path::TYPE_BASE, ($appBaseDir));
+
+            /**
+             * Set app cache directory path ...
+             */
+            $this->setPath(Path::TYPE_CACHE, self::APP_TYPE_CACHE);
+
+            /**
+             * setup errorhandler ...
+             */
+            set_error_handler(array($this->getErrorHandler(), 'SetErrorHandler'));
+
+            /**
+             * .. SET CURRENT TIMEZONE (OPTIONAL)...
+             */
+            date_default_timezone_set(Config::getTimeZone());
+
+
+
+        } catch (RuntimeException $e) {
+            $e->show();
+        }
+
+        if(Config::isDebugEnabled()) {
+            $this->setEndtime(microtime());
+            $this->setValue('debug', new Debug($this));
+        }
+        return $this;
+
+
+
+    }
+
+
+    public function getStaticBox($constructor){
+        return $this->_createBox($constructor);
+    }
+
+
+
+    private function _createBox($constructor){
+        $values = explode('@',$constructor);
+        if(is_array($values)){
+            if(preg_match('/\\\\/', $values[0])){
+                $namespace = $values[0];
+            }else{
+                $namespace = "\App\Box\\" . ucfirst($values[0]);
+            }
+
+            if($values[1]){
+                $method = $values[1];
+            }
+
+        }
+
+        if(class_exists($namespace)){
+            if(method_exists($namespace, $method)){
+                $box = new $namespace($this);
+                return $box->$method();
+            }else{
+                Throw New RouteException(sprintf("%s -> %s: No class method found '%s::%s'!",
+                    __CLASS__,
+                    __FUNCTION__,
+                    $namespace,
+                    $method
+                ), RouteException::ROUTE_ERROR_NO_MEZHOD_FOUND);
+
+            }
+        }
+        return;
+    }
+
+
+
+
 
     /**
      * Create object Class_Renderer
@@ -541,7 +660,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
      * @return string
      */
     public static function _getAppDir($noSlashes){
-        return ($noSlashes) ? ltrim(self::$APP_BASE_DIR,'/') : self::$APP_BASE_DIR;
+        return ($noSlashes) ? ltrim(self::APP_BASE_DIR,'/') : self::APP_BASE_DIR;
     }
 
 
@@ -655,7 +774,8 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
      * Return site object instance
      * @return \Wbengine\Site
      */
-    public function getSite(){
+    public function getSite()
+    {
         if ($this->_site instanceof Site){
             return $this->_site;
         }else{
@@ -667,11 +787,16 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
 
     public function get($path, $callable)
     {
+
+        if (!is_string($path)) {
+            throw new ApplicationException('Route pattern must be a string.');
+        }
+
         try {
             $req = Router::get($path, function ($route) {
                 return $route;
             });
-            
+
             if($req) {
                 $callable($req, $this);
                 $this->addRoute($path);
@@ -682,7 +807,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
         }catch (RuntimeException $e){
             $this->addException($e->getMessage(), $e->getCode());
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
-            //$this->dispatch();
+
             echo(
                 sprintf(
                     file_get_contents(
@@ -712,6 +837,8 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
 
         }
     }
+
+
 
     /**
      * Run the application ...
@@ -753,10 +880,7 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
             $this->getRenderer()->dispatch($this);
 
         }catch (RuntimeException $e){
-            $this->addException($e->getMessage(), $e->getCode())->show();
-//            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
-//            $this->getRenderer()->dispatch($this);
-//            die($this->getRenderer()->getErrorBox($e));
+            $e->Show();
         }
 
     }

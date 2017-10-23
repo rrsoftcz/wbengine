@@ -12,5 +12,4 @@ namespace Wbengine\Application\Http;
 interface RequestInterface
 {
     public function getParams($param = null);
-    public function getStaticBox($constructor);
 }

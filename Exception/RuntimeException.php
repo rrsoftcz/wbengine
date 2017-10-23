@@ -9,7 +9,7 @@ namespace Wbengine\Exception;
 use \Exception;
 
 class RuntimeException extends Exception {
-    public function show(){
+    public function Show(){
         die(
         sprintf(
             file_get_contents(

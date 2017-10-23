@@ -61,35 +61,16 @@
 
 
 
-        /**
-         * @param WbengineBoxAbstract $parent
-         */
-//        public function __construct(ComponentParentInterface $parent)
-//        {
-//            if($parent instanceof ComponentParentInterface) {
-//                $this->parent = $parent;
-//            }
-//        }
-
 
         public static function get($path, $callable){
             if(Http::type() !== 'GET') return;
 
             $route = self::match($path);
-//            Utils::dump($route);
-//            var_dump($path);
             if($route->isRouteMatch() === true){
                 if(is_callable($callable)){
                     return $callable(self::getRoute());
-//                    $callable(self::getRoute()->getStaticBox($function));
-//                    return $callable('found');
-//                    var_dump(self::getRoute()->createBox($function));
-//                    return self::_createBox($function);
                 }
             }
-//            self::getRoute()->toString();
-
-//            return; //self::getRoute();
         }
 
         public static function post($path, $function, $callable){
@@ -99,12 +80,8 @@
             if($route->isRouteMatch() === true){
                 if(is_callable($callable)){
                     return $callable(self::getRoute()->getParams());
-//                    return $callable('found');
-//                    var_dump(self::getRoute()->createBox($function));
-//                    return self::_createBox($function);
                 }
             }
-//            self::getRoute()->toString();
             return false;
         }
 
@@ -115,50 +92,8 @@
          * @param string $boxRemainUrl
          * @return $this|null
          */
-        public static function match($user_route)
-        {
-//            $route = new Route($user_route);
-//            Utils::dump(self::createRoute($user_route)->compare(htmlspecialchars($_SERVER['REQUEST_URI'])));
-
+        public static function match($user_route){
             return self::createRoute($user_route)->compare(htmlspecialchars($_SERVER['REQUEST_URI']));
-
-//            $route->setUserRoute($user_route);
-//            var_dump($this->getRoute()->getUserRoute());
-            // Replace user patern to regular expression...
-//            $pattern = preg_replace('/\{[a-z0-9]+\}/','([A-Za-z0-9]+)', $user_route);
-//            $pattern = sprintf("/^%s$/", preg_replace('/\//','\/',self::$pattern));
-//            $this->pattern = sprintf("/^%s$/", preg_replace('/\//','\/',$pattern));
-//            Utils::dump(preg_split('/\{[a-z0-9]+\}/', $route, $params));
-//            preg_match_all('/\{[a-z0-9]+\}/', $user_route, $params);
-//            $match = preg_match($route->getPattern(), $_SERVER['REQUEST_URI'], $matches);
-//            Utils::dump(self::$pattern);
-//            Utils::dump($_SERVER['REQUEST_URI']);
-
-//            var_dump($route->match($_SERVER['REQUEST_URI'])->isMatched());
-
-//            array_shift($matches);
-//            for($i=0;$i<sizeof($match);$i++){
-////                var_dump($i);
-//                $p[$params[0][$i]] = $match[$i];
-////                Utils::dump($m);
-//            }
-//            $p = array_combine(
-//                array_map(function($value){
-//                    return preg_replace('/\{|\}/','', $value);
-//                }, $params[0]), $matches
-//            );
-
-//            $this->route = new Route();
-//            $this->route->pattern = $this->pattern;
-//            $this->route->match = $match;
-//            $this->route->params = $p;
-//            Utils::dump($route->toString());
-//            return $this->route;
-//            Utils::dump($params);
-//            Utils::dump($match);
-//            Utils::dump($p);
-//            var_dump($pattern);
-//            var_dump($x);           return $this->route;
         }
 
 
@@ -184,9 +119,6 @@
         }
 
 
-//        public function getParent(){
-//            return $this->parent;
-//        }
 
         /**
          * @return Route
@@ -210,34 +142,6 @@
         {
             return $this->match;
         }
-
-
-//        private static function _createBox($constructor){
-//            $values = explode('@',$constructor);
-//            if(is_array($values)){
-//                if(preg_match('/\\\\/', $values[0])){
-//                    $namespace = $values[0];
-//                }else{
-//                    $namespace = "\App\Box\\" . ucfirst($values[0]);
-//                }
-//
-//                if($values[1]){
-//                    $method = $values[1];
-//                }
-//
-//            }
-////            var_dump(__NAMESPACE__);
-//            Utils::dump($method);
-////            var_dump(class_exists($namespace));
-//
-//            if(class_exists($namespace)){
-//                if(method_exists($namespace, $method)){
-//                    $box = new $namespace(self);
-//                    return $box;
-//                }
-//            }
-//            return;
-//        }
 
 
         /**

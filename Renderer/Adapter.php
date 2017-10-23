@@ -18,6 +18,8 @@ namespace Wbengine\Renderer;
 //use Exception;
 //require_once dirname(__FILE__) . '/RendererInterface.php';
 
+use Wbengine\Renderer\Exception\RendererException;
+
 class Adapter implements \Wbengine\Renderer\RendererInterface
 {
 
@@ -52,6 +54,14 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      */
     public function getAdapterName()
     {
+        if(empty($this->_adapterName)){
+            Throw new RendererException(
+                sprintf('%s->%s: Empty renderer adapter name.'
+                    , __CLASS__
+                    , __FUNCTION__
+                )
+            );
+        }
         return $this->_adapterName;
 
     }
@@ -65,6 +75,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     {
         if ($this->_adapter && is_object($this->_adapter))
             return $this->_adapter;
+
         $name = '\\' . ucfirst($this->getAdapterName());
         $this->_adapter = new $name();
         return $this->_adapter;

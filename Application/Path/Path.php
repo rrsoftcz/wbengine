@@ -145,6 +145,7 @@ class Path {
         if($baseDir === true){
             $this->_tmp = $this->getAppBaseDir();
         }
+
         if(!is_null($includePath)){
             $this->_tmp = $this->_merge($this->_tmp, $this->__get($includePath));
         }

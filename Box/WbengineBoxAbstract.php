@@ -9,6 +9,7 @@
 namespace Wbengine\Box;
 
 use App\App;
+use Wbengine\Application\Application;
 use Wbengine\Box\Exception;
 use Wbengine\Box;
 use Wbengine\Box\Exception\BoxException;
@@ -18,7 +19,7 @@ use Wbengine\Renderer;
 use Wbengine\Router\Route;
 use Wbengine\Site;
 
-Abstract class WbengineBoxAbstract
+Abstract class WbengineBoxAbstract implements ComponentParentInterface
 {
 
     /**
@@ -37,6 +38,7 @@ Abstract class WbengineBoxAbstract
      */
     private $_box = null;
     private $_renderer;
+    private $_site;
 
     /**
      * @var Exception
@@ -57,7 +59,7 @@ Abstract class WbengineBoxAbstract
      */
     public function __construct($parent)
     {
-        if($parent instanceof App) {
+        if($parent instanceof Application) {
             $this->_parent = $parent;
         }elseif ($parent instanceof Route){
             $this->route = $parent;
@@ -101,8 +103,13 @@ Abstract class WbengineBoxAbstract
         if(method_exists($this->_parent,'getRenderer')) {
             return $this->_parent->getRenderer();
         }
-        $this->_parent = new App();
-        return $this->_renderer = $this->_parent->init()->getRenderer();
+
+        if($this->_renderer instanceof Renderer){
+            return $this->_renderer;
+        }else{
+            $this->_renderer = new Renderer($this);
+        }
+        return $this->_renderer;
     }
 
 
@@ -112,9 +119,19 @@ Abstract class WbengineBoxAbstract
      */
     public function getSite()
     {
-        return $this->_parent;
+        if($this->_site instanceof Site){
+            return $this->_site;
+        }else{
+            $this->_site =  new Site($this);
+        }
+
+        return $this->_site;
     }
 
+
+    public function getParent(){
+        return $this->getParent();
+    }
 
     /**
      * Return existing routes stored in file

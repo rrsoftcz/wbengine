@@ -69,10 +69,10 @@ abstract class Db implements DbInterface
      * @param null $time
      */
     private static function updateStats($query = null, $time = null){
-        self::$_qcount++;
         if($query) {
             self::$_qarray[] = array('query'=>$query,'time'=>$time);
         }
+        self::$_qcount++;
     }
 
 
@@ -100,8 +100,7 @@ abstract class Db implements DbInterface
      * Return Db connection as adapter object...
      * @return Mysqli
      */
-    public static function getConnection()
-    {
+    public static function getConnection(){
         return self::getAdapter()->getConnection();
     }
 
@@ -137,10 +136,8 @@ abstract class Db implements DbInterface
      * @param string $name
      * @return string
      */
-    private static function buildClassName($name)
-    {
-        return "Wbengine\Db\Adapter\\" .
-            ucfirst((string)$name);
+    private static function buildClassName($name){
+        return "Wbengine\Db\Adapter\\" . ucfirst((string)$name);
     }
 
 
@@ -149,7 +146,8 @@ abstract class Db implements DbInterface
      * @return null|string
      * @throws DbException
      */
-    private static function getAdapterName(){
+    private static function getAdapterName()
+    {
         if(self::$dbCredentials === null){
             self::$dbCredentials = Config::getDbCredentials();
         }
@@ -157,7 +155,7 @@ abstract class Db implements DbInterface
         self::$_adapterName = self::$dbCredentials->adapterName;
 
         if(empty(self::$_adapterName)){
-            Throw New DbException(sprintf("%s -> %s: Get DB adapter name Error!",
+            Throw New DbException(sprintf("%s -> %s: Empty db adapter name.",
                 __CLASS__,
                 __FUNCTION__),
                 DbException::ERROR_DB_ADAPTER_NAME);
@@ -189,7 +187,8 @@ abstract class Db implements DbInterface
      * Return time sum of allexecuted queries
      * @return int
      */
-    public static function getAllQueriesEstimatedTime(){
+    public static function getAllQueriesEstimatedTime()
+    {
         foreach (self::getAllQueries() as $query){
             self::$_qtime =+ $query['time'];
         }
@@ -201,7 +200,8 @@ abstract class Db implements DbInterface
      * Dump all queries to screen
      * @var void
      */
-    public function dumpAllQueries(){
+    public function dumpAllQueries()
+    {
         foreach (self::getAllQueries() as $query){
             echo('<pre>');
             print_r($query);
@@ -280,12 +280,15 @@ abstract class Db implements DbInterface
      * @param $sql
      * @return mixed
      */
-    public static function fetchAllAssoc($sql){
-        $start = microtime(true);
-        $res = self::getAdapter()->getAllAssoc($sql);
-        $end = microtime(true);
-        $time = ($end-$start);
+    public static function fetchAllAssoc($sql)
+    {
+        $start  = microtime(true);
+        $res    = self::getAdapter()->getAllAssoc($sql);
+        $end    = microtime(true);
+        $time   = ($end-$start);
+
         self::updateStats($sql, sprintf('%f', $time));
+
         return $res;
     }
 

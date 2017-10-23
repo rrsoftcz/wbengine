@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Wbengin slim</title>
-    <meta name="Description" content="Wbengine clim example application"/>
+    <title>Wbengin Exception</title>
+    <meta name="Description" content="Wbengine Exception"/>
     <link href='http://fonts.googleapis.com/css?family=Roboto:300' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
 </head>

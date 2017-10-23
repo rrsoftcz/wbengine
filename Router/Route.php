@@ -47,8 +47,7 @@
          * Route constructor.
          * @param string|null $user_route
          */
-        public function __construct($user_route = null)
-        {
+        public function __construct($user_route = null){
             $this->route = new \stdClass();
             
             if($user_route){
@@ -72,9 +71,8 @@
          * @param $name
          * @return mixed
          */
-        public function __get($name)
-        {
-            return (isset($this->route->$name))?$this->route->$name : null;
+        public function __get($name){
+            return (isset($this->route->$name)) ? $this->route->$name : null;
         }
 
 
@@ -94,9 +92,7 @@
          * @throws RouterException
          * @return array|mixed
          */
-        public function getParams($param = NULL)
-        {
-//            preg_match_all('/\{[a-z0-9]+\}/', $this->route->user_route, $this->params);
+        public function getParams($param = NULL){
             return $this->args;
         }
 
@@ -120,7 +116,7 @@
          * @return $this
          */
         public function compare($uri)
-        {//var_dump($this->getPattern());
+        {
             $this->uri = $uri;
             if($this->is_matched = preg_match($this->getPattern(), $uri, $matches)) {
                 $this->_parse($matches);
@@ -161,44 +157,6 @@
                 }, $this->params), $matches
             );
 
-        }
-
-        public function getStaticBox($constructor){
-            return $this->_createBox($constructor);
-        }
-
-
-
-        private function _createBox($constructor){
-            $values = explode('@',$constructor);
-            if(is_array($values)){
-                if(preg_match('/\\\\/', $values[0])){
-                    $namespace = $values[0];
-                }else{
-                    $namespace = "\App\Box\\" . ucfirst($values[0]);
-                }
-
-                if($values[1]){
-                    $method = $values[1];
-                }
-
-            }
-
-            if(class_exists($namespace)){
-                if(method_exists($namespace, $method)){
-                    $box = new $namespace($this);
-                    return $box->$method();
-                }else{
-                    Throw New RouteException(sprintf("%s -> %s: No class method found '%s::%s'!",
-                        __CLASS__,
-                        __FUNCTION__,
-                        $namespace,
-                        $method
-                    ), RouteException::ROUTE_ERROR_NO_MEZHOD_FOUND);
-
-                }
-            }
-            return;
         }
 
 

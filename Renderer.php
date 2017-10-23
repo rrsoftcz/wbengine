@@ -168,11 +168,11 @@ class Renderer extends Renderer\Adapter
             $this->Path()->addPath(Path::TYPE_RENDERER_TEMP, Config::getRendererCompiledDir(), true);
             $this->_rendererCompiledDir = $this->Path()->getRendererCompiledDir();
             if(!file_exists($this->_rendererCompiledDir)){
-                $this->_rendererCompiledDir = '/tmp/';
-                // Throw New Exception\RuntimeException(sprintf("%s -> %s: Not accessible renderer compile dir '%s'!",
-                // __CLASS__,
-                // __FUNCTION__,
-                // $this->_rendererCompiledDir));
+//                $this->_rendererCompiledDir = '/tmp/';
+                 Throw New Exception\RuntimeException(sprintf("%s -> %s: Not accessible renderer compile dir '%s'!",
+                 __CLASS__,
+                 __FUNCTION__,
+                 $this->_rendererCompiledDir));
             }
         }
         return $this->_rendererCompiledDir;
@@ -271,7 +271,7 @@ class Renderer extends Renderer\Adapter
         if(!preg_match('/\..+$/', $template)){
             $template .= $this->getExtension();
         }
-
+//var_dump($this->getAppTeplatePath($template));
         // First, try to locate template source file inside application folder ...
         if (file_exists($this->getAppTeplatePath($template))){
             return $this->fetch($this->getAppTeplatePath($template));
