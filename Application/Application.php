@@ -667,17 +667,14 @@ abstract Class Application implements ComponentParentInterface, ResponseInterfac
 
     public function get($path, $callable)
     {
-        $this->addRoute($path);
-
         try {
             $req = Router::get($path, function ($route) {
                 return $route;
             });
-//            var_dump($req);
+            
             if($req) {
                 $callable($req, $this);
-//                $callable = $callable->bindTo($this);
-//                Utils::dump($req);
+                $this->addRoute($path);
             }else{
                 return;
             }
