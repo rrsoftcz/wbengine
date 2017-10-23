@@ -263,7 +263,7 @@ class Application implements ComponentParentInterface, ResponseInterface
                 $box = new $namespace($this);
                 return $box->$method();
             }else{
-                Throw New RouteException(sprintf("%s -> %s: No class method found '%s::%s'!",
+                Throw New Router\Route\RouteException(sprintf("%s -> %s: No class method found '%s::%s'!",
                     __CLASS__,
                     __FUNCTION__,
                     $namespace,
@@ -271,7 +271,15 @@ class Application implements ComponentParentInterface, ResponseInterface
                 ), RouteException::ROUTE_ERROR_NO_MEZHOD_FOUND);
 
             }
+        }else{
+            Throw New Router\Route\RouteException(sprintf("%s -> %s: Class file '%s' not found.",
+                __CLASS__,
+                __FUNCTION__,
+                $namespace
+            ));
+
         }
+
         return;
     }
 
@@ -395,7 +403,7 @@ class Application implements ComponentParentInterface, ResponseInterface
     public function minimizeCssFiles($files, $_path = null)
     {
         foreach ($files as $file){
-            $cssFile = New File($_path.$file);
+            $cssFile = new File($_path . $file);
             $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getCacheDir())->getFile(), true);
 
             if (!$ef->exist() || Utils::compareStrings(md5_file($cssFile->getFile()), $ef->getContent()) === false)
@@ -857,7 +865,6 @@ class Application implements ComponentParentInterface, ResponseInterface
             }
 
 
-
             if ($errorHandler === HTML_ERROR_410) {
                 $this->addException('Gone.', HTML_ERROR_410);
                 $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
@@ -873,7 +880,7 @@ class Application implements ComponentParentInterface, ResponseInterface
              * 4. THE MINIMALIZE CSS FILE OPTION ...
              */
             if((boolean)Config::minimizeCss()){
-                $this->minimizeCssFiles(Config::getCssCollection(),  APP_DIR);
+                $this->minimizeCssFiles(Config::getCssCollection(),  dirname($this->getPath()->getPath(Path::TYPE_BASE)));
             }
 
 //            var_dump($this->getVars());

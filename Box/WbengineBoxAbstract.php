@@ -59,11 +59,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public function __construct($parent)
     {
-        if($parent instanceof Application) {
-            $this->_parent = $parent;
-        }elseif ($parent instanceof Route){
-            $this->route = $parent;
-        }
+        $this->_parent = $parent;
     }
 
 
@@ -76,7 +72,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     {
         $classname = "\\" . trim($namespace) . '\Model';
 
-        $createdModel = New $classname($this);
+        $createdModel = new $classname($this);
         $this->modelCache[$this->_clearNamespace($namespace)] = $createdModel;
 
         return $createdModel;
@@ -100,10 +96,11 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public function getRenderer()
     {
+//        return $this->_renderer = new Renderer($this);
+//        var_dump(get_class($this->_parent));
         if(method_exists($this->_parent,'getRenderer')) {
             return $this->_parent->getRenderer();
         }
-
         if($this->_renderer instanceof Renderer){
             return $this->_renderer;
         }else{
@@ -117,15 +114,8 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      * Return instance of class site
      * @return \Wbengine\Site
      */
-    public function getSite()
-    {
-        if($this->_site instanceof Site){
-            return $this->_site;
-        }else{
-            $this->_site =  new Site($this);
-        }
-
-        return $this->_site;
+    public function getSite(){
+        return $this->_parent->getSite();
     }
 
 
@@ -177,7 +167,9 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public function getBox()
     {
-        return $this->_box;
+        if($this->_parent instanceof Box) {
+            return $this->_parent;
+        }
     }
 
 

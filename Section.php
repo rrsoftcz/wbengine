@@ -116,10 +116,10 @@ class Section implements ComponentParentInterface
      * @return Site
      */
     public function getSite(){
-        if($this->_site instanceof Site) {
-            return $this->_site;
+        if($this->_parent instanceof Site) {
+            return $this->_parent;
         }
-        return $this->_site = new Site($this);
+        return null;
     }
 
 
@@ -188,7 +188,11 @@ class Section implements ComponentParentInterface
      */
     public function getContent($site)
     {
-        $this->_site = $site;
+        if($this->_parent instanceof Site){
+            $this->_site = $this->_parent;
+        }else{
+            $this->_site = $site;
+        }
 
         if(!$boxes = $this->getBoxes()) return '';
 

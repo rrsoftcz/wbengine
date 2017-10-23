@@ -20,6 +20,7 @@ namespace Wbengine;
 
 use Wbengine\Application\Application;
 use Wbengine\Application\ApplicationException;
+use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Application\Path\Path;
 use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Exception\RuntimeException;
@@ -80,11 +81,12 @@ class Renderer extends Renderer\Adapter
      */
     function __construct(ComponentParentInterface $parent)
     {
-
+//Utils::dump(get_class($parent));
         if ($parent instanceof Application) {
             $this->_app = $parent;
             $this->_path = $parent->_getObjectPath();
         }
+//        var_dump(Config::getRendererCompiledDir());
 
         $this->setAdapterName($this->getRendererAdapterName());
         $this->setTemplateDir($this->getRendererTemplatesPath());
@@ -166,6 +168,7 @@ class Renderer extends Renderer\Adapter
     {
         if(null === $this->_rendererCompiledDir) {
             $this->Path()->addPath(Path::TYPE_RENDERER_TEMP, Config::getRendererCompiledDir(), true);
+//            var_dump($this->Path()->getPath(Path::TYPE_BASE));
             $this->_rendererCompiledDir = $this->Path()->getRendererCompiledDir();
             if(!file_exists($this->_rendererCompiledDir)){
 //                $this->_rendererCompiledDir = '/tmp/';

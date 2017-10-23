@@ -9,6 +9,8 @@
 namespace Wbengine\Application\Path;
 
 
+use Wbengine\Application\Env\Stac\Utils;
+
 class Path {
 
     CONST TYPE_BASE             = 'app_base_dir';
@@ -215,7 +217,7 @@ class Path {
      * Return app renderer base path ...
      * @return null|string
      */
-    public function getRendererCompiledDir(){
+    public function getRendererCompiledDir(){//Utils::dump($this->_paths);
         return $this->getPath(self::TYPE_RENDERER_TEMP, self::TYPE_CACHE, true);
     }
 

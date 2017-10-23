@@ -11,4 +11,5 @@ use Wbengine\Router\RouterException;
 class RouteException extends RouterException
 {
     const ROUTE_ERROR_NO_MEZHOD_FOUND   = 888;
+    const ROUTE_ERROR_NO_CLASS_FOUND   = 889;
 }

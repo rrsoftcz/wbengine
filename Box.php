@@ -383,9 +383,8 @@ class Box implements ComponentParentInterface
             if ((int)$this->isStatic() === HTML_STATIC) {
                 $tmp .= $_boxObj->$_method($this->getSite());
             } else {
-                $tmp .= $this->getRenderer()->getFormater()->process($_boxObj->$_method($this->getSite()));
+                $tmp .= $this->getRenderer()->getFormater()->process($_boxObj->$_method($this));
             }
-
         } else {
             throw New BoxException(__METHOD__
                 . ': Required method ' . $_method . ' does not exist in class ' . ucfirst($this->getModuleName()));
