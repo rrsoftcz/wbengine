@@ -274,7 +274,7 @@ class Renderer extends Renderer\Adapter
         if(!preg_match('/\..+$/', $template)){
             $template .= $this->getExtension();
         }
-//var_dump($this->getAppTeplatePath($template));
+
         // First, try to locate template source file inside application folder ...
         if (file_exists($this->getAppTeplatePath($template))){
             return $this->fetch($this->getAppTeplatePath($template));
@@ -283,7 +283,7 @@ class Renderer extends Renderer\Adapter
             return $this->fetch($this->getLocalTeplatePath($template));
         }else{
             throw New Exception\RuntimeException(__METHOD__
-                    . ': Template file "' . $template . '" not found.');
+                    . ': Box template file "' . $this->getAppTeplatePath($template) . '" not found.');
         }
         
     }

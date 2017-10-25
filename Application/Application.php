@@ -223,7 +223,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 
 
         } catch (RuntimeException $e) {
-            $e->show();
+            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
         }
 
         if(Config::isDebugEnabled()) {
@@ -243,8 +243,10 @@ class Application implements ComponentParentInterface, ResponseInterface
 
 
 
-    private function _createBox($constructor){
+    private function _createBox($constructor)
+    {
         $values = explode('@',$constructor);
+
         if(is_array($values)){
             if(preg_match('/\\\\/', $values[0])){
                 $namespace = $values[0];
@@ -258,17 +260,22 @@ class Application implements ComponentParentInterface, ResponseInterface
 
         }
 
-        if(class_exists($namespace)){
+        if(class_exists($namespace))
+        {
             if(method_exists($namespace, $method)){
-                $box = new $namespace($this);
-                return $box->$method();
+                try {
+                    $box = new $namespace($this);
+                    return $box->$method();
+                }catch (RuntimeException $e){
+                    $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+                }
             }else{
-                Throw New Router\Route\RouteException(sprintf("%s -> %s: No class method found '%s::%s'!",
+                Throw New Router\Route\RouteException(sprintf("%s -> %s: No method found '%s::%s()'.",
                     __CLASS__,
                     __FUNCTION__,
                     $namespace,
                     $method
-                ), RouteException::ROUTE_ERROR_NO_MEZHOD_FOUND);
+                ));
 
             }
         }else{
@@ -795,7 +802,6 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     public function get($path, $callable)
     {
-
         if (!is_string($path)) {
             throw new ApplicationException('Route pattern must be a string.');
         }
@@ -812,20 +818,9 @@ class Application implements ComponentParentInterface, ResponseInterface
                 return;
             }
 
-        }catch (RuntimeException $e){
+        }catch (ApplicationException $e){
             $this->addException($e->getMessage(), $e->getCode());
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
-
-            echo(
-                sprintf(
-                    file_get_contents(
-                        (__DIR__) . '/Exception.html'),
-                    get_class($e),
-                    $e->getCode(),
-                    $e->getMessage(),
-                    $e->getFile(),
-                    $e->getLine(),
-                    $e->getTraceAsString()));
         }
     }
 
@@ -886,7 +881,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 //            var_dump($this->getVars());
             $this->getRenderer()->dispatch($this);
 
-        }catch (RuntimeException $e){
+        }catch (ApplicationException $e){
             $e->Show();
         }
 
