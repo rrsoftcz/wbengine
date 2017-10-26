@@ -657,13 +657,17 @@ class Application implements ComponentParentInterface, ResponseInterface
      * Return Boxes count as sum of all sections boxes
      * @return int
      */
-    public function getBoxesCount(){
+    public function getBoxesCount()
+    {
+        $boxes = 0;
+
         /**
          * @var $section Section
          */
-        $boxes = 0;
-        foreach ($this->getSections() as $section){
-            $boxes += (int)$section->getBoxesCount();
+        if($sections = $this->getSections()){
+            foreach ($sections as $section){
+                $boxes += (int)$section->getBoxesCount();
+            }
         }
         return $boxes;
     }

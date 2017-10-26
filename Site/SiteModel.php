@@ -40,6 +40,7 @@ class SiteModel extends ModelAbstract
                 WHERE active = 1;",
             S_TABLE_SECTIONS
         );
+
         return Db::fetchAllAssoc($sql);
     }
 

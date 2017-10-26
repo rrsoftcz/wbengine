@@ -33,33 +33,43 @@ class Section implements ComponentParentInterface
      * Model instance
      * @var Model
      */
-    private $_model = NULL;
+    private $_model;
 
     /**
      * Raw model data
      * @var Section
      */
-    private $_section = NULL;
+    private $_section;
 
     /**
      * Boxes collection
      * @var array
      */
-    private $_boxes = NULL;
+    private $_boxes;
 
     /**
      * Object site
      * @var \Wbengine\Site
      */
-    private $_site = NULL;
+    private $_site;
 
     /**
      * Box content as HTML..
      * @var string
      */
-    private $_content = NULL;
+    private $_content;
 
+    /**
+     * Object parent
+     * @var ComponentParentInterface
+     */
     private $_parent;
+
+    /**
+     * Boxes count
+     * @var int
+     */
+    public $count = 0;
 
 
 
@@ -74,26 +84,110 @@ class Section implements ComponentParentInterface
 
 
     /**
-     * Return collection of object Box.
-     * @return array
+     * Return stacked content from all found boxes ...
+     * @param $callable
+     * @return string
      */
-    private function _getBoxes()
+    private function _getBoxes($callable)
     {
-        if (is_array($this->_boxes)) {
-            return $this->_boxes;
+        foreach ($this->getModel()->getBoxes($this) as $b) {
+            $this->_createMethodName($b['method'], $this->_getModuleBox($b), function ($box, $method) {
+                if ($box instanceof Box\WbengineBoxAbstract) {
+                    if (method_exists($box, $method)) {
+                        $this->_content .= $box->$method();
+                    } else {
+                        Throw New SectionException(
+                            sprintf('%s->%s : The method name "%s::%s()" not found.'
+                                , __CLASS__
+                                , __FUNCTION__
+                                , $box->getModuleName()
+                                , $method)
+                        );
+                    }
+                }
+                $this->count++;
+            });
         }
-
-        $boxes = $this->getModel()->getBoxes($this);
-
-        if(!sizeof($boxes)) return null;
-
-        foreach ($boxes as $box) {
-            $Box = New Box($this);
-            $Box->setBox($box);
-            $this->_boxes[] = $Box->getBox();
-        }
-        return $this->_boxes;
+        return $callable($this->_content);
     }
+
+
+
+    /**
+     * Create and return method name.
+     * @param string $method
+     * @param Box\WbengineBoxAbstract $objectBox
+     * @param Callable $callable
+     * @return string
+     */
+    private function _createMethodName($method, $objectBox, $callable){
+        return $callable($objectBox, ucfirst($method));
+    }
+
+
+
+    /**
+     * Return created instance of box.
+     * @param array $box
+     * @return Box\WbengineBoxAbstract
+     * @throws SectionException
+     */
+    private function _getModuleBox(array $box)
+    {
+        $className = $this->_buildNamespace($this->getAppBaseDirName(), $this->getKey(), $box['module']);
+
+        if (class_exists($className, true)) {
+            $this->_module = new $className($box, $this);
+        }else{
+            Throw New SectionException(
+                sprintf('%s->%s : Cannot create instance of "%s". Class not found.'
+                    , __CLASS__
+                    , __FUNCTION__
+                    , $className)
+            );
+        }
+        return $this->_module;
+    }
+
+
+
+    /**
+     * Build namespace from given arguments ...
+     * @param string $namespace
+     * @param string $section
+     * @param string $moduleName
+     * @return string
+     */
+    private function _buildNamespace($namespace, $section, $moduleName)
+    {
+        if (empty($namespace)) {
+            $_namespace = __NAMESPACE__;
+        } else {
+            $_namespace = ucfirst($namespace);
+        }
+
+        if (empty($section)) {
+            throw New BoxException(__METHOD__
+                . ': expects string; but null given!');
+        }
+
+        if (empty($moduleName)) {
+            throw New BoxException(__METHOD__
+                . ': expects string; but null given!');
+        }
+        return "\\" . $_namespace . "\Box\\" . ucfirst($section) . "\\" . ucfirst($moduleName);
+    }
+
+
+
+    /**
+     * Return Application based directory ...
+     * @return string
+     */
+    public function getAppBaseDirName(){
+        return $this->getSite()->getParent()->getAppDir(true);
+    }
+
 
 
     /**
@@ -111,6 +205,7 @@ class Section implements ComponentParentInterface
     }
 
 
+
     /**
      * Return instance of Site class
      * @return Site
@@ -123,9 +218,16 @@ class Section implements ComponentParentInterface
     }
 
 
+
+    /**
+     * Return instance of object parent
+     * @return ComponentParentInterface
+     */
     public function getParent(){
         return $this->_parent;
     }
+
+
 
     /**
      * Return section id
@@ -134,6 +236,7 @@ class Section implements ComponentParentInterface
     public function getSectionId(){
         return $this->_section->section_id;
     }
+
 
 
     /**
@@ -145,6 +248,7 @@ class Section implements ComponentParentInterface
     }
 
 
+
     /**
      * Return section's description
      * @return string
@@ -152,6 +256,7 @@ class Section implements ComponentParentInterface
     public function getDescription(){
         return $this->_section->description;
     }
+
 
 
     /**
@@ -163,6 +268,7 @@ class Section implements ComponentParentInterface
     }
 
 
+
     /**
      * Return true/false if section is active
      * @return boolean
@@ -172,13 +278,15 @@ class Section implements ComponentParentInterface
     }
 
 
+
     /**
      * Return section's error code if defined
      * @return mixed
      */
     public function getErrorCode(){
-        return $this->_section['return_error_code'];
+        return $this->_section->return_error_code;
     }
+
 
 
     /**
@@ -186,25 +294,22 @@ class Section implements ComponentParentInterface
      * @param $site
      * @return string
      */
-    public function getContent($site)
-    {
-        if($this->_parent instanceof Site){
-            $this->_site = $this->_parent;
-        }else{
-            $this->_site = $site;
-        }
-
-        if(!$boxes = $this->getBoxes()) return '';
-
-        /**
-         * @var $box \Wbengine\Box
-         */
-        foreach ($boxes as $box) {
-            $this->_content .= $box->getContent();
-        }
-
-        return $this->_content;
+    public function getContent(){
+        return $this->_getBoxes(function(){
+            return ($this->_content);
+        });
     }
+
+
+
+    /**
+     * Return instance of object Renderer
+     * @return Renderer
+     */
+    public function getRenderer(){
+        return $this->getParent()->getRenderer();
+    }
+
 
 
     /**
@@ -212,30 +317,9 @@ class Section implements ComponentParentInterface
      * @return int
      */
     public function getBoxesCount(){
-        return sizeof($this->getBoxes());
+        return (int)$this->count;
     }
 
-
-    /**
-     * Return Boxes collections
-     * @return array
-     */
-    public function getBoxes(){
-        return $this->_getBoxes();
-    }
-
-
-    /**
-     * Return new instance of object Box
-     * @param $id
-     * @return \Wbengine\Box
-     */
-    public function getBoxById($id)
-    {
-        $box = New Box($this);
-        $this->_boxes = $box->getBox($id);
-        return $box;
-    }
 
 
     /**

@@ -509,8 +509,10 @@ Class Site implements ComponentParentInterface
 
         $sections = $this->getModel()->getSections();
 
-        foreach ($sections as $section){
-            $this->_sections[] = new Section($section, $this);
+        if(is_array($sections)) {
+            foreach ($sections as $section) {
+                $this->_sections[] = new Section($section, $this);
+            }
         }
         return $this->_sections;
     }

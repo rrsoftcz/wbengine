@@ -72,7 +72,13 @@ class Mysqli implements DbAdapterInterface
         }
     }
 
-    public function getAllAssoc($sql){
-        return mysqli_fetch_all($this->getConnection()->query($sql), MYSQLI_ASSOC);
+    public function getAllAssoc($sql)
+    {
+        $mysqli_result = $this->getConnection()->query($sql);
+        if($mysqli_result instanceof \mysqli_result) {
+            return mysqli_fetch_all($this->getConnection()->query($sql), MYSQLI_ASSOC);
+        }else{
+            error_log(__CLASS__.__METHOD__.': Mysqli Error!');
+        }
     }
 }

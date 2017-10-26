@@ -16,4 +16,5 @@ use Wbengine\Exception;
 
 class SectionException extends ApplicationException{
 
+
 }

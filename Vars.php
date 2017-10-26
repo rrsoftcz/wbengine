@@ -15,6 +15,7 @@
 namespace Wbengine;
 
 use Wbengine\Application\Application;
+use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Vars\VarsException;
 
 class Vars

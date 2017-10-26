@@ -17,14 +17,14 @@ use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Config;
 use Wbengine\Renderer;
 use Wbengine\Router\Route;
+use Wbengine\Section;
 use Wbengine\Site;
 
 Abstract class WbengineBoxAbstract implements ComponentParentInterface
 {
 
     /**
-     * Object Site
-     * @var \Wbengine\Site
+     * @var ComponentParentInterface
      */
     private $_parent = null;
 
@@ -34,10 +34,18 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     private $modelCache = null;
 
     /**
-     * @var WbengineBoxAbstract
+     * @var array
      */
-    private $_box = null;
+    private $_box;
+
+    /**
+     * @var Renderer
+     */
     private $_renderer;
+
+    /**
+     * @var Site
+     */
     private $_site;
 
     /**
@@ -50,18 +58,34 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     private $_routes = null;
 
+    /**
+     * @var Route
+     */
     public $route;
+
+
+
+
 
     /**
      * Return instance of Box object
      * @param \Wbengine\Box $box
      * @internal param $
      */
-    public function __construct($parent)
+    public function __construct(array $box, $parent)
     {
-        $this->_parent = $parent;
+        $this->_box     = $box;
+        $this->_parent  = $parent;
     }
 
+
+    public function __get($name){
+           if(isset($this->_box[$name])){
+               return $this->_box[$name];
+           }else{
+               throw new \App\Box\Exception\BoxException(sprintf('Value "%s" is not defined.', $name));
+           }
+    }
 
 
     /**
@@ -84,8 +108,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      * @param $namespace
      * @return string
      */
-    private function _clearNamespace($namespace)
-    {
+    private function _clearNamespace($namespace){
         return str_replace('\\', '_', trim($namespace));
     }
 
@@ -96,8 +119,6 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public function getRenderer()
     {
-//        return $this->_renderer = new Renderer($this);
-//        var_dump(get_class($this->_parent));
         if(method_exists($this->_parent,'getRenderer')) {
             return $this->_parent->getRenderer();
         }
@@ -119,9 +140,12 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     }
 
 
+
     public function getParent(){
-        return $this->getParent();
+        return $this->_parent;
     }
+
+
 
     /**
      * Return existing routes stored in file
@@ -131,6 +155,8 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
         return $this->_routes;
     }
 
+
+
     /**
      * register routes for given box
      * @param array $routes
@@ -138,6 +164,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     public function setRoutes(array $routes){
         $this->_routes = $routes;
     }
+
 
 
     /**
@@ -150,7 +177,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     {
         if (null === $namespace) {
             throw New BoxException(__METHOD__
-                . ': excepts argument namespace as string but null given.');
+                . ': Excepts namespace as string, but null given.');
         }
         if (NULL === $this->modelCache[$this->_clearNamespace($namespace)]) {
 
@@ -161,32 +188,28 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     }
 
 
+
     /**
      * Return instance of object Box
      * @return Box|WbengineBoxAbstract
      */
     public function getBox()
     {
-        if($this->_parent instanceof Box) {
-            return $this->_parent;
+        if($this->_box instanceof WbengineBoxAbstract) {
+            return $this->_box;
         }
     }
 
 
+    
     /**
-     * Evoke new exception with given message and error code.
-     * @param string $message
-     * @param int $code
-     * @throws RuntimeException
+     * Return instance of class Section
+     * @return ComponentParentInterface
      */
-    public function createException($message = NULL, $code = NULL){
-        $this->_exception = New BoxException($message, $code);
+    public function getSection(){
+        return $this->_parent;
     }
 
-
-    public function getBoxUrl(){
-        return $this->getSite()->getLink();
-    }
 
 
     /**
@@ -198,6 +221,8 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
         return $this->_exception;
     }
 
+
+
     /**
      * Return BOX's init url
      * @return string
@@ -205,6 +230,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     public function getBoxRemainUrl(){
         return str_replace(rtrim($this->getBoxUrl(),"/"),"",$this->getSite()->getUrl());
     }
+
 
 
     /**
@@ -215,8 +241,13 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
         return $this->getSite()->getUrlParams();
     }
 
+
+    /**
+     * Return box html template path.
+     * @return string
+     */
     public function getBoxTemplatePath(){
-        return ucfirst($this->getBox()->getSection()->getKey()) . '/' . ucfirst($this->getBox()->getMethodName());
+        return ucfirst($this->getSection()->getKey()) . '/' . ucfirst($this->method);
     }
 
 }

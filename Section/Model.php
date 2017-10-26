@@ -15,6 +15,7 @@
 
 namespace Wbengine\Section;
 
+use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
 use Wbengine\Section;
@@ -29,21 +30,14 @@ class Model extends ModelAbstract {
      */
     public function getBoxes( Section $section )
     {
-        $sql = sprintf('SELECT box.id, box.name, box.module, box.method, sec.key, box.section_id, box.static, box.shared, box.device_min, box.device_strict, box.location
-                FROM %s ord LEFT JOIN %s box ON (box.id = ord.box_id)
-                            LEFT JOIN %s sec ON (box.section_id = sec.section_id)
-                WHERE (ord.site_id = %d OR box.shared = 1)
-                AND box.section_id = %d
-                AND ((box.device_min <= %4$d AND box.device_strict = 0) OR (box.device_min = %4$d AND box.device_strict = 1))
-                GROUP BY box.id, ord.order	ORDER BY ord.order ASC;'
-            , S_TABLE_BOX_ORDERS
-            , S_TABLE_BOXES
-            , S_TABLE_SECTIONS,
+        $sql = sprintf('SELECT %s FROM %s b WHERE (b.site_id = %d AND b.section_id = %d)
+                                OR (b.section_id = %4$d AND b.shared = 1) 
+                              ORDER BY b.order ASC;'
+            , '`id`, `name`, `module`, `method`, `site_id`, `section_id`, `static`, `shared`, `device_min`, `device_strict`, `order`'
+            , S_TABLE_BOXES,
             $section->getSite()->getSiteId(),
             $section->getSectionId()
-            , (int) 1//$section->getSite()->getParent()->getDeviceType()
         );
-
         return Db::fetchAllAssoc($sql);
     }
 

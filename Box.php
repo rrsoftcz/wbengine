@@ -24,7 +24,7 @@ use Wbengine\Box\Exception\BoxException;
 use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Model\ModelAbstract;
 
-class Box implements ComponentParentInterface
+class Boxxxxxxxxxx implements ComponentParentInterface
 {
 
     /**
@@ -329,7 +329,7 @@ class Box implements ComponentParentInterface
      * Return Box namespace If set
      * @return string
      */
-    public function getNamespace(){
+    public function getNamespace(){die(dddd);
         return $this->_box['location'];
     }
 
