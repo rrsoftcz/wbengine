@@ -72,7 +72,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      * @param \Wbengine\Box $box
      * @internal param $
      */
-    public function __construct(array $box, $parent)
+    public function __construct($box, $parent)
     {
         $this->_box     = $box;
         $this->_parent  = $parent;
@@ -113,6 +113,10 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     }
 
 
+    public function getModuleName($obj){
+        return get_class($obj);
+    }
+
     /**
      * Return instance of selected renderer
      * @return \Wbengine\Renderer
@@ -145,7 +149,9 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
         return $this->_parent;
     }
 
-
+    public function getBoxUrl(){
+        return $this->getSite()->getLink();
+    }
 
     /**
      * Return existing routes stored in file

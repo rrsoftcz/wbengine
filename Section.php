@@ -100,7 +100,7 @@ class Section implements ComponentParentInterface
                             sprintf('%s->%s : The method name "%s::%s()" not found.'
                                 , __CLASS__
                                 , __FUNCTION__
-                                , $box->getModuleName()
+                                , $box->getModuleName($box)
                                 , $method)
                         );
                     }

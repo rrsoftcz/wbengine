@@ -264,7 +264,7 @@ class Application implements ComponentParentInterface, ResponseInterface
         {
             if(method_exists($namespace, $method)){
                 try {
-                    $box = new $namespace($this);
+                    $box = new $namespace(null,$this);
                     return $box->$method();
                 }catch (RuntimeException $e){
                     $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));

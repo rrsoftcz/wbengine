@@ -93,7 +93,11 @@
          * @return array|mixed
          */
         public function getParams($param = NULL){
-            return $this->args;
+            if($param){
+                return $this->args[$param];
+            }else{
+                return $this->args;
+            }
         }
 
 
@@ -103,7 +107,7 @@
          * @return string
          */
         public function getPattern(){
-            $this->preg_pattern = preg_replace('/\{[a-z0-9\_]+\}/','([A-Za-z0-9\_]+)', $this->getUserRoute());
+            $this->preg_pattern = preg_replace('/\{[a-z0-9\_]+\}/','([A-Za-z0-9\_\-]+)', $this->getUserRoute());
             $this->pattern = sprintf("~^%s$~", $this->route->preg_pattern);
             return $this->pattern;
         }
