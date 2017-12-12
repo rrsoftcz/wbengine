@@ -308,7 +308,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     /**
      * Return created session instance.
-     * @return \Wbengine\Session
+     * @return Session
      */
     public function getSession(){
         if ($this->_session instanceof Session) {
@@ -320,7 +320,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     /**
      * Create new session instance object if needed.
-     * @see Class_Session
+     * @see Session
      */
     private function _createSession(){
         return $this->_session = new Session();

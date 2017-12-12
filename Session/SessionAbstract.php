@@ -97,7 +97,7 @@ abstract class SessionAbstract
             session_start();
             return session_id();
         }else{
-            session_regenerate_id(true);
+//            session_regenerate_id(true);
             return session_id();
         }
     }
@@ -220,8 +220,8 @@ abstract class SessionAbstract
             ? $session_id
             : session_id();
 
-        $this->setValue("user_name", "");
-        $this->setValue("user_pass", "");
+//        $this->setValue("user_name", "");
+//        $this->setValue("user_pass", "");
 
         $this->getModel()->deleteSession($session_id);
 

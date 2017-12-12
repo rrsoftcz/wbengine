@@ -8,8 +8,9 @@
 
 namespace Wbengine\User;
 
+use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
-use Wbengine\User\UserException;
+use Wbengine\User;
 
 
 class Model extends ModelAbstract
@@ -104,17 +105,12 @@ class Model extends ModelAbstract
         } else {
             $where = array($userId);
 
-            $sql = sprintf('SELECT * FROM %s WHERE user_id = ? LIMIT 1'
+            $sql = sprintf('SELECT * FROM %s WHERE user_id = %d LIMIT 1'
                 , S_TABLE_USERS
                 , $userId
             );
 
-            $row = $this->getDbAdapter()->query($sql, $where);
-
-            return ($row)
-                ? $row->current()
-                : FALSE;
-        }
+            return Db::fetchAssoc($sql);      }
     }
 
 
@@ -138,12 +134,12 @@ class Model extends ModelAbstract
      * We try authenticate user and return user's ID on success
      * or FALSE on failed authentisation.
      *
-     * @param Class_User_Abstract $user
-     * @return integer
+     * @param User $user
+     * @return array
      */
-    public function authenticate(Class_User $user)
+    public function authenticate(User $user)
     {
-        $sql = sprintf("SELECT user_id FROM %s
+        $sql = sprintf("SELECT * FROM %s
 			WHERE MD5(email) = '%s'
 			AND password = '%s' LIMIT 1;"
             , S_TABLE_USERS
@@ -151,11 +147,8 @@ class Model extends ModelAbstract
             , $user->_getPassword()
         );
 
-        $userId = $this->getDbAdapter()->fetchOne($sql);
+        return $userId = Db::fetchAssoc($sql);
 
-        return ($userId)
-            ? (int)$userId
-            : FALSE;
     }
 
 

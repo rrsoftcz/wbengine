@@ -256,4 +256,9 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
         return ucfirst($this->getSection()->getKey()) . '/' . ucfirst($this->method);
     }
 
+
+    public function getSectionPath($name){
+        return ucfirst($this->getSection()->getKey().'/'.$name);
+    }
+
 }

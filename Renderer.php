@@ -22,8 +22,10 @@ use Wbengine\Application\Application;
 use Wbengine\Application\ApplicationException;
 use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Application\Path\Path;
+use Wbengine\Box\WbengineBoxAbstract;
 use Wbengine\Components\ComponentParentInterface;
 use Wbengine\Exception\RuntimeException;
+use Wbengine\Renderer\Exception\RendererException;
 
 //use Wbengine\Renderer;
 
@@ -258,7 +260,7 @@ class Renderer extends Renderer\Adapter
     public function render($template = NULL, $vars = NULL)
     {
         if (NULL === $template) {
-            throw New Exception\RuntimeException(__METHOD__
+            throw New RendererException(__METHOD__
                 . ': Expected template name as string, but null given.');
         }
 
@@ -282,11 +284,45 @@ class Renderer extends Renderer\Adapter
         }elseif(file_exists($this->getLocalTeplatePath($template))){
             return $this->fetch($this->getLocalTeplatePath($template));
         }else{
-            throw New Exception\RuntimeException(__METHOD__
+            throw New RendererException(__METHOD__
                     . ': Box template file "' . $this->getAppTeplatePath($template) . '" not found.');
         }
         
     }
+
+
+    /**
+     * @param $box
+     * @throws RuntimeException
+     */
+    public function renderBox($templateName, $vars = null)
+    {
+        if(empty($templateName)){
+            throw New RendererException(__METHOD__
+                . ': The template name can not be empty.');
+        }
+        // Assign given vars ..?
+        if (!empty($vars)) {
+            // Remove slashes from the given path...
+            $valueName = preg_replace('/^(.*)(\/)(\w+)/i', '$3', $templateName);
+//            var_dump(strtolower($valueName));
+            $this->assign(strtolower($valueName), $vars);
+        }
+
+        if(!preg_match('/\..+$/', $templateName)){
+            $templateName .= $this->getExtension();
+        }
+
+
+        if (file_exists($this->getAppTeplatePath($templateName))){
+            return $this->fetch($this->getAppTeplatePath($templateName));
+            // second, try to locate source template file localy ...
+        }else{
+            throw New RendererException(__METHOD__
+                . ': Box template file "' . $this->getAppTeplatePath($templateName) . '" not found.');
+        }
+    }
+
 
 
     /**

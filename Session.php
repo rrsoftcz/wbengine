@@ -149,6 +149,8 @@ class Session extends SessionAbstract
 
     public function getSessionId()
     {
+//        var_dump('session_id = '.session_id());
+//        var_dump('session_data = '.$this->_data->session_id);
         return $this->_data->session_id;
     }
 

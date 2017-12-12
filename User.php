@@ -76,24 +76,33 @@ class User
      * @param string $key
      * @param mixed $value
      */
-    public function __set($key, $value)
-    {
+    public function __set($key, $value){
         $this->_resource[$key] = $value;
+    }
+
+    public function __get($name){
+        return $this->_resource[$name];
     }
 
 
     /**
-     * Return an instance of object Class_Session
-     * @return Class_Session
+     * Return created session instance.
+     * @return Session
      */
-    private function _getSession()
-    {
-        if (NULL === $this->_session) {
-//		include_once 'Class/Session.php';
-            $this->_session = new Session();
+    public function getSession(){
+        if ($this->_session instanceof Session) {
+            return $this->_session;
         }
+        return $this->_createSession();
+    }
 
-        return $this->_session;
+
+    /**
+     * Create new session instance object if needed.
+     * @see Session
+     */
+    private function _createSession(){
+        return $this->_session = new Session();
     }
 
 
@@ -119,19 +128,6 @@ class User
 
         return $this->_model;
     }
-
-
-    /**
-     * Return initialized Class_Session instance.
-     * @return Class_Session
-     */
-    public function getSession()
-    {
-        $this->_getSession()->init();
-
-        return $this->_getSession();
-    }
-
 
     /**
      * Return username.
@@ -336,7 +332,7 @@ class User
      * @param string $login
      * @param string $password
      * @throws User\UserException
-     * @return Class_User
+     * @return User
      */
     public function login($login = NULL, $password = NULL)
     {
@@ -352,10 +348,14 @@ class User
         $this->_login = md5($login);
         $this->_paswd = md5($password);
 
-        $userId = $this->getModel()->authenticate($this);
-
-        if ($userId)
-            $this->_setIdentity($userId);
+        $this->_resource = $this->getModel()->authenticate($this);
+//var_dump($this->user_id);
+//        if ($this->user_id)
+        if($this->_resource === null){
+            return false;
+        }else {
+            $this->_setIdentity($this->user_id);
+        }
 
 
 //            if ($userId > ANONYMOUS)
@@ -371,9 +371,8 @@ class User
     }
 
 
-    public function getUserIsLogged()
-    {
-        return $this->_logged;
+    public function getUserIsLogged(){
+        return $this->getSession()->getValue('user_is_logged');
     }
 
 
@@ -414,9 +413,10 @@ class User
      * Return user's stored identity data as array
      * @return array
      */
-    public function getIdentity()
-    {
-        $this->_setIdentity();
+    public function getIdentity(){
+        if($this->_resource === null) {
+            $this->_setIdentity();
+        }
         return $this->_resource;
     }
 
@@ -426,24 +426,25 @@ class User
      * from the model database and writes them to a local
      * variable for later use by public methods.
      */
-    private function _setIdentity($userId = NULL)
+    private function _setIdentity($userId = null)
     {
-        if ($userId) {
-            $this->_resource = $this->loadUserDataFromModel($userId);
+
+        if ((int) $userId > 1) {
+//            var_dump('session_id = '.session_id());
+//            var_dump('session_data = '.$this->getSession()->getSessionId());
             $this->_userId = $userId;
+//            $this->getSession()->destroy(session_id());
+                $this->getSession()->setValue('user_is_logged', true);
+        }else{
+//            $this->_userId = $this->getSession()->getUserId();
 
-            return $this;
+            if ($this->_userId === ANONYMOUS) {
+                $this->getSession()->setValue('user_is_logged', false);
+                $this->_resource = $this->loadUserDataFromModel($this->_userId);
+            }
+
+
         }
-
-
-        $this->_userId = $this->getSession()->getValue('user_id', ANONYMOUS);
-
-        if ($this->_userId === ANONYMOUS) {
-            $this->getSession()->setValue('user_is_logged', FALSE);
-        }
-
-        $this->_resource = $this->loadUserDataFromModel($this->_userId);
-
         return $this;
     }
 
