@@ -115,7 +115,7 @@ abstract class Db implements DbInterface
         $className = self::buildClassName(self::getAdapterName());
 
         if (!class_exists($className, true)) {
-            throw new DbException(__METHOD__ .
+            throw new DbExc-eption(__METHOD__ .
                 ': Cannot create adapter instance of \Wbengine\Db\Adapter\\' . $className);
         }
 
@@ -216,6 +216,7 @@ abstract class Db implements DbInterface
      */
     public static function query($sql)
     {
+//        var_dump(self::isConnected());
         $start = microtime(true);
         $res = self::getConnection()->query($sql);
         $end = microtime(true);

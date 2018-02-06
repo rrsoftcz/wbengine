@@ -349,7 +349,7 @@ class User
         $this->_paswd = md5($password);
 
         $this->_resource = $this->getModel()->authenticate($this);
-//var_dump($this->user_id);
+//die($this->_paswd);
 //        if ($this->user_id)
         if($this->_resource === null){
             return false;

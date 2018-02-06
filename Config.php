@@ -15,6 +15,7 @@
 namespace Wbengine;
 
 use Wbengine\Application\Application;
+use Wbengine\Application\ApplicationException;
 use Wbengine\Application\Path\File;
 use Wbengine\Application\Path\Path;
 use Wbengine\Application\Env\Stac\Utils;
@@ -128,9 +129,20 @@ class Config
      */
     public static function load(File $configFile)
     {
+        if($configFile->exist() === false){
+//            var_dump($configFile->exist());
+
+            throw new ConfigException(
+                sprintf('%s->%s: Can not locate configuration file "%s/%s".'
+                    , __CLASS__
+                    , __FUNCTION__
+                    , $configFile->getDirectory()
+                    , $configFile->getFileName()
+                )
+            );
+        }
         //@TODO - Define more adapters...
         self::setConfigAdapter($configFile);
-//        return self::getConfigAdapter();
     }
 
     static function addEnvironmentSafeKeyword($keyword){
@@ -177,8 +189,6 @@ class Config
             case self::CONFIG_TYPE_JASON;
 
                 self::$config = json_decode($filename->getContent());
-
-//                var_dump(json_decode($filename->getContent()));
 
                 break;
 
@@ -280,6 +290,27 @@ class Config
     }
 
 
+    /**
+     * Check whatewer given property object tree
+     * exist. If yes, return value.
+     *
+     * @param $objName string
+     * @param $propName string
+     * @return mixed
+     */
+    private static function _getProperty($objName, $propName){
+        if(is_object(self::$config)) {
+            if(self::$config->$objName) {
+                return self::$config->$objName->$propName;
+            }else{
+                return null;
+            }
+        }else{
+            return null;
+        }
+    }
+
+
     public static function getCdnPath(){
         return self::$config->cdnPath;
     }
@@ -296,22 +327,22 @@ class Config
 
     public static function getRendererTemplatesDir()
     {
-        return self::$config->renderer->templatesDir;
+        return self::_getProperty('renderer','templatesDir');
     }
 
     public static function getRendererConfigDir()
     {
-        return self::$config->renderer->configDir;
+        return self::_getProperty('renderer','configDir');
     }
 
     public static function getRendererAdapterName()
     {
-        return self::$config->renderer->adapterName;
+        return self::_getProperty('renderer','adapterName');
     }
 
     public static function getRendererCompiledDir()
     {
-        return self::$config->renderer->compiledDir;
+        return self::_getProperty('renderer','compiledDir');
     }
 
     public static function getCssCollection()

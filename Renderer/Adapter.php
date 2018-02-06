@@ -77,6 +77,17 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
             return $this->_adapter;
 
         $name = '\\' . ucfirst($this->getAdapterName());
+
+        if(class_exists($name, true) === false){
+            throw new RendererException(
+                sprintf('%s->%s: The renderer adapter "%s" not found.'
+                    , __CLASS__
+                    , __FUNCTION__
+                    , $name
+                )
+            );
+        }
+
         $this->_adapter = new $name();
         return $this->_adapter;
     }

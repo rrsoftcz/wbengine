@@ -9,6 +9,7 @@
 namespace Wbengine\Db\Adapter;
 
 
+use Wbengine\Application\ApplicationException;
 use Wbengine\Config\Value;
 use Wbengine\Db\Adapter\Exception\DbAdapterException;
 
@@ -60,15 +61,23 @@ class Mysqli implements DbAdapterInterface
     }
 
     private function _createConnection(){
-        $this->_connection = new \mysqli(
-            $this->_hostname,
-            $this->_username,
-            $this->_password,
-            $this->_database
-        );
-        if (mysqli_connect_error()) {
-            die('Connect Error (' . mysqli_connect_errno() . ') '
-                . mysqli_connect_error());
+        mysqli_report(MYSQLI_REPORT_STRICT );
+        try {
+            $this->_connection = new \mysqli(
+                $this->_hostname,
+                $this->_username,
+                $this->_password,
+                $this->_database
+            );
+        }catch (\mysqli_sql_exception $e){
+            throw new ApplicationException(
+                sprintf('%s->%s: %s.'
+                    , __CLASS__
+                    , __FUNCTION__
+                    , $e->getMessage()
+                )
+            );
+
         }
     }
 

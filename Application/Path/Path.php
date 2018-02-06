@@ -217,7 +217,7 @@ class Path {
      * Return app renderer base path ...
      * @return null|string
      */
-    public function getRendererCompiledDir(){//Utils::dump($this->_paths);
+    public function getRendererCompiledDir(){
         return $this->getPath(self::TYPE_RENDERER_TEMP, self::TYPE_CACHE, true);
     }
 
