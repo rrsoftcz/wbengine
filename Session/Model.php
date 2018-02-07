@@ -87,12 +87,13 @@ class Model extends ModelAbstract
      */
     public function updateSession(Session $session)
     {
-        $query = sprintf("UPDATE %s SET session_data = '%s'
+        $query = sprintf("UPDATE %s SET session_data = '%s', user_id = %d
                             WHERE session_id = '%s'
                             AND user_ip = '%s'
                             AND user_salt = '%s';"
             , S_TABLE_SESSIONS
             , serialize($session->getSessionData())
+            , $session->getUserId()
             , $session->getSessionId()
             , $session->getUserIp()
             , $session->getUserSalt()

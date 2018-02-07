@@ -309,6 +309,10 @@ class User
     }
 
 
+    public function getUsersGroup(){
+        return (int)$this->group_id;
+    }
+
     /**
      * Load user's data record from database.
      * @param integer $userId
@@ -338,18 +342,18 @@ class User
     {
 
         if (empty($login)) {
-            throw new UserException(__METHOD__ . ': User name is empty.');
+            throw new UserException('User name is empty.');
         }
 
         if (empty($password)) {
-            throw new UserException(__METHOD__ . ': User password is empty.');
+            throw new UserException('User password is empty.');
         }
 
         $this->_login = md5($login);
         $this->_paswd = md5($password);
 
         $this->_resource = $this->getModel()->authenticate($this);
-//die($this->_paswd);
+
 //        if ($this->user_id)
         if($this->_resource === null){
             return false;
@@ -433,15 +437,19 @@ class User
 //            var_dump('session_id = '.session_id());
 //            var_dump('session_data = '.$this->getSession()->getSessionId());
             $this->_userId = $userId;
+
 //            $this->getSession()->destroy(session_id());
-                $this->getSession()->setValue('user_is_logged', true);
+//            $this->getSession($this)->setUserId($userId);
+            $this->getSession()->setValue('user_id', $userId);
+            $this->getSession()->setValue('user_is_logged', true);
         }else{
 //            $this->_userId = $this->getSession()->getUserId();
-
             if ($this->_userId === ANONYMOUS) {
                 $this->getSession()->setValue('user_is_logged', false);
                 $this->_resource = $this->loadUserDataFromModel($this->_userId);
+//                var_dump($this->_resource);
             }
+//            var_dump($this->_userId);
 
 
         }

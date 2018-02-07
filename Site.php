@@ -92,6 +92,7 @@ Class Site implements ComponentParentInterface
     {
     //@todo: craete exception when not value and not default set
         if (!$this->_resource) {
+            var_dump($this->_resource);
             return $default;
         }
         if (array_key_exists($name, $this->_resource)) {
@@ -525,10 +526,20 @@ Class Site implements ComponentParentInterface
      */
     public function initialize($app)
     {
-        $this->_parent = $app;
+            $this->_parent = $app;
 
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
+//        var_dump((int)$this->acl);
+//        var_dump((int)$this->getSessionValue('user_is_logged'));
+//        $user = $this->_getSession()->getu;
+//        var_dump($user->getUserIsLogged());
+        if((int)$this->acl >= 1){
+            if((int)$this->getSessionValue('user_is_logged') === 0){
+                header("Location: /login/");
+            }
+        }
+
         // Save some essential site template variables...
         $this->setVariable('menu', $this->getMenuCollection());
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');

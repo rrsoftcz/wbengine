@@ -36,7 +36,7 @@ class Session extends SessionAbstract
         $this->_data = new \stdClass();
         $this->_setSelfValue(self::USER_AGENT, Utils::getUserAgent());
         $this->_setSelfValue(self::USER_IP, Utils::getUserIp());
-        $this->_setSelfValue(self::USER_ID, ANONYMOUS);
+        $this->_setSelfValue(self::USER_ID,ANONYMOUS);
         $this->_setSelfValue(self::USER_SALT, $this->generateUserSalt());
         $this->_setSelfValue(self::SESSION_ID, $this->sessionStart());
         $this->_setSelfValue(self::SESSION_DATA, new \stdClass());
@@ -79,7 +79,8 @@ class Session extends SessionAbstract
 
     public function __set($name, $value)
     {
-        $this->_load();
+        //@TODO Check if we need to preload data when updateing...!
+        //$this->_load();
         $this->getSessionData()->$name = $value;
         $this->getModel()->updateSession($this);
     }
@@ -119,6 +120,9 @@ class Session extends SessionAbstract
 
     public function setValue($name, $value)
     {
+        if($name === self::USER_ID){
+            $this->_setSelfValue(self::USER_ID, $value);
+        }
         $this->$name = $value;
     }
 
@@ -149,9 +153,12 @@ class Session extends SessionAbstract
 
     public function getSessionId()
     {
-//        var_dump('session_id = '.session_id());
-//        var_dump('session_data = '.$this->_data->session_id);
         return $this->_data->session_id;
+    }
+
+    public function setUserId($userId){
+        $this->setValue(self::USER_ID, $userId);
+        $this->_data->user_id = $userId;
     }
 
     public function geSessionStoredValues($name = null)
