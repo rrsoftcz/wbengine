@@ -21,17 +21,9 @@ use Wbengine\User\UserException;
 class User
 {
 
-
-    /**
-     * Should contain an user ID.
-     * (1 => ANONIMOUS or 2 => an real user ID)
-     * @var integer
-     */
-    private $_userId = null;
-
     /**
      * Site session.
-     * @var array
+     * @var Session
      */
     private $_session = NULL;
 
@@ -39,35 +31,48 @@ class User
      * User's data resource.
      * @var array
      */
-    private $_resource = array();
+    private $_resource = null;
 
     /**
      * User's data model.
-     * @var Class_User_Model
+     * @var Model
      */
     private $_model = NULL;
 
     /**
-     * Instance of Class_Site
-     * @var Class_Site
+     * Instance of Site
+     * @var Site
      */
     private $_site = NULL;
 
-    private $_logged = NULL;
-
+    /**
+     * User name as string
+     * @var string
+     */
     protected $_login = NULL;
 
+    /**
+     * User's MD5 password
+     * @var string
+     */
     protected $_paswd = NULL;
 
+    private $_parent;
 
     /**
      * We just set default identity here...
      * If real user identity already exist in session
      * whole data resource then will be loaded...
      */
-    function __construct()
+    function __construct($parent = null)
     {
-        $this->_setIdentity();
+        $this->_parent = $parent;
+
+        if($this->getUserIsLogged()){
+            $this->user_id = $this->getSession()->getUserId();
+        }else{
+            $this->user_id = ANONYMOUS;
+        }
     }
 
 
@@ -81,7 +86,26 @@ class User
     }
 
     public function __get($name){
-        return $this->_resource[$name];
+        if ($this->_resource === null) {
+            return array('empty'=>true);
+        }else{
+            if($this->_needReloadResource() === true){
+                $this->loadUserDataFromModel((int)$this->_resource['user_id']);
+            }
+            if(key_exists($name, $this->_resource)){
+                return $this->_resource[$name];
+            }
+        }
+    }
+
+
+    private function _needReloadResource(){
+        if(key_exists('user_id', $this->_resource) && $this->getUserId() > 0) {
+            if (false === key_exists('email', $this->_resource)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
@@ -97,22 +121,17 @@ class User
     }
 
 
+    private function _getParent(){
+        return $this->_parent;
+    }
+
+
     /**
      * Create new session instance object if needed.
      * @see Session
      */
     private function _createSession(){
         return $this->_session = new Session();
-    }
-
-
-    /**
-     * Return instance of Class_Site
-     * @return Class_Site
-     */
-    public function getSite()
-    {
-        return $this->_site;
     }
 
 
@@ -129,13 +148,13 @@ class User
         return $this->_model;
     }
 
+
     /**
      * Return username.
      * @return string
      */
-    public function getUsername()
-    {
-        return (string)$this->_resource['username'];
+    public function getUsername(){
+        return (string)$this->username;
     }
 
 
@@ -143,9 +162,8 @@ class User
      * Return user's ID.
      * @return integer
      */
-    public function getUserId()
-    {
-        return (int)$this->_resource['user_id'];
+    public function getUserId(){
+        return (key_exists('user_id', $this->_resource)) ? (int)$this->_resource['user_id'] : 0;
     }
 
 
@@ -153,9 +171,8 @@ class User
      * Return user's password
      * @return string
      */
-    public function getUserCredintial()
-    {
-        return (string)$this->_resource['password'];
+    public function getUserPassword(){
+        return (string)$this->password;
     }
 
 
@@ -163,9 +180,8 @@ class User
      * Return user's type.
      * @return integer
      */
-    public function getUserType()
-    {
-        return (int)$this->_resource['user_type'];
+    public function getUserType(){
+        return (int)$this->user_type;
     }
 
 
@@ -173,9 +189,8 @@ class User
      * Return user's group.
      * @return integer
      */
-    public function getUserGroup()
-    {
-        return (int)$this->_resource['group_id'];
+    public function getUserGroup(){
+        return (int)$this->group_id;
     }
 
 
@@ -183,9 +198,8 @@ class User
      * Return user's first name.
      * @return string
      */
-    public function getUserFirstName()
-    {
-        return (string)$this->_resource['firstname'];
+    public function getUserFirstName(){
+        return (string)$this->firstname;
     }
 
 
@@ -193,9 +207,8 @@ class User
      * User's last name.
      * @return string
      */
-    public function getUserLastName()
-    {
-        return (string)$this->_resource['lastname'];
+    public function getUserLastName(){
+        return (string)$this->lastname;
     }
 
 
@@ -203,9 +216,8 @@ class User
      * Return user's email address.
      * @return string
      */
-    public function getUserEmail()
-    {
-        return (string)$this->_resource['email'];
+    public function getUserEmail(){
+        return (string)$this->email;
     }
 
 
@@ -213,9 +225,8 @@ class User
      * Return user's age.
      * @return mixed
      */
-    public function getUserAge()
-    {
-        return (int)$this->_resource['age'];
+    public function getUserAge(){
+        return (int)$this->age;
     }
 
 
@@ -223,9 +234,8 @@ class User
      * Return user's sex
      * @return integer
      */
-    public function getUserSex()
-    {
-        return (int)$this->_resource['sex'];
+    public function getUserSex(){
+        return (int)$this->sex;
     }
 
 
@@ -233,9 +243,8 @@ class User
      * Return user's home address.
      * @return string
      */
-    public function getUserAddress()
-    {
-        return (string)$this->_resource['address'];
+    public function getUserAddress(){
+        return (string)$this->address;
     }
 
 
@@ -243,9 +252,8 @@ class User
      * Return user's home city or town.
      * @return string
      */
-    public function getUserCity()
-    {
-        return (string)$this->_resource['city'];
+    public function getUserCity(){
+        return (string)$this->city;
     }
 
 
@@ -253,9 +261,8 @@ class User
      * Return user's home post code.
      * @return mixed
      */
-    public function getUserPost()
-    {
-        return (string)$this->_resource['post'];
+    public function getUserPostCode(){
+        return (string)$this->postcode;
     }
 
 
@@ -263,9 +270,8 @@ class User
      * Return user's country ID.
      * @return integer
      */
-    public function getUserCountry()
-    {
-        return (int)$this->_resource['country'];
+    public function getUserCountry(){
+        return (int)$this->country;
     }
 
 
@@ -273,9 +279,8 @@ class User
      * Return user's IP.
      * @return string
      */
-    public function getUserIp()
-    {
-        return (string)$this->_resource['ip'];
+    public function getUserIp(){
+        return (string)$this->ip;
     }
 
 
@@ -283,9 +288,8 @@ class User
      * returns the user status is active whether or not.
      * @return integer
      */
-    public function getUserIsActive()
-    {
-        return (int)$this->_resource['ac_active'];
+    public function getUserIsActive(){
+        return (int)$this->ac_active;
     }
 
 
@@ -293,9 +297,8 @@ class User
      * Return user's locale as ID.
      * @return integer
      */
-    public function getUserLocale()
-    {
-        return (int)$this->_resource['locale'];
+    public function getUserLocale(){
+        return (int)$this->locale;
     }
 
 
@@ -303,9 +306,8 @@ class User
      * Return user's last login time
      * @return integer
      */
-    public function getUserLastLogin()
-    {
-        return (int)$this->_resource['session_updated'];
+    public function getUserLastLogin(){
+        return (int)$this->session_updated;
     }
 
 
@@ -319,13 +321,8 @@ class User
      * @throws User\UserException
      * @return array
      */
-    public function loadUserDataFromModel($userId = NULL)
-    {
-        if (NULL === $userId) {
-            throw new UserException(__METHOD__ . ': User ID is null.');
-        } else {
-            return $this->getModel()->loadUserDataFromModel($userId);
-        }
+    public function loadUserDataFromModel($userId){
+        $this->_resource = $this->getModel()->loadUserDataFromModel($userId);
     }
 
 
@@ -352,31 +349,26 @@ class User
         $this->_login = md5($login);
         $this->_paswd = md5($password);
 
-        $this->_resource = $this->getModel()->authenticate($this);
+        $_usersData = $this->getModel()->authenticate($this);
 
-//        if ($this->user_id)
-        if($this->_resource === null){
-            return false;
-        }else {
-            $this->_setIdentity($this->user_id);
+        if($_usersData !== null) {
+            $this->_resource = $_usersData;
+            $this->_setIdentity($this->getUserId());
+
+        }else{
+            $this->_resetIdentity();
         }
-
-
-//            if ($userId > ANONYMOUS)
-//            {
-//                $this->_resource = $this->getModel()->getUserData($userId);
-//		$this->_logged = TRUE;
-//            }else{
-//                $this->_resource = $this->getModel()->getUserData(ANONYMOUS);
-//		$this->_logged = FALSE;
-//	    }
 
         return $this;
     }
 
 
+    /**
+     * Return whatever User is logged in
+     * @return bool
+     */
     public function getUserIsLogged(){
-        return $this->getSession()->getValue('user_is_logged');
+        return (bool)$this->getSession()->getValue('user_is_logged');
     }
 
 
@@ -388,29 +380,9 @@ class User
     public function logout()
     {
         $this->getSession()->destroy();
+        $this->_resetIdentity();
     }
 
-
-    /**
-     * Reaturn TRUE if user's IP is banned.
-     * @return bollean
-     */
-    public function isUserBanned()
-    {
-        $db = $this->_db;
-        $sql = sprintf("SELECT ban_id FROM %s
-                            WHERE banned_ip = %s LIMIT 1;"
-            , S_TABLE_BANS
-            , $this->getUserIp()
-        );
-
-        $result = $db->sql_query($sql);
-        $row = $db->sql_fetchrow($result);
-
-        return ($row)
-            ? true
-            : false;
-    }
 
 
     /**
@@ -418,8 +390,8 @@ class User
      * @return array
      */
     public function getIdentity(){
-        if($this->_resource === null) {
-            $this->_setIdentity();
+        if($this->_resource === null) {die('GetIdentity()!');
+            $this->_setIdentity(ANONYMOUS);
         }
         return $this->_resource;
     }
@@ -430,30 +402,16 @@ class User
      * from the model database and writes them to a local
      * variable for later use by public methods.
      */
-    private function _setIdentity($userId = null)
+    private function _setIdentity(int $userId)
     {
-
-        if ((int) $userId > 1) {
-//            var_dump('session_id = '.session_id());
-//            var_dump('session_data = '.$this->getSession()->getSessionId());
-            $this->_userId = $userId;
-
-//            $this->getSession()->destroy(session_id());
-//            $this->getSession($this)->setUserId($userId);
-            $this->getSession()->setValue('user_id', $userId);
-            $this->getSession()->setValue('user_is_logged', true);
-        }else{
-//            $this->_userId = $this->getSession()->getUserId();
-            if ($this->_userId === ANONYMOUS) {
-                $this->getSession()->setValue('user_is_logged', false);
-                $this->_resource = $this->loadUserDataFromModel($this->_userId);
-//                var_dump($this->_resource);
-            }
-//            var_dump($this->_userId);
-
-
-        }
+        $this->getSession()->setValue('user_id', $userId);
+        $this->getSession()->setValue('user_is_logged', true);
         return $this;
+    }
+
+
+    private function _resetIdentity(){
+        $this->getSession()->setValue('user_is_logged', false);
     }
 
 

@@ -7,8 +7,8 @@
 
 namespace Wbengine\User;
 
-use Wbengine\Exception\RuntimeException;
+use Wbengine\Application\ApplicationException;
 
-class UserException extends RuntimeException {
+class UserException extends ApplicationException {
 
 }

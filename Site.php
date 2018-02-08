@@ -530,10 +530,22 @@ Class Site implements ComponentParentInterface
 
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
+        $user = Di::get('useR', $this);
 //        var_dump((int)$this->acl);
 //        var_dump((int)$this->getSessionValue('user_is_logged'));
-//        $user = $this->_getSession()->getu;
+//        $user = new User();
+//        $user->login('bajt@volny.cz','plana');
+//        var_dump($user->getUserId());
+//        var_dump($user->getIdentity());
 //        var_dump($user->getUserIsLogged());
+//        $user->logout();
+//        var_dump($user->getIdentity());die();
+        var_dump($user->getUserEmail());
+//        $user->getUserEmail();
+//        $user->login('bajt@volny.cz','plana');
+//        var_dump($this->getParent()->getClassUser()->getUserIsLogged());
+//        $this->getSessionValue('test');
+
         if((int)$this->acl >= 1){
             if((int)$this->getSessionValue('user_is_logged') === 0){
                 header("Location: /login/");

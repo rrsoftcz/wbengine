@@ -33,6 +33,7 @@ class Session extends SessionAbstract
 
     function __construct()
     {
+
         $this->_data = new \stdClass();
         $this->_setSelfValue(self::USER_AGENT, Utils::getUserAgent());
         $this->_setSelfValue(self::USER_IP, Utils::getUserIp());
@@ -75,6 +76,7 @@ class Session extends SessionAbstract
             $this->_create();
         }
 
+        return $this->_data;
     }
 
     public function __set($name, $value)
@@ -120,7 +122,7 @@ class Session extends SessionAbstract
 
     public function setValue($name, $value)
     {
-        if($name === self::USER_ID){
+        if(self::USER_ID === $name){
             $this->_setSelfValue(self::USER_ID, $value);
         }
         $this->$name = $value;

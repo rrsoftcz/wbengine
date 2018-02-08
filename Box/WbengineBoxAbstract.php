@@ -83,7 +83,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
            if(isset($this->_box[$name])){
                return $this->_box[$name];
            }else{
-               throw new \App\Box\Exception\BoxException(sprintf('Value "%s" is not defined.', $name));
+               throw new BoxException(sprintf('Value "%s" is not defined.', $name));
            }
     }
 

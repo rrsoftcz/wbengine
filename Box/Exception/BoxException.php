@@ -6,9 +6,9 @@
 
 namespace Wbengine\Box\Exception;
 
+use Wbengine\Application\ApplicationException;
 use Wbengine\Exception;
-use Wbengine\Exception\RuntimeException;
 
-class BoxException extends RuntimeException {
+class BoxException extends ApplicationException {
 
 }

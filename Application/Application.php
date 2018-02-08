@@ -553,7 +553,7 @@ class Application implements ComponentParentInterface, ResponseInterface
      */
     public function getClassUser(){
         if (!$this->_classUser instanceof User) {
-            $this->_classUser = new User();
+            $this->_classUser = new User($this);
         }
         return $this->_classUser;
     }

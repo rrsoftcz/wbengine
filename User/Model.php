@@ -101,9 +101,9 @@ class Model extends ModelAbstract
     {
 
         if (NULL === $userId) {
-            throw new UserException(__METHOD__ . ': Cannot load user data from DB, because user ID is NULL!.');
+            throw new UserException(__METHOD__ . ': The users ID can no be null!.');
         } else {
-            $where = array($userId);
+//            $where = array($userId);
 
             $sql = sprintf('SELECT * FROM %s WHERE user_id = %d LIMIT 1'
                 , S_TABLE_USERS
@@ -147,7 +147,7 @@ class Model extends ModelAbstract
             , $user->_getPassword()
         );
 
-        return $userId = Db::fetchAssoc($sql);
+        return Db::fetchAssoc($sql);
 
     }
 

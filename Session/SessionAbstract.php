@@ -97,7 +97,6 @@ abstract class SessionAbstract
             session_start();
             return session_id();
         }else{
-//            session_regenerate_id(true);
             return session_id();
         }
     }

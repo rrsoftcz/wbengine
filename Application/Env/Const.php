@@ -16,7 +16,7 @@ define('DEVICE_TYPE_TABLET', 2);
 define('DEVICE_TYPE_DESKTOP', 3);
 
 // User related
-define('ANONYMOUS', 1);
+define('ANONYMOUS', 0);
 // User default locale
 define('USER_LOGGED', 1);
 define('USER_NOT_LOGGED', 0);

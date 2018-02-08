@@ -31,7 +31,7 @@ class Model extends ModelAbstract
     public function getSessionData(Session $session)
     {
         $query = sprintf("
-                        SELECT id,user_id,session_id,session_data,user_agent,user_ip,session_updated,session_expire,user_salt FROM %s s
+                        SELECT user_id,session_id,session_data,user_agent,user_ip,session_updated,session_expire,user_salt FROM %s s
                         WHERE s.session_id = '%s'
                         AND s.user_ip = '%s'
                         AND s.user_salt = '%s'
@@ -41,6 +41,7 @@ class Model extends ModelAbstract
             , $session->getUserIp()
             , $session->getUserSalt()
         );
+
         return Db::fetchObject($query);
     }
 
