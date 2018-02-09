@@ -133,6 +133,10 @@ Class Site implements ComponentParentInterface
         return $this->_parent;
     }
 
+    public function getSession(){
+        return $this->_getSession();
+    }
+
     private function _getSession(){
         return $this->getParent()->getSession();
     }
@@ -530,18 +534,22 @@ Class Site implements ComponentParentInterface
 
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
-        $user = Di::get('useR', $this);
+//        $user = Di::get('useR', $this);
+//        $user = new User($this);
 //        var_dump((int)$this->acl);
 //        var_dump((int)$this->getSessionValue('user_is_logged'));
-//        $user = new User();
+//        $user = new User($this);
 //        $user->login('bajt@volny.cz','plana');
 //        var_dump($user->getUserId());
 //        var_dump($user->getIdentity());
 //        var_dump($user->getUserIsLogged());
 //        $user->logout();
 //        var_dump($user->getIdentity());die();
-        var_dump($user->getUserEmail());
-//        $user->getUserEmail();
+//        var_dump($user->getUserEmail());
+//        var_dump($user->getUserIp());
+//        var_dump($user->getIdentity());
+//        var_dump($this->getSession()->getValue('test'));
+        //        $user->getUserEmail();
 //        $user->login('bajt@volny.cz','plana');
 //        var_dump($this->getParent()->getClassUser()->getUserIsLogged());
 //        $this->getSessionValue('test');
@@ -560,6 +568,7 @@ Class Site implements ComponentParentInterface
         $this->setVariable('host', Config::getCdnPath(), 'cdn');
         $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
         $this->setVariable('identity', $this->getParent()->getClassUser()->getUserIsLogged());
+        $this->setVariable('site_id', $this->getSiteId());
 
         $this->_setSections($this->getSections());
 

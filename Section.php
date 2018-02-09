@@ -334,4 +334,9 @@ class Section implements ComponentParentInterface
     }
 
 
+    public function getSession(){
+        return $this->getParent()->getSession();
+    }
+
+
 }

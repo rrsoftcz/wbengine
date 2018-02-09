@@ -882,7 +882,6 @@ class Application implements ComponentParentInterface, ResponseInterface
                 $this->minimizeCssFiles(Config::getCssCollection(),  dirname($this->getPath()->getPath(Path::TYPE_BASE)));
             }
 
-//            var_dump($this->getVars());
             $this->getRenderer()->dispatch($this);
 
         }catch (ApplicationException $e){

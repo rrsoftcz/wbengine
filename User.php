@@ -64,7 +64,7 @@ class User
      * If real user identity already exist in session
      * whole data resource then will be loaded...
      */
-    function __construct($parent = null)
+    function __construct($parent)
     {
         $this->_parent = $parent;
 
@@ -114,24 +114,12 @@ class User
      * @return Session
      */
     public function getSession(){
-        if ($this->_session instanceof Session) {
-            return $this->_session;
-        }
-        return $this->_createSession();
+        return $this->_getParent()->getSession();
     }
 
 
     private function _getParent(){
         return $this->_parent;
-    }
-
-
-    /**
-     * Create new session instance object if needed.
-     * @see Session
-     */
-    private function _createSession(){
-        return $this->_session = new Session();
     }
 
 
@@ -280,7 +268,7 @@ class User
      * @return string
      */
     public function getUserIp(){
-        return (string)$this->ip;
+        return (string)$this->getSession()->getUserIp();
     }
 
 
@@ -307,7 +295,7 @@ class User
      * @return integer
      */
     public function getUserLastLogin(){
-        return (int)$this->session_updated;
+        return (int)$this->getSession()->getSessionLastUpdated();
     }
 
 
@@ -337,7 +325,6 @@ class User
      */
     public function login($login = NULL, $password = NULL)
     {
-
         if (empty($login)) {
             throw new UserException('User name is empty.');
         }
@@ -354,12 +341,11 @@ class User
         if($_usersData !== null) {
             $this->_resource = $_usersData;
             $this->_setIdentity($this->getUserId());
-
+            return true;
         }else{
             $this->_resetIdentity();
+            return false;
         }
-
-        return $this;
     }
 
 

@@ -18,6 +18,7 @@ use Wbengine\Config;
 use Wbengine\Renderer;
 use Wbengine\Router\Route;
 use Wbengine\Section;
+use Wbengine\Session;
 use Wbengine\Site;
 
 Abstract class WbengineBoxAbstract implements ComponentParentInterface
@@ -259,6 +260,14 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
 
     public function getSectionPath($name){
         return ucfirst($this->getSection()->getKey().'/'.$name);
+    }
+
+    /**
+     * Return instance of class Session
+     * @return Session
+     */
+    public function getSession(){
+        return $this->getParent()->getSession();
     }
 
 }

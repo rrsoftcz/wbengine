@@ -379,15 +379,19 @@ class Boxxxxxxxxxx implements ComponentParentInterface
 
         //@todo Given object must implement a box interfce!
 
-        if (method_exists($_boxObj, $_method)) {
-            if ((int)$this->isStatic() === HTML_STATIC) {
-                $tmp .= $_boxObj->$_method($this->getSite());
+        try {
+            if (method_exists($_boxObj, $_method)) {
+                if ((int)$this->isStatic() === HTML_STATIC) {
+                    $tmp .= $_boxObj->$_method($this->getSite());
+                } else {
+                    $tmp .= $this->getRenderer()->getFormater()->process($_boxObj->$_method($this));
+                }
             } else {
-                $tmp .= $this->getRenderer()->getFormater()->process($_boxObj->$_method($this));
+                throw New BoxException(__METHOD__
+                    . ': Required method ' . $_method . ' does not exist in class ' . ucfirst($this->getModuleName()));
             }
-        } else {
-            throw New BoxException(__METHOD__
-                . ': Required method ' . $_method . ' does not exist in class ' . ucfirst($this->getModuleName()));
+        }catch (BoxException $e){
+            throw new BoxException($e->getMessage());
         }
 
         return $tmp;

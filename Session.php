@@ -33,7 +33,7 @@ class Session extends SessionAbstract
 
     function __construct()
     {
-
+//        var_dump(debug_backtrace()[0]);
         $this->_data = new \stdClass();
         $this->_setSelfValue(self::USER_AGENT, Utils::getUserAgent());
         $this->_setSelfValue(self::USER_IP, Utils::getUserIp());
@@ -89,7 +89,11 @@ class Session extends SessionAbstract
 
     public function __get($name)
     {
-        if (!$this->getId()) {
+//        if (!$this->getId()) {
+//            $this->_load();
+//        }
+//        var_dump($this->_data);
+        if ($this->_data->user_id===0) {
             $this->_load();
         }
         return $this->getSessionData()->$name;
@@ -135,7 +139,7 @@ class Session extends SessionAbstract
 
     public function getId()
     {
-        return $this->_data->id;
+        return $this->_data->user_id;
     }
 
     public function getUserIp()
@@ -183,6 +187,10 @@ class Session extends SessionAbstract
     public function getSessionExpireTime()
     {
         return $this->_data->session_expire;
+    }
+
+    public function unsetKey($name){
+        unset($this->_data->session_data->$name);
     }
 
 }
