@@ -63,7 +63,7 @@
 
 
         public static function get($path, $callable){
-            if(Http::type() !== 'GET') return;
+            if(Http::getRequestType() !== Http::TYPE_GET) return;
 
             $route = self::match($path);
             if($route->isRouteMatch() === true){
@@ -74,7 +74,7 @@
         }
 
         public static function post($path, $function, $callable){
-            if(Http::type() !== 'POST') return;
+            if(Http::getRequestType() !== Http::TYPE_POST) return;
 
             $route = self::match($path);
             if($route->isRouteMatch() === true){

@@ -18,6 +18,7 @@
 
 namespace Wbengine;
 
+use Wbengine\Application\ApplicationException;
 use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Box;
 use Wbengine\Components\ComponentParentInterface;
@@ -90,25 +91,29 @@ class Section implements ComponentParentInterface
      */
     private function _getBoxes($callable)
     {
-        foreach ($this->getModel()->getBoxes($this) as $b) {
-            $this->_createMethodName($b['method'], $this->_getModuleBox($b), function ($box, $method) {
-                if ($box instanceof Box\WbengineBoxAbstract) {
-                    if (method_exists($box, $method)) {
-                        $this->_content .= $box->$method();
-                    } else {
-                        Throw New SectionException(
-                            sprintf('%s->%s : The method name "%s::%s()" not found.'
-                                , __CLASS__
-                                , __FUNCTION__
-                                , $box->getModuleName($box)
-                                , $method)
-                        );
+        try {
+            foreach ($this->getModel()->getBoxes($this) as $b) {
+                $this->_createMethodName($b['method'], $this->_getModuleBox($b), function ($box, $method) {
+                    if ($box instanceof Box\WbengineBoxAbstract) {
+                        if (method_exists($box, $method)) {
+                            $this->_content .= $box->$method();
+                        } else {
+                            Throw New SectionException(
+                                sprintf('%s->%s : The method name "%s::%s()" not found.'
+                                    , __CLASS__
+                                    , __FUNCTION__
+                                    , $box->getModuleName($box)
+                                    , $method)
+                            );
+                        }
                     }
-                }
-                $this->count++;
-            });
+                    $this->count++;
+                });
+            }
+            return $callable($this->_content);
+        }catch(SectionException $e){
+            throw new Site\SiteException($e->getMessage());
         }
-        return $callable($this->_content);
     }
 
 
