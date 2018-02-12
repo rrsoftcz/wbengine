@@ -30,14 +30,25 @@ class Model extends ModelAbstract {
      */
     public function getBoxes( Section $section )
     {
-        $sql = sprintf('SELECT %s FROM %s b WHERE (b.site_id = %d AND b.section_id = %d)
-                                OR (b.section_id = %4$d AND b.shared = 1) 
-                              ORDER BY b.order ASC;'
-            , '`id`, `name`, `module`, `method`, `site_id`, `section_id`, `static`, `shared`, `device_min`, `device_strict`, `order`'
-            , S_TABLE_BOXES,
-            $section->getSite()->getSiteId(),
-            $section->getSectionId()
-        );
+        $sql = sprintf("SELECT CONCAT(%d) AS site_id, %s FROM %s b
+              WHERE (JSON_SEARCH(sites, 'one', '%d') IS NOT NULL AND b.section_id = %d)
+                                OR (b.section_id = %d AND b.shared = 1)
+                              ORDER BY b.order ASC;"
+            , $section->getSite()->getSiteId()
+            , '`id`, `name`, `module`, `method`, `section_id`, `static`, `shared`, `device_min`, `device_strict`, `order`'
+            , S_TABLE_BOXES
+            , $section->getSite()->getSiteId()
+            , $section->getSectionId()
+            , $section->getSite()->getSiteId()
+        );//var_dump('NEW->'.$sql);
+//        $sql = sprintf('SELECT %s FROM %s b WHERE (b.site_id = %d AND b.section_id = %d)
+//                                OR (b.section_id = %4$d AND b.shared = 1)
+//                              ORDER BY b.order ASC;'
+//            , '`id`, `name`, `module`, `method`, `site_id`, `section_id`, `static`, `shared`, `device_min`, `device_strict`, `order`'
+//            , S_TABLE_BOXES,
+//            $section->getSite()->getSiteId(),
+//            $section->getSectionId()
+//        );var_dump($sql);
         return Db::fetchAllAssoc($sql);
     }
 

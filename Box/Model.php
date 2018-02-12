@@ -28,7 +28,7 @@ class Model extends ModelAbstract {
      * @param Box $box
      * @return array
      */
-    public function getBoxById( Box $box )
+    public function getBoxByIdxxxx( Box $box )
     {
         $sql = sprintf("SELECT 
                     b.id,

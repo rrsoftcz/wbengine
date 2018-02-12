@@ -73,6 +73,7 @@
             }
         }
 
+
         public static function post($path, $function, $callable){
             if(Http::getRequestType() !== Http::TYPE_POST) return;
 
@@ -93,7 +94,7 @@
          * @return $this|null
          */
         public static function match($user_route){
-            return self::createRoute($user_route)->compare(htmlspecialchars($_SERVER['REQUEST_URI']));
+            return self::createRoute($user_route)->compare(Http::Uri());
         }
 
 

@@ -90,9 +90,8 @@ Class Site implements ComponentParentInterface
 
     public function get($name, $default = null)
     {
-    //@todo: craete exception when not value and not default set
+        //@todo: craete exception when not value and not default set
         if (!$this->_resource) {
-            var_dump($this->_resource);
             return $default;
         }
         if (array_key_exists($name, $this->_resource)) {
@@ -556,7 +555,7 @@ Class Site implements ComponentParentInterface
 
         if((int)$this->acl >= 1){
             if((int)$this->getSessionValue('user_is_logged') === 0){
-                header("Location: /login/");
+                header("Location: /login/");exit();
             }
         }
 
