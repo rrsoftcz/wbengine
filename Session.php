@@ -51,6 +51,11 @@ class Session extends SessionAbstract
         return $this->_autoclean;
     }
 
+
+    public function save(){
+        $this->getModel()->updateSession($this);
+    }
+
     public function setAutoClean(boolean $state)
     {
         $this->_autoclean = $state;
@@ -84,7 +89,7 @@ class Session extends SessionAbstract
         //@TODO Check if we need to preload data when updateing...!
         //$this->_load();
         $this->getSessionData()->$name = $value;
-        $this->getModel()->updateSession($this);
+        $this->save();
     }
 
     public function __get($name)
@@ -191,6 +196,7 @@ class Session extends SessionAbstract
 
     public function unsetKey($name){
         unset($this->_data->session_data->$name);
+        $this->save();
     }
 
 }

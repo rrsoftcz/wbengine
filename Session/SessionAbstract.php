@@ -49,7 +49,7 @@ abstract class SessionAbstract
      * Eexpiration time in seconds.
      * @var integer
      */
-    private $_expirationTime = 3600;
+    private $_expirationTime = 86400;
 
     /**
      * Session's data model.
