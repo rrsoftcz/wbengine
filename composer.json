@@ -1,7 +1,7 @@
 {
   "name": "wbengine/wbengine",
   "description": "Wbengine is open source PHP Library that is easy to use for creating websites or intranet applications.",
-  "version": "v1.3.5",
+  "version": "v1.3.6",
   "keywords": [
     "wbengine",
     "webengine",
@@ -21,7 +21,7 @@
     }
   ],
   "require": {
-    "php": ">=5.6.0",
+    "php": ">=7.0.*",
     "smarty/smarty": "3.1.*",
     "texy/texy": "2.*"
   },
