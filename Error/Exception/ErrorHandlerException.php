@@ -6,8 +6,8 @@
 
 namespace Wbengine\Error\Exception;
 
-use Wbengine\Exception\RuntimeException;
+use Wbengine\Application\ApplicationException;
 
-class ErrorHandlerException extends RuntimeException {
+class ErrorHandlerException extends ApplicationException {
 
 }

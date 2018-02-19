@@ -27,7 +27,7 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     /**
      * @var ComponentParentInterface
      */
-    private $_parent = null;
+    public $_parent = null;
 
     /**
      * @var array
@@ -194,6 +194,9 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
         }
     }
 
+    public function getUserIsLogged(){
+        return $this->getSite()->isUserLogged();
+    }
 
 
     /**

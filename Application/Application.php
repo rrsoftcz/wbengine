@@ -290,8 +290,10 @@ class Application implements ComponentParentInterface, ResponseInterface
         return;
     }
 
-
-
+    
+    public function isUserLogged(){
+        return $this->getClassUser()->getUserIsLogged();
+    }
 
 
     /**

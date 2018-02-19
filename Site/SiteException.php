@@ -4,9 +4,9 @@
  */
 namespace Wbengine\Site;
 
-use Wbengine\Exception\RuntimeException;
+use Wbengine\Application\ApplicationException;
 
-class SiteException extends RuntimeException {
+class SiteException extends ApplicationException {
     
     const ERROR_CONFIG_DOES_NOT_EXIST = 1001;
     const ERROR_NOT_INSTANCE_OF_SESSION = 1002;

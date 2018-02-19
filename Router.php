@@ -74,13 +74,37 @@
         }
 
 
-        public static function post($path, $function, $callable){
+        public static function post($path, $callable){
             if(Http::getRequestType() !== Http::TYPE_POST) return;
 
             $route = self::match($path);
             if($route->isRouteMatch() === true){
                 if(is_callable($callable)){
-                    return $callable(self::getRoute()->getParams());
+                    return $callable(self::getRoute());
+                }
+            }
+            return false;
+        }
+
+        public static function put($path, $callable){
+            if(Http::getRequestType() !== Http::TYPE_PUT) return;
+
+            $route = self::match($path);
+            if($route->isRouteMatch() === true){
+                if(is_callable($callable)){
+                    return $callable(self::getRoute());
+                }
+            }
+            return false;
+        }
+
+        public static function delete($path, $callable){
+            if(Http::getRequestType() !== Http::TYPE_DELETE) return;
+
+            $route = self::match($path);
+            if($route->isRouteMatch() === true){
+                if(is_callable($callable)){
+                    return $callable(self::getRoute());
                 }
             }
             return false;

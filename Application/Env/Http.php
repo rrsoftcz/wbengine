@@ -61,6 +61,15 @@ abstract class Http
         return ($name) ? self::secureClean($_GET[$name]) : $_GET;
     }
 
+    public static function Json($decode = true){
+        $raw = file_get_contents('php://input');
+        if(self::isJson($raw)){
+            return ($decode === true) ? json_decode($raw, true) : $raw;
+        }else{
+            return null;
+        }
+    }
+
 
     public static function Uri(){
         return $_SERVER["REQUEST_URI"];
@@ -88,4 +97,10 @@ abstract class Http
             return false;
         }
     }
+
+    public static function isJson($string) {
+     json_decode($string);
+     return (json_last_error() == JSON_ERROR_NONE);
+    }
+
 }

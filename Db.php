@@ -275,6 +275,18 @@ abstract class Db implements DbInterface
         return self::query($sql)->fetch_assoc();
     }
 
+    public static function getInserted(){
+        return self::getConnection()->insert_id;
+    }
+
+
+    public static function getAffected(){
+        return self::getConnection()->affected_rows;
+    }
+
+    public static function getError(){
+        return self::getConnection()->error;
+    }
 
     /**
      * Return DB data all records as assoc array

@@ -11,5 +11,4 @@ use Wbengine\Exception;
 
 class DbException extends ApplicationException {
     CONST ERROR_DB_ADAPTER_NAME = 5001;
-
 }

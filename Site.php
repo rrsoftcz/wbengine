@@ -475,8 +475,7 @@ Class Site implements ComponentParentInterface
      * Return Site home URL with default protocol
      * @return string
      */
-    public function getHomeUrl()
-    {
+    public function getHomeUrl(){
         return preg_replace('/[^a-z](.*)/', '://' . $_SERVER['HTTP_HOST']
             , strtolower($_SERVER['SERVER_PROTOCOL']));
     }
@@ -486,8 +485,7 @@ Class Site implements ComponentParentInterface
      * Return CMS member object Exception
      * @return SiteException
      */
-    public function getException()
-    {
+    public function getException(){
         return $this->_exception;
     }
 
@@ -519,6 +517,11 @@ Class Site implements ComponentParentInterface
             }
         }
         return $this->_sections;
+    }
+
+
+    public function isUserLogged(){
+        return $this->getParent()->isUserLogged();
     }
 
     /**
