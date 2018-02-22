@@ -115,8 +115,8 @@ abstract class Db implements DbInterface
         $className = self::buildClassName(self::getAdapterName());
 
         if (!class_exists($className, true)) {
-            throw new DbExc-eption(__METHOD__ .
-                ': Cannot create adapter instance of \Wbengine\Db\Adapter\\' . $className);
+            throw new DbException(__METHOD__ .
+                ': Can\'t create instance of DB adapter "' . $className.'". Adapter class not found.');
         }
 
         try {
@@ -216,12 +216,21 @@ abstract class Db implements DbInterface
      */
     public static function query($sql)
     {
-//        var_dump(self::isConnected());
         $start = microtime(true);
         $res = self::getConnection()->query($sql);
         $end = microtime(true);
         $time = ($end-$start);
+
         self::updateStats($sql, sprintf('%f', $time));
+
+        if($res === false){
+            throw new DbException(
+                sprintf('%s : Query execution error: %s <br><h4>Query:</h4><pre>%s</pre>)'
+                , __METHOD__
+                , mysqli_error(self::getConnection())
+                , $sql)
+            );
+        }
 
         return $res;
     }
