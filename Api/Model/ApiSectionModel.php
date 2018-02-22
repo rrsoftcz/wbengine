@@ -111,11 +111,11 @@ class ApiSectionModel extends ModelAbstract
 
     public function addSection($data)
     {
-        $sql = sprintf("INSERT INTO `%s` (`title`, `Description`, `active`, `key`, `return_error_code`)VALUES('%s');
-"
+        $sql = sprintf("INSERT INTO `%s` (`title`, `Description`, `active`, `key`, `return_error_code`)VALUES('%s');"
             , S_TABLE_SECTIONS
             , implode("','", $data)
         );
+        
         $res = Db::query($sql);
 
         if(!$res){
