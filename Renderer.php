@@ -303,7 +303,7 @@ class Renderer extends Renderer\Adapter
         if (!empty($vars)) {
             // Remove slashes from the given path...
             $valueName = preg_replace('/^(.*)(\/)(\w+)/i', '$3', $templateName);
-//            var_dump(strtolower($valueName));
+
             $this->assign(strtolower($valueName), $vars);
         }
 

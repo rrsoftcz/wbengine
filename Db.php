@@ -297,6 +297,22 @@ abstract class Db implements DbInterface
         return self::getConnection()->error;
     }
 
+
+    public static function createUpdateQuery($table, $data, $statements = array()){
+        $sql = "UPDATE ".$table . " SET ";
+        $i=1;
+        array_walk($data,function(&$value, &$key){$value = "`".$key."`='".$value."'";});
+        foreach ($data as $value){
+            $sql .= $value;
+            $sql .= ($i< sizeof($data))?",":"";
+            ++$i;
+        }
+
+        $sql .= " WHERE " . implode(" AND ", $statements).";";
+        return $sql;
+    }
+
+
     /**
      * Return DB data all records as assoc array
      * @param $sql

@@ -22,25 +22,25 @@ class Model extends ModelAbstract
      * (1 => ANONIMOUS or 2 => an real user ID)
      * @var integer
      */
-    private $_userId = null;
+//    private $_userId = null;
 
     /**
      * User's data resource.
      * @var array
      */
-    private $_resource = array();
+//    private $_resource = array();
 
     /**
      * Site session.
      * @var array
      */
-    private $_session = null;
+//    private $_session = null;
 
     /**
      * Instance of database connection
      * @var Zend_Db_Adapter_Pdo_Mysql
      */
-    private $_db = NULL;
+//    private $_db = NULL;
 
 
     /**
@@ -58,30 +58,30 @@ class Model extends ModelAbstract
     }
 
 
-    /**
-     * This magis method returns user's data by
-     * givenn item index.
-     *
-     * @param string $key
-     * @return mixed
-     */
-    public function __get($key)
-    {
-        if (is_array($this->_resource) || is_object($this->_resource)) {
-            if (array_key_exists($key, $this->_resource)) {
-                return $this->_resource[$key];
-            }
-        }
-
-        return null;
-    }
+//    /**
+//     * This magis method returns user's data by
+//     * givenn item index.
+//     *
+//     * @param string $key
+//     * @return mixed
+//     */
+//    public function __get($key)
+//    {
+//        if (is_array($this->_resource) || is_object($this->_resource)) {
+//            if (array_key_exists($key, $this->_resource)) {
+//                return $this->_resource[$key];
+//            }
+//        }
+//
+//        return null;
+//    }
 
 
     /**
      * Return session instance
      * @return Class_Session_Abstract
      */
-    public function getSession()
+    public function getSessionxxxx()
     {
         if (NULL === $this->_session) {
             $this->_setSession();
@@ -114,11 +114,26 @@ class Model extends ModelAbstract
     }
 
 
+    public function update($user){
+        $query = Db::createUpdateQuery(
+            S_TABLE_USERS,
+            $user->toArray(),
+            array(
+                sprintf("user_id = %d", $user->getUserId())
+            )
+        );
+        Db::query($query);
+
+        return Db::getAffected();
+    }
+
+
+
     /**
      * Return user's stored data as array
      * @return array
      */
-    public function getIdentity()
+    public function getIdentityxxxx()
     {
         $this->_userId = $this->getSession()->getValue('user_id', ANONYMOUS);
 
@@ -157,7 +172,7 @@ class Model extends ModelAbstract
      * session and destroy them.
      * @void
      */
-    public function logout()
+    public function logoutxxx()
     {
         $this->getSession()->destroy();
     }
@@ -167,7 +182,7 @@ class Model extends ModelAbstract
      * Reaturn TRUE if user's IP is banned.
      * @return bollean
      */
-    public function isUserBanned()
+    public function isUserBannedxxx()
     {
         $db = $this->_db;
         $sql = sprintf("SELECT ban_id FROM %s
@@ -188,7 +203,7 @@ class Model extends ModelAbstract
     /**
      * Create and store new session instance object to local variable.
      */
-    private function _setSession()
+    private function _setSessionxxxx()
     {
         $this->_session = new Class_Session();
 

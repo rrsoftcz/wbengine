@@ -40,15 +40,8 @@ class Model extends ModelAbstract {
             , $section->getSite()->getSiteId()
             , $section->getSectionId()
             , $section->getSite()->getSiteId()
-        );//var_dump('NEW->'.$sql);
-//        $sql = sprintf('SELECT %s FROM %s b WHERE (b.site_id = %d AND b.section_id = %d)
-//                                OR (b.section_id = %4$d AND b.shared = 1)
-//                              ORDER BY b.order ASC;'
-//            , '`id`, `name`, `module`, `method`, `site_id`, `section_id`, `static`, `shared`, `device_min`, `device_strict`, `order`'
-//            , S_TABLE_BOXES,
-//            $section->getSite()->getSiteId(),
-//            $section->getSectionId()
-//        );var_dump($sql);
+        );
+
         return Db::fetchAllAssoc($sql);
     }
 

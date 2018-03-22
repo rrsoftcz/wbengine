@@ -87,7 +87,7 @@ class User
 
     public function __get($name){
         if ($this->_resource === null) {
-            return array('empty'=>true);
+            return array('empty' => true);
         }else{
             if($this->_needReloadResource() === true){
                 $this->loadUserDataFromModel((int)$this->_resource['user_id']);
@@ -369,6 +369,21 @@ class User
         $this->_resetIdentity();
     }
 
+    private function _resetIdentity(){
+        $this->getSession()->setValue('user_is_logged', false);
+    }
+
+
+    public function _getLoginName()
+    {
+        return $this->_login;
+    }
+
+
+    public function _getPassword()
+    {
+        return $this->_paswd;
+    }
 
 
     /**
@@ -376,7 +391,7 @@ class User
      * @return array
      */
     public function getIdentity(){
-        if($this->_resource === null) {die('GetIdentity()!');
+        if($this->_resource === null) {
             $this->_setIdentity(ANONYMOUS);
         }
         return $this->_resource;
@@ -396,21 +411,24 @@ class User
     }
 
 
-    private function _resetIdentity(){
-        $this->getSession()->setValue('user_is_logged', false);
+    public function getFullName(){
+        return $this->getUserFirstName() . '&nbsp;' . $this->getUserLastName();
+    }
+
+    public function getWelcomeName(){
+        $_name = (!empty($this->getUserFirstName())) ? $this->getUserFirstName() : $this->getUserName();
+        return (!empty($_name)) ? $_name : $this->getUserEmail();
     }
 
 
-    public function _getLoginName()
-    {
-        return $this->_login;
+    public function toArray(){
+        if($this->getUserIsLogged() === true){
+//            $this->loadUserDataFromModel($this->getUserId());
+            return $this->_resource;
+        }
+        return $this->_resource;
     }
 
-
-    public function _getPassword()
-    {
-        return $this->_paswd;
-    }
 
 
 }

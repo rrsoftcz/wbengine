@@ -44,6 +44,7 @@ abstract class Http
         $value = stripslashes($value);
         $value = htmlspecialchars($value, ENT_IGNORE, 'utf-8');
         $value = strip_tags($value);
+        $value = addslashes($value);
         return $value;
     }
 
@@ -98,9 +99,16 @@ abstract class Http
         }
     }
 
+    
     public static function isJson($string) {
      json_decode($string);
      return (json_last_error() == JSON_ERROR_NONE);
     }
+
+
+    public static function generateToken($length = 32){
+        return bin2hex(random_bytes($length));
+    }
+
 
 }

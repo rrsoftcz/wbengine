@@ -256,13 +256,16 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      * Return box html template path.
      * @return string
      */
-    public function getBoxTemplatePath(){
-        return ucfirst($this->getSection()->getKey()) . '/' . ucfirst($this->method);
+    public function getBoxTemplatePath($subfolder = null){
+
+        return (null === $subfolder) ? ucfirst($this->getSection()->getKey()) . '/' . ucfirst($this->method):
+        ucfirst($this->getSection()->getKey()) . '/'.$subfolder . '/'.ucfirst($this->method);
     }
 
 
-    public function getSectionPath($name){
-        return ucfirst($this->getSection()->getKey().'/'.$name);
+    public function getSectionPath($name, $subfolder = null){
+        return (null === $subfolder) ? ucfirst($this->getSection()->getKey().'/'.$name) : 
+        ucfirst($this->getSection()->getKey() . '/'. $subfolder . '/'. $name);
     }
 
     /**
