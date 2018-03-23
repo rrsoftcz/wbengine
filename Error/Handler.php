@@ -147,7 +147,7 @@ class Handler
         $this->_errors[] = New Template($_properties);
 
         if ($code !== E_NOTICE) {
-            throw New Exception\ErrorHandlerException(__class__ . ": " . $message .
+            throw New Exception\ErrorHandlerException($ePrefix. ": " . $message .
                 " in file: " . $file . " on line: " . $line, $code);
         }
     }

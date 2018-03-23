@@ -141,7 +141,7 @@ class User
      * Return username.
      * @return string
      */
-    public function getUsername(){
+    public function getUserName(){
         return (string)$this->username;
     }
 
@@ -186,8 +186,14 @@ class User
      * Return user's first name.
      * @return string
      */
-    public function getUserFirstName(){
-        return (string)$this->firstname;
+    public function getUserFirstName($space = true)
+    {
+        if ($this->firstname) {
+            $_fullname = ($space) ? $this->firstname . "&nbsp;" : $this->firstname;
+        } else {
+            return null;
+        }
+        return (string)$_fullname;
     }
 
 
@@ -412,18 +418,24 @@ class User
 
 
     public function getFullName(){
-        return $this->getUserFirstName() . '&nbsp;' . $this->getUserLastName();
+        return $this->getUserFirstName() . $this->getUserLastName();
     }
 
     public function getWelcomeName(){
-        $_name = (!empty($this->getUserFirstName())) ? $this->getUserFirstName() : $this->getUserName();
-        return (!empty($_name)) ? $_name : $this->getUserEmail();
+        if($this->getFullName()){
+            return $this->getFullName();
+        }else{
+            if($this->getUserName()){
+                return (string)$this->getUserName();
+            }else{
+                return (string)$this->getUserEmail();
+            }
+        }
     }
 
 
     public function toArray(){
         if($this->getUserIsLogged() === true){
-//            $this->loadUserDataFromModel($this->getUserId());
             return $this->_resource;
         }
         return $this->_resource;
