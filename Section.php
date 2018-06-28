@@ -139,7 +139,7 @@ class Section implements ComponentParentInterface
      */
     private function _getModuleBox(array $box)
     {
-        $className = $this->_buildNamespace($this->getAppBaseDirName(), $this->getKey(), $box['module']);
+        $className = $this->_buildNamespace($this->getParentNameSpace(), $this->getKey(), $box['module']);
 
         if (class_exists($className, true)) {
             $this->_module = new $className($box, $this);
@@ -184,6 +184,13 @@ class Section implements ComponentParentInterface
     }
 
 
+    /**
+     * Return user deffined parent namespace ...
+     * @return null|string
+     */
+    public function getParentNameSpace(){
+        return $this->getSite()->getParent()->getParentNameSpace();
+    }
 
     /**
      * Return Application based directory ...

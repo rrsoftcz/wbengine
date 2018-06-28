@@ -154,6 +154,11 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     private $_routes = array();
 
+    /**
+     * Users application namespace
+     * @var null | string
+     */
+    private $_namespace = null;
 
 
     const APP_BASE_DIR              = '/App';
@@ -166,7 +171,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 
 
 
-    public function __construct($appBaseDir)
+    public function __construct($appBaseDir, $nameSpace = null)
     {
         if (!is_string($appBaseDir) || empty($appBaseDir)) {
             throw new ApplicationException(
@@ -199,6 +204,10 @@ class Application implements ComponentParentInterface, ResponseInterface
         }
 
 
+            /**
+             * Set default application namespace deffined in composer.json file ...
+             */
+            $this->setParentNameSpace($nameSpace);
 
             /**
              * Set application BASE path as firs ...
@@ -295,6 +304,21 @@ class Application implements ComponentParentInterface, ResponseInterface
         return $this->getClassUser()->getUserIsLogged();
     }
 
+    /**
+     * Set Parent application namespace
+     * @param $namespace string
+     */
+    public function setParentNameSpace($namespace){
+        $this->_namespace = ($namespace) ? $namespace : self::getAppDir(true);
+    }
+
+    /**
+     * Return uder defined parent namespace
+     * @return null|string
+     */
+    public function getParentNameSpace(){
+        return $this->_namespace;
+    }
 
     /**
      * Create object Class_Renderer
