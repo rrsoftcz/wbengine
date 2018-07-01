@@ -163,9 +163,8 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     const APP_BASE_DIR              = '/App';
     const APP_CONFIG_PATH           = '/Config/';
-    const APP_TEMPLATE_PATH         = '/Src/View';
-    const APP_TYPE_CACHE            = '/Cache';
-    const APP_TYPE_RENDERER_TEMP    = '/Renderer';
+//    const APP_VIEW_PATH             = '/View';
+    // const APP_TYPE_RENDERER_TEMP    = '/Compiled';
 
 
 
@@ -217,7 +216,7 @@ class Application implements ComponentParentInterface, ResponseInterface
             /**
              * Set app cache directory path ...
              */
-            $this->setPath(Path::TYPE_CACHE, self::APP_TYPE_CACHE);
+//            $this->setPath(Path::TYPE_CACHE, self::APP_VIEW_PATH);
 
             /**
              * setup errorhandler ...
@@ -299,7 +298,7 @@ class Application implements ComponentParentInterface, ResponseInterface
         return;
     }
 
-    
+
     public function isUserLogged(){
         return $this->getClassUser()->getUserIsLogged();
     }

@@ -52,7 +52,7 @@ class Path {
      * @return string
      */
     private function _merge($path1, $path2){
-        return sprintf('%s/%s',rtrim($path1, '/'), ltrim($path2, '/'));
+        return sprintf('%s/%s', rtrim($path1, '/'), ltrim($path2, '/'));
     }
 
 
@@ -127,6 +127,8 @@ class Path {
      */
     public function addPath($name, $path, $appBaseDir = false){
         if($appBaseDir === true){
+            $this->_appBaseDir = $this->getAppBaseDir() . $path;
+        }else{
             $this->_appBaseDir = $path;
         }
         $this->_createPath($name, $path);
@@ -140,7 +142,7 @@ class Path {
      * @param bool $baseDir
      * @return null|string
      */
-    public function getPath($name, $includePath = null, $baseDir = false)
+    public function getPath($name, $includePath = null, $baseDir = 0)
     {
         $this->_tmp = null;
 
@@ -148,10 +150,11 @@ class Path {
             $this->_tmp = $this->getAppBaseDir();
         }
 
-        if(!is_null($includePath)){
+        if(!is_null($includePath)) {
             $this->_tmp = $this->_merge($this->_tmp, $this->__get($includePath));
         }
-        $this->_tmp = $this->_merge($this->_tmp, $this->__get($name));
+
+        $this->_tmp = ($this->_tmp) ? $this->_merge($this->_tmp, $this->__get($name)) : $this->__get($name);
 
         return $this->_tmp;
     }
@@ -218,7 +221,7 @@ class Path {
      * @return null|string
      */
     public function getRendererCompiledDir(){
-        return $this->getPath(self::TYPE_RENDERER_TEMP, self::TYPE_CACHE, true);
+        return $this->getPath(self::TYPE_RENDERER_TEMP, self::TYPE_TEMPLATES, true);
     }
 
 
@@ -236,7 +239,7 @@ class Path {
      * @return null|string
      */
     public function getTemplatesDir(){
-        return $this->getPath(self::TYPE_TEMPLATES, true);
+        return $this->getPath(self::TYPE_TEMPLATES, null, true);
     }
 
 }

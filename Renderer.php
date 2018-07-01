@@ -169,10 +169,10 @@ class Renderer extends Renderer\Adapter
     public function getRendererCacheDir()
     {
         if(null === $this->_rendererCompiledDir) {
-            $this->Path()->addPath(Path::TYPE_RENDERER_TEMP, Config::getRendererCompiledDir(), true);
+            $this->Path()->addPath(Path::TYPE_RENDERER_TEMP, Config::getRendererCompiledDir(), false);
             $this->_rendererCompiledDir = $this->Path()->getRendererCompiledDir();
             if(!file_exists($this->_rendererCompiledDir)){
-                 Throw New RendererException(sprintf("%s -> %s: Can't write to cache directory '%s'! Please check if directory exist and is writable.",
+                 Throw New RendererException(sprintf("%s -> %s: Can't locate the view compiled directory '%s'! Please check if directory exist and it's writable.",
                  __CLASS__,
                  __FUNCTION__,
                  $this->_rendererCompiledDir));
@@ -269,7 +269,7 @@ class Renderer extends Renderer\Adapter
 
             $this->assign($valueName, $vars);
         }
-        
+
         // Check if file extension presents...
         if(!preg_match('/\..+$/', $template)){
             $template .= $this->getExtension();
@@ -285,7 +285,7 @@ class Renderer extends Renderer\Adapter
             throw New RendererException(__METHOD__
                     . ': Box template file "' . $this->getAppTeplatePath($template) . '" not found.');
         }
-        
+
     }
 
 

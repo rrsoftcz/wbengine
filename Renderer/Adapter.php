@@ -100,7 +100,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function fetch($template, $cache_id = NULL, $compile_id = NULL)
     {
         return $this->getAdapter()->fetch($template, $cache_id, $compile_id);
-
     }
 
 
@@ -110,7 +109,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function display($template, $cache_id = NULL, $compile_id = NULL)
     {
         $this->getAdapter()->display($template, $cache_id, $compile_id);
-
     }
 
 
@@ -120,7 +118,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function assign($varname, $var = NULL, $scope = NULL)
     {
         $this->getAdapter()->assign($varname, $var, $scope);
-
     }
 
 
@@ -130,7 +127,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function setCompileDir($path)
     {
         $this->getAdapter()->compile_dir = (string)$path;
-
     }
 
 
@@ -140,7 +136,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function setTemplateDir($path)
     {
         $this->getAdapter()->template_dir = (string)$path;
-
     }
 
 
@@ -150,7 +145,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function setConfigDir($path)
     {
         $this->getAdapter()->config_dir = (string)$path;
-
     }
 
 
@@ -160,7 +154,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function setCacheDir($path)
     {
         $this->getAdapter()->cache_dir = (string)$path;
-
     }
 
 
@@ -170,7 +163,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function setLeftDelimiter($value)
     {
         $this->getAdapter()->left_delimiter = (string)$value;
-
     }
 
 
@@ -180,7 +172,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function setRightDelimiter($value)
     {
         $this->getAdapter()->right_delimiter = (string)$value;
-
     }
 
 
@@ -190,7 +181,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function registerObject($name, $value)
     {
         $this->getAdapter()->assignByRef($name, $value);
-
     }
 
 }
