@@ -150,6 +150,14 @@ class File {
         return preg_replace("'\\s+'ms", " ", $string);
     }
 
+
+    /**
+     * Rename a file...
+     *
+     * @param $newFileName
+     * @return File
+     * @throws FileException
+     */
     public function rename($newFileName)
     {
         $this->_status = rename($this->getFileName(), $newFileName);
@@ -171,6 +179,14 @@ class File {
 
     }
 
+
+    /**
+     * Copy a file..
+     *
+     * @param $newName
+     * @return $this|File
+     * @throws FileException
+     */
     public function copy($newName){
 
         $_old = $this->getFile();
@@ -194,6 +210,13 @@ class File {
         }
     }
 
+
+    /**
+     * Save current file as minimized...
+     *
+     * @return File
+     * @throws FileException
+     */
     public function saveAsMinimized()
     {
         $newFile = New File($this->getDirectory(). '/' .$this->getMinimizedName(), true);
@@ -223,6 +246,16 @@ class File {
         return $newFile;
     }
 
+
+    /**
+     * Create a new instance of object file...
+     *
+     * @param string $fileType
+     * @param string $directory
+     * @param string $fileName
+     * @return File
+     * @throws FileException
+     */
     public function newFileName($fileType = null, $directory = null, $fileName = null)
     {
         if(is_null($fileType)){
@@ -239,6 +272,14 @@ class File {
         return new self($_file_name, true);
     }
 
+
+    /**
+     * Create etag file in compiled directory.
+     *
+     * @param null $file
+     * @return File
+     * @throws FileException
+     */
     public function saveEtag($file = null)
     {
         if($file instanceof File){
@@ -261,18 +302,35 @@ class File {
         );
     }
 
+
+    /**
+     * Replace an content in file.
+     *
+     * @param $search
+     * @param $replace
+     * @throws FileException
+     */
     public function replaceInFile($search, $replace)
     {
         $this->writeToFile(str_replace($search, $replace, $this->getContent()));
     }
 
+
+    /**
+     * Write content to a file...
+     *
+     * @param $fileContent
+     * @param bool $minimize
+     * @return $this
+     * @throws FileException
+     */
     public function writeToFile($fileContent, $minimize = false)
     {
-        if($minimize === TRUE){
+        if($minimize === true){
             $fileContent = $this->minimize($fileContent);
         }
 
-        if($this->isWritable()) {
+        if($this->getFile()) {
             $this->_status = file_put_contents($this->getFile(), $fileContent);
             return $this;
         }else{
@@ -287,14 +345,32 @@ class File {
     }
 
 
+    /**
+     * Return file extension...
+     *
+     * @param $fileType
+     * @return false|int|string
+     */
     public function getExtensionByFileType($fileType){
         return array_search($fileType, $this->_file_types);
     }
 
+
+    /**
+     * Return size of content writable to a file...
+     * @param bool $human
+     * @return null|string
+     */
     public function getWritedData($human = false){
         return ($human === TRUE)? $this->_getFilesize($this->_writed):$this->_writed;
     }
 
+
+    /**
+     * Return content from an file...
+     * @return bool|string
+     * @throws FileException
+     */
     public function getContent()
     {
         if($this->isReadable()) {
@@ -309,6 +385,7 @@ class File {
             );
         }
     }
+
 
     private function _setFullPathName(){
         $this->_fullPath = $this->getDirectory().'/'.$this->getFileName();

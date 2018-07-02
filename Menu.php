@@ -70,6 +70,10 @@ class Menu
         return false;
     }
 
+    public function active(){
+        return ($this->selected()) ? 'active' : '';
+    }
+
 
     /**
      * Set instance of class Site

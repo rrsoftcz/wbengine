@@ -436,7 +436,7 @@ class Application implements ComponentParentInterface, ResponseInterface
     {
         foreach ($files as $file){
             $cssFile = new File($_path . $file);
-            $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getCacheDir())->getFile(), true);
+            $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getRendererCompiledDir())->getFile(), true);
 
             if (!$ef->exist() || Utils::compareStrings(md5_file($cssFile->getFile()), $ef->getContent()) === false)
             {

@@ -85,9 +85,11 @@ class Mysqli implements DbAdapterInterface
     {
         $mysqli_result = $this->getConnection()->query($sql);
         if($mysqli_result instanceof \mysqli_result) {
-            return mysqli_fetch_all($this->getConnection()->query($sql), MYSQLI_ASSOC);
+            return mysqli_fetch_all($mysqli_result, MYSQLI_ASSOC);
         }else{
-            error_log(__CLASS__.__METHOD__.': Mysqli Error!');
+            throw New DbAdapterException(
+                __CLASS__ . "->" . __FUNCTION__ . ": Mysqli_result error."
+            );
         }
     }
 }
