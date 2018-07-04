@@ -8,7 +8,6 @@
 
 namespace Wbengine\Box;
 
-use App\App;
 use Wbengine\Application\Application;
 use Wbengine\Box\Exception;
 use Wbengine\Box;
@@ -20,6 +19,7 @@ use Wbengine\Router\Route;
 use Wbengine\Section;
 use Wbengine\Session;
 use Wbengine\Site;
+use Wbengine\Api;
 
 Abstract class WbengineBoxAbstract implements ComponentParentInterface
 {
@@ -64,8 +64,11 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public $route;
 
-
-
+    /**
+     * Instance of object API
+     * @var Wbengine\Api
+     */
+    private $_api;
 
 
     /**
@@ -75,17 +78,24 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public function __construct($box, $parent)
     {
-        $this->_box     = $box;
-        $this->_parent  = $parent;
+        $this->_box = $box;
+        $this->_parent = $parent;
     }
 
 
-    public function __get($name){
-           if(isset($this->_box[$name])){
-               return $this->_box[$name];
-           }else{
-               throw new BoxException(sprintf('Value "%s" is not defined.', $name));
-           }
+    /**
+     * Class getter return instance of Wbengine\Box
+     * @param $name
+     * @return mixed
+     * @throws BoxException
+     */
+    public function __get($name)
+    {
+        if (isset($this->_box[$name])) {
+            return $this->_box[$name];
+        } else {
+            throw new BoxException(sprintf('Value "%s" is not defined.', $name));
+        }
     }
 
 
@@ -109,14 +119,22 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      * @param $namespace
      * @return string
      */
-    private function _clearNamespace($namespace){
+    private function _clearNamespace($namespace)
+    {
         return str_replace('\\', '_', trim($namespace));
     }
 
 
-    public function getModuleName($obj){
+    /**
+     * Return a module name...
+     * @param $obj
+     * @return string
+     */
+    public function getModuleName($obj)
+    {
         return get_class($obj);
     }
+
 
     /**
      * Return instance of selected renderer
@@ -124,12 +142,12 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public function getRenderer()
     {
-        if(method_exists($this->_parent,'getRenderer')) {
+        if (method_exists($this->_parent, 'getRenderer')) {
             return $this->_parent->getRenderer();
         }
-        if($this->_renderer instanceof Renderer){
+        if ($this->_renderer instanceof Renderer) {
             return $this->_renderer;
-        }else{
+        } else {
             $this->_renderer = new Renderer($this);
         }
         return $this->_renderer;
@@ -140,17 +158,19 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      * Return instance of class site
      * @return \Wbengine\Site
      */
-    public function getSite(){
+    public function getSite()
+    {
         return $this->_parent->getSite();
     }
 
 
-
-    public function getParent(){
+    public function getParent()
+    {
         return $this->_parent;
     }
 
-    public function getBoxUrl(){
+    public function getBoxUrl()
+    {
         return $this->getSite()->getLink();
     }
 
@@ -163,15 +183,28 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     }
 
 
+    /**
+     * Return instance of Object Api
+     * @return Api|Wbengine\Api
+     */
+    public function Api()
+    {
+        if ($this->_api) {
+            return $this->_api;
+        } else {
+            return $this->_api = new Api();
+        }
+    }
+
 
     /**
      * register routes for given box
      * @param array $routes
      */
-    public function setRoutes(array $routes){
+    public function setRoutes(array $routes)
+    {
         $this->_routes = $routes;
     }
-
 
 
     /**
@@ -194,7 +227,9 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
         }
     }
 
-    public function getUserIsLogged(){
+
+    public function getUserIsLogged()
+    {
         return $this->getSite()->isUserLogged();
     }
 
@@ -205,21 +240,24 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public function getBox()
     {
-        if($this->_box instanceof WbengineBoxAbstract) {
+        if ($this->_box instanceof WbengineBoxAbstract) {
             return $this->_box;
+        }else{
+            /**
+             * @TODO Throw exception
+             */
         }
     }
 
 
-    
     /**
      * Return instance of class Section
      * @return ComponentParentInterface
      */
-    public function getSection(){
+    public function getSection()
+    {
         return $this->_parent;
     }
-
 
 
     /**
@@ -232,22 +270,22 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
     }
 
 
-
     /**
      * Return BOX's init url
      * @return string
      */
-    public function getBoxRemainUrl(){
-        return str_replace(rtrim($this->getBoxUrl(),"/"),"",$this->getSite()->getUrl());
+    public function getBoxRemainUrl()
+    {
+        return str_replace(rtrim($this->getBoxUrl(), "/"), "", $this->getSite()->getUrl());
     }
-
 
 
     /**
      * Return posted params from url
      * @return array
      */
-    public function getSiteParamsFromUrl() {
+    public function getSiteParamsFromUrl()
+    {
         return $this->getSite()->getUrlParams();
     }
 
@@ -256,23 +294,26 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      * Return box html template path.
      * @return string
      */
-    public function getBoxTemplatePath($subfolder = null){
+    public function getBoxTemplatePath($subfolder = null)
+    {
 
-        return (null === $subfolder) ? ucfirst($this->getSection()->getKey()) . '/' . ucfirst($this->method):
-        ucfirst($this->getSection()->getKey()) . '/'.$subfolder . '/'.ucfirst($this->method);
+        return (null === $subfolder) ? ucfirst($this->getSection()->getKey()) . '/' . ucfirst($this->method) :
+            ucfirst($this->getSection()->getKey()) . '/' . $subfolder . '/' . ucfirst($this->method);
     }
 
 
-    public function getSectionPath($name, $subfolder = null){
-        return (null === $subfolder) ? ucfirst($this->getSection()->getKey().'/'.$name) : 
-        ucfirst($this->getSection()->getKey() . '/'. $subfolder . '/'. $name);
+    public function getSectionPath($name, $subfolder = null)
+    {
+        return (null === $subfolder) ? ucfirst($this->getSection()->getKey() . '/' . $name) :
+            ucfirst($this->getSection()->getKey() . '/' . $subfolder . '/' . $name);
     }
 
     /**
      * Return instance of class Session
      * @return Session
      */
-    public function getSession(){
+    public function getSession()
+    {
         return $this->getParent()->getSession();
     }
 

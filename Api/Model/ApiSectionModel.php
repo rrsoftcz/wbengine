@@ -26,12 +26,13 @@ class ApiSectionModel extends ModelAbstract
      * Return site sections as assoc array.
      * @return array
      */
-    public function getSections()
+    public function getSections($active)
     {
-        $sql = sprintf("SELECT `section_id`, `title`, `Description`, `active`, `key`, `return_error_code`
-                FROM %s
-                WHERE active = 1;",
-            S_TABLE_SECTIONS
+        $sql = sprintf("
+            SELECT `section_id`, `title`, `Description`, `active`, `key`, `return_error_code`
+            FROM %s %s;",
+            S_TABLE_SECTIONS,
+            ($active) ? " WHERE active = 1" : null
         );
 
         return Db::fetchAllAssoc($sql);

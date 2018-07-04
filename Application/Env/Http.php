@@ -11,13 +11,14 @@ namespace Wbengine\Application\Env;
 abstract class Http
 {
 
-    const TYPE_POST         = 'POST';
+    const TYPE_POST                 = 'POST';
+    const TYPE_GET                  = 'GET';
+    const TYPE_PUT                  = 'PUT';
+    const TYPE_DELETE               = 'DELETE';
+    const TYPE_NONE                 = 'unknown';
 
-    const TYPE_GET          = 'GET';
-    const TYPE_PUT          = 'PUT';
-    const TYPE_DELETE       = 'DELETE';
-    const TYPE_NONE         = 'unknown';
-
+    const HEADER_TYPE_JSON          = 'Content-Type: application/json';
+    const HEADER_TYPE_PLAIN_TEXT    = 'Content-Type: text/plain';
 
 
     public static function getRequestType()
@@ -110,5 +111,8 @@ abstract class Http
         return bin2hex(random_bytes($length));
     }
 
+    public static function PrintHeader($type){
+        header($type);
+    }
 
 }
