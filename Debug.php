@@ -15,13 +15,46 @@ class Debug
 {
     CONST COLS_LG_MODIFIER  = '3';
     CONST CONTAINER_STYLE   = '
-        padding: 6px 0 6px 6px;
-        border-top: 1px solid #c0c0c0;
-        border-bottom: 1px solid #c0c0c0;
-        font-size: 12px;
-        margin-top: 20px;
-        width: 1170px;
-        margin:0 auto;';
+            <style>
+                .debug{
+                    width: 100%;
+                    text-align: center;
+                    border-top: 1px solid #CCCCCC;
+                }
+                .row{
+                    width: 100%;
+                    border-bottom: 1px solid #CCCCCC;
+                }
+                .debug .col, .sql .row{
+                    display: inline-block;
+                    font-size: 12px;
+                    padding: 4px 6px;
+                }
+                .sql .col{
+
+                }
+                .sql{
+                    width: 100%;
+                    margin: 0 auto;
+                    display: none;
+                }
+                .odd{
+                    background-color: #EEEEEE;
+                }
+                .even{
+                    background-color: #F5F5F5;
+                }
+                .ltime{
+                    color: #9B410E;
+                }
+                @media screen and (max-width: 600px){
+                    .col{
+                        text-align: left;
+                        display: flex;
+                        width: 100%;
+                    }
+                }
+            </style>';
 
     private $start_time     = 0;
     private $end_time       = 0;
@@ -39,12 +72,13 @@ class Debug
 
     private function _getContainer($content,$queries = null){
         $html = '';
-        $html .= '<div style="'.self::CONTAINER_STYLE.'">';
+        $html = self::CONTAINER_STYLE;
+        $html .= '<div class="debug">';
         $html .= '<div class="row">';
         $html .= $content;
         $html .= '</div>';
         $html .= '</div>';
-        $html .= '<div id="sql" style="width: 1140px;margin: 0 auto;display: none;">';
+        $html .= '<div id="sql" class="sql" stylex="width: 1140px;margin: 0 auto;display: none;">';
         $html .= $this->getQueries();
         $html .= '</div>';
 
@@ -52,59 +86,52 @@ class Debug
     }
 
     private function _getAppTime($value){
-        return sprintf('<div class="col-lg-%s"><b>App time:</b> %s ms</div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><b>App time:</b> %s ms</div>',
             $value
         );
     }
 
     private function _getPhpCoreTime($value){
-        return sprintf('<div class="col-lg-%s"><b>PHP:</b> %s ms</div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><b>PHP:</b> %s ms</div>',
             $value
         );
     }
 
     private function _getDbQueries($count, $time){
-        return sprintf('<div class="col-lg-%s"><a id="db" href="#"><b>DB:</b> %s queries (%s ms)</a></div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><a id="db" href="#"><b>DB:</b> %s queries (%s ms)</a></div>',
             $count,
             $time
         );
     }
 
     private function _getDbQTime($value){
-        return sprintf('<div class="col-lg-%s"><b>Db:</b> %s ms</div>',
+        return sprintf('<div class="col"><b>Db:</b> %s ms</div>',
             self::COLS_LG_MODIFIER,
             $value
         );
     }
 
     private function _getSectionsCount($value){
-        return sprintf('<div class="col-lg-%s"><b>Sections:</b> %s</div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><b>Sections:</b> %s</div>',
             $value
         );
     }
 
     private function _getBoxesCount($value){
-        return sprintf('<div class="col-lg-%s"><b>Boxes:</b> %s</div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><b>Boxes:</b> %s</div>',
             $value
         );
     }
 
     private function _getEnvironment($env, $config){
-        return sprintf('<div class="col-lg-%s"><b>Devel:</b> %s (%s)</div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><b>Devel:</b> %s (%s)</div>',
             ($env)?'True':'False',
             $config
         );
     }
 
     private function _getSiteInfo($siteid, $sections, $boxes){
-        return sprintf('<div class="col-lg-%s"><b>Site ID:</b> %s | Sectons: %s | Boxes: %s</div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><b>Site ID:</b> %s | Sectons: %s | Boxes: %s</div>',
             $siteid,
             $sections,
             $boxes
@@ -112,16 +139,14 @@ class Debug
     }
 
     private function _getAppSpeedInfo(){
-        return sprintf('<div class="col-lg-%s"><b>Speed:</b> PHP: %s ms | Sum: %s ms</div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><b>Speed:</b> PHP: %s ms | Sum: %s ms</div>',
             $this->getEstimatedTime(),
             $this->getSumTime()
         );
     }
 
     private function _getSystemInfo($info){
-        return sprintf('<div class="col-lg-%s"><b>Env:</b> %s | Config: %s</div>',
-            self::COLS_LG_MODIFIER,
+        return sprintf('<div class="col"><b>Env:</b> PHP %s | Config: %s</div>',
             $info,
             $this->getConFigFile()
         );
@@ -129,7 +154,7 @@ class Debug
 
     public function show(){
         $_cols = '';
-        $_cols .= $this->_getSystemInfo(phpversion());
+        $_cols .= $this->_getSystemInfo($this->getPhpVersion());
         $_cols .= $this->_getAppSpeedInfo($this->getSumTime());
         $_cols .= $this->_getDbQueries($this->getDbQueriesCount(),$this->getDbQueriesTimeSum());
         $_cols .= $this->_getSiteInfo($this->application->getSite()->getSiteId(),$this->getSectionsCount(),$this->getBoxesCount());
@@ -147,6 +172,10 @@ class Debug
 
     public function getConFigFile(){
         return $this->application->getConfigFile();
+    }
+
+    public function getPhpVersion(){
+        return phpversion();
     }
 
     public function getEnv(){
@@ -191,15 +220,16 @@ class Debug
         $i = 0;
         foreach ($queries as $query){
             $i++;
-            ($i%2) ? $bg = '#fff' : $bg='#e3e3e3';
-            $tmp.='<div class="row" style="font-size: 12px;background-color:'.$bg.';">
-                    <div class="col-lg-12" style="border-bottom: 1px solid #9fa8a3; padding: 6px;"><b>'
-                        .$i.'.</b> '.$query['query']
-                        .' <span style="color: #9B410E">('
-                        .$query['time']
-                        .' ms</span>)
-                    </div>
-                   </div>';
+            ($i%2) ? $cls = 'even' : $cls='odd';
+            $tmp.= sprintf('
+                    <div class="row %s">
+                        <div class="col"><b>'
+                            .$i.'.</b> '.$query['query']
+                            .'&nbsp;<span class="ltime">('
+                            .$query['time']
+                            .' ms</span>)
+                        </div>
+                   </div>', $cls);
         }
         return $tmp;
     }
@@ -208,7 +238,10 @@ class Debug
      * @return string
      */
     private function _getJs(){
-        $tmp = '';
+        $tmp = '<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+                    integrity="sha256-3edrmyuQ0w65f8gfBsqowzjJe2iM6n0nKciPUp8y+7E="
+                    crossorigin="anonymous">
+                </script>';
         $tmp .= '<script>
         $( "#db" ).click(function() {
             $( "#sql" ).toggle();

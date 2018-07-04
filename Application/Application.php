@@ -196,6 +196,7 @@ class Application implements ComponentParentInterface, ResponseInterface
                     true)
             )
         );
+        $this->_config_file = Config::CONFIG_FILE;
 
         if($this->isDebugOn() === true){
             ini_set('display_errors', 1);
