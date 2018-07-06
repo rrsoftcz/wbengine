@@ -20,7 +20,7 @@ use Wbengine\Config;
 use Wbengine\Db;
 
 
-class ModelAbstract
+class ModelAbstract implements ModelAbstractInterface
 {
 
 
@@ -30,10 +30,10 @@ class ModelAbstract
     private $_db = NULL;
 
 
-    private function _setDb()
-    {
+    private function _setDb(){
         $this->_db = Db::setCredentials(Config::getDbCredentials());
     }
+
 
     public function dumpAll(){
         foreach ($this->_db->getAllQueries() as $query){
@@ -49,22 +49,19 @@ class ModelAbstract
     }
 
 
-
     /**
      * Return database connection.
      * @return Db
      */
-    public function getConnectionx()
-    {
-//        var_dump(self::_getDb()->getConnection());die();
-//        if (null === self::$_db) {
-//            self::_setDb();
-//        }
+    public function getConnectionx(){
         return $this->_getDb()->getConnection();
     }
 
+    public function getSiteId($model){
+        return $model->site->getSiteid();
+    }
+
     public function query($query){
-//        Wbengine\Application\Env\Stac\Utils::dump(Db::query($query),true);
         return Db::query($query);
     }
 

@@ -19,14 +19,13 @@ class WbengineRestapiAbstract extends WbengineBoxAbstract
     public $api;
 
 
-    public function __construct($box, $parent)
-    {
+    public function __construct($box, $parent) {
         $this->_parent = $parent;
         $this->api = new Api();
     }
 
 
-    public function Api(){
+    public function Api() {
         if($this->_api){
             return $this->_api;
         }else{
@@ -35,8 +34,7 @@ class WbengineRestapiAbstract extends WbengineBoxAbstract
     }
 
 
-    public function getSectionModel()
-    {
+    public function getSectionModel() {
         return new ApiSectionModel();
     }
 

@@ -255,7 +255,7 @@ class Renderer extends Renderer\Adapter
      * @throws RuntimeException
      * @return string as HTML
      */
-    public function render($template = NULL, $vars = NULL)
+    public function render($template = NULL, $vars = NULL, $static = false)
     {
         if (NULL === $template) {
             throw New RendererException(__METHOD__
@@ -275,10 +275,11 @@ class Renderer extends Renderer\Adapter
             $template .= $this->getExtension();
         }
 
-        // First, try to locate template source file inside application folder ...
+        // As first, try to locate template file inside application view folder ...
         if (file_exists($this->getAppTeplatePath($template))){
             return $this->fetch($this->getAppTeplatePath($template));
-            // second, try to locate source template file localy ...
+
+        // As second, try to locate template file in local Box folder path ...
         }elseif(file_exists($this->getLocalTeplatePath($template))){
             return $this->fetch($this->getLocalTeplatePath($template));
         }else{
@@ -348,7 +349,7 @@ class Renderer extends Renderer\Adapter
      * @return string
      */
     public function getLocalTeplatePath($filename){
-        return __DIR__ . '/Application/' . $filename;
+        return __DIR__ . '/Box/' . $filename;
     }
 
     public function getAppTeplatePath($filename){
