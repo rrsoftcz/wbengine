@@ -21,7 +21,7 @@
   ],
   "require": {
     "php": ">=7.0 <7.2",
-    "smarty/smarty": "3.1.*",
+    "smarty/smarty": "~3.1@dev",
     "texy/texy": "2.*"
   },
   "autoload": {

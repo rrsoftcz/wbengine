@@ -56,7 +56,7 @@ class Session extends SessionAbstract
         $this->getModel()->updateSession($this);
     }
 
-    public function setAutoClean(boolean $state)
+    public function setAutoClean(bool $state)
     {
         $this->_autoclean = $state;
     }

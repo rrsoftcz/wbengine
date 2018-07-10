@@ -275,16 +275,20 @@ class Renderer extends Renderer\Adapter
             $template .= $this->getExtension();
         }
 
-        // As first, try to locate template file inside application view folder ...
-        if (file_exists($this->getAppTeplatePath($template))){
-            return $this->fetch($this->getAppTeplatePath($template));
-
-        // As second, try to locate template file in local Box folder path ...
-        }elseif(file_exists($this->getLocalTeplatePath($template))){
-            return $this->fetch($this->getLocalTeplatePath($template));
-        }else{
-            throw New RendererException(__METHOD__
-                    . ': Box template file "' . $this->getAppTeplatePath($template) . '" not found.');
+        if ($static === false) {
+            if (file_exists($this->getAppTeplatePath($template))) {
+                return $this->fetch($this->getAppTeplatePath($template));
+            } else {
+                throw New RendererException(__METHOD__
+                    . ': App Box template file "' . $this->getAppTeplatePath($template) . '" not found.');
+            }
+        }else {
+            if (file_exists($this->getStaticTeplatePath($template))) {
+                return $this->fetch($this->getStaticTeplatePath($template));
+            } else {
+                throw New RendererException(__METHOD__
+                    . ': Static Box template file "' . $this->getStaticTeplatePath($template) . '" not found.');
+            }
         }
 
     }
@@ -348,7 +352,7 @@ class Renderer extends Renderer\Adapter
      * @param string $filename
      * @return string
      */
-    public function getLocalTeplatePath($filename){
+    public function getStaticTeplatePath($filename){
         return __DIR__ . '/Box/' . $filename;
     }
 

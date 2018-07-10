@@ -12,13 +12,13 @@
  *
  * Minimum Requirement: PHP 5.1.x
  */
-namespace Wbengine\Box\Story;
+namespace Wbengine\Box\Article;
 
 use Wbengine\Box;
 use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
 
-class StoryModel extends ModelAbstract {
+class ArticleModel extends ModelAbstract {
 
     /**
      * Parent site object

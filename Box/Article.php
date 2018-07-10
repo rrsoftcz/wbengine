@@ -9,7 +9,7 @@
 namespace Wbengine\Box;
 
 
-class Story extends WbengineStaticBox
+class Article extends WbengineStaticBox
 {
 
     public $article;
@@ -25,15 +25,15 @@ class Story extends WbengineStaticBox
      * @throws \Wbengine\Box\Exception\BoxException
      * @throws \Wbengine\Exception\RuntimeException
      */
-    public function getStory()
+    public function getArticleBox()
     {
-        $this->article = $this->getStoryModel($this)->getArticleRow();
+        $this->article = $this->getArticleModel($this)->getArticleRow();
 
-        $tmplate =  $this->getStaticBoxTemplatePath(self::BOX_STORY);
+        $tmplate =  $this->getStaticBoxTemplatePath(self::BOX_ARTICLE);
 
-        $story = $this->getRenderer()->render($tmplate, $this->article);
+        $story = $this->getRenderer()->render($tmplate, $this->article, true);
 
-        $this->getStoryModel($this)->updateViews($this->getArticleId());
+        $this->getArticleModel($this)->updateViews($this->getArticleId());
         return $story;
     }
 }

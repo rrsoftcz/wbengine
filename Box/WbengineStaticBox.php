@@ -8,19 +8,26 @@
 
 namespace Wbengine\Box;
 
-use Wbengine\Box\Story\StoryModel;
+use Wbengine\Box\Article\ArticleModel;
 
 class WbengineStaticBox
 {
     private $_boxAbstract;
 
 
-    const BOX_STORY     = 'story';
-    const BOX_LOGIN     = 'login';
+    const BOX_ARTICLE       = 'article';
+    const BOX_LOGIN         = 'login';
 
-    public function __construct(WbengineBoxAbstract $box)
-    {
+    public function __construct(WbengineBoxAbstract $box){
         $this->_boxAbstract = $box;
+    }
+
+    public function getSession(){
+        return $this->getParent()->getSession();
+    }
+
+    public function getSectionPath($name, $subfolder = null){
+        return $this->getParent()->getSectionPath($name, $subfolder);
     }
 
     public function getParent(){
@@ -31,19 +38,20 @@ class WbengineStaticBox
         return $this->getParent()->getRenderer();
     }
 
-    public function getStoryModel($story){
-        return new StoryModel($story);
+    public function getArticleModel($story){
+        return new ArticleModel($story);
     }
 
     public function getStaticBoxTemplatePath($boxName)
     {
         switch (strtolower($boxName)){
-            case self::BOX_STORY:
-                return 'Story/View/' . ucfirst($boxName);
+            case self::BOX_ARTICLE:
+                return 'Article/View/' . ucfirst($boxName);
                 break;
             case self::BOX_LOGIN:
                 return 'Login/View/' . ucfirst($boxName);
                 break;
+            default: return __DIR__;
         }
     }
 
