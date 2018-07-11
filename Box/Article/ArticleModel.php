@@ -46,7 +46,7 @@ class ArticleModel extends ModelAbstract {
      * Return story data from db
      * @return \stdClass
      */
-    public function getArticleRow()
+    public function getArticleRow($updateView = false)
     {
         $sql = sprintf("SELECT 
                           a.introtext, 
@@ -62,7 +62,14 @@ class ArticleModel extends ModelAbstract {
             ,S_TABLE_ARTICLES
             ,$this->getSiteId($this)
         );
-        return Db::fetchObject($sql);
+
+	    $article = Db::fetchObject($sql);
+
+	    if($updateView === true){
+	        $this->updateViews($article->id);
+        }
+
+        return $article;
     }
 
     /**

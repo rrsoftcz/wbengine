@@ -9,15 +9,39 @@
 namespace Wbengine\Box;
 
 
+use Wbengine\Box\Article\ArticleModel;
+
 class Article extends WbengineStaticBox
 {
 
     public $article;
+	private $_model;
+	private $_updateView = true;
 
-    public function getArticleId(){
-        return ($this->article) ? $this->article->id : null;
+	private Function _loadBySiteId(){
+		return $this->article = $this->getModel()->getArticleRow($this->_updateView);
+	}
+
+	private function _setModel(){
+		return $this->_model = new ArticleModel($this);
+	}
+
+	public function getArticleId(){
+        return ($this->article) ? $this->article->id : $this->_loadBySiteId()->id;
     }
 
+	public function getArticleSiteId(){
+        return ($this->article) ? $this->article->site_id : $this->_loadBySiteId()->site_id;
+    }
+
+	public function getArticle(){
+    	return ($this->article) ? $this->article : $this->_loadBySiteId();
+    }
+
+    public function getModel(){
+    	return ($this->_model && $this->_model instanceof ArticleModel) ? $this->_model : $this->_setModel();
+    }
+    
     /**
      * Return story content from table article
      *
@@ -27,13 +51,7 @@ class Article extends WbengineStaticBox
      */
     public function getArticleBox()
     {
-        $this->article = $this->getArticleModel($this)->getArticleRow();
-
-        $tmplate =  $this->getStaticBoxTemplatePath(self::BOX_ARTICLE);
-
-        $story = $this->getRenderer()->render($tmplate, $this->article, true);
-
-        $this->getArticleModel($this)->updateViews($this->getArticleId());
-        return $story;
+        return $this->getRenderer()->render(
+        	$this->getStaticBoxTemplatePath(self::BOX_ARTICLE), $this->getArticle(), true);
     }
 }

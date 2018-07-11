@@ -38,10 +38,6 @@ class WbengineStaticBox
         return $this->getParent()->getRenderer();
     }
 
-    public function getArticleModel($story){
-        return new ArticleModel($story);
-    }
-
     public function getStaticBoxTemplatePath($boxName)
     {
         switch (strtolower($boxName)){

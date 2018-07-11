@@ -36,28 +36,28 @@ class Renderer extends Renderer\Adapter
      * Default tamplates files extensions
      * @var string
      */
-    private $_extension = '.tpl';
+    private $_extension             = '.tpl';
 
 
     /**
      * Given CMS class object
      * @var object
      */
-    private $_app = NULL;
+    private $_app                   = NULL;
 
 
     /**
      * HTML formater
      * @var object
      */
-    private $_formater = NULL;
+    private $_formater              = NULL;
 
 
     /**
      * Default formater class name
      * @var string
      */
-    private $_formaterName = 'texy';
+    private $_formaterName          = 'texy';
 
 
     /**
@@ -66,12 +66,12 @@ class Renderer extends Renderer\Adapter
      */
     private $_formaterPath = 'vendor/Texy/';
 
-    private $_rendererTemplatesDir = null;
-    private $_rendererCompiledDir = null;
-    private $_rendererConfigDir = null;
-    private $_rendererAdapterName = null;
+    private $_rendererTemplatesDir  = null;
+    private $_rendererCompiledDir   = null;
+    private $_rendererConfigDir     = null;
+    private $_rendererAdapterName   = null;
 
-    private $_path  = null;
+    private $_path                  = null;
 
 
     /**
@@ -83,59 +83,25 @@ class Renderer extends Renderer\Adapter
      */
     function __construct(ComponentParentInterface $parent)
     {
-//Utils::dump(get_class($parent));
+
         if ($parent instanceof Application) {
-            $this->_app = $parent;
-            $this->_path = $parent->_getObjectPath();
+            $this->_app     = $parent;
+            $this->_path    = $parent->_getObjectPath();
         }
 
-//        var_dump(Config::getRendererCacheDir());
-        $this->setAdapterName($this->getRendererAdapterName());
-        $this->setTemplateDir($this->getRendererTemplatesPath());
-        $this->setCompileDir($this->getRendererCacheDir());
-        $this->setConfigDir($this->getConfigDir());
+        $this->setAdapterName(
+        	$this->getRendererAdapterName()
+        );
+        $this->setTemplateDir(
+        	$this->getRendererTemplatesPath()
+        );
+        $this->setCompileDir(
+        	$this->getRendererCacheDir()
+        );
+        $this->setConfigDir(
+        	$this->getConfigDir()
+        );
     }
-
-
-    /**
-     * Return site instance object
-     * @return Application
-     */
-    public function getParent()
-    {
-        return $this->_app;
-    }
-
-    /**
-     * Return instance of object Path created by parent Application
-     * @return null|Path
-     */
-    public function Path(){
-        if($this->_path instanceof Path) {
-            return $this->_path;
-        }
-        return $this->_path = new Path();
-    }
-
-    /**
-     * Return site instance object
-     * @return Site
-     */
-    public function getSite()
-    {
-        return $this->getParent()->getSite();
-    }
-
-
-    /**
-     * Return default teplate extension
-     * @return string
-     */
-    public function getExtension()
-    {
-        return $this->_extension;
-    }
-
 
     /**
      * Return Renderer adapter name
@@ -145,40 +111,6 @@ class Renderer extends Renderer\Adapter
     public function getRendererAdapterName()
     {
         return Config::getRendererAdapterName();
-    }
-
-
-    /**
-     * Return default config directory
-     * @return null|string
-     */
-    public function getConfigDir()
-    {
-        if(null === $this->_rendererConfigDir) {
-            $this->Path()->addPath(Path::TYPE_CONFIG, Config::getRendererConfigDir(), true);
-            $this->_rendererConfigDir = $this->Path()->getConfigDir();
-        }
-        return $this->_rendererConfigDir;
-    }
-
-
-    /**
-     * Return renderer default directory
-     * @return null|string
-     */
-    public function getRendererCacheDir()
-    {
-        if(null === $this->_rendererCompiledDir) {
-            $this->Path()->addPath(Path::TYPE_RENDERER_TEMP, Config::getRendererCompiledDir(), false);
-            $this->_rendererCompiledDir = $this->Path()->getRendererCompiledDir();
-            if(!file_exists($this->_rendererCompiledDir)){
-                 Throw New RendererException(sprintf("%s -> %s: Can't locate the view compiled directory '%s'! Please check if directory exist and it's writable.",
-                 __CLASS__,
-                 __FUNCTION__,
-                 $this->_rendererCompiledDir));
-            }
-        }
-        return $this->_rendererCompiledDir;
     }
 
     /**
@@ -194,6 +126,49 @@ class Renderer extends Renderer\Adapter
         return $this->_rendererTemplatesDir;
     }
 
+    /**
+     * Return instance of object Path created by parent Application
+     * @return null|Path
+     */
+    public function Path(){
+        if($this->_path instanceof Path) {
+            return $this->_path;
+        }
+        return $this->_path = new Path();
+    }
+
+    /**
+     * Return renderer default directory
+     * @return null|string
+     */
+    public function getRendererCacheDir()
+    {
+        if(null === $this->_rendererCompiledDir) {
+            $this->Path()->addPath(Path::TYPE_RENDERER_TEMP, Config::getRendererCompiledDir(), false);
+            $this->_rendererCompiledDir = $this->Path()->getRendererCompiledDir();
+            if(!file_exists($this->_rendererCompiledDir)){
+                 Throw New RendererException(
+                     sprintf("%s -> %s: Can't locate the view compiled directory '%s'! Please check if directory exist and it's writable.",
+                 __CLASS__,
+                 __FUNCTION__,
+                 $this->_rendererCompiledDir));
+            }
+        }
+        return $this->_rendererCompiledDir;
+    }
+
+    /**
+     * Return default config directory
+     * @return null|string
+     */
+    public function getConfigDir()
+    {
+        if(null === $this->_rendererConfigDir) {
+            $this->Path()->addPath(Path::TYPE_CONFIG, Config::getRendererConfigDir(), true);
+            $this->_rendererConfigDir = $this->Path()->getConfigDir();
+        }
+        return $this->_rendererConfigDir;
+    }
 
     /**
      * Return declared HTML formater
@@ -209,7 +184,6 @@ class Renderer extends Renderer\Adapter
 
         return $this->_formater;
     }
-
 
     /**
      * Return rendered main site template.
@@ -242,57 +216,14 @@ class Renderer extends Renderer\Adapter
         }
     }
 
-
     /**
-     * This method return HTML template content by
-     * given template name and with variables by
-     * given var array.
-     * Also we can choice a type of action.
-     * Alowed action is display|fetch.
-     *
-     * @param string $template
-     * @param mixed $vars
-     * @throws RuntimeException
-     * @return string as HTML
+     * Return default teplate extension
+     * @return string
      */
-    public function render($template = NULL, $vars = NULL, $static = false)
+    public function getExtension()
     {
-        if (NULL === $template) {
-            throw New RendererException(__METHOD__
-                . ': Expected template name as string, but null given.');
-        }
-
-        // Assign given vars ..?
-        if (!empty($vars)) {
-            // Remove slashes from the given path...
-            $valueName = preg_replace('/^(.*)(\/)(\w+)/i', '$3', $template);
-
-            $this->assign($valueName, $vars);
-        }
-
-        // Check if file extension presents...
-        if(!preg_match('/\..+$/', $template)){
-            $template .= $this->getExtension();
-        }
-
-        if ($static === false) {
-            if (file_exists($this->getAppTeplatePath($template))) {
-                return $this->fetch($this->getAppTeplatePath($template));
-            } else {
-                throw New RendererException(__METHOD__
-                    . ': App Box template file "' . $this->getAppTeplatePath($template) . '" not found.');
-            }
-        }else {
-            if (file_exists($this->getStaticTeplatePath($template))) {
-                return $this->fetch($this->getStaticTeplatePath($template));
-            } else {
-                throw New RendererException(__METHOD__
-                    . ': Static Box template file "' . $this->getStaticTeplatePath($template) . '" not found.');
-            }
-        }
-
+        return $this->_extension;
     }
-
 
     /**
      * @param $box
@@ -326,7 +257,9 @@ class Renderer extends Renderer\Adapter
         }
     }
 
-
+    public function getAppTeplatePath($filename){
+        return $this->Path()->getPath(Path::TYPE_TEMPLATES, null, true) . $filename;
+    }
 
     /**
      * Assign variabel to template.
@@ -343,35 +276,6 @@ class Renderer extends Renderer\Adapter
         }
 
         $this->assign($name, $value);
-    }
-
-
-    /**
-     * Return filename with local templates path
-     *
-     * @param string $filename
-     * @return string
-     */
-    public function getStaticTeplatePath($filename){
-        return __DIR__ . '/Box/' . $filename;
-    }
-
-    public function getAppTeplatePath($filename){
-        return $this->Path()->getPath(Path::TYPE_TEMPLATES, null, true) . $filename;
-    }
-
-
-    public function showException(\Exception $e){
-        die(
-        sprintf(
-            file_get_contents(
-                $this->getLocalTeplatePath('exception.tpl')),
-            get_class($e),
-            $e->getCode(),
-            $e->getMessage(),
-            $e->getFile(),
-            $e->getLine(),
-            $e->getTraceAsString()));
     }
 
     /**
@@ -431,6 +335,96 @@ class Renderer extends Renderer\Adapter
         }
 
         return $tmp;
+    }
+
+    /**
+     * Return site instance object
+     * @return Application
+     */
+    public function getParent()
+    {
+        return $this->_app;
+    }
+
+    /**
+     * Return site instance object
+     * @return Site
+     */
+    public function getSite()
+    {
+        return $this->getParent()->getSite();
+    }
+
+    /**
+     * This method return HTML template content by
+     * given template name and with variables by
+     * given var array.
+     * Also we can choice a type of action.
+     * Alowed action is display|fetch.
+     *
+     * @param string $template
+     * @param mixed $vars
+     * @throws RuntimeException
+     * @return string as HTML
+     */
+    public function render($template = NULL, $vars = NULL, $static = false)
+    {
+        if (NULL === $template) {
+            throw New RendererException(__METHOD__
+                . ': Expected template name as string, but null given.');
+        }
+
+        // Assign vars...?
+        if (!empty($vars)) {
+            // Use last part of the given path for assign var name ...
+            // TODO : This may be improved...?
+            $valueName = preg_replace('/^(.*)(\/)(\w+)/i', '$3', $template);
+            $this->assign($valueName, $vars);
+        }
+
+        // Check if file extension presents...
+        if(!preg_match('/\..+$/', $template)){
+            $template .= $this->getExtension();
+        }
+
+        if ($static === false) {
+            if (file_exists($this->getAppTeplatePath($template))) {
+                return $this->fetch($this->getAppTeplatePath($template));
+            } else {
+                throw New RendererException(__METHOD__
+                    . ': App Box template file "' . $this->getAppTeplatePath($template) . '" not found.');
+            }
+        } else {
+            if (file_exists($this->getStaticTeplatePath($template))) {
+                return $this->fetch($this->getStaticTeplatePath($template));
+            } else {
+                throw New RendererException(__METHOD__
+                    . ': Static Box template file "' . $this->getStaticTeplatePath($template) . '" not found.');
+            }
+        }
+    }
+
+    /**
+     * Return filename with local templates path
+     *
+     * @param string $filename
+     * @return string
+     */
+    public function getStaticTeplatePath($filename){
+        return __DIR__ . '/Box/' . $filename;
+    }
+
+    public function showException(\Exception $e){
+        die(
+        sprintf(
+            file_get_contents(
+                $this->getLocalTeplatePath('exception.tpl')),
+            get_class($e),
+            $e->getCode(),
+            $e->getMessage(),
+            $e->getFile(),
+            $e->getLine(),
+            $e->getTraceAsString()));
     }
 
 }
