@@ -38,6 +38,7 @@ abstract class SessionAbstract
     CONST SESSION_UPDATED           = 'session_updated';
     CONST SESSION_EXPIRE            = 'session_expire';
     CONST SESSION_DEFALT_LOCALE     = DEFAULT_LOCALE;
+    CONST SESSION_EMPTY_USER_ID     = 0;
 
     /**
      * Locale class instance.
@@ -49,7 +50,7 @@ abstract class SessionAbstract
      * Eexpiration time in seconds.
      * @var integer
      */
-    private $_expirationTime = 86400;
+    private $_expirationTime = 3600;
 
     /**
      * Session's data model.
@@ -149,10 +150,13 @@ abstract class SessionAbstract
      * @return int
      * @internal param bool $create
      */
-    public function getExpirationTime(){
+    public function createExpirationTime(){
         return time() + (int)$this->_expirationTime;
     }
 
+    public function getExpirationTime(){
+    	return $this->_expirationTime;
+    }
 
     /**
      * Get or create session class instance.

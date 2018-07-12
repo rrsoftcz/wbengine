@@ -59,6 +59,8 @@ class User
 
     private $_parent;
 
+    private $_is_user_logged = false;
+
     /**
      * We just set default identity here...
      * If real user identity already exist in session
@@ -68,7 +70,7 @@ class User
     {
         $this->_parent = $parent;
 
-        if($this->getUserIsLogged()){
+        if($this->_is_user_logged = $this->getUserIsLogged()){
             $this->user_id = $this->getSession()->getUserId();
         }else{
             $this->user_id = ANONYMOUS;
@@ -363,6 +365,9 @@ class User
         return (bool)$this->getSession()->getValue('user_is_logged');
     }
 
+    public function isLogged(){
+	    return $this->_is_user_logged;
+    }
 
     /**
      * This method do logout user from the existing

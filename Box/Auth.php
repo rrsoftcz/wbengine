@@ -34,6 +34,7 @@ class Auth extends WbengineStaticBox
             if (Http::isAjaxCall() === true) {
                 $this->_ajaxLogin();
             }
+
             $usr = new User($this);
             // checking for logout requets...
             if (Http::getParam('a') === "logout") {
@@ -41,6 +42,7 @@ class Auth extends WbengineStaticBox
                 header('Location: /login/');
                 exit();
             }
+
             if (Http::getRequestMethod(Http::TYPE_POST) === true) {
                 // ...grab failed logins from session...
                 $failed_logins = (int)$this->getSession()->getValue(self::FAILED_LOGINS);

@@ -28,7 +28,7 @@ class Session extends SessionAbstract
     private $_cookieEnabled;
     private $_test;
     private $_data;
-    private $_autoclean = false;
+    private $_autoclean = true;
     private $_created = false;
 
     function __construct()
@@ -41,7 +41,7 @@ class Session extends SessionAbstract
         $this->_setSelfValue(self::USER_SALT, $this->generateUserSalt());
         $this->_setSelfValue(self::SESSION_ID, $this->sessionStart());
         $this->_setSelfValue(self::SESSION_DATA, new \stdClass());
-        $this->_setSelfValue(self::SESSION_EXPIRE, $this->getExpirationTime());
+        $this->_setSelfValue(self::SESSION_EXPIRE, $this->createExpirationTime());
         $this->_setSelfValue(self::SESSION_UPDATED, time());
     }
 
@@ -86,7 +86,7 @@ class Session extends SessionAbstract
 
     public function __set($name, $value)
     {
-        //@TODO Check if we need to preload data when updateing...!
+        // @TODO Check if we need to preload data when updateing...!
         //$this->_load();
         $this->getSessionData()->$name = $value;
         $this->save();
@@ -94,11 +94,10 @@ class Session extends SessionAbstract
 
     public function __get($name)
     {
-//        if (!$this->getId()) {
-//            $this->_load();
-//        }
-//        var_dump($this->_data);
-        if ($this->_data->user_id===0) {
+        if ($this->_data->user_id === self::SESSION_EMPTY_USER_ID) {
+        	if($this->isAutoCleanOn()) {
+		        $this->getModel()->cleanSessions($this->getExpirationTime());
+	        }
             $this->_load();
         }
         return $this->getSessionData()->$name;
@@ -116,7 +115,10 @@ class Session extends SessionAbstract
 
     public function getValue($name)
     {
-        return $this->$name;
+//	    var_dump(debug_backtrace()[0]);
+//	    var_dump($name);
+
+	    return $this->$name;
     }
 
     private function _setSelfValue($name, $value)

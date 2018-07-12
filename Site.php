@@ -519,6 +519,9 @@ Class Site implements ComponentParentInterface
         return $this->_sections;
     }
 
+    public function getUser(){
+    	return $this->getParent()->getClassUser();
+    }
 
     public function isUserLogged(){
         return $this->getParent()->isUserLogged();
@@ -537,11 +540,11 @@ Class Site implements ComponentParentInterface
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
 
-        if((int)$this->acl >= 1){
-            if((int)$this->getSessionValue('user_is_logged') === 0){
-                header("Location: /login/");exit();
-            }
-        }
+//        if((int)$this->acl >= 1){
+//            if((int)$this->getSessionValue('user_is_logged') === 0){
+//                header("Location: /login/");exit();
+//            }
+//        }
 
         // Save some essential site template variables...
         $this->setVariable('menu', $this->getMenuCollection());
@@ -550,9 +553,8 @@ Class Site implements ComponentParentInterface
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
         $this->setVariable('host', Config::getCdnPath(), 'cdn');
         $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
-        $this->setVariable('identity', $this->getParent()->getClassUser()->getUserIsLogged());
-        $this->setVariable('user', $this->getParent()->getClassUser());
-        $this->setVariable('site_id', $this->getSiteId());
+	    $this->setVariable('user', $this->getUser());
+	    $this->setVariable('site_id', $this->getSiteId());
 
         $this->_setSections($this->getSections());
 
