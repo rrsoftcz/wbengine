@@ -140,12 +140,6 @@ class Application implements ComponentParentInterface, ResponseInterface
     private $_endtime;
 
     /**
-     * Config filename
-     * @var string
-     */
-    private $_config_file;
-
-    /**
      * Production environment
      * True = Development \ False = Production
      * @var bool
@@ -163,8 +157,6 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     const APP_BASE_DIR              = '/App';
     const APP_CONFIG_PATH           = '/Config/';
-//    const APP_VIEW_PATH             = '/View';
-    // const APP_TYPE_RENDERER_TEMP    = '/Compiled';
 
 
 
@@ -188,15 +180,7 @@ class Application implements ComponentParentInterface, ResponseInterface
          * 1. LOAD CONFIGURATION
          * Setup config file example over class setter...
          */
-        $this->setConfig(
-            Config::load(new File(
-                    $appBaseDir .
-                    self::APP_CONFIG_PATH .
-                    Config::CONFIG_FILE,
-                    true)
-            )
-        );
-        $this->_config_file = Config::CONFIG_FILE;
+        Config::load(new File($appBaseDir . self::APP_CONFIG_PATH . Config::CONFIG_FILE,true));
 
         if($this->isDebugOn() === true){
             ini_set('display_errors', 1);
@@ -213,11 +197,6 @@ class Application implements ComponentParentInterface, ResponseInterface
              * Set application BASE path as firs ...
              */
             $this->setPath(Path::TYPE_BASE, ($appBaseDir));
-
-            /**
-             * Set app cache directory path ...
-             */
-//            $this->setPath(Path::TYPE_CACHE, self::APP_VIEW_PATH);
 
             /**
              * setup errorhandler ...
@@ -363,7 +342,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 
         if($_device->isTablet()){
             $this->_deviceType = DEVICE_TYPE_TABLET;
-        }elseif($_device->isMobile()) {
+        }elseif($_device->isMobile()){
             $this->_deviceType = DEVICE_TYPE_MOBILE;
         }else{
             $this->_deviceType = DEVICE_TYPE_DESKTOP;
@@ -424,33 +403,6 @@ class Application implements ComponentParentInterface, ResponseInterface
      */
     public function getPath(){
         return $this->_getObjectPath();
-    }
-
-
-    /**
-     * Minimize css file...
-     * @param $files
-     * @param null $_path
-     * @return Void
-     */
-    public function minimizeCssFiles($files, $_path = null)
-    {
-        foreach ($files as $file){
-            $cssFile = new File($_path . $file);
-            $ef = New File($cssFile->newFileName(File::FILE_TYPE_ETAG, $this->getPath()->getRendererCompiledDir())->getFile(), true);
-
-            if (!$ef->exist() || Utils::compareStrings(md5_file($cssFile->getFile()), $ef->getContent()) === false)
-            {
-                $minFile = $cssFile->saveAsMinimized();
-                $minFile->replaceInFile('%_cdn_%', Config::getCdnPath());
-
-                if($minFile->getStatus() === true){
-                    $ef->saveEtag($cssFile);
-                }
-            }
-            //@TODO NEKDE JE TU CHYBA, POKUD NEEXISTUJE CSS SOUBOR, ZADANY V CONFIGU...!
-
-        }
     }
 
 
@@ -589,7 +541,7 @@ class Application implements ComponentParentInterface, ResponseInterface
      * Return user's data loaded for an session.
      * @return array
      */
-    public function getIdentity(){
+    public function getIdentityx(){
         if (is_array($this->_userData) && sizeof($this->_userData)) {
             return $this->_userData;
         } else {
@@ -617,24 +569,6 @@ class Application implements ComponentParentInterface, ResponseInterface
 
 
     /**
-     * Return a config class object
-     * @return Config
-     */
-    public function getConfig(){
-        return $this->config;
-    }
-
-
-    /**
-     * Set Config adapter
-     * @param \Wbengine\Config\Adapter\AdapterInterface $config
-     */
-    public function setConfig($config){
-        $this->config = $config;
-    }
-
-
-    /**
      * Return created object renderer
      * @return \Wbengine\Renderer
      */
@@ -642,7 +576,6 @@ class Application implements ComponentParentInterface, ResponseInterface
         If (NULL === $this->_renderer) {
             $this->_setRenderer();
         }
-
         return $this->_renderer;
     }
 
@@ -671,10 +604,9 @@ class Application implements ComponentParentInterface, ResponseInterface
      * @return \Wbengine\Error\Handler
      */
     public function getErrorHandler(){
-        if (NULL === $this->errorHandler) {
+        if (NULL === $this->errorHandler){
             $this->errorHandler = New Error\Handler();
         }
-
         return $this->errorHandler;
     }
 
@@ -733,7 +665,7 @@ class Application implements ComponentParentInterface, ResponseInterface
      * @return string
      */
     public function getConfigFile(){
-        return $this->_config_file;
+        return Config::CONFIG_FILE;
     }
 
 
@@ -856,8 +788,10 @@ class Application implements ComponentParentInterface, ResponseInterface
 
 
     public function display($content = null){
+
         //@TODO Try to avoid multipple calls of init() function...
         $this->init();
+
         try {
             if ($content) {
                 $this->setValue(HTML_CENTRAL_SECTION, $content);
@@ -882,7 +816,7 @@ class Application implements ComponentParentInterface, ResponseInterface
         try {
 
             /**
-             * 3. FIST TIME INIT OBJECT SITE
+             * INITIALIZE OBJECT SITE...
              */
 
             if(empty($this->getClassVars()->getValue('central'))) {
@@ -898,14 +832,6 @@ class Application implements ComponentParentInterface, ResponseInterface
             if ((!$this->getSite() instanceof Site || $this->getSite()->isLoaded() === false) && sizeof($this->_routes) === 0) {
                 $this->addException('Site not found.', HTML_ERROR_404);
                 $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
-            }
-
-
-            /**
-             * 4. THE MINIMALIZE CSS FILE OPTION ...
-             */
-            if((boolean)Config::minimizeCss()){
-                $this->minimizeCssFiles(Config::getCssCollection(),  dirname($this->getPath()->getPath(Path::TYPE_BASE)));
             }
 
             $this->getRenderer()->dispatch($this);

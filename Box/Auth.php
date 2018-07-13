@@ -57,6 +57,7 @@ class Auth extends WbengineStaticBox
                             if ($loginResponse === true) {
                                 $this->getSession()->unsetKey(self::FAILED_LOGINS);
                                 $this->getSession()->unsetKey(self::SECRET_TOKEN);
+
                                 if (Http::isAjaxCall() === true) {
                                     die('OK');
                                 } else {
@@ -83,9 +84,10 @@ class Auth extends WbengineStaticBox
             $this->getSession()->setValue('token', $token);
             // Set token to form template...
             $this->getRenderer()->assign('token', $token);
-            // Tell to emplate whatever we need to show captcha...
+            // Tell to template whatever we need to show captcha...
             $this->getRenderer()->assign('captcha', $this->_showCaptcha());
-            if (Http::isAjaxCall() === true) {var_dump($this->getStaticBoxTemplatePath(self::BOX_LOGIN));
+
+            if (Http::isAjaxCall() === true) {
                 die($this->getRenderer()->render($this->getStaticBoxTemplatePath(self::BOX_LOGIN), $_POST, true));
             } else {
                 return $this->getRenderer()->render($this->getStaticBoxTemplatePath(self::BOX_LOGIN), $_POST, true);

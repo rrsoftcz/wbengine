@@ -540,11 +540,11 @@ Class Site implements ComponentParentInterface
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
 
-//        if((int)$this->acl >= 1){
-//            if((int)$this->getSessionValue('user_is_logged') === 0){
-//                header("Location: /login/");exit();
-//            }
-//        }
+        if((int)$this->acl >= 1){
+            if((int)$this->getSessionValue('user_is_logged') === 0){
+                header("Location: /login/");exit();
+            }
+        }
 
         // Save some essential site template variables...
         $this->setVariable('menu', $this->getMenuCollection());
