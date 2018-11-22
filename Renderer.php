@@ -101,6 +101,8 @@ class Renderer extends Renderer\Adapter
         $this->setConfigDir(
         	$this->getConfigDir()
         );
+
+        $this->disableCache();
     }
 
     /**
@@ -196,7 +198,7 @@ class Renderer extends Renderer\Adapter
         try {
             if ($App instanceof Application) {
                 // assign all application vars to templater ...
-                $this->assign($App->getVars(), NULL, 'global');
+                $this->assign($App->getVars(), NULL, false);
                 // ...and show content...
                 if (Config::minimizeHtml()) {
                     //@TODO JUST TESTING TO MINIFY HTML SOURCE CODE...
@@ -249,7 +251,7 @@ class Renderer extends Renderer\Adapter
 
 
         if (file_exists($this->getAppTeplatePath($templateName))){
-            return $this->fetch($this->getAppTeplatePath($templateName));
+            return $this->fetch($templateName);
             // second, try to locate source template file localy ...
         }else{
             throw New RendererException(__METHOD__
@@ -389,7 +391,7 @@ class Renderer extends Renderer\Adapter
 
         if ($static === false) {
             if (file_exists($this->getAppTeplatePath($template))) {
-                return $this->fetch($this->getAppTeplatePath($template));
+                return $this->fetch($template);
             } else {
                 throw New RendererException(__METHOD__
                     . ': App Box template file "' . $this->getAppTeplatePath($template) . '" not found.');

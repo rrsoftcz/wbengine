@@ -83,9 +83,9 @@ class Auth extends WbengineStaticBox
             // Store generated token to session (db)...
             $this->getSession()->setValue('token', $token);
             // Set token to form template...
-            $this->getRenderer()->assign('token', $token);
+            $this->getRenderer()->assign('token', $token, true);
             // Tell to template whatever we need to show captcha...
-            $this->getRenderer()->assign('captcha', $this->_showCaptcha());
+            $this->getRenderer()->assign('captcha', $this->_showCaptcha(), true);
 
             if (Http::isAjaxCall() === true) {
                 die($this->getRenderer()->render($this->getStaticBoxTemplatePath(self::BOX_LOGIN), $_POST, true));

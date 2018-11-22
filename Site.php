@@ -555,6 +555,7 @@ Class Site implements ComponentParentInterface
         $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
 	    $this->setVariable('user', $this->getUser());
 	    $this->setVariable('site_id', $this->getSiteId());
+	    $this->setVariable('identity', $this->getParent()->getClassUser()->isLogged());
 
         $this->_setSections($this->getSections());
 
