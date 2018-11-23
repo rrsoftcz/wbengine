@@ -108,7 +108,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      */
     public function display($template, $cache_id = NULL, $compile_id = NULL)
     {
-        $this->getAdapter()->display($template, $cache_id, $compile_id);
+        $this->getAdapter($this)->display($template, $cache_id, $compile_id);
     }
 
 

@@ -546,16 +546,16 @@ Class Site implements ComponentParentInterface
             }
         }
 
-        // Save some essential site template variables...
+        // Save some essential variables for lates use in templates...
         $this->setVariable('menu', $this->getMenuCollection());
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
-        $this->setVariable('host', Config::getCdnPath(), 'cdn');
         $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
-	    $this->setVariable('user', $this->getUser());
-	    $this->setVariable('site_id', $this->getSiteId());
-	    $this->setVariable('identity', $this->getParent()->getClassUser()->isLogged());
+//      $this->setVariable('host', Config::getCdnPath(), 'cdn');
+//	    $this->setVariable('user', $this->getUser());
+//	    $this->setVariable('site_id', $this->getSiteId());
+//	    $this->setVariable('identity', $this->getParent()->getClassUser()->isLogged());
 
         $this->_setSections($this->getSections());
 
