@@ -209,6 +209,13 @@ class Application implements ComponentParentInterface, ResponseInterface
             date_default_timezone_set(Config::getTimeZone());
 
 
+            /**
+             * INITIALIZE OBJECT SITE...
+             */
+            if(empty($this->getClassVars()->getValue('central'))) {
+                $this->getSite()->initialize($this);
+            }
+
 
         } catch (RuntimeException $e) {
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
@@ -814,15 +821,6 @@ class Application implements ComponentParentInterface, ResponseInterface
     public function run($errorHandler = null)
     {
         try {
-
-            /**
-             * INITIALIZE OBJECT SITE...
-             */
-
-            if(empty($this->getClassVars()->getValue('central'))) {
-                $this->getSite()->initialize($this);
-            }
-
 
             if ($errorHandler === HTML_ERROR_410) {
                 $this->addException('Gone.', HTML_ERROR_410);
