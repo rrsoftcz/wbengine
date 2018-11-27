@@ -20,6 +20,7 @@ class Mysqli implements DbAdapterInterface
     protected $_hostname;
     protected $_database;
     protected $_connection;
+    protected $_charset;
 
 
     public function __construct(Value $config = null)
@@ -29,6 +30,7 @@ class Mysqli implements DbAdapterInterface
             $this->_password = $this->Validate($config->password, 'password');
             $this->_hostname = $this->Validate($config->hostname, 'hostname');
             $this->_database = $this->Validate($config->database, 'database');
+            $this->_dbencode = $this->Validate($config->charset, 'charset');
         } else {
             throw New DbAdapterException(
                 __CLASS__ . "->" . __FUNCTION__ .
@@ -61,7 +63,9 @@ class Mysqli implements DbAdapterInterface
     }
 
     private function _createConnection(){
+
         mysqli_report(MYSQLI_REPORT_STRICT );
+
         try {
             $this->_connection = new \mysqli(
                 $this->_hostname,
@@ -69,8 +73,21 @@ class Mysqli implements DbAdapterInterface
                 $this->_password,
                 $this->_database
             );
+
+            if($this->_dbencode){
+                if (!$this->_connection->set_charset($this->_dbencode)) {
+                    throw new DbAdapterException(sprintf('%s->%s: %s.'
+                            , __CLASS__
+                            , __FUNCTION__
+                            , $this->_connection->error
+                        )
+                    );
+                    exit();
+                }
+            }
+
         }catch (\mysqli_sql_exception $e){
-            throw new ApplicationException(
+            throw new DbAdapterException(
                 sprintf('%s->%s: %s.'
                     , __CLASS__
                     , __FUNCTION__

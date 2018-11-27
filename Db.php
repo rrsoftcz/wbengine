@@ -101,7 +101,11 @@ abstract class Db implements DbInterface
      * @return Mysqli
      */
     public static function getConnection(){
-        return self::getAdapter()->getConnection();
+        try{
+            return self::getAdapter()->getConnection();
+        }catch(DbAdapterException $dbException){
+            throw new DbException($dbException->getMessage());
+        }
     }
 
 
@@ -124,8 +128,8 @@ abstract class Db implements DbInterface
              * Create adapter object
              */
             self::$_adapter = New $className(self::$dbCredentials);
-        } catch (DbException $e) {
-            throw New DbAdapterException(__METHOD__
+        } catch (DbAdapterException $e) {
+            throw New DbException(__METHOD__
                 . ': Wbengine\Db\Exception\DbException with a message: ' . $e->getMessage());
         }
     }
@@ -219,7 +223,7 @@ abstract class Db implements DbInterface
         $start = microtime(true);
         $res = self::getConnection()->query($sql);
         $end = microtime(true);
-        $time = ($end-$start);
+        $time = ($end - $start);
 
         self::updateStats($sql, sprintf('%f', $time));
 
