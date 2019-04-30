@@ -8,6 +8,7 @@
 
 namespace Wbengine;
 use RouteInterface;
+use Wbengine\Api\Exception\ApiException;
 use Wbengine\Api\Routes\ApiRoutesAbstract;
 use Wbengine\Api\Routes\RoutesInterface;
 use Wbengine\Api\Section;
@@ -20,16 +21,20 @@ class Api
     private $_instances = array();
 
 
-    public function Register(WbengineRestapiAbstract $controller){
-        $controller->getRoutes()->init();
+    public function Register(WbengineRestapiAbstract $api){
+        $api->getRoutes()->init();
     }
 
     /**
      * Register all API controllers...
      */
     public function Initialize(){
-        $this->Register(new Section($this));
-        $this->Register(new Auth($this));
+        try {
+            $this->Register(new Section($this));
+            $this->Register(new Auth($this));
+        }catch(ApiException $e){
+            throw new ApiException($e->getMessage());
+        }
     }
 
     public function toJson($value)

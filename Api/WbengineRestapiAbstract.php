@@ -18,6 +18,9 @@ class WbengineRestapiAbstract
      */
     private $_api;
 
+    public function __construct(Api $api) {
+        $this->_api = $api;
+    }
 
     public function Api() {
         if($this->_api){
@@ -43,5 +46,18 @@ class WbengineRestapiAbstract
         return new ApiSectionModel();
     }
 
+
+    public function createNameSpace($namespace){
+        $name = 'Wbengine\\Api\\'.ucfirst($namespace).'\\Routes';
+        if(class_exists($name, true)){
+            return $name;
+        }else{
+            throw new Api\Exception\ApiException('Can not instantinate Api module: '.$name.'. Class not found.');
+        }
+    }
+
+    public function getLastPartFromNamespace($namespace){
+        return end(explode('\\', $namespace));
+    }
 
 }

@@ -15,38 +15,30 @@ use Wbengine\Api\Model\Exception\ApiModelException;
 
 class Section extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {
-    private $_api;
-    public function __construct(Api $api)
-    {
-        $this->_api = $api;
-    }
-
-    public function getApi(){
-        return $this->_api;
-    }
 
     public function getInstanceOfApiRoutes(){
-        return new Api\Section\Routes($this);
+        $class = $this->createNameSpace($this->getLastPartFromNamespace(__CLASS__));
+        return new $class($this);
     }
 
     public function getSections($active = false)
     {
-        $this->getApi()->toJson($this->getSectionModel()->getSections($active));
+        $this->Api()->toJson($this->getSectionModel()->getSections($active));
     }
 
     public function updateSection($id, $data)
     {
-        $this->getApi()->toJson($this->getSectionModel()->updateSection($id, $data));
+        $this->Api()->toJson($this->getSectionModel()->updateSection($id, $data));
     }
 
     public function deleteSection($id)
     {
-        $this->getApi()->toJson($this->getSectionModel()->deleteSection($id));
+        $this->Api()->toJson($this->getSectionModel()->deleteSection($id));
     }
 
     public function getSectionById($id)
     {
-        $this->getApi()->toJson($this->getSectionModel()->getSectionById($id));
+        $this->Api()->toJson($this->getSectionModel()->getSectionById($id));
     }
 
     public function addNewSection($sectionData)
