@@ -11,18 +11,12 @@ use Wbengine\Api;
 use Wbengine\Api\Model\ApiSectionModel;
 use Wbengine\Box\WbengineBoxAbstract;
 
-class WbengineRestapiAbstract extends WbengineBoxAbstract
+class WbengineRestapiAbstract
 {
-    private $_params;
+    /**
+     * @var Api
+     */
     private $_api;
-
-    public $api;
-
-
-    public function __construct($box, $parent) {
-        $this->_parent = $parent;
-        $this->api = new Api();
-    }
 
 
     public function Api() {
@@ -33,6 +27,17 @@ class WbengineRestapiAbstract extends WbengineBoxAbstract
         }
     }
 
+
+    public function getApiError($msg){
+        return $this->Api()->getApiError($msg);
+    }
+
+    /**
+     * @return Api\Routes\ApiRoutesInterface
+     */
+    public function getRoutes(){
+        return $this->getInstanceOfApiRoutes();
+    }
 
     public function getSectionModel() {
         return new ApiSectionModel();

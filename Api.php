@@ -7,7 +7,12 @@
  */
 
 namespace Wbengine;
+use RouteInterface;
+use Wbengine\Api\Routes\ApiRoutesAbstract;
+use Wbengine\Api\Routes\RoutesInterface;
 use Wbengine\Api\Section;
+use Wbengine\Api\Auth;
+use Wbengine\Api\WbengineRestapiAbstract;
 use Wbengine\Application\Env\Http;
 
 class Api
@@ -15,19 +20,16 @@ class Api
     private $_instances = array();
 
 
-    const API_SECTION   = 'section';
-
-
-    private function _createApiObject($name){
-        return new $name($this);
+    public function Register(WbengineRestapiAbstract $controller){
+        $controller->getRoutes()->init();
     }
 
-    private function _getApiNameSpace($objectApi){
-        return "Wbengine\\Api\\".ucfirst($objectApi);
-    }
-
-    public function Section(){
-        return $this->_createApiObject($this->_getApiNameSpace(self::API_SECTION));
+    /**
+     * Register all API controllers...
+     */
+    public function Initialize(){
+        $this->Register(new Section($this));
+        $this->Register(new Auth($this));
     }
 
     public function toJson($value)

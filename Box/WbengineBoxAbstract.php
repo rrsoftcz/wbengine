@@ -19,9 +19,9 @@ use Wbengine\Router\Route;
 use Wbengine\Section;
 use Wbengine\Session;
 use Wbengine\Site;
-use Wbengine\Api;
+use Wbengine\Api\WbengineRestapiAbstract;
 
-Abstract class WbengineBoxAbstract implements ComponentParentInterface
+Abstract class WbengineBoxAbstract extends WbengineRestapiAbstract implements ComponentParentInterface
 {
 
     /**
@@ -180,20 +180,6 @@ Abstract class WbengineBoxAbstract implements ComponentParentInterface
      */
     public function getRoutes(){
         return $this->_routes;
-    }
-
-
-    /**
-     * Return instance of Object Api
-     * @return Api|Wbengine\Api
-     */
-    public function Api()
-    {
-        if ($this->_api) {
-            return $this->_api;
-        } else {
-            return $this->_api = new Api();
-        }
     }
 
 

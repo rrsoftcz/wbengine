@@ -10,9 +10,10 @@ namespace Wbengine\Api;
 
 
 use Wbengine\Api;
+use Wbengine\Api\WbengineRestapiAbstract;
 use Wbengine\Api\Model\Exception\ApiModelException;
 
-class Section extends WbengineRestapiAbstract
+class Section extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {
     private $_api;
     public function __construct(Api $api)
@@ -22,6 +23,10 @@ class Section extends WbengineRestapiAbstract
 
     public function getApi(){
         return $this->_api;
+    }
+
+    public function getInstanceOfApiRoutes(){
+        return new Api\Section\Routes($this);
     }
 
     public function getSections($active = false)
