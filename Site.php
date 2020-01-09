@@ -552,6 +552,8 @@ Class Site implements ComponentParentInterface
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
         $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
+        $this->setVariable('server', $_SERVER['SERVER_SOFTWARE']);
+        $this->setVariable('dbinfo', $this->getModel()->getDBVersion());
 
         $this->_setSections($this->getSections());
 

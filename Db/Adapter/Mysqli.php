@@ -98,6 +98,10 @@ class Mysqli implements DbAdapterInterface
         }
     }
 
+    public function getDbVersion() {
+        return $this->getConnection()->server_version;
+    }
+
     public function getAllAssoc($sql)
     {
         $mysqli_result = $this->getConnection()->query($sql);

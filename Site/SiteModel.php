@@ -28,6 +28,18 @@ use Wbengine\Model\ModelAbstract;
 class SiteModel extends ModelAbstract
 {
 
+    /**
+     * Return raw DB version as number
+     * @return mixed
+     */
+    public function getDBVersion() {
+        $version = Db::getAdapter()->getDbVersion();
+        $major = round($version /10000);
+        $minor = round(($version/100) - ($major*100));
+        $sub = ($version - $major * 10000) - ($minor*100);
+
+        return sprintf("%d.%d.%d", $major, $minor, $sub);
+    }
 
     /**
      * Return site sections as assoc array.
