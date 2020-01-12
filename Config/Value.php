@@ -23,9 +23,10 @@ class Value
     public function __get($name)
     {//var_dump($this->_value->$name);
         if(is_object($this->_value)) {
-            if (array_key_exists($name, $this->_value)) {
-                return $this->_value->$name;
-            }
+            return (isset($this->_value->$name)) ? $this->_value->$name : null;
+//            if (isset($this->_value->$name)) {
+//                return $this->_value->$name;
+//            }
             return null;
         }
         return $this->_value;

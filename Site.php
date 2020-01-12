@@ -94,11 +94,7 @@ Class Site implements ComponentParentInterface
         if (!$this->_resource) {
             return $default;
         }
-        if (array_key_exists($name, $this->_resource)) {
-            return $this->_resource[$name];
-        }
-
-        return $default;
+        return (isset($this->_resource[$name])) ? $this->_resource[$name] : $default;
     }
 
 

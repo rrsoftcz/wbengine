@@ -65,13 +65,8 @@ Class AdapterArray
     }
 
 
-    public function get($name, $default = null)
-    {
-        if (array_key_exists($name, $this->data)) {
-            return $this->data[$name];
-        }
-
-        return $default;
+    public function get($name, $default = null) {
+        return (isset($this->data[$name])) ? $this->data[$name] : $default;
     }
 
 
@@ -160,7 +155,7 @@ Class AdapterArray
     {
         /** @var Config $value */
         foreach ($merge as $key => $value) {
-            if (array_key_exists($key, $this->data)) {
+            if (isset($this->data[$key])) {
                 if (is_int($key)) {
                     $this->data[] = $value;
                 } elseif ($value instanceof self && $this->data[$key] instanceof self) {

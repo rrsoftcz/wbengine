@@ -105,15 +105,9 @@
         {
             $this->_parent = $app;
 
-            $this->_get = (!get_magic_quotes_gpc())
-                ? $this->_addMagicQuotes(filter_input_array(INPUT_GET))
-                : filter_input_array(INPUT_GET);
-            $this->_post = (!get_magic_quotes_gpc())
-                ? $this->_addMagicQuotes(filter_input_array(INPUT_POST))
-                : filter_input_array(INPUT_POST);
-            $this->_cookie = (!get_magic_quotes_gpc())
-                ? $this->_addMagicQuotes(filter_input_array(INPUT_COOKIE))
-                : filter_input_array(INPUT_COOKIE);
+            $this->_get = filter_input_array(INPUT_GET);
+            $this->_post = filter_input_array(INPUT_POST);
+            $this->_cookie = filter_input_array(INPUT_COOKIE);
 
             $_requestUri = filter_input(INPUT_SERVER, "REQUEST_URI");
 

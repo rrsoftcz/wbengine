@@ -207,7 +207,7 @@ class Config
     private static function _detectConfigTypeByName($filename)
     {
         $extension = substr(strrchr($filename, '.'), 1);
-        if(array_key_exists($extension, self::$_supporteConfigTyes)){
+        if(isset(self::$_supporteConfigTyes[$extension])){
             return self::$_supporteConfigTyes[$extension];
         }else{
             throw new ConfigException(sprintf(

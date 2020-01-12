@@ -58,25 +58,6 @@ class Model extends ModelAbstract
     }
 
 
-//    /**
-//     * This magis method returns user's data by
-//     * givenn item index.
-//     *
-//     * @param string $key
-//     * @return mixed
-//     */
-//    public function __get($key)
-//    {
-//        if (is_array($this->_resource) || is_object($this->_resource)) {
-//            if (array_key_exists($key, $this->_resource)) {
-//                return $this->_resource[$key];
-//            }
-//        }
-//
-//        return null;
-//    }
-
-
     /**
      * Return session instance
      * @return Class_Session_Abstract

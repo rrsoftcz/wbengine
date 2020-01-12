@@ -130,7 +130,7 @@ class File {
             $extension = $this->getFileExtension();
         }
 
-        if(array_key_exists($extension, $this->_file_types)){
+        if(isset($this->_file_types[$extension])){
             return $this->_file_types[$extension];
         }else{
             return self::FILE_TYPE_UNKNOWN;
