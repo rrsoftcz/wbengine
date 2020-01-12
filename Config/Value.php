@@ -15,18 +15,15 @@ class Value
     private $_childrens = null;
 
     public function __construct($value)
-    {//var_dump($value);
+    {
         $this->_value = $value;
         return $this;
     }
 
     public function __get($name)
-    {//var_dump($this->_value->$name);
+    {
         if(is_object($this->_value)) {
-            if (array_key_exists($name, $this->_value)) {
-                return $this->_value->$name;
-            }
-            return null;
+            return (isset($this->_value->$name)) ? $this->_value->$name : null;
         }
         return $this->_value;
     }

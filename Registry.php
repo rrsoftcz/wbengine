@@ -28,11 +28,7 @@ Class Registry {
     }
 
     static function get($name, $default = null) {
-	if (array_key_exists($name, self::$data)) {
-	    return self::$data[$name];
-	}
-
-	return null;
+	    return (isset(self::$data[$name])) ? self::$data[$name] : null;
     }
 
     static function set($name, $value) {

@@ -27,7 +27,7 @@ abstract class LocaleAbstract
     {
         $name = strtoupper($name);
 
-        if (array_key_exists($name, $this->_locales)) {
+        if (isset($this->_locales[$name])) {
             return $this->_locales[$name];
         } else {
             require_once 'Class/Locale/SessionException.php';

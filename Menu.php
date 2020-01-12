@@ -48,9 +48,7 @@ class Menu
     public function __get($name)
     {
         if(is_array($this->_menu)){
-            if(array_key_exists($name, $this->_menu)){
-                return $this->_menu[$name];
-            }
+            return (isset($this->_menu[$name])) ? $this->_menu[$name] : null;
         }
         return null;
     }
