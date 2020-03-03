@@ -39,7 +39,7 @@ class Model extends ModelAbstract {
             , S_TABLE_BOXES
             , $section->getSite()->getSiteId()
             , $section->getSectionId()
-            , $section->getSite()->getSiteId()
+            , $section->getSectionId()
         );
 
         return Db::fetchAllAssoc($sql);
