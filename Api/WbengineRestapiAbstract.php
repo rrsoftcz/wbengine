@@ -38,14 +38,13 @@ class WbengineRestapiAbstract
     /**
      * @return Api\Routes\ApiRoutesInterface
      */
-    public function getRoutes(){
-        return $this->getInstanceOfApiRoutes();
+    public function getApiRoutes($apiModule){
+        return $this->getInstanceOfApiRoutes($apiModule);
     }
 
     public function getSectionModel() {
         return new ApiSectionModel();
     }
-
 
     public function createNameSpace($namespace){
         $name = 'Wbengine\\Api\\'.ucfirst($namespace).'\\Routes';
@@ -58,6 +57,11 @@ class WbengineRestapiAbstract
 
     public function getLastPartFromNamespace($namespace){
         return end(explode('\\', $namespace));
+    }
+
+    public function getInstanceOfApiRoutes($apiModule){
+        $class = $this->createNameSpace($this->getLastPartFromNamespace(get_class($apiModule)));
+        return new $class($this);
     }
 
 }

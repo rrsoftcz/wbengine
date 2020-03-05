@@ -9,8 +9,8 @@
 namespace Wbengine;
 use RouteInterface;
 use Wbengine\Api\Exception\ApiException;
-use Wbengine\Api\Routes\ApiRoutesAbstract;
-use Wbengine\Api\Routes\RoutesInterface;
+// use Wbengine\Api\Routes\ApiRoutesAbstract;
+// use Wbengine\Api\Routes\RoutesInterface;
 use Wbengine\Api\Section;
 use Wbengine\Api\Auth;
 use Wbengine\Api\WbengineRestapiAbstract;
@@ -21,8 +21,8 @@ class Api
     private $_instances = array();
 
 
-    public function Register(WbengineRestapiAbstract $api){
-        $api->getRoutes()->init();
+    public function Register(WbengineRestapiAbstract $apiModule){
+        $apiModule->getApiRoutes($apiModule)->init();
     }
 
     /**
@@ -30,11 +30,19 @@ class Api
      */
     public function Initialize(){
         try {
+            $this->registerRootApi();
             $this->Register(new Section($this));
             $this->Register(new Auth($this));
         }catch(ApiException $e){
             throw new ApiException($e->getMessage());
         }
+    }
+
+    public function registerRootApi(){
+        Router::get('/api/', function () {
+            return $this->toString('WBengine Rest API v1.0');
+        });
+
     }
 
     public function toJson($value)

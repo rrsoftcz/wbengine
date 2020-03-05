@@ -12,10 +12,6 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
     public function init(){
         try {
 
-            Router::get('/api/', function () {
-                $this->Api()->toString('Article Rest API v1.0');
-            });
-
             Router::post('/api/sections/', function () {
                 return $this->Api()->addNewSection(Http::Json(true));
             });
