@@ -82,6 +82,7 @@ class ApiSectionModel extends ModelAbstract
 
     public function updateSection($sectionId, $sectionData)
     {
+        $i = 0;
     	if(!is_numeric($sectionId)){
         	throw new ApiModelException(sprintf('The section ID must be a number.', $sectionId), 10);
         }
@@ -91,9 +92,9 @@ class ApiSectionModel extends ModelAbstract
         }
 
         foreach($sectionData as $key => $value) {
-        $statement .= "`".$key."` = '".$value."'";
-        if ($i < count($sectionData) - 1) {
-            $statement.= " , ";
+            $statement .= "`".$key."` = '".$value."'";
+            if ($i < count($sectionData) - 1) {
+                $statement.= " , ";
         }
         $i++;
     }

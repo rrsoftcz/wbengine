@@ -21,6 +21,11 @@ class Section extends WbengineRestapiAbstract implements ApiSectionInterface
 //        $class = $this->createNameSpace($this->getLastPartFromNamespace(__CLASS__));
 //        return new $class($this);
 //    }
+//    public function getInstanceOfApiRoutesddd(){
+//     $this->Api()->toJson($this->getSectionModel()->getSections('ddd'));
+    
+//     }
+
 
     public function getSections($active = false)
     {
@@ -52,7 +57,7 @@ class Section extends WbengineRestapiAbstract implements ApiSectionInterface
                 throw new ApiModelException("Something went wrong, seems data has added but any ID has returned.", 1);
             }
         } else {
-            throw new ApiException("No session data.", 1);
+            throw new ApiException("No section data found.", 1);
         }
     }
 
