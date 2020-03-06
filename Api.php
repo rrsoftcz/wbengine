@@ -22,7 +22,7 @@ class Api
 
 
     public function Register(WbengineRestapiAbstract $apiModule){
-        $apiModule->getApiRoutes($apiModule)->init();
+        $apiModule->getApiRoutes($apiModule)->init($apiModule);
     }
 
     /**

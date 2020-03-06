@@ -13,31 +13,31 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
         try {
 
             Router::post('/api/sections/', function () {
-                return $this->Api()->addNewSection(Http::Json(true));
+                return $this->getApiModule()->addNewSection(Http::Json(true));
             });
 
             Router::put('/api/sections/{id}/', function (Router\Route $route) {
-                return $this->Api()->updateSection($route->getParams('id'), Http::Json(true));
+                return $this->getApiModule()->updateSection($route->getParams('id'), Http::Json(true));
             });
 
             Router::delete('/api/sections/{id}/', function (Router\Route $route) {
-                return $this->Api()->deleteSection($route->getParams('id'));
+                return $this->getApiModule()->deleteSection($route->getParams('id'));
             });
 
-            Router::get('/api/sections/', function () {
-                return $this->Api()->getSections(null);
+            Router::get('/api/sections/', function ($module) {//die(var_dump($this));
+                return $this->getApiModule()->getSections(null);
             });
 
             Router::get('/api/sections/active/{active}/', function (Router\Route $route) {
-                return $this->Api()->getSections($route->getParams('active'));
+                return $this->getApiModule()->getSections($route->getParams('active'));
             });
 
             Router::get('/api/sections/', function () {
-                return $this->Api()->getSections();
+                return $this->getApiModule()->getSections();
             });
 
             Router::get('/api/sections/{id}/', function (Router\Route $route) {
-                return $this->Api()->getSectionById($route->getParams('id'));
+                return $this->getApiModule()->getSectionById($route->getParams('id'));
             });
 
 
@@ -45,4 +45,13 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
             $this->Api()->getApiError($e->getMessage());
         }
     }
+
+    /**
+     * Return instance of API module Sections from Abstract class...
+     * @return \Wbengine\Api\Sections 
+     */
+    private function getApiModule(){
+        return $this->Api();
+    }
+
 }

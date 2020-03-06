@@ -13,7 +13,7 @@ class ApiRoutesAbstract
     /**
      * @var WbengineRestapiAbstract
      */
-    private $_controller;
+    public $_controller;
 
     public function __construct(WbengineRestapiAbstract $controller){
         $this->_controller = $controller;
