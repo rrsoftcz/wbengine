@@ -1,13 +1,6 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: roza
- * Date: 04/07/2018
- * Time: 21:19
- */
 
 namespace Wbengine\Api;
-
 
 use Wbengine\Api\Exception\ApiException;
 use Wbengine\Api\WbengineRestapiAbstract;

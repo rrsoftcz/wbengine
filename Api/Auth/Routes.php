@@ -4,7 +4,8 @@
 namespace Wbengine\Api\Auth;
 
 
-use Wbengine\Application\Env\Http;
+// use Wbengine\Application\Env\Http;
+use Wbengine\Api\Exception\ApiException;
 use Wbengine\Api\Routes\ApiRoutesAbstract;
 use Wbengine\Api\Routes\ApiRoutesInterface;
 
@@ -18,7 +19,7 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
                die('Login');
             });
 
-        }catch(Exception $e){
+        }catch(ApiException $e){
             $this->Api()->getApiError($e->getMessage());
         }
     }
