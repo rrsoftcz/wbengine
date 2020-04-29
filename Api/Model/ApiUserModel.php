@@ -114,11 +114,33 @@ class ApiUserModel extends ModelAbstract
 
     public function createUser($user)
     {
-        $sql = sprintf("INSERT INTO `%s` (`user_type`, `group_id`, `username`, `firstname`, `lastname`, `password`, `email`, `age`, `sex`, `ac_status`, `ac_key`, `address`, `city`, `postcode`, `country`, `ac_active`, `user_ip`, `locale`)VALUES('%s');"
+        $names = null;
+        $email = $user['email'];
+        $paswd = $user['password'];
+
+        if(true === empty($email) || true === empty($paswd)){
+            throw new ApiException("Minimum fields error, email and password required.", 1);
+        }
+
+        if(!empty($paswd)){
+            $user['password'] = md5($paswd);
+        }
+
+        foreach ($user as $key => $value) {
+            if(is_null($names)){
+                $names .= "`".$key."`";
+            }else{
+                $names .= ",`".$key."`";
+            }
+        }
+
+        $sql = sprintf("INSERT INTO `%s` (%s)VALUES('%s');"
             , S_TABLE_USERS
+            , $names
             , implode("','", $user)
         );
         
+        die(json_encode(array("success" => true, "sql" => $sql)));
         try {
             Db::query($sql);
             return Db::getInserted();
