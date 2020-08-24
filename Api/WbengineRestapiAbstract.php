@@ -9,7 +9,8 @@ namespace Wbengine\Api;
 
 use Wbengine\Api;
 use Wbengine\Api\Model\ApiSectionModel;
-use Wbengine\Box\WbengineBoxAbstract;
+use Wbengine\Api\Model\ApiUserModel;
+// use Wbengine\Box\WbengineBoxAbstract;
 
 class WbengineRestapiAbstract
 {
@@ -38,26 +39,34 @@ class WbengineRestapiAbstract
     /**
      * @return Api\Routes\ApiRoutesInterface
      */
-    public function getRoutes(){
-        return $this->getInstanceOfApiRoutes();
+    public function getApiRoutes($apiModule){
+        return $this->getInstanceOfApiRoutes($apiModule);
     }
 
     public function getSectionModel() {
         return new ApiSectionModel();
     }
 
+    public function getUserModel() {
+        return new ApiUserModel();
+    }
 
     public function createNameSpace($namespace){
         $name = 'Wbengine\\Api\\'.ucfirst($namespace).'\\Routes';
         if(class_exists($name, true)){
             return $name;
         }else{
-            throw new Api\Exception\ApiException('Can not instantinate Api module: '.$name.'. Class not found.');
+            throw new Api\Exception\ApiException('Can not instantinate Api routes module: '.$name.'. Class not found.');
         }
     }
 
     public function getLastPartFromNamespace($namespace){
         return end(explode('\\', $namespace));
+    }
+
+    public function getInstanceOfApiRoutes($apiModule){
+        $class = $this->createNameSpace($this->getLastPartFromNamespace(get_class($apiModule)));
+        return new $class($this);
     }
 
 }

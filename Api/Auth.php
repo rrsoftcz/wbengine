@@ -17,8 +17,8 @@ use Wbengine\Api\Model\Exception\ApiModelException;
 class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {
 
-    public function getInstanceOfApiRoutes(){
-        $class = $this->createNameSpace($this->getLastPartFromNamespace(__CLASS__));
-        return new $class($this);
-    }
+//    public function getInstanceOfApiRoutes(){
+//        $class = $this->createNameSpace($this->getLastPartFromNamespace(__CLASS__));
+//        return new $class($this);
+//    }
 }
