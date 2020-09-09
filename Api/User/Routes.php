@@ -33,7 +33,7 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
     }
 
     /**
-     * Return instance of API module Sections from Abstract class...
+     * Return instance of API module User from Abstract class...
      * @return \Wbengine\Api\Sections 
      */
     private function getApiModule(){

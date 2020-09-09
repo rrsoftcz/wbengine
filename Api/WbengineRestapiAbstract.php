@@ -10,6 +10,7 @@ namespace Wbengine\Api;
 use Wbengine\Api;
 use Wbengine\Api\Model\ApiSectionModel;
 use Wbengine\Api\Model\ApiUserModel;
+use Wbengine\Session;
 // use Wbengine\Box\WbengineBoxAbstract;
 
 class WbengineRestapiAbstract
@@ -62,6 +63,10 @@ class WbengineRestapiAbstract
 
     public function getLastPartFromNamespace($namespace){
         return end(explode('\\', $namespace));
+    }
+
+    public function getSession() {
+        return new Session();
     }
 
     public function getInstanceOfApiRoutes($apiModule){

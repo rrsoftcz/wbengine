@@ -4,7 +4,7 @@
 namespace Wbengine\Api\Auth;
 
 
-// use Wbengine\Application\Env\Http;
+use Wbengine\Application\Env\Http;
 use Wbengine\Api\Exception\ApiException;
 use Wbengine\Api\Routes\ApiRoutesAbstract;
 use Wbengine\Api\Routes\ApiRoutesInterface;
@@ -16,11 +16,19 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
     public function init(){
         try {
             Router::post('/api/auth/login/', function () {
-               die('Login');
+              return $this->getApiModule()->authenticate(Http::Json(true));
             });
 
         }catch(ApiException $e){
             $this->Api()->getApiError($e->getMessage());
         }
+    }
+
+    /**
+     * Return instance of API module Sections from Abstract class...
+     * @return \Wbengine\Api\Sections 
+     */
+    private function getApiModule(){
+        return $this->Api();
     }
 }
