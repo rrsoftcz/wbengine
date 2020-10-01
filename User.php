@@ -63,7 +63,7 @@ class User
 
     private $_auth =  null;
 
-    private $_jwt_token = null;
+    protected $_jwt_token = null;
     public $useJwt = true;
 
     /**
@@ -386,6 +386,10 @@ class User
     }
 
 
+    public function getToken() {
+        return $this->_jwt_token;
+    }
+
     /**
      * Return whatever User is logged in
      * @return bool
@@ -450,6 +454,13 @@ class User
         return $this;
     }
 
+    public function setLoginPassword(string $password) {
+        $this->_paswd = md5($password);
+    }
+
+    public function setLoginName(string $name) {
+        $this->_login = md5($name);
+    }
 
     public function getFullName(){
         return $this->getUserFirstName() . $this->getUserLastName();

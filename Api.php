@@ -40,27 +40,26 @@ class Api
         }
     }
 
-    public function registerRootApi(){
+    public function registerRootApi() {
         Router::get('/api/', function () {
             return $this->toString('WBengine Rest API v1.0');
         });
 
     }
 
-    public function toJson($value)
-    {
+    public function toJson($value, int $code = 200) {
+        Http::PrintCode($code);
         Http::PrintHeader(Http::HEADER_TYPE_JSON);
         die(json_encode($value));
     }
 
-    public function toString($value)
-    {
+    public function toString($value, $code = 200) {
+        Http::PrintCode($code);
         Http::PrintHeader(Http::HEADER_TYPE_PLAIN_TEXT);
         die((string)$value);
     }
 
-    public function getApiError($msg)
-    {
+    public function getApiError($msg) {
         Http::PrintHeader(Http::HEADER_TYPE_JSON);
         die(json_encode(array('error' => $msg)));
     }

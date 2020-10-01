@@ -16,7 +16,7 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
     public function init(){
         try {
             Router::post('/api/auth/login/', function () {
-              return $this->getApiModule()->authenticate(Http::Json(true));
+              return $this->getApiModule()->login(Http::Json(true));
             });
 
         }catch(ApiException $e){

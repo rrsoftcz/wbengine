@@ -7,9 +7,12 @@
  */
 namespace Wbengine\Api;
 
+use Firebase\JWT\SignatureInvalidException;
+use http\Header;
 use Wbengine\Api;
 use Wbengine\Api\Model\ApiSectionModel;
 use Wbengine\Api\Model\ApiUserModel;
+use Wbengine\Application\Env\Http;
 use Wbengine\Session;
 // use Wbengine\Box\WbengineBoxAbstract;
 
@@ -20,8 +23,11 @@ class WbengineRestapiAbstract
      */
     private $_api;
 
+    private $_headers = array();
+
     public function __construct(Api $api) {
         $this->_api = $api;
+        $this->_headers = getallheaders();
     }
 
     public function Api() {
@@ -32,6 +38,35 @@ class WbengineRestapiAbstract
         }
     }
 
+    public function isAuthenticated() {
+        $_auth = new \Wbengine\Auth();
+
+        if(empty(self::getBearerToken())) {
+            $this->Api()->toJson(Array("status" => false, "message" => "Empty token"), Http::UNAUTHORIZED);
+        }
+
+        try {
+            $_auth->
+            $_headers = $_auth->getDecodedData(self::getBearerToken());
+        }catch (SignatureInvalidException $e){
+            $this->Api()->toJson(Array("status" => false, "message" => "Invalid token"), Http::UNAUTHORIZED);
+        }
+        return $_headers;
+    }
+
+    /**
+     * get access token from header
+     * */
+    function getBearerToken() {
+        $headers = Http::getHeader(Http::HEADER_TYPE_AUTHORIZATION);
+        // HEADER: Get the access token from the header
+        if (!empty($headers)) {
+            if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
+                return $matches[1];
+            }
+        }
+        return null;
+    }
 
     public function getApiError($msg){
         return $this->Api()->getApiError($msg);

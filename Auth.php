@@ -16,6 +16,8 @@ class Auth {
 
     protected $jwt;
 
+    private $_user = null;
+
     const HASH_ALGORITHM = 'HS256';
 
     public function __construct() {
@@ -27,6 +29,21 @@ class Auth {
         $this->_setPaylodValue("iat", $_issued_time);
         $this->_setPaylodValue("exp", $_expired_time);
 
+    }
+
+    private function getUser() {
+        if(null === $this->_user) {
+            return $this->_user = new User($this);
+        }
+        return $this->_user;
+    }
+
+    public function setLoginName(string $name) {
+        $this->getUser()->setLoginName($name);
+    }
+
+    public function setLoginPassword(string $password) {
+        $this->getUser()->setLoginPassword($password);
     }
 
     public function setIssuedTime(number $time) {

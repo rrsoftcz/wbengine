@@ -18,15 +18,36 @@ use Wbengine\User;
 
 class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {
-    public function authenticate($data) {
+    private $_user = null;
+
+    private function _getUser() {
+        if(null === $this->_user) {
+            return $this->_user = new User($this);
+        } else {
+            return $this->_user;
+        }
+    }
+
+    public function login($data) {
         // var_dump($data['username']);
 
             $usr = new User($this);
+//            $auth = new \Wbengine\Auth();
             // checking for logout requets...
-            $status = $usr->login($data['username'], $data['password']);
-//            die(var_dump($status));
+//            $usr->setLoginName($data['username']);
+//            $usr->setLoginPassword($data['password']);
 
-        $this->Api()->toJson($status);
+//            $_status = $usr->login($data['username'], $data['password']);
+//            $_user_data = $usr->getIdentity();
+
+//            $auth->setPayloadData($_user_data);
+            $response = array(
+                "status" => $this->_getUser()->login($data['username'], $data['password']),
+                "token" => $this->_getUser()->getToken()
+            );
+//            die(var_dump($response));
+
+        $this->Api()->toJson($response);
     }
 
     public function logout() {
