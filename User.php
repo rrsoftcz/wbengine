@@ -61,6 +61,11 @@ class User
 
     private $_is_user_logged = false;
 
+    private $_auth =  null;
+
+    private $_jwt_token = null;
+    public $useJwt = true;
+
     /**
      * We just set default identity here...
      * If real user identity already exist in session
@@ -100,6 +105,13 @@ class User
         }
     }
 
+
+    private function getAuth() {
+        if(null === $this->_auth) {
+            return $this->_auth = new Auth();
+        }
+        return $this->_auth;
+    }
 
     private function _needReloadResource(){
         if(key_exists('user_id', $this->_resource) && $this->getUserId() > 0) {
@@ -347,6 +359,23 @@ class User
         $_usersData = $this->getModel()->authenticate($this);
 
         if($_usersData !== null) {
+            if($this->useJwt) {
+                try {
+                    $this->_jwt_token = $this->getAuth()->setPayloadData($_usersData)->getJwtToken();
+                    
+//                    header('Content-Type: application/json');
+//                    http_response_code(200);
+//                    die( json_encode(
+//                        array(
+//                            "message" => "Successful login.",
+//                            "payload" => $this->getAuth()->getDecodedData($this->_jwt_token)
+//                        )
+//                    ));
+
+                } catch (UserException $e) {
+                    die($e->getMessage());
+                }
+            }
             $this->_resource = $_usersData;
             $this->_setIdentity($this->getUserId());
             return true;
