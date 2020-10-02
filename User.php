@@ -411,6 +411,7 @@ class User
     {
         $this->getSession()->destroy();
         $this->_resetIdentity();
+        return true;
     }
 
     private function _resetIdentity(){

@@ -8,12 +8,14 @@
 namespace Wbengine\Api;
 
 use Firebase\JWT\SignatureInvalidException;
-use http\Header;
+// use http\Header;
 use Wbengine\Api;
 use Wbengine\Api\Model\ApiSectionModel;
 use Wbengine\Api\Model\ApiUserModel;
 use Wbengine\Application\Env\Http;
+use Wbengine\Auth\Exception\AuthException;
 use Wbengine\Session;
+use Wbengine\Auth;
 // use Wbengine\Box\WbengineBoxAbstract;
 
 class WbengineRestapiAbstract
@@ -24,10 +26,18 @@ class WbengineRestapiAbstract
     private $_api;
 
     private $_headers = array();
+    private $_auth = null;
 
     public function __construct(Api $api) {
         $this->_api = $api;
         $this->_headers = getallheaders();
+    }
+
+    private function wbAuth() {
+        if(null === $this->_auth) {
+            return $this->_auth = new Auth();
+        }
+        return $this->_auth;
     }
 
     public function Api() {
@@ -42,22 +52,22 @@ class WbengineRestapiAbstract
         $_auth = new \Wbengine\Auth();
 
         if(empty(self::getBearerToken())) {
-            $this->Api()->toJson(Array("status" => false, "message" => "Empty token"), Http::UNAUTHORIZED);
+            $this->Api()->toJson(Array("success" => false, "message" => "Empty token"), Http::UNAUTHORIZED);
         }
 
         try {
-            $_auth->
-            $_headers = $_auth->getDecodedData(self::getBearerToken());
-        }catch (SignatureInvalidException $e){
-            $this->Api()->toJson(Array("status" => false, "message" => "Invalid token"), Http::UNAUTHORIZED);
+
+            $_payload = $this->wbAuth()->getDecodedData($this->getBearerToken());
+        }catch (\Exception $e){
+            $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::UNAUTHORIZED);
         }
-        return $_headers;
+        return $_payload;
     }
 
     /**
      * get access token from header
      * */
-    function getBearerToken() {
+    public function getBearerToken() {
         $headers = Http::getHeader(Http::HEADER_TYPE_AUTHORIZATION);
         // HEADER: Get the access token from the header
         if (!empty($headers)) {

@@ -15,12 +15,15 @@ use Wbengine\Api\WbengineRestapiAbstract;
 use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Application\Env\Http;
 use Wbengine\User;
+use Wbengine\Api\Auth\Exception\AuthException;
 
 class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {
     private $_user = null;
+    protected $_username = null;
+    protected $_password = null;
 
-    private function _getUser() {
+    private function User() {
         if(null === $this->_user) {
             return $this->_user = new User($this);
         } else {
@@ -29,31 +32,36 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
     }
 
     public function login($data) {
-        // var_dump($data['username']);
-
-            $usr = new User($this);
-//            $auth = new \Wbengine\Auth();
-            // checking for logout requets...
-//            $usr->setLoginName($data['username']);
-//            $usr->setLoginPassword($data['password']);
-
-//            $_status = $usr->login($data['username'], $data['password']);
-//            $_user_data = $usr->getIdentity();
-
-//            $auth->setPayloadData($_user_data);
-            $response = array(
-                "status" => $this->_getUser()->login($data['username'], $data['password']),
-                "token" => $this->_getUser()->getToken()
+        try {
+            $this->Api()->toJson(
+                array(
+                    "success" => $this->User()->login($this->validate($data)->_username, $this->validate($data)->_password),
+                    "token" => $this->User()->getToken()
+                )
             );
-//            die(var_dump($response));
 
-        $this->Api()->toJson($response);
+        }catch (\Exception $e){
+            $this->Api()->toJson(Array("success"=>false, "message"=>$e->getMessage()));
+        }
     }
 
     public function logout() {
-        $usr = new User($this);
-        $usr->logout();
-        die('{"status": "success", "action": "logout" }');
+        $this->Api()->toJson(
+            Array(
+                "success" => $this->User()->logout(),
+                "message"=> "Successfully logged out"
+            )
+        );
     }
 
+    private function validate(array $credentials) {
+        if(array_key_exists("username", $credentials) && !empty($credentials["username"])) {
+            $this->_username = $credentials["username"];
+        } else { throw new AuthException("Empty or invalid username");}
+
+        if(array_key_exists("password", $credentials) && !empty($credentials["password"])) {
+            $this->_password = $credentials["password"];
+        } else { throw new AuthException("Empty or invalid password");}
+        return $this;
+    }
 }

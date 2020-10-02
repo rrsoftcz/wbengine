@@ -2,8 +2,6 @@
 
 namespace Wbengine\Auth\Exception;
 
-use Wbengine\Application\ApplicationException;
-
-class AuthException extends ApplicationException {
+class AuthException extends Exception {
     CONST ERROR_INVALID_PAYLOAD_KEY = 4000;
 }

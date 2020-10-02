@@ -23,9 +23,9 @@ class Auth {
     public function __construct() {
 
         $_issued_time = time();
-        $_expired_time = $_issued_time + (60*60);
+        $_expired_time = $_issued_time + (60);
 
-        $this->_setPaylodValue("iss", "http://techzone.windowstar.eu");
+        $this->_setPaylodValue("iss", "");
         $this->_setPaylodValue("iat", $_issued_time);
         $this->_setPaylodValue("exp", $_expired_time);
 
