@@ -8,6 +8,7 @@ namespace Wbengine\Api;
 use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Api\WbengineRestapiAbstract;
 use Wbengine\Application\Env\Http;
+use Wbengine\User\UserException;
 
 class User extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {

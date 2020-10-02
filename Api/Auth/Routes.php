@@ -16,22 +16,15 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
     public function init(){
         try {
             Router::post('/api/auth/login', function () {
-              return $this->getApiModule()->login(Http::Json(true));
+              return $this->getApiModuleController()->login(Http::Json(true));
             });
             Router::post('/api/auth/logout', function () {
-                return $this->getApiModule()->logout();
+                return $this->getApiModuleController()->logout();
             });
 
         }catch(ApiException $e){
-            $this->Api()->getApiError($e->getMessage());
+            $this->dispatch($e->getMessage(), Http::BAD_REQUEST);
         }
     }
 
-    /**
-     * Return instance of API module Sections from Abstract class...
-     * @return \Wbengine\Api\Sections 
-     */
-    private function getApiModule(){
-        return $this->Api();
-    }
 }

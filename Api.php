@@ -38,6 +38,7 @@ class Api
         }catch(ApiException $e){
             throw new ApiException($e->getMessage());
         }
+        return $this;
     }
 
     public function registerRootApi() {
@@ -56,12 +57,13 @@ class Api
     public function toString($value, $code = 200) {
         Http::PrintCode($code);
         Http::PrintHeader(Http::HEADER_TYPE_PLAIN_TEXT);
-        die((string)$value);
+        die((string) $value);
     }
 
-    public function getApiError($msg) {
+    public function printApiError($msg, $code = Http::BAD_REQUEST) {
+        Http::PrintCode($code);
         Http::PrintHeader(Http::HEADER_TYPE_JSON);
-        die(json_encode(array('error' => $msg)));
+        self::toJson((array('error' => $msg)), $code);
     }
 
 

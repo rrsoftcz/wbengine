@@ -3,8 +3,6 @@
 
 namespace Wbengine\Api\Routes;
 
-// use Wbengine\Api;
-// use Wbengine\Api\Routes\RoutesInterface;
 use Wbengine\Api\WbengineRestapiAbstract;
 
 
@@ -23,7 +21,15 @@ class ApiRoutesAbstract
      * Return instance of Api Controller
      * @return WbengineRestapiAbstract
      */
-    public function Api(){
+    public function getApiModuleController(){
         return $this->_controller;
+    }
+
+    /**
+     * Just dispatch a message to header....
+     * @param mixed $data
+     */
+    public function dispatch($data) {
+        $this->getApiModuleController()->Api()->printApiError($data);
     }
 }

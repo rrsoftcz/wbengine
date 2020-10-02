@@ -97,8 +97,8 @@ class WbengineRestapiAbstract
      * Return an API error.
      * @param $msg
      */
-    public function getApiError($msg){
-        return $this->Api()->getApiError($msg);
+    public function dddprintApiError($msg, $code){
+        return $this->Api()->printApiError($msg, $code);
     }
 
     /**
