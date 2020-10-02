@@ -23,7 +23,7 @@ class Auth {
     public function __construct() {
 
         $_issued_time = time();
-        $_expired_time = $_issued_time + (60);
+        $_expired_time = $_issued_time + (5*60);
 
         $this->_setPaylodValue("iss", "");
         $this->_setPaylodValue("iat", $_issued_time);
@@ -75,7 +75,7 @@ class Auth {
         return $this->jwt = JWT::encode($this->payload, $this->key);
     }
 
-    public function getDecodedData(string $jwt) {
+    public function getDecodedData($jwt) {
         return (array) JWT::decode($jwt, $this->key, array(self::HASH_ALGORITHM));
     }
 

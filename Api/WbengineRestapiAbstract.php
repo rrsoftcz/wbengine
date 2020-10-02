@@ -27,57 +27,76 @@ class WbengineRestapiAbstract
 
     private $_headers = array();
     private $_auth = null;
+    private $_session = null;
 
     public function __construct(Api $api) {
         $this->_api = $api;
         $this->_headers = getallheaders();
     }
 
+
+    /**
+     * Return instance of class Auth
+     * The instance is created only onece...
+     * @return Auth
+     */
     private function wbAuth() {
-        if(null === $this->_auth) {
+        if($this->_auth instanceof Auth) {
+            return $this->_auth;
+        } else {
             return $this->_auth = new Auth();
         }
-        return $this->_auth;
     }
 
+    /**
+     * Return instance of class Api
+     * The instance is created only once...
+     * @return Api
+     */
     public function Api() {
-        if($this->_api){
+        if($this->_api instanceof Api){
             return $this->_api;
         }else{
             return $this->_api = new Api();
         }
     }
 
-    public function isAuthenticated() {
-        $_auth = new \Wbengine\Auth();
-
-        if(empty(self::getBearerToken())) {
-            $this->Api()->toJson(Array("success" => false, "message" => "Empty token"), Http::UNAUTHORIZED);
+    /**
+     * Return instance of class Session
+     * The instance is created only once...
+     * @return Session
+     */
+    public function getSession() {
+        if($this->_session instanceof Session) {
+            return $this->_session;
+        }else{
+            return $this->_session = new Session();
         }
-
-        try {
-
-            $_payload = $this->wbAuth()->getDecodedData($this->getBearerToken());
-        }catch (\Exception $e){
-            $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::UNAUTHORIZED);
-        }
-        return $_payload;
     }
 
+
     /**
-     * get access token from header
-     * */
-    public function getBearerToken() {
-        $headers = Http::getHeader(Http::HEADER_TYPE_AUTHORIZATION);
-        // HEADER: Get the access token from the header
-        if (!empty($headers)) {
-            if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
-                return $matches[1];
+     * Check whatever http request include authentication JWT token.
+     * Return the Array with decrypted payload or NULL.
+     * @param $callable
+     * @return Array|null
+     */
+    public function isAuthenticated($callable) {
+        try {
+            if(is_callable($callable)){
+                return $callable($this->wbAuth()->getDecodedData(Http::getBearerToken()));
             }
+        }catch (\Exception $e){
+            $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::UNAUTHORIZED);
         }
         return null;
     }
 
+
+    /**
+     * Return an API error.
+     * @param $msg
+     */
     public function getApiError($msg){
         return $this->Api()->getApiError($msg);
     }
@@ -89,14 +108,31 @@ class WbengineRestapiAbstract
         return $this->getInstanceOfApiRoutes($apiModule);
     }
 
+
+    /**
+     * Return the Section Model.
+     * @return ApiSectionModel
+     */
     public function getSectionModel() {
         return new ApiSectionModel();
     }
 
+
+    /**
+     * Return the User Model.
+     * @return ApiUserModel
+     */
     public function getUserModel() {
         return new ApiUserModel();
     }
 
+
+    /**
+     * Build namespace to instantinate requested api module.
+     * @param string $namespace
+     * @return string
+     * @throws Exception\ApiException
+     */
     public function createNameSpace($namespace){
         $name = 'Wbengine\\Api\\'.ucfirst($namespace).'\\Routes';
         if(class_exists($name, true)){
@@ -106,14 +142,23 @@ class WbengineRestapiAbstract
         }
     }
 
+
+    /**
+     * Return the last part from given namespace.
+     * @param $namespace
+     * @return mixed|string
+     */
     public function getLastPartFromNamespace($namespace){
         return end(explode('\\', $namespace));
     }
 
-    public function getSession() {
-        return new Session();
-    }
 
+    /**
+     * Create instance of an Route object.
+     * @param $apiModule
+     * @return mixed
+     * @throws Exception\ApiException
+     */
     public function getInstanceOfApiRoutes($apiModule){
         $class = $this->createNameSpace($this->getLastPartFromNamespace(get_class($apiModule)));
         return new $class($this);

@@ -14,16 +14,16 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
 {
     public function init(){
         try {
-            Router::get('/api/users/', function () {
+            Router::get('/api/users', function () {
                 return $this->getApiModule()->getUsers();
             });
-            Router::post('/api/users/new/', function () {
+            Router::post('/api/users/create', function () {
                 return $this->getApiModule()->addUser(Http::Json(true));
             });
-            Router::get('/api/users/{id}/', function (Route $route) {
+            Router::get('/api/users/{id}', function (Route $route) {
                 return $this->getApiModule()->getUserById($route->getParams('id'));
             });
-            Router::delete('/api/users/{id}/', function (Route $route) {
+            Router::delete('/api/users/{id}', function (Route $route) {
                 return $this->getApiModule()->deleteUserById($route->getParams('id'));
             });
 

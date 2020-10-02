@@ -164,7 +164,20 @@ abstract class Http
         }
     }
 
-    
+    public static function getBearerToken() {
+        $authorization = Http::getHeader(Http::HEADER_TYPE_AUTHORIZATION);
+        // HEADER: Get the access token from the header
+        if (!empty($authorization)) {
+            if (preg_match('/Bearer\s(\S+)/', $authorization, $matches)) {
+                return $matches[1];
+            } else {
+                return $authorization;
+            }
+        }
+        return null;
+    }
+
+
     public static function isJson($string) {
      json_decode($string);
      return (json_last_error() == JSON_ERROR_NONE);
