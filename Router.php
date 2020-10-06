@@ -21,6 +21,7 @@
     use Wbengine\Components\ComponentParentInterface;
     use Wbengine\Router\Route;
     use Wbengine\Router\RouterException;
+    use const http\Client\Curl\Features\HTTP2;
 
     /**
      * Class Router
@@ -60,6 +61,27 @@
         private $params;
 
 
+
+
+        public static function options($path, $callable){
+            if(Http::getRequestType() !== Http::TYPE_OPTIONS) return;
+//            var_dump($path);die();
+//            Http::PrintHeader('Access-Control-Allow-Origin: *');
+
+//            header('Access-Control-Allow-Origin: *');
+//            header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
+//            header('Access-Control-Allow-Headers: token, Content-Type');
+//            header('Access-Control-Max-Age: 1728000');
+//            header('Content-Length: 0');
+//            header('Content-Type: text/plain');
+//
+////            Http::PrintCode(Http::OK);
+//            die();
+            if(is_callable($callable)){
+                return $callable(self::getRoute());
+            }
+
+        }
 
 
         public static function get($path, $callable){

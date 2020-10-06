@@ -90,6 +90,8 @@ abstract class Http
                 return self::TYPE_PUT;
             case self::TYPE_DELETE:
                 return self::TYPE_DELETE;
+            case self::TYPE_OPTIONS:
+                return self::TYPE_OPTIONS;
             default:
                 return self::TYPE_NONE;
         }

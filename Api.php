@@ -39,22 +39,24 @@ class Api
      * Register all API controllers...
      */
     public function Initialize(){
-
+//var_dump(Http::Uri());die();
 //        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+////            var_dump(Http::Uri());die();
 //            header('Access-Control-Allow-Origin: *');
 //            header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
 //            header('Access-Control-Allow-Headers: token, Content-Type');
-//            header('Access-Control-Max-Age: 1728000');
+//            header('Access-Control-Max-Age: 3600');
 //            header('Content-Length: 0');
 //            header('Content-Type: text/plain');
-//            die();
+////            die();
 //        }
-
+////
 //        header("Access-Control-Allow-Origin: *");
 //        header("Access-Control-Allow-Headers: *");
 
 
         try {
+            $this->setOptions();
             $this->registerRootApi();
             $this->Register(new Section($this));
             $this->Register(new User($this));
@@ -78,7 +80,38 @@ class Api
         return $this;
     }
 
+    public function setOptions(){
+        Router::options(Http::Uri(), function () {
+            Http::PrintHeader('Access-Control-Allow-Origin: *');
+            Http::PrintHeader('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
+            die;
+        });
+    }
+
     public function registerRootApi() {
+//        Router::options(Http::Uri(), function () {
+//            header('Access-Control-Allow-Origin: *');
+//            header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
+//            header('Access-Control-Allow-Headers: token, Content-Type');
+//            header('Access-Control-Max-Age: 3600');
+//            header('Content-Length: 0');
+//            header('Content-Type: text/plain');
+//            die();
+
+//            if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+//                header('Access-Control-Allow-Origin: *');
+//                header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
+//                header('Access-Control-Allow-Headers: token, Content-Type');
+//                header('Access-Control-Max-Age: 3600');
+//                header('Content-Length: 0');
+//                header('Content-Type: text/plain');
+//                die();
+//            }
+//
+//            header("Access-Control-Allow-Origin: *");
+//            header("Access-Control-Allow-Headers: *");
+
+//        });
         Router::get('/api', function () {
             return $this->toString('WBengine Rest API v1.0');
         });
