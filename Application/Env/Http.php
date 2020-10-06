@@ -74,8 +74,8 @@ abstract class Http
 
     const HEADER_TYPE_AUTHORIZATION = 'Authorization';
 
-    const HEADER_TYPE_JSON          = 'Content-Type: application/json';
-    const HEADER_TYPE_PLAIN_TEXT    = 'Content-Type: text/plain';
+    const HEADER_TYPE_JSON          = 'content-type: application/json; charset=UTF-8';
+    const HEADER_TYPE_PLAIN_TEXT    = 'Content-Type: text/plain; charset=UTF-8';
 
     public static function getRequestType()
     {

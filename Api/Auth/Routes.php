@@ -25,6 +25,7 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
         }catch(ApiException $e){
             $this->dispatch($e->getMessage(), Http::BAD_REQUEST);
         }
+        return $this;
     }
 
 }

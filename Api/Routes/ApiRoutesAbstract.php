@@ -8,6 +8,11 @@ use Wbengine\Api\WbengineRestapiAbstract;
 
 class ApiRoutesAbstract
 {
+    public $match = false;
+    public function isRouteMatch() {
+        return $this->match;
+    }
+
     /**
      * @var WbengineRestapiAbstract
      */

@@ -82,6 +82,7 @@ class WbengineRestapiAbstract
      * @return Array|null
      */
     public function isAuthenticated($callable) {
+//        var_dump("jsem v authentization");
         try {
             if(is_callable($callable)){
                 return $callable($this->wbAuth()->getDecodedData(Http::getBearerToken()));
