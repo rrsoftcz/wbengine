@@ -36,7 +36,8 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
             $this->Api()->toJson(
                 array(
                     "success" => $this->User()->login($this->validate($data)->_username, $this->validate($data)->_password),
-                    "token" => $this->User()->getToken()
+                    "token" => $this->User()->getToken(),
+                    "uid" => $this->User()->getUserId()
                 )
             );
 
