@@ -9,8 +9,6 @@
 namespace Wbengine;
 use RouteInterface;
 use Wbengine\Api\Exception\ApiException;
-// use Wbengine\Api\Routes\ApiRoutesAbstract;
-// use Wbengine\Api\Routes\RoutesInterface;
 use Wbengine\Api\Section;
 use Wbengine\Api\Auth;
 use Wbengine\Api\User;
@@ -29,9 +27,7 @@ class Api
 
     public function end() {
         if(in_array(true, $this->_found) === FALSE){
-            http_response_code(404);
-//            $this->printApiError(array("code"=>HTML_ERROR_404, "message"=>"Page Not Found"), HTML_ERROR_404);
-            exit();
+            $this->printApiError(array("code"=>HTML_ERROR_404, "message"=>"Page Not Found"), HTML_ERROR_404);
         }
     }
 
@@ -39,57 +35,27 @@ class Api
      * Register all API controllers...
      */
     public function Initialize(){
-//var_dump(Http::Uri());die();
-//        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-////            var_dump(Http::Uri());die();
-//            header('Access-Control-Allow-Origin: *');
-//            header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
-//            header('Access-Control-Allow-Headers: token, Content-Type');
-//            header('Access-Control-Max-Age: 3600');
-//            header('Content-Length: 0');
-//            header('Content-Type: text/plain');
-////            die();
-//        }
-////
+
+//        $resp = array();
+//
+//        $resp[] = array(
+//            "username"=>"test1",
+//            "email"=>"test@test.cz",
+//            "user_id"=>1
+//        );
+//        $resp[] = array(
+//            "username"=>"test2",
+//            "email"=>"test@test.cz",
+//            "user_id"=>2
+//        );
 //        header("Access-Control-Allow-Origin: *");
 //        header("Access-Control-Allow-Headers: *");
+//        header('Content-Type: application/json');
+//        print_r(json_encode($resp, JSON_PRETTY_PRINT));
+//        die();
 
 
-        try {
-            $this->setOptions();
-            $this->registerRootApi();
-            $this->Register(new Section($this));
-            $this->Register(new User($this));
-//            die('dwdwdqwdwqdq');
-//            Http::PrintCode(200);
-//            Http::PrintCode(404);
-            $this->Register(new Auth($this));
-//            var_dump('za routama');
-//            $this->printApiError('404 Not Found', 404);
-//            $this->_found[] = true;
-//            var_dump($this->_found);
-//            var_dump(Http::isAjaxCall());
-//            exit();
-//            if(in_array(true, $this->_found) === false){
-//                $this->printApiError(array("code"=>404,"message"=>"Not Found"), 502);
-//                exit();
-//            }
-        }catch(ApiException $e){
-            throw new ApiException($e->getMessage());
-        }
-        return $this;
-    }
-
-    public function setOptions(){
-        Router::options(Http::Uri(), function () {
-            Http::PrintHeader('Access-Control-Allow-Origin: *');
-            Http::PrintHeader('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
-            die;
-        });
-    }
-
-    public function registerRootApi() {
-//        Router::options(Http::Uri(), function () {
+//        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 //            header('Access-Control-Allow-Origin: *');
 //            header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
 //            header('Access-Control-Allow-Headers: token, Content-Type');
@@ -97,21 +63,38 @@ class Api
 //            header('Content-Length: 0');
 //            header('Content-Type: text/plain');
 //            die();
+//        }
+////
+//        header("Access-Control-Allow-Origin: *");
+//        header("Access-Control-Allow-Headers: *");
 
-//            if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-//                header('Access-Control-Allow-Origin: *');
-//                header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
-//                header('Access-Control-Allow-Headers: token, Content-Type');
-//                header('Access-Control-Max-Age: 3600');
-//                header('Content-Length: 0');
-//                header('Content-Type: text/plain');
-//                die();
-//            }
-//
-//            header("Access-Control-Allow-Origin: *");
-//            header("Access-Control-Allow-Headers: *");
 
-//        });
+        try {
+
+            $this->setHeaderOptions();
+            $this->registerRootApi();
+            $this->Register(new Section($this));
+            $this->Register(new User($this));
+            $this->Register(new Auth($this));
+
+        }catch(ApiException $e){
+            throw new ApiException($e->getMessage());
+        }
+        return $this;
+    }
+
+    public function setHeaderOptions(){
+        // Print global Allowed Origin...
+        Http::PrintHeader("Access-Control-Allow-Origin: *");
+        // Manage additional CORS options...
+        Router::options(Http::Uri(), function () {
+            Http::PrintHeader("Access-Control-Allow-Headers: Content-Type, Authorization");
+            Http::PrintHeader('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, UPDATE, PATCH, OPTIONS');
+            die;
+        });
+    }
+
+    public function registerRootApi() {
         Router::get('/api', function () {
             return $this->toString('WBengine Rest API v1.0');
         });

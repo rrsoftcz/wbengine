@@ -12,26 +12,25 @@ use Wbengine\User\UserException;
 
 class User extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {
-    public function getUsers(){
-//        $this->isAuthenticated(
-//            fn() => $this->Api()->toJson($this->getUserModel()->getAllUsers(true))
-            $this->Api()->toJson($this->getUserModel()->getAllUsers(true));
-//        );
+    public function getUsers() {
+        $this->isAuthenticated(
+            fn() => $this->Api()->toJson($this->getUserModel()->getAllUsers(true))
+        );
     }
 
-    public function getUserById($userid){
+    public function getUserById($userid) {
         $this->isAuthenticated(
             fn() => $this->Api()->toJson($this->getUserModel()->getUserById($userid))
         );
     }
 
-    public function deleteUserById($userid){
+    public function deleteUserById($userid) {
         $this->isAuthenticated(
             fn() => $this->Api()->toJson($this->getUserModel()->deleteUser($userid))
         );
     }
 
-    public function addUser($user){
+    public function addUser($user) {
         $this->isAuthenticated(
             function() {
                 $this->Api()->toJson($this->getUserModel()->createUser($user));

@@ -15,7 +15,6 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
     public function init(){
         try {
             Router::get('/api/users', function ($route) {
-//                $this->match = $route->isRouteMatch();
                 $this->getApiModuleController()->getUsers();
             });
             Router::get('/api/users/create', function () {
@@ -29,7 +28,8 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
             });
 
         }catch(\Exception $e){
-            $this->dispatch($e->getMessage(), Http::BAD_REQUEST);
+            die($e->getMessage());
+            $this->dispatch($e->getMessage(), $e->getCode());
         }
         return $this;
     }

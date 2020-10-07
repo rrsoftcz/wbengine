@@ -7,6 +7,8 @@
  */
 namespace Wbengine\Api;
 
+use Firebase\JWT\BeforeValidException;
+use Firebase\JWT\ExpiredException;
 use Firebase\JWT\SignatureInvalidException;
 // use http\Header;
 use Wbengine\Api;
@@ -82,13 +84,20 @@ class WbengineRestapiAbstract
      * @return Array|null
      */
     public function isAuthenticated($callable) {
-//        var_dump("jsem v authentization");
+        $_token = Http::getBearerToken();
+
+        if(empty($_token)) {
+            $this->Api()->toJson(Array("success" => false, "message" => "Empty token."), Http::UNAUTHORIZED);
+        }
+
         try {
             if(is_callable($callable)){
                 return $callable($this->wbAuth()->getDecodedData(Http::getBearerToken()));
             }
-        }catch (\Exception $e){
+        }catch (SignatureInvalidException | ExpiredException | BeforeValidException $e){
             $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::UNAUTHORIZED);
+        }catch (\Exception $e){
+            $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::BAD_REQUEST);
         }
         return null;
     }

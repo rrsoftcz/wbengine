@@ -34,7 +34,7 @@ class ApiRoutesAbstract
      * Just dispatch a message to header....
      * @param mixed $data
      */
-    public function dispatch($data) {
-        $this->getApiModuleController()->Api()->printApiError($data);
+    public function dispatch($data, $code) {
+        $this->getApiModuleController()->Api()->printApiError($data, $code);
     }
 }
