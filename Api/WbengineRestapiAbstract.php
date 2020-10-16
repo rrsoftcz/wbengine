@@ -42,7 +42,7 @@ class WbengineRestapiAbstract
      * The instance is created only onece...
      * @return Auth
      */
-    private function wbAuth() {
+    public function wbAuth() {
         if($this->_auth instanceof Auth) {
             return $this->_auth;
         } else {

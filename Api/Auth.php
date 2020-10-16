@@ -55,6 +55,36 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
         );
     }
 
+    public function validateJwtToken(string $token = null, array $body = null){
+        if(null === $body || !array_key_exists("user_id", $body)) {
+            $this->Api()->toJson(
+                Array(
+                    "success" => false,
+                    "message"=> "Empty UID"
+                ),Http::UNAUTHORIZED
+            );
+        }
+
+        try {
+            $payload = $this->wbAuth()->getDecodedData($token);
+            $fce = fn($b) => (int)$b["user_id"] === (int)$payload["data"]->user_id;
+            $this->Api()->toJson(
+                Array(
+                    "success" =>  $fce($body),
+                    "message"=> "JWT token successfuly decoded and user has authenticated."
+                ),Http::UNAUTHORIZED
+            );
+
+        }catch(\Exception $e){
+            $this->Api()->toJson(
+                Array(
+                    "success" => false,
+                    "message"=> $e->getMessage()
+                ),Http::UNAUTHORIZED
+            );
+        }
+    }
+
     private function validate(array $credentials) {
         if(array_key_exists("username", $credentials) && !empty($credentials["username"])) {
             $this->_username = $credentials["username"];

@@ -21,6 +21,9 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
             Router::post('/api/auth/logout', function () {
                 return $this->getApiModuleController()->logout();
             });
+            Router::post('/api/auth/jwt/identify',
+                fn() => $this->getApiModuleController()->validateJwtToken(Http::getBearerToken(), Http::Json(true))
+            );
 
         }catch(ApiException $e){
             $this->dispatch($e->getMessage(), Http::BAD_REQUEST);

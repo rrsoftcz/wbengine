@@ -17,7 +17,7 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
             Router::get('/api/users', function ($route) {
                 $this->getApiModuleController()->getUsers();
             });
-            Router::get('/api/users/create', function () {
+            Router::post('/api/users/create', function () {
                 $this->getApiModuleController()->addUser(Http::Json(true));
             });
             Router::get('/api/users/{id}', function (Route $route) {
