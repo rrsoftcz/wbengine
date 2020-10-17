@@ -33,16 +33,20 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
 
     public function login($data) {
         try {
+            $status = $this->User()->login($this->validate($data)->_username, $this->validate($data)->_password);
+            if(!$status) {
+                throw new Api\Exception\ApiException("Login failed, wrong username or password.");
+            }
             $this->Api()->toJson(
                 array(
-                    "success" => $this->User()->login($this->validate($data)->_username, $this->validate($data)->_password),
+                    "success" => $status,
                     "token" => $this->User()->getToken(),
-                    "uid" => $this->User()->getUserId()
-                )
+                    "uid" => $this->User()->getUserId(),
+                ), ($status)? Http::OK : Http::UNAUTHORIZED
             );
 
         }catch (\Exception $e){
-            $this->Api()->toJson(Array("success"=>false, "message"=>$e->getMessage()));
+            $this->Api()->toJson(Array("success"=>false, "message"=>$e->getMessage()), Http::UNAUTHORIZED);
         }
     }
 
