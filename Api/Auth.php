@@ -72,7 +72,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
                 Array(
                     "success" =>  $fce($body),
                     "message"=> "JWT token successfuly decoded and user has authenticated."
-                ),Http::UNAUTHORIZED
+                ),($fce($body)) ? Http::OK : Http::UNAUTHORIZED
             );
 
         }catch(\Exception $e){
