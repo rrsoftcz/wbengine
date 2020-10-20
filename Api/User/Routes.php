@@ -31,8 +31,7 @@ class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
             });
 
         }catch(\Exception $e){
-            die($e->getMessage());
-            $this->dispatch($e->getMessage(), $e->getCode());
+            $this->dispatch($e->getMessage(), Http::ACCEPTED);
         }
         return $this;
     }

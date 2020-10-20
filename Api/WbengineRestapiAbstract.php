@@ -96,8 +96,8 @@ class WbengineRestapiAbstract
             }
         }catch (SignatureInvalidException | ExpiredException | BeforeValidException $e){
             $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::UNAUTHORIZED);
-        }catch (\Exception $e){
-            $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::BAD_REQUEST);
+//        }catch (\Exception $e){
+//            $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::OK); //@TODO ..or Http::BAD_REQUEST???
         }
         return null;
     }

@@ -120,10 +120,17 @@ class Api
         die((string) $value);
     }
 
-    public function printApiError($msg, $code = Http::BAD_REQUEST) {
+    public function printApiError($msg, $code = Http::OK) {
         Http::PrintCode($code);
         Http::PrintHeader(Http::HEADER_TYPE_JSON);
-        self::toJson(array('error' => $msg), $code);
+        self::toJson(
+            array(
+                'success' => false,
+                'error' => $code,
+                'message' => $msg
+            ),
+            $code
+        );
     }
 
 
