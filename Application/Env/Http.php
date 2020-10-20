@@ -88,6 +88,8 @@ abstract class Http
                 return self::TYPE_GET;
             case self::TYPE_PUT:
                 return self::TYPE_PUT;
+            case self::TYPE_PATCH:
+                return self::TYPE_PATCH;
             case self::TYPE_DELETE:
                 return self::TYPE_DELETE;
             case self::TYPE_OPTIONS:

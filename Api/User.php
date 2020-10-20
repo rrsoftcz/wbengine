@@ -14,7 +14,7 @@ class User extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {
     public function getUsers() {
         $this->isAuthenticated(
-            fn() => $this->Api()->toJson($this->getUserModel()->getAllUsers(true))
+            fn() => $this->Api()->toJson($this->getUserModel()->getAllUsers())
         );
     }
 
@@ -30,11 +30,20 @@ class User extends WbengineRestapiAbstract implements WbengineRestapiInterface
         );
     }
 
+    public function updateUser($userId, $user) {
+        $this->isAuthenticated(
+            fn() => $this->Api()->toJson($this->getUserModel()->updateUser((int) $userId, $user))
+        );
+    }
+
     public function addUser($user) {
         $this->isAuthenticated(
-            function() {
-                $this->Api()->toJson($this->getUserModel()->createUser($user));
+            function($payload) use ($user) {
+                $this->getUserModel()->createUser($user);
+//                $this->Api()->toJson($user);die();
+//                $_lastId = $this->Api()->toJson($this->getUserModel()->createUser($user));
                 if (is_array($user)) {
+                    var_dump($user);
                     $_lastId = $this->getUserModel()->createUser($user);
                     if ($_lastId) {
                         return $this->Api()->toJson($this->getUserById($_lastId));

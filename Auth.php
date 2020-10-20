@@ -23,7 +23,7 @@ class Auth {
     public function __construct() {
 
         $_issued_time = time();
-        $_expired_time = $_issued_time + (1*30);
+        $_expired_time = $_issued_time + (60*60);
 
         $this->_setPaylodValue("iss", "");
         $this->_setPaylodValue("iat", $_issued_time);
@@ -46,12 +46,12 @@ class Auth {
         $this->getUser()->setLoginPassword($password);
     }
 
-    public function setIssuedTime(number $time) {
+    public function setIssuedTime(int $time) {
         $this->_setPaylodValue("iss", $time);
         return $this;
     }
 
-    public function setExpiredTime(number $time) {
+    public function setExpiredTime(int $time) {
         $this->_setPaylodValue("exp", $time);
         return $this;
     }
@@ -66,7 +66,7 @@ class Auth {
         return $this;
     }
 
-    public function setKey(number $key) {
+    public function setKey(int $key) {
         $this->key = $key;
         return $this;
     }
