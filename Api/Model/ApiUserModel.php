@@ -63,6 +63,22 @@ class ApiUserModel extends ModelAbstract
 
     }
 
+
+    public function getUserByEmail($email) {
+    	if(empty($email)){
+        	throw new ApiModelException(sprintf('Invalid E-mail, expected string, but got %s.', gettype($email)), 10);
+        }
+
+        $sql = sprintf("SELECT `user_id` FROM %s WHERE `email` = '%s' ORDER BY user_id;",
+            S_TABLE_USERS,
+            $email
+        );
+
+        $res = Db::fetchAssoc($sql);
+        return $res;
+    }
+
+
     public function deleteUser($userId)
     {
     	if(!is_numeric($userId)){
@@ -116,11 +132,15 @@ class ApiUserModel extends ModelAbstract
 
     }
 
-    public function createUser($user)
+    public function createUser($user, $exist)
     {
         $names = null;
         $email = $user['email'];
         $paswd = $user['password'];
+
+        if(true === $exist){
+            throw new ApiException(sprintf("The user with email '%s' already exist, please try another one.", $user["email"]), 400);
+        }
 
         if(true === empty($email) || true === empty($paswd)){
             throw new ApiException("Minimum fields error, email and password required.", 1);
@@ -144,10 +164,15 @@ class ApiUserModel extends ModelAbstract
             , implode("','", $user)
         );
         
-        die(json_encode(array("success" => true, "sql" => $sql), JSON_PRETTY_PRINT));
+//        die(json_encode(array("success" => true, "sql" => $sql), JSON_PRETTY_PRINT));
         try {
             Db::query($sql);
-            return Db::getInserted();
+            return array(
+                "success" => true,
+                "user_id" => Db::getInserted(),
+                "message" => "The user successfully created."
+            );
+//            return Db::getInserted();
         }catch(DbException $e){
             throw new ApiException($e->getMessage());
         }

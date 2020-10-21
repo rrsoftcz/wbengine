@@ -17,11 +17,15 @@ use Wbengine\Application\Env\Http;
 use Wbengine\User;
 use Wbengine\Api\Auth\Exception\AuthException;
 
-class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
-{
+class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
+
+    const PWD_COMPLEXITY_MIN_LENGTH = 6;
+
     private $_user = null;
     protected $_username = null;
     protected $_password = null;
+
+
 
     private function User() {
         if(null === $this->_user) {
@@ -89,14 +93,39 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface
         }
     }
 
-    private function validate(array $credentials) {
+    private function validate($credentials) {
+        if(!is_array($credentials)){
+            throw new AuthException(
+                sprintf(
+                    "Invalid provided credentials. Expected an Array, but '%s' given.",
+                    gettype($credentials)
+                )
+            );
+        }
+
         if(array_key_exists("username", $credentials) && !empty($credentials["username"])) {
             $this->_username = $credentials["username"];
-        } else { throw new AuthException("Empty or invalid username");}
+        } else {
+            $this->throwError("Empty username");
+        }
 
         if(array_key_exists("password", $credentials) && !empty($credentials["password"])) {
+//            if(strlen($credentials["password"]) < self::PWD_COMPLEXITY_MIN_LENGTH){
+//                $this->throwError(
+//                    sprintf(
+//                        "Password complexity error, the password is too short. The expected minimum length is %s characters long.",
+//                        self::PWD_COMPLEXITY_MIN_LENGTH
+//                    )
+//                );
+//            }
             $this->_password = $credentials["password"];
-        } else { throw new AuthException("Empty or invalid password");}
+        } else {
+            $this->throwError("Empty password");
+        }
         return $this;
+    }
+
+    public function throwError(string $message){
+        throw new \Wbengine\Auth\Exception\AuthException($message, 400);
     }
 }

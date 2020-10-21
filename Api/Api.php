@@ -17,7 +17,7 @@ use Wbengine\Api\WbengineRestapiAbstract;
 class Api extends WbengineRestapiAbstract implements WbengineRestapiInterface
 {
 
-    public function getInstanceOfApiRoutes(){
+    public function getInstanceOfApiRouteModule(){
         $class = $this->createNameSpace($this->getLastPartFromNamespace(__CLASS__));
         return new $class($this);
     }

@@ -9,7 +9,7 @@ use Wbengine\Api\Routes\ApiRoutesInterface;
 class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
 {
 
-    public function init(){
+    public function initializeModuleRoutes(){
         try {
 
             Router::post('/api/sections/', function () {

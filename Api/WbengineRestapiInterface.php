@@ -4,5 +4,5 @@ namespace Wbengine\Api;
 
 interface WbengineRestapiInterface
 {
-    public function getInstanceOfApiRoutes($namespace);
+    public function getInstanceOfApiRouteModule($namespace);
 }

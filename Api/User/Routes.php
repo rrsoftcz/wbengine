@@ -12,7 +12,7 @@ use Wbengine\Router;
 
 class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
 {
-    public function init(){
+    public function initializeModuleRoutes(){
         try {
             Router::get('/api/users', function () {
                 $this->getApiModuleController()->getUsers();

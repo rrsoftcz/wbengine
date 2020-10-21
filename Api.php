@@ -7,7 +7,7 @@
  */
 
 namespace Wbengine;
-use RouteInterface;
+//use RouteInterface;
 use Wbengine\Api\Exception\ApiException;
 use Wbengine\Api\Section;
 use Wbengine\Api\Auth;
@@ -22,12 +22,17 @@ class Api
 
 
     public function Register(WbengineRestapiAbstract $apiModule){
-        $this->_found[] = $apiModule->getApiRoutes($apiModule)->init()->isRoutematch();
+        $this->_found[] = $apiModule->getApiRouteModule($apiModule)->initializeModuleRoutes()->isRoutematch();
     }
 
     public function end() {
         if(in_array(true, $this->_found) === FALSE){
-            $this->printApiError(array("code"=>HTML_ERROR_404, "message"=>"Page Not Found"), HTML_ERROR_404);
+            $this->printApiError(
+                array(
+                    "code" => HTML_ERROR_404,
+                    "message" => "Page Not Found"
+                ), HTML_ERROR_404
+            );
         }
     }
 

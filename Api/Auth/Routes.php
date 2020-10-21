@@ -13,7 +13,7 @@ use Wbengine\Router;
 
 class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
 {
-    public function init(){
+    public function initializeModuleRoutes(){
         try {
             Router::post('/api/auth/login', function () {
               return $this->getApiModuleController()->login(Http::Json(true));

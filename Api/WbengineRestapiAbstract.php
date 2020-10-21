@@ -20,8 +20,9 @@ use Wbengine\Session;
 use Wbengine\Auth;
 // use Wbengine\Box\WbengineBoxAbstract;
 
-class WbengineRestapiAbstract
-{
+class WbengineRestapiAbstract {
+
+
     /**
      * @var Api
      */
@@ -104,18 +105,10 @@ class WbengineRestapiAbstract
 
 
     /**
-     * Return an API error.
-     * @param $msg
-     */
-    public function dddprintApiError($msg, $code){
-        return $this->Api()->printApiError($msg, $code);
-    }
-
-    /**
      * @return Api\Routes\ApiRoutesInterface
      */
-    public function getApiRoutes($apiModule){
-        return $this->getInstanceOfApiRoutes($apiModule);
+    public function getApiRouteModule($apiModule){
+        return $this->getInstanceOfApiRouteModule($apiModule);
     }
 
 
@@ -169,7 +162,7 @@ class WbengineRestapiAbstract
      * @return mixed
      * @throws Exception\ApiException
      */
-    public function getInstanceOfApiRoutes($apiModule){
+    public function getInstanceOfApiRouteModule($apiModule){
         $class = $this->createNameSpace($this->getLastPartFromNamespace(get_class($apiModule)));
         return new $class($this);
     }
