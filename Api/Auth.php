@@ -41,6 +41,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
             if(!$status) {
                 throw new Api\Exception\ApiException("Login failed, wrong username or password.");
             }
+            setcookie("jwt", $this->User()->getToken(),0, Http::Uri(), "api.devel.com", false, true);
             $this->Api()->toJson(
                 array(
                     "success" => $status,

@@ -90,10 +90,11 @@ class Api
 
     public function setHeaderOptions(){
         // Print global Allowed Origin...
-        Http::PrintHeader("Access-Control-Allow-Origin: *");
+        Http::PrintHeader("Access-Control-Allow-Origin: http://localhost:8080");
+        Http::PrintHeader('Access-Control-Allow-Credentials: true');
         // Manage additional CORS options...
         Router::options(Http::Uri(), function () {
-            Http::PrintHeader("Access-Control-Allow-Headers: Content-Type, Authorization");
+            Http::PrintHeader("Access-Control-Allow-Headers: Origin, X-Requested-With, Accept, Content-Type, Authorization, Access-Control-Allow-Origin, Access-Control-Allow-Headers");
             Http::PrintHeader('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, UPDATE, PATCH, OPTIONS');
             die;
         });
