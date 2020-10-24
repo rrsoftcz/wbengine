@@ -90,7 +90,7 @@ class Api
 
     public function setHeaderOptions(){
         // Print global Allowed Origin...
-        Http::PrintHeader("Access-Control-Allow-Origin: https://devel.com:8080");
+        Http::PrintHeader("Access-Control-Allow-Origin: https://elkplana.cz:8080");
         Http::PrintHeader('Access-Control-Allow-Credentials: true');
         // Manage additional CORS options...
         Router::options(Http::Uri(), function () {
