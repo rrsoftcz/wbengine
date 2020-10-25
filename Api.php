@@ -29,6 +29,10 @@ class Api
         "OPTIONS"
     );
     private $_allow_headers = array(
+        "Content-Type"
+    );
+    private $_content_security_policy = array(
+        "default-src" => "self"
     );
 
     private $_allow_credential_header = false;
@@ -110,8 +114,8 @@ class Api
     }
 
     public function setHeaderOptions(){
-//        $_origin = sprintf("Access-Control-Allow-Origin: %s", ($this->_allow_origin || '*'));
-//        var_dump(sprintf("Access-Control-Allow-Origin: %s", implode(" ", $this->_allow_origins)));die;
+        // default security policy...
+        Http::PrintHeader(sprintf("Content-Security-Policy: %s", $this->getDefaultContentSecurityPolicy()));
         // Print global Allowed Origin...
         Http::PrintHeader(sprintf("Access-Control-Allow-Origin: %s", implode(" ", $this->_allow_origins)));
         if($this->_allow_credential_header === true) {
@@ -227,6 +231,10 @@ class Api
 
     public function getCookieIsSecured(){
         return $this->_cookie_secured;
+    }
+
+    public function getDefaultContentSecurityPolicy(){
+        return sprintf("default-src '%s'", $this->_content_security_policy['default-src']);
     }
 
 }

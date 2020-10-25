@@ -64,7 +64,8 @@ class User
     private $_auth =  null;
 
     protected $_jwt_token = null;
-    public $useJwt = true;
+    protected $_refresh_token = null;
+    protected $useJwt = false;
 
     /**
      * We just set default identity here...
@@ -357,27 +358,18 @@ class User
         $this->_paswd = md5($password);
 
         $_usersData = $this->getModel()->authenticate($this);
+        $this->_resource = $_usersData;
+        $this->_setIdentity($this->getUserId());
 
         if($_usersData !== null) {
             if($this->useJwt) {
                 try {
-                    $this->_jwt_token = $this->getAuth()->setPayloadData($_usersData)->getJwtToken();
-                    
-//                    header('Content-Type: application/json');
-//                    http_response_code(200);
-//                    die( json_encode(
-//                        array(
-//                            "message" => "Successful login.",
-//                            "payload" => $this->getAuth()->getDecodedData($this->_jwt_token)
-//                        )
-//                    ));
-
+                    $this->_jwt_token = $this->getAuth()->setPayloadData($this->getPayloadData())->getJwtToken();
+                    $this->_refresh_token = $this->getAuth()->setPayloadData($this->getPayloadData())->getRefreshToken();
                 } catch (UserException $e) {
                     die($e->getMessage());
                 }
             }
-            $this->_resource = $_usersData;
-            $this->_setIdentity($this->getUserId());
             return true;
         }else{
             $this->_resetIdentity();
@@ -385,9 +377,29 @@ class User
         }
     }
 
+    public function getPayloadData(){
+        return array(
+            "user_id" => $this->getUserId(),
+            "username" => $this->getUserName(),
+            "email" => $this->getUserName()
+        );
+    }
 
-    public function getToken() {
+    public function useJwt(bool $val){
+        $this->useJwt = $val;
+        return $this;
+    }
+
+    public function isUsedJwt(){
+        return $this->useJwt;
+    }
+
+    public function getJwtToken() {
         return $this->_jwt_token;
+    }
+
+    public function getRefreshToken() {
+        return $this->_refresh_token;
     }
 
     /**

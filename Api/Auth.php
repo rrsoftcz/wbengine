@@ -28,10 +28,23 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
 
     private function User() {
         if(null === $this->_user) {
-            return $this->_user = new User($this);
+            $this->setUser(new User($this));
+            return $this->getUser()->useJwt(true);
         } else {
             return $this->_user;
         }
+    }
+
+    /**
+     * @return User|null
+     */
+    public function getUser()
+    {
+        return $this->_user;
+    }
+
+    public function setUser(User $user){
+        $this->_user = $user;
     }
 
     public function login($data) {
@@ -43,7 +56,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
 
             setcookie(
                 "refresh_token",
-                $this->User()->getToken(),
+                $this->User()->getRefreshToken(),
                 $this->Api()->getCookieExpiration(),
                 $this->Api()->getCookieUrl(),
                 $this->Api()->getCookieDomain(),
@@ -54,7 +67,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
             $this->Api()->toJson(
                 array(
                     "success" => $status,
-                    "token" => $this->User()->getToken(),
+                    "token" => $this->User()->getJwtToken(),
                     "uid" => $this->User()->getUserId(),
                 ), ($status)? Http::OK : Http::UNAUTHORIZED
             );

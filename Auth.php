@@ -6,7 +6,9 @@ use \Wbengine\Auth\Exception\AuthException;
 
 class Auth {
 
-    private $key = "1966eb141f90588314e97af0c28e8354";
+    protected $default_token_key = "e866430c28a90a559f650791c48e8dcadd3d32b53345205d187f1002ecf64df8bcb564a04632efda6664af2083a62f09ee9f40eac165084d553dff182201e522";
+    protected $refresh_token_key = "67f459df91c4c5b6d18e9b2c3e10921b34dd1cc3d3531fdd0ca13f4b5bc6899817ba80016a202d85a885390d4510975b4e93246b7a93b10cc93329c65976f274";
+
     private $payload = array(
         "iss" => "",
         "iat" => "",
@@ -14,7 +16,8 @@ class Auth {
         "data" => array()
     );
 
-    protected $jwt;
+    protected $default_jwt;
+    protected $refresh_jwt;
 
     private $_user = null;
 
@@ -72,11 +75,15 @@ class Auth {
     }
 
     public function getJwtToken() {
-        return $this->jwt = JWT::encode($this->payload, $this->key);
+        return JWT::encode($this->payload, $this->default_token_key,self::HASH_ALGORITHM);
+    }
+
+    public function getRefreshToken() {
+        return JWT::encode($this->payload, $this->refresh_token_key,self::HASH_ALGORITHM);
     }
 
     public function getDecodedData($jwt) {
-        return (array) JWT::decode($jwt, $this->key, array(self::HASH_ALGORITHM));
+        return (array) JWT::decode($jwt, $this->default_token_key, array(self::HASH_ALGORITHM));
     }
 
     private function _setPaylodValue($name, $value) {
