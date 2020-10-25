@@ -26,7 +26,6 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
     protected $_password = null;
 
 
-
     private function User() {
         if(null === $this->_user) {
             return $this->_user = new User($this);
@@ -41,7 +40,17 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
             if(!$status) {
                 throw new Api\Exception\ApiException("Login failed, wrong username or password.");
             }
-            setcookie("jwt", $this->User()->getToken(), time()+3600, '/api', "elkplana.cz", true, true);
+
+            setcookie(
+                "refresh_token",
+                $this->User()->getToken(),
+                $this->Api()->getCookieExpiration(),
+                $this->Api()->getCookieUrl(),
+                $this->Api()->getCookieDomain(),
+                $this->Api()->getCookieIsSecured(),
+                $this->Api()->getCookieIsHttpOnly()
+            );
+
             $this->Api()->toJson(
                 array(
                     "success" => $status,

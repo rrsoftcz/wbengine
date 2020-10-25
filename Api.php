@@ -17,8 +17,29 @@ use Wbengine\Application\Env\Http;
 
 class Api
 {
-    // private $_instances = array();
+    private $_allow_origins = array(
+        "*"
+    );
+    private $_allow_methods = array(
+        "GET",
+        "POST",
+        "PATCH",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+    );
+    private $_allow_headers = array(
+    );
+
+    private $_allow_credential_header = false;
     private $_found = array();
+    private $_token_expiration = 3600;
+    private $_cookie_expiration = 3600;
+    private $_cookie_domain = "localhost";
+    private $_cookie_url = "/";
+    private $_cookie_http_only = true;
+    private $_cookie_secured = true;
+
 
 
     public function Register(WbengineRestapiAbstract $apiModule){
@@ -89,13 +110,17 @@ class Api
     }
 
     public function setHeaderOptions(){
+//        $_origin = sprintf("Access-Control-Allow-Origin: %s", ($this->_allow_origin || '*'));
+//        var_dump(sprintf("Access-Control-Allow-Origin: %s", implode(" ", $this->_allow_origins)));die;
         // Print global Allowed Origin...
-        Http::PrintHeader("Access-Control-Allow-Origin: https://elkplana.cz:8080");
-        Http::PrintHeader('Access-Control-Allow-Credentials: true');
+        Http::PrintHeader(sprintf("Access-Control-Allow-Origin: %s", implode(" ", $this->_allow_origins)));
+        if($this->_allow_credential_header === true) {
+            Http::PrintHeader('Access-Control-Allow-Credentials: true');
+        }
         // Manage additional CORS options...
         Router::options(Http::Uri(), function () {
-            Http::PrintHeader("Access-Control-Allow-Headers: Origin, X-Requested-With, Accept, Content-Type, credentials, withcredentials, Authorization, Access-Control-Allow-Origin, Access-Control-Allow-Headers");
-            Http::PrintHeader('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, UPDATE, PATCH, OPTIONS');
+            Http::PrintHeader(sprintf("Access-Control-Allow-Headers: %s", implode(",", $this->_allow_headers)));
+            Http::PrintHeader(sprintf("Access-Control-Allow-Methods: %s", implode(",",$this->_allow_methods)));
             die;
         });
     }
@@ -139,6 +164,69 @@ class Api
         );
     }
 
+    public function setHeaderAllowOredentials(bool $val){
+        $this->_allow_credential_header = $val;
+    }
 
+    public function setSingleOrigin(string $originName){
+        $this->_allow_origins = array();
+        $this->_allow_origins[] = $originName;
+    }
+
+    public function allowOrigin(string $originName){
+        $this->_allow_origins[] = $originName;
+    }
+
+    public function allowHeader(string $headerName){
+        $this->_allow_headers[] = $headerName;
+    }
+
+    public function setJwtTokenExpiration(int $exp){
+        $this->_token_expiration = $exp;
+    }
+
+    public function setCookieExpiration(int $exp){
+        $this->_cookie_expiration = $exp;
+    }
+
+    public function getJwtTokenExpiration(){
+        return (int) $this->_token_expiration;
+    }
+
+    public function getCookieExpiration(){
+        return time() + (int) $this->_cookie_expiration;
+    }
+
+    public function setCookieDomain(string $domainName){
+        $this->_cookie_domain = $domainName;
+    }
+
+    public function getCookieDomain(){
+        return $this->_cookie_domain;
+    }
+
+    public function setCookieUrl(string $url){
+        $this->_cookie_url = $url;
+    }
+
+    public function getCookieUrl(){
+        return $this->_cookie_url;
+    }
+
+    public function setCookieHttpOnly($val){
+        $this->_cookie_http_only = (bool)$val;
+    }
+
+    public function setCookieIsSecured($val){
+        $this->_cookie_secured = (bool)$val;
+    }
+
+    public function getCookieIsHttpOnly(){
+        return $this->_cookie_http_only;
+    }
+
+    public function getCookieIsSecured(){
+        return $this->_cookie_secured;
+    }
 
 }
