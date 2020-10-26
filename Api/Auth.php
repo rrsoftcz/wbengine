@@ -116,6 +116,41 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
         }
     }
 
+
+    public function validateRefreshToken(){
+        $refresh_token = Http::getCookie("refresh_token");
+
+        if(null === $refresh_token || empty($refresh_token)) {
+            $this->Api()->toJson(
+                Array(
+                    "success" => false,
+                    "message"=> "Empty refresh token."
+                ),Http::UNAUTHORIZED
+            );
+        }
+
+        try {
+            $payload = $this->wbAuth()->validateRefreshToken($refresh_token);
+//            var_dump($this->User()->getUserId());die;
+            $fn = fn($b) => (int)$b === (int)$payload["data"]->user_id;
+
+            $this->Api()->toJson(
+                Array(
+                    "success" =>  $fn($this->User()->getUserId()),
+                    "message"=> "JWT refresh token successfuly verified."
+                ),($fn($this->User()->getUserId())) ? Http::OK : Http::UNAUTHORIZED
+            );
+
+        }catch(\Exception $e){
+            $this->Api()->toJson(
+                Array(
+                    "success" => false,
+                    "message"=> $e->getMessage()
+                ),Http::UNAUTHORIZED
+            );
+        }
+    }
+
     private function validate($credentials) {
         if(!is_array($credentials)){
             throw new AuthException(

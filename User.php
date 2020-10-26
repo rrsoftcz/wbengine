@@ -358,14 +358,14 @@ class User
         $this->_paswd = md5($password);
 
         $_usersData = $this->getModel()->authenticate($this);
-        $this->_resource = $_usersData;
-        $this->_setIdentity($this->getUserId());
 
         if($_usersData !== null) {
+            $this->_resource = $_usersData;
+            $this->_setIdentity($this->getUserId());
             if($this->useJwt) {
                 try {
                     $this->_jwt_token = $this->getAuth()->setPayloadData($this->getPayloadData())->getJwtToken();
-                    $this->_refresh_token = $this->getAuth()->setPayloadData($this->getPayloadData())->getRefreshToken();
+                    $this->_refresh_token = $this->getAuth()->setPayloadData($this->createPayloadData())->getRefreshToken();
                 } catch (UserException $e) {
                     die($e->getMessage());
                 }
@@ -377,11 +377,11 @@ class User
         }
     }
 
-    public function getPayloadData(){
+    public function createPayloadData(){
         return array(
             "user_id" => $this->getUserId(),
             "username" => $this->getUserName(),
-            "email" => $this->getUserName()
+            "email" => $this->getUserEmail()
         );
     }
 

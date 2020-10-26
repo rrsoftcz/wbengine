@@ -86,6 +86,10 @@ class Auth {
         return (array) JWT::decode($jwt, $this->default_token_key, array(self::HASH_ALGORITHM));
     }
 
+    public function validateRefreshToken(string $refreshToken) {
+        return (array) JWT::decode($refreshToken, $this->refresh_token_key, array(self::HASH_ALGORITHM));
+    }
+
     private function _setPaylodValue($name, $value) {
         if(array_key_exists($name, $this->payload)) {
             $this->payload[$name] = $value;

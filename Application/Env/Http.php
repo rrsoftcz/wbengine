@@ -181,6 +181,9 @@ abstract class Http
         return null;
     }
 
+    public static function getCookie(string $cookieName){
+        return htmlspecialchars($_COOKIE[$cookieName]);
+    }
 
     public static function isJson($string) {
      json_decode($string);
