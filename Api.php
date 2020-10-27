@@ -66,6 +66,7 @@ class Api
      */
     public function Initialize(){
 
+//        var_dump($_SERVER['HTTP_HOST']);die;
 //        $resp = array();
 //
 //        $resp[] = array(

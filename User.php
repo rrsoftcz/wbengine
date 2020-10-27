@@ -364,7 +364,7 @@ class User
             $this->_setIdentity($this->getUserId());
             if($this->useJwt) {
                 try {
-                    $this->_jwt_token = $this->getAuth()->setPayloadData($this->getPayloadData())->getJwtToken();
+                    $this->_jwt_token = $this->getAuth()->setPayloadData($this->createPayloadData())->getJwtToken();
                     $this->_refresh_token = $this->getAuth()->setPayloadData($this->createPayloadData())->getRefreshToken();
                 } catch (UserException $e) {
                     die($e->getMessage());
