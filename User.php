@@ -330,7 +330,8 @@ class User
      * @throws User\UserException
      * @return array
      */
-    public function loadUserDataFromModel($userId){
+    public function loadUserDataFromModel($userId = null){
+        $userId = ($userId) ? $userId : $this->getUserId();
         $this->_resource = $this->getModel()->loadUserDataFromModel($userId);
     }
 
@@ -364,8 +365,8 @@ class User
             $this->_setIdentity($this->getUserId());
             if($this->useJwt) {
                 try {
-                    $this->_jwt_token = $this->getAuth()->setPayloadData($this->createPayloadData())->getJwtToken();
-                    $this->_refresh_token = $this->getAuth()->setPayloadData($this->createPayloadData())->getRefreshToken();
+                    $this->_jwt_token = $this->createJwtTokn();
+                    $this->_refresh_token = $this->createRefreshToken();
                 } catch (UserException $e) {
                     die($e->getMessage());
                 }
@@ -375,6 +376,14 @@ class User
             $this->_resetIdentity();
             return false;
         }
+    }
+
+    public function createJwtTokn(){
+        return $this->getAuth()->setPayloadData($this->createPayloadData())->getJwtToken();
+    }
+
+    public function createRefreshToken(){
+        return $this->getAuth()->setPayloadData($this->createPayloadData())->getRefreshToken();
     }
 
     public function createPayloadData(){

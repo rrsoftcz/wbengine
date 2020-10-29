@@ -124,6 +124,7 @@ class Api
         }
         // Manage additional CORS options...
         Router::options(Http::Uri(), function () {
+//            Http::PrintHeader('Access-Control-Allow-Credentials: true');
             Http::PrintHeader(sprintf("Access-Control-Allow-Headers: %s", implode(",", $this->_allow_headers)));
             Http::PrintHeader(sprintf("Access-Control-Allow-Methods: %s", implode(",",$this->_allow_methods)));
             die;

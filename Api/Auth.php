@@ -86,12 +86,12 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
         );
     }
 
-    public function validateJwtToken(string $token = null, array $body = null){
-        if(null === $body || !array_key_exists("user_id", $body)) {
+    public function validateJwtToken(string $token = null, $body = null){
+        if(null === $body || !is_array($body) || !array_key_exists("user_id", $body)) {
             $this->Api()->toJson(
                 Array(
                     "success" => false,
-                    "message"=> "Empty UID"
+                    "message"=> __FUNCTION__.": Empty UID"
                 ),Http::UNAUTHORIZED
             );
         }
@@ -124,20 +124,20 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
             $this->Api()->toJson(
                 Array(
                     "success" => false,
-                    "message"=> "Empty refresh token."
+                    "message"=> "Unavailable refresh token."
                 ),Http::UNAUTHORIZED
             );
         }
 
         try {
             $payload = $this->wbAuth()->validateRefreshToken($refresh_token);
-//            var_dump($this->User()->getUserId());die;
             $fn = fn($b) => (int)$b === (int)$payload["data"]->user_id;
-
+            $this->User()->loadUserDataFromModel();
             $this->Api()->toJson(
                 Array(
-                    "success" =>  $fn($this->User()->getUserId()),
-                    "message"=> "JWT refresh token successfuly verified."
+                    "success" => $fn($this->User()->getUserId()),
+                    "token" => $this->User()->createJwtTokn(),
+                    "message"=> "Verification OK. The new JWT token has successfuly created."
                 ),($fn($this->User()->getUserId())) ? Http::OK : Http::UNAUTHORIZED
             );
 
