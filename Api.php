@@ -196,7 +196,7 @@ class Api
     }
 
     public function getJwtTokenExpiration(){
-        return (int) $this->_token_expiration;
+        return time() + (int) $this->_token_expiration;
     }
 
     public function getCookieExpiration(){

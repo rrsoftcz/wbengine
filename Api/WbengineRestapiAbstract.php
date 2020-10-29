@@ -29,6 +29,9 @@ class WbengineRestapiAbstract {
     private $_api;
 
     private $_headers = array();
+    /**
+     * @var Auth
+     */
     private $_auth = null;
     private $_session = null;
 

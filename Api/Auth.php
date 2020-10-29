@@ -98,12 +98,13 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
 
         try {
             $payload = $this->wbAuth()->getDecodedData($token);
-            $fce = fn($b) => (int)$b["user_id"] === (int)$payload["data"]->user_id;
+            $fn = fn($b) => (int)$b === (int)$payload["data"]->user_id;
             $this->Api()->toJson(
                 Array(
-                    "success" =>  $fce($body),
+                    "success" =>  $fn((int)$this->User()->getUserId()),
+                    "user_id" => (int)$this->User()->getUserId(),
                     "message"=> "JWT token successfuly decoded and user has authenticated."
-                ),($fce($body)) ? Http::OK : Http::UNAUTHORIZED
+                ),($fn((int)$this->User()->getUserId())) ? Http::OK : Http::UNAUTHORIZED
             );
 
         }catch(\Exception $e){
@@ -132,13 +133,15 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
         try {
             $payload = $this->wbAuth()->validateRefreshToken($refresh_token);
             $fn = fn($b) => (int)$b === (int)$payload["data"]->user_id;
+            $id = $this->User()->getUserId();
             $this->User()->loadUserDataFromModel();
             $this->Api()->toJson(
                 Array(
-                    "success" => $fn($this->User()->getUserId()),
-                    "token" => $this->User()->createJwtTokn(),
+                    "success" => $fn((int)$id),
+                    "user_id" => $id,
+                    "token" => $this->User()->createJwtToken($this->Api()->getJwtTokenExpiration()),
                     "message"=> "Verification OK. The new JWT token has successfuly created."
-                ),($fn($this->User()->getUserId())) ? Http::OK : Http::UNAUTHORIZED
+                ),($fn((int)$id)) ? Http::OK : Http::UNAUTHORIZED
             );
 
         }catch(\Exception $e){

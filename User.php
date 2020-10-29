@@ -365,8 +365,8 @@ class User
             $this->_setIdentity($this->getUserId());
             if($this->useJwt) {
                 try {
-                    $this->_jwt_token = $this->createJwtTokn();
-                    $this->_refresh_token = $this->createRefreshToken();
+//                    $this->_jwt_token = $this->createJwtToken();
+//                    $this->_refresh_token = $this->createRefreshToken();
                 } catch (UserException $e) {
                     die($e->getMessage());
                 }
@@ -378,12 +378,22 @@ class User
         }
     }
 
-    public function createJwtTokn(){
-        return $this->getAuth()->setPayloadData($this->createPayloadData())->getJwtToken();
+    public function createJwtToken($expiration = null){
+        if($expiration){
+            $this->getAuth()->setExpiredTime($expiration);
+        }
+        return $this->getAuth()
+            ->setPayloadData($this->createPayloadData())
+            ->getJwtToken();
     }
 
-    public function createRefreshToken(){
-        return $this->getAuth()->setPayloadData($this->createPayloadData())->getRefreshToken();
+    public function createRefreshToken($expiration = null){
+        if($expiration){
+            $this->getAuth()->setExpiredTime($expiration);
+        }
+        return $this->getAuth()
+            ->setPayloadData($this->createPayloadData())
+            ->getRefreshToken();
     }
 
     public function createPayloadData(){
@@ -403,12 +413,12 @@ class User
         return $this->useJwt;
     }
 
-    public function getJwtToken() {
-        return $this->_jwt_token;
+    public function getJwtToken($expiration = null) {
+        return $this->_jwt_token = $this->createJwtToken($expiration);
     }
 
-    public function getRefreshToken() {
-        return $this->_refresh_token;
+    public function getRefreshToken($expiration = null) {
+        return $this->_refresh_token = $this->createRefreshToken($expiration);
     }
 
     /**
