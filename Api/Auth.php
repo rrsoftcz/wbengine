@@ -56,7 +56,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
 
             setcookie(
                 "refresh_token",
-                $this->User()->getRefreshToken(),
+                $this->User()->getRefreshToken($this->Api()->getCookieExpiration()),
                 $this->Api()->getCookieExpiration(),
                 $this->Api()->getCookieUrl(),
                 $this->Api()->getCookieDomain(),
@@ -67,7 +67,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
             $this->Api()->toJson(
                 array(
                     "success" => $status,
-                    "token" => $this->User()->getJwtToken(),
+                    "token" => $this->User()->getJwtToken($this->Api()->getJwtTokenExpiration()),
                     "uid" => $this->User()->getUserId(),
                 ), ($status)? Http::OK : Http::UNAUTHORIZED
             );
@@ -125,7 +125,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
             $this->Api()->toJson(
                 Array(
                     "success" => false,
-                    "message"=> "Unavailable refresh token."
+                    "message"=> "Invalid refresh token, has expired or unavailable."
                 ),Http::UNAUTHORIZED
             );
         }

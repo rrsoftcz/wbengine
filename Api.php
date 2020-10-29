@@ -37,8 +37,8 @@ class Api
 
     private $_allow_credential_header = false;
     private $_found = array();
-    private $_token_expiration = 3600;
-    private $_cookie_expiration = 3600;
+    private $_token_expiration = 15;
+    private $_cookie_expiration = 60;
     private $_cookie_domain = "localhost";
     private $_cookie_url = "/";
     private $_cookie_http_only = true;
