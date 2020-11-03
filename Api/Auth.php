@@ -134,10 +134,20 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
             $payload = $this->wbAuth()->validateRefreshToken($refresh_token);
             $fn = fn($b) => (int)$b === (int)$payload["data"]->user_id;
             $id = $this->User()->getUserId();
+
+            if(!$fn($id)) {
+                $this->Api()->toJson(
+                    Array(
+                        "success" => false,
+                        "message"=> "Unverified or invalid UID."
+                    ),Http::UNAUTHORIZED
+                );
+            }
+
             $this->User()->loadUserDataFromModel();
             $this->Api()->toJson(
                 Array(
-                    "success" => $fn((int)$id),
+                    "success" => $fn($id),
                     "user_id" => $id,
                     "token" => $this->User()->createJwtToken($this->Api()->getJwtTokenExpiration()),
                     "message"=> "Verification OK. The new JWT token has successfuly created."
