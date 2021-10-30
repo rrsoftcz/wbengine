@@ -93,10 +93,15 @@ class ApiUserModel extends ModelAbstract
         );
         
         $res = Db::query($sql);
-	    return array("deleted" => Db::getAffected());
+        return array(
+            "success" => (bool) Db::getAffected(),
+            "user_id" => $userId,
+            "message" =>  Db::getAffected() ? "The user successfully deleted." : "The user delete operation failed!"
+        );
+	    // return array("deleted" => Db::getAffected());
 
     }
-
+    
     public function updateUser(int $userId, array $user)
     {
         $i = 0;
