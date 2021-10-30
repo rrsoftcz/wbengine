@@ -63,6 +63,22 @@ class ApiUserModel extends ModelAbstract
 
     }
 
+
+    public function getUserByEmail($email) {
+    	if(empty($email)){
+        	throw new ApiModelException(sprintf('Invalid E-mail, expected string, but got %s.', gettype($email)), 10);
+        }
+
+        $sql = sprintf("SELECT `user_id` FROM %s WHERE `email` = '%s' ORDER BY user_id;",
+            S_TABLE_USERS,
+            $email
+        );
+
+        $res = Db::fetchAssoc($sql);
+        return $res;
+    }
+
+
     public function deleteUser($userId)
     {
     	if(!is_numeric($userId)){
@@ -81,42 +97,50 @@ class ApiUserModel extends ModelAbstract
 
     }
 
-    public function updateSection($sectionId, $sectionData)
+    public function updateUser(int $userId, array $user)
     {
         $i = 0;
-    	if(!is_numeric($sectionId)){
-        	throw new ApiModelException(sprintf('The section ID must be a number.', $sectionId), 10);
+        $statement = '';
+
+    	if(!is_numeric($userId)){
+        	throw new ApiModelException('The user ID must be a number.', 500);
         }
 
-        if(!is_array($sectionData)){
-        	throw new ApiModelException(sprintf('The section\'s data can\'t be empty.', $sectionId), 10);
+        if(!is_array($user) || sizeof($user) === 0){
+        	throw new ApiModelException('Empty user data.', 500);
         }
 
-        foreach($sectionData as $key => $value) {
-            $statement .= "`".$key."` = '".$value."'";
-            if ($i < count($sectionData) - 1) {
-                $statement.= " , ";
-        }
-        $i++;
-    }
+        foreach($user as $key => $value) {
+            $fn1 = fn($v, $k) => ($k === 'password') ? md5($v) : $value;
+            $fn2 = fn($i, $c) => ($i < ($c - 1));
+            $fn3 = fn($i, $c, $s) => ($fn2($i, $c)) ? $s . ', ' : $s;
 
-        $sql = sprintf("UPDATE %s SET %s
-			WHERE `section_id` = '%d';"
-            , S_TABLE_SECTIONS
+            $s = "`" . $key . "` = '" . $fn1($value, $key) . "'" ;
+            $statement .= $fn3($i, count($user), $s);
+            $i++;
+        }
+
+        $sql = sprintf("UPDATE %s SET %s WHERE `user_id` = %d;"
+            , S_TABLE_USERS
             , $statement
-            , $sectionId
+            , $userId
         );
-        
+        die(json_encode(array("success" => true, "sql" => $sql), JSON_PRETTY_PRINT));
+
         $res = Db::query($sql);
 	    return array("updated" => Db::getAffected());
 
     }
 
-    public function createUser($user)
+    public function createUser($user, $exist)
     {
         $names = null;
         $email = $user['email'];
         $paswd = $user['password'];
+
+        if(true === $exist){
+            throw new ApiException(sprintf("The user with email '%s' already exist, please try another one.", $user["email"]), 400);
+        }
 
         if(true === empty($email) || true === empty($paswd)){
             throw new ApiException("Minimum fields error, email and password required.", 1);
@@ -140,10 +164,15 @@ class ApiUserModel extends ModelAbstract
             , implode("','", $user)
         );
         
-        die(json_encode(array("success" => true, "sql" => $sql)));
+//        die(json_encode(array("success" => true, "sql" => $sql), JSON_PRETTY_PRINT));
         try {
             Db::query($sql);
-            return Db::getInserted();
+            return array(
+                "success" => true,
+                "user_id" => Db::getInserted(),
+                "message" => "The user successfully created."
+            );
+//            return Db::getInserted();
         }catch(DbException $e){
             throw new ApiException($e->getMessage());
         }

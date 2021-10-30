@@ -61,6 +61,12 @@ class User
 
     private $_is_user_logged = false;
 
+    private $_auth =  null;
+
+    protected $_jwt_token = null;
+    protected $_refresh_token = null;
+    protected $useJwt = false;
+
     /**
      * We just set default identity here...
      * If real user identity already exist in session
@@ -100,6 +106,13 @@ class User
         }
     }
 
+
+    private function getAuth() {
+        if(null === $this->_auth) {
+            return $this->_auth = new Auth();
+        }
+        return $this->_auth;
+    }
 
     private function _needReloadResource(){
         if(key_exists('user_id', $this->_resource) && $this->getUserId() > 0) {
@@ -317,7 +330,8 @@ class User
      * @throws User\UserException
      * @return array
      */
-    public function loadUserDataFromModel($userId){
+    public function loadUserDataFromModel($userId = null){
+        $userId = ($userId) ? $userId : $this->getUserId();
         $this->_resource = $this->getModel()->loadUserDataFromModel($userId);
     }
 
@@ -349,6 +363,14 @@ class User
         if($_usersData !== null) {
             $this->_resource = $_usersData;
             $this->_setIdentity($this->getUserId());
+            if($this->useJwt) {
+                try {
+//                    $this->_jwt_token = $this->createJwtToken();
+//                    $this->_refresh_token = $this->createRefreshToken();
+                } catch (UserException $e) {
+                    die($e->getMessage());
+                }
+            }
             return true;
         }else{
             $this->_resetIdentity();
@@ -356,6 +378,48 @@ class User
         }
     }
 
+    public function createJwtToken($expiration = null){
+        if($expiration){
+            $this->getAuth()->setExpiredTime($expiration);
+        }
+        return $this->getAuth()
+            ->setPayloadData($this->createPayloadData())
+            ->getJwtToken();
+    }
+
+    public function createRefreshToken($expiration = null){
+        if($expiration){
+            $this->getAuth()->setExpiredTime($expiration);
+        }
+        return $this->getAuth()
+            ->setPayloadData($this->createPayloadData())
+            ->getRefreshToken();
+    }
+
+    public function createPayloadData(){
+        return array(
+            "user_id" => $this->getUserId(),
+            "username" => $this->getUserName(),
+            "email" => $this->getUserEmail()
+        );
+    }
+
+    public function useJwt(bool $val){
+        $this->useJwt = $val;
+        return $this;
+    }
+
+    public function isUsedJwt(){
+        return $this->useJwt;
+    }
+
+    public function getJwtToken($expiration = null) {
+        return $this->_jwt_token = $this->createJwtToken($expiration);
+    }
+
+    public function getRefreshToken($expiration = null) {
+        return $this->_refresh_token = $this->createRefreshToken($expiration);
+    }
 
     /**
      * Return whatever User is logged in
@@ -378,6 +442,7 @@ class User
     {
         $this->getSession()->destroy();
         $this->_resetIdentity();
+        return true;
     }
 
     private function _resetIdentity(){
@@ -421,6 +486,13 @@ class User
         return $this;
     }
 
+    public function setLoginPassword(string $password) {
+        $this->_paswd = md5($password);
+    }
+
+    public function setLoginName(string $name) {
+        $this->_login = md5($name);
+    }
 
     public function getFullName(){
         return $this->getUserFirstName() . $this->getUserLastName();

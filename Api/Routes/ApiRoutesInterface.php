@@ -4,5 +4,5 @@ namespace Wbengine\Api\Routes;
 
 interface ApiRoutesInterface
 {
-    public function init();
+    public function initializeModuleRoutes();
 }

@@ -21,6 +21,7 @@
     use Wbengine\Components\ComponentParentInterface;
     use Wbengine\Router\Route;
     use Wbengine\Router\RouterException;
+    use const http\Client\Curl\Features\HTTP2;
 
     /**
      * Class Router
@@ -62,8 +63,18 @@
 
 
 
+        public static function options($path, $callable){
+            if(Http::getRequestType() !== Http::TYPE_OPTIONS) return null;
+
+            if(is_callable($callable)){
+                return $callable(self::getRoute());
+            }
+
+        }
+
+
         public static function get($path, $callable){
-            if(Http::getRequestType() !== Http::TYPE_GET) return;
+            if(Http::getRequestType() !== Http::TYPE_GET) return null;
 
             $route = self::match($path);
             if($route->isRouteMatch() === true){
@@ -75,7 +86,7 @@
 
 
         public static function post($path, $callable){
-            if(Http::getRequestType() !== Http::TYPE_POST) return;
+            if(Http::getRequestType() !== Http::TYPE_POST) return null;
 
             $route = self::match($path);
             if($route->isRouteMatch() === true){
@@ -85,9 +96,10 @@
             }
             return false;
         }
+
 
         public static function put($path, $callable){
-            if(Http::getRequestType() !== Http::TYPE_PUT) return;
+            if(Http::getRequestType() !== Http::TYPE_PUT) return null;
 
             $route = self::match($path);
             if($route->isRouteMatch() === true){
@@ -98,8 +110,21 @@
             return false;
         }
 
+
+        public static function patch($path, $callable){
+            if(Http::getRequestType() !== Http::TYPE_PATCH) return null;
+            $route = self::match($path);
+            if($route->isRouteMatch() === true){
+                if(is_callable($callable)){
+                    return $callable(self::getRoute());
+                }
+            }
+            return false;
+        }
+
+
         public static function delete($path, $callable){
-            if(Http::getRequestType() !== Http::TYPE_DELETE) return;
+            if(Http::getRequestType() !== Http::TYPE_DELETE) return null;
 
             $route = self::match($path);
             if($route->isRouteMatch() === true){

@@ -3,13 +3,16 @@
 
 namespace Wbengine\Api\Routes;
 
-// use Wbengine\Api;
-// use Wbengine\Api\Routes\RoutesInterface;
 use Wbengine\Api\WbengineRestapiAbstract;
 
 
 class ApiRoutesAbstract
 {
+    public $match = false;
+    public function isRouteMatch() {
+        return $this->match;
+    }
+
     /**
      * @var WbengineRestapiAbstract
      */
@@ -23,7 +26,16 @@ class ApiRoutesAbstract
      * Return instance of Api Controller
      * @return WbengineRestapiAbstract
      */
-    public function Api(){
+    public function getApiModuleController(){
         return $this->_controller;
+    }
+
+    /**
+     * Just a print data...
+     * @param array $data
+     * @param string | int $code
+     */
+    public function dispatch($data, $code) {
+        $this->getApiModuleController()->Api()->printApiError($data, $code);
     }
 }

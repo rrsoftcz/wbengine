@@ -12,32 +12,28 @@ use Wbengine\Router;
 
 class Routes extends ApiRoutesAbstract implements ApiRoutesInterface
 {
-    public function init(){
+    public function initializeModuleRoutes(){
         try {
-            Router::get('/api/users/', function () {
-                return $this->getApiModule()->getUsers();
+            Router::get('/api/users', function () {
+                $this->getApiModuleController()->getUsers();
             });
-            Router::post('/api/users/new/', function () {
-                return $this->getApiModule()->addUser(Http::Json(true));
+            Router::post('/api/users/create', function () {
+                $this->getApiModuleController()->addUser(Http::Json());
             });
-            Router::get('/api/users/{id}/', function (Route $route) {
-                return $this->getApiModule()->getUserById($route->getParams('id'));
+            Router::patch('/api/users/patch/{id}', function (Route $route) {
+                $this->getApiModuleController()->updateUser($route->getParams('id'), Http::Json());
             });
-            Router::delete('/api/users/{id}/', function (Route $route) {
-                return $this->getApiModule()->deleteUserById($route->getParams('id'));
+            Router::get('/api/users/{id}', function (Route $route) {
+                $this->getApiModuleController()->getUserById($route->getParams('id'));
+            });
+            Router::delete('/api/users/{id}', function (Route $route) {
+                $this->getApiModuleController()->deleteUserById($route->getParams('id'));
             });
 
-        }catch(ApiException $e){
-            $this->Api()->getApiError($e->getMessage());
+        }catch(\Exception $e){
+            $this->dispatch($e->getMessage(), Http::BAD_REQUEST);
         }
-    }
-
-    /**
-     * Return instance of API module Sections from Abstract class...
-     * @return \Wbengine\Api\Sections 
-     */
-    private function getApiModule(){
-        return $this->Api();
+        return $this;
     }
 
 }
