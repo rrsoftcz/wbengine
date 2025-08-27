@@ -20,9 +20,9 @@
     }
   ],
   "require": {
-    "php": ">=7.2",
-    "smarty/smarty": "~3.1@dev",
-    "texy/texy": "2.*",
+    "php": "^7.2 || ^8.1",
+    "smarty/smarty": "^5.5.2",
+    "texy/texy": "^3.2.6",
     "firebase/php-jwt": "^5.2"
   },
   "autoload": {
