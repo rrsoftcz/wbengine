@@ -225,8 +225,6 @@ class Application implements ComponentParentInterface, ResponseInterface
             $this->setEndtime(microtime());
             $this->setValue('debug', new Debug($this));
         }
-        return $this;
-
 
 
     }
