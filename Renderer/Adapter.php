@@ -26,7 +26,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
 
     /**
      * Instance of adapter object
-     * @var Class_Renderer_Adapter
+     * @var object|null
      */
     private $_adapter = NULL;
 
