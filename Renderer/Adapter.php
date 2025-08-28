@@ -44,7 +44,6 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function setAdapterName($name)
     {
         $this->_adapterName = $name;
-
     }
 
 
