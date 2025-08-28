@@ -100,7 +100,9 @@ class Session extends SessionAbstract
 	        }
             $this->_load();
         }
-        return $this->getSessionData()->$name;
+        if (isset($this->getSessionData()->$name)) {
+            return $this->getSessionData()->$name;
+        }
     }
 
     private function _setValueToSession($name, $value)

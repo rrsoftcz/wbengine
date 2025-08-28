@@ -65,7 +65,7 @@ class Path {
      */
     public function __construct($name = null, $path = null, $appBaseDir = false)
     {
-        $this->_name = strtolower($name);
+        $this->_name = strtolower($name ?? '');
         $this->_path = $path;
         if($appBaseDir){
             $this->addPath($name, $path, $appBaseDir);

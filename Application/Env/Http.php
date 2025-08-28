@@ -123,6 +123,7 @@ abstract class Http
     }
 
     public static function Post($name = null){
+        if($name === null || !array_key_exists($name, $_POST)) return null;
         return ($name) ? self::secureClean($_POST[$name]) : $_POST;
     }
 
@@ -148,7 +149,10 @@ abstract class Http
 
     public static function getParam($name = null){
         $params = array();
+        
+        if(self::getQueryString() === null) return null;
         parse_str(self::getQueryString(),$params);
+
         if(key_exists($name, $params)){
             return $params[$name];
         }
