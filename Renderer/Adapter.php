@@ -115,7 +115,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     /**
      * Assign values to the templates
      */
-    public function assign($varname, $var = NULL, $nocache = NULL)
+    public function assign($varname, $var = NULL, $nocache = false)
     {
         $this->getAdapter($this)->assign($varname, $var, $nocache);
     }

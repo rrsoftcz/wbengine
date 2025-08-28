@@ -95,6 +95,9 @@ class Vars
      */
     public function getValue($key)
     {
+        if (!array_key_exists($key, $this->_vars)) {
+            return NULL;
+        }
         return $this->_vars[$key];
     }
 

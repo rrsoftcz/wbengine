@@ -46,7 +46,7 @@ class Handler
                 return $error->getCode() . "# - " . $error->getMessage();
             }
         }
-        return;
+        return 'No errors found...';
     }
 
 

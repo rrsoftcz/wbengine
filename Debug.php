@@ -199,7 +199,7 @@ class Debug
     }
 
     public function getEstimatedTime(){
-        return round(($this->end_time - $this->start_time) * 1000,2);
+        return round(((float)$this->end_time - (float)$this->start_time) * 1000,2);
     }
 
     public function getDbQueriesCount(){
@@ -207,7 +207,7 @@ class Debug
     }
 
     public function getSumTime(){
-        return round(($this->application->getAllQueriesTime() + ($this->end_time - $this->start_time))*1000,2);
+        return round(($this->application->getAllQueriesTime() + ((float)$this->end_time - (float)$this->start_time))*1000,2);
     }
 
     public function getDbQueriesTimeSum(){
