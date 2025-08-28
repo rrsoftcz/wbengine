@@ -802,11 +802,9 @@ class Application implements ComponentParentInterface, ResponseInterface
                 $this->setValue(HTML_CENTRAL_SECTION, $content);
             }
             $this->getRenderer()->dispatch($this);
-        }catch (ApplicationException $e){die(error);
+        }catch (ApplicationException $e){
             $this->addException($e->getMessage(), $e->getCode());
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
-
-
         }
     }
 
