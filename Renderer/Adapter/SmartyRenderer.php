@@ -6,14 +6,15 @@
  * Time: 16:31
  */
 namespace Wbengine\Renderer\Adapter;
+use Smarty\Smarty;
 use Wbengine\Renderer\RendererInterface;
 
-class Smarty implements RendererInterface
+class SmartyRenderer implements RendererInterface
 {
     private $smarty = null;
 
     public function __construct(){
-        $this->smarty = New \Smarty();
+        $this->smarty = New Smarty();
     }
 
     public function getAdapter(){
@@ -28,16 +29,16 @@ class Smarty implements RendererInterface
         $this->getAdapter()->display($template, $cache_id, $compile_id);
     }
 
-    public function assign($varname, $var = NULL, $nocache = NULL){
+    public function assign($varname, $var = NULL, $nocache = false){
         $this->getAdapter()->assign($varname, $var, $nocache);
     }
 
     public function setCompileDir($path){
-        $this->getAdapter()->compile_dir = (string) $path;
+        $this->getAdapter()->setCompileDir((string) $path);
     }
 
     public function setTemplateDir($path){
-        $this->getAdapter()->template_dir = (string) $path;
+        $this->getAdapter()->setTemplateDir((string) $path);
     }
 
     public function setConfigDir($path){
@@ -45,11 +46,11 @@ class Smarty implements RendererInterface
     }
 
     public function setCacheDir($path){
-        $this->getAdapter()->cache_dir = (string) $path;
+        $this->getAdapter()->setCacheDir((string) $path);
     }
 
     public function registerObject($name, $value){
-        $this->getAdapter()->assignByRef($name, $value);
+        $this->getAdapter()->assign_by_ref($name, $value);
     }
 
     public function enableCache(){
