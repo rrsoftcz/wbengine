@@ -550,6 +550,7 @@ Class Site implements ComponentParentInterface
         $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
         $this->setVariable('server', $_SERVER['SERVER_SOFTWARE']);
         $this->setVariable('dbinfo', $this->getModel()->getDBVersion());
+        $this->setVariable('phpversion', phpversion());
 
         $this->_setSections($this->getSections());
 
