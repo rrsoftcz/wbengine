@@ -1,7 +1,7 @@
 <!-- START STORY BOX -->
 <div class="story">
     {if $Article->title}
-        <h1>Wbeigine {$Article->title|escape}</h1>
+        <h1>{$Article->title|escape}</h1>
     {/if}
     {if $Article->author}
         <p><i>{$t.author|escape}</i> <b><a href="#">{$Article->author|escape}</a></b>, <i>{$t.source|escape}</i> <a href="{$Article->source|escape}"> {$Article->source|escape}</a></p>

@@ -9,7 +9,7 @@ use Wbengine\Template\Exception\TemplateException;
  *
  * Syntax (a subset of Smarty, so existing templates keep working):
  *
- *   {$value}  {$a.b}  {$obj->prop}  {$obj->method()}  {$value|modifier:arg}
+ *   {$value}  {$a.b}  {$obj->prop}  {$obj->method()}  {$value|modifier:arg}  {'text'|modifier}
  *   {if EXPR} {elseif EXPR} {else} {/if}
  *   {foreach EXPR as $item}  {foreach EXPR as $key => $item}  {foreachelse} {/foreach}
  *   {include 'name.tpl'}     {set $x = EXPR}
@@ -146,7 +146,9 @@ class Compiler
         }
 
         $kind = null;
-        if ('$' === ($rest[1] ?? '')) {
+        if ('$' === ($rest[1] ?? '') || preg_match('/\G\{([\'"])(?:\\\\.|(?!\\1).)*\\1\s*\|/s', $this->_source, $unused, 0, $brace)) {
+            // {$value}, or a quoted text with a modifier: {'/blog/'|lurl}. A "{" followed by a
+            // quote and no modifier (a JavaScript object) stays plain text.
             $kind = 'output';
         } elseif (preg_match('/^\{\/(if|foreach|cache)\}/', $rest, $m)) {
             return array('kind' => 'close', 'body' => $m[1], 'end' => $brace + strlen($m[0]));

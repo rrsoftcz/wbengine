@@ -7,8 +7,15 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added
+
+- Native template engine: an output tag may start with a quoted text and a modifier,
+  `{'/blog/'|lurl}` or `{"x"|upper}` (Smarty accepts this too). A `{` followed by a quote and
+  no modifier, such as a JavaScript object, is still plain text.
+
 ### Fixed
 
+- The bundled article template printed a stray "Wbeigine" before every article title.
 - An error page (404, 401, 410, 500) had an empty `<title>`: the title was set after the
   template variables were stored. `Site::setHtmlTitle()` now keeps `meta.title` in step.
 

@@ -65,6 +65,19 @@ class TemplateEngineTest extends TestCase
         $this->assertSame('&lt;b&gt;&amp;&quot;&#039;', $this->render('{$x}', ['x' => '<b>&"\'']));
     }
 
+    public function testAQuotedTextWithAModifierIsAnOutputTag(): void
+    {
+        $this->assertSame('A&lt;B', $this->render("{'a<b'|upper}"));
+        $this->assertSame('A&lt;B', $this->render('{"a<b"|upper}'));
+        $this->assertSame('it&#039;s', $this->render("{'it\\'s'|lower}"));
+    }
+
+    public function testABraceBeforeAQuoteWithoutAModifierStaysText(): void
+    {
+        $js = "<script>var o = {'a': 1, \"b\": '|'}; f({'k': 2});</script>";
+        $this->assertSame($js, $this->render($js));
+    }
+
     public function testRawAndNofilterSkipEscaping(): void
     {
         $this->assertSame('<b><b>', $this->render('{$x|raw}{$x|nofilter}', ['x' => '<b>']));
