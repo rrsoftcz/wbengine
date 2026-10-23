@@ -37,6 +37,19 @@ class PageCache
     private static $_path = null;
     private static $_ttl = self::DEFAULT_TTL;
 
+    /** @var callable|null returns the response headers, headers_list() unless replaced */
+    private static $_headerProvider = null;
+
+
+    /**
+     * Replace the source of the response headers. The command line SAPI keeps no headers,
+     * so tests need to supply them; in production headers_list() is used.
+     */
+    public static function setHeaderProvider(?callable $provider)
+    {
+        self::$_headerProvider = $provider;
+    }
+
 
     /**
      * Serve the page from the cache and exit, or arrange for the response to be stored.
@@ -167,14 +180,22 @@ class PageCache
         try {
             if (self::_mayStore($buffer)) {
                 Cache::store(self::$_key, array('body' => $buffer, 'etag' => '"' . md5($buffer) . '"'), self::$_ttl);
-                header('X-WBengine-Cache: MISS-STORED');
+                self::_mark('MISS-STORED');
             } else {
-                header('X-WBengine-Cache: BYPASS');
+                self::_mark('BYPASS');
             }
         } catch (\Throwable $e) {
             error_log(__CLASS__ . ': ' . $e->getMessage());
         }
         return $buffer;
+    }
+
+
+    private static function _mark($state)
+    {
+        if (!headers_sent()) {
+            header('X-WBengine-Cache: ' . $state);
+        }
     }
 
 
@@ -184,7 +205,7 @@ class PageCache
             return false;
         }
 
-        foreach (headers_list() as $header) {
+        foreach ((array) call_user_func(self::$_headerProvider ?? 'headers_list') as $header) {
             if (0 === stripos($header, 'Location:')) {
                 return false;
             }
