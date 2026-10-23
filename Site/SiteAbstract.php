@@ -204,7 +204,7 @@ abstract class SiteAbstract {
      * @return boolean
      */
     public function getIsUrlStrict() {
-	return (boolean) $this->_resource['strict'];
+	return (bool) $this->_resource['strict'];
 
     }
 

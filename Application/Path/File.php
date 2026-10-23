@@ -444,6 +444,6 @@ class File {
     }
 
     public function getStatus(){
-        return (boolean)$this->_status;
+        return (bool) $this->_status;
     }
 }

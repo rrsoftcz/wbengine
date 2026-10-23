@@ -128,7 +128,7 @@ class Config
         // @todo create more adapters...
         switch (strtolower($filename->getFileExtension()))
         {
-            case self::CONFIG_TYPE_JASON;
+            case self::CONFIG_TYPE_JASON:
 
                 self::$config = json_decode($filename->getContent());
 

@@ -1,4 +1,5 @@
-FROM php:8.4-cli
+ARG PHP_VERSION=8.4
+FROM php:${PHP_VERSION}-cli
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends unzip git libzip-dev \

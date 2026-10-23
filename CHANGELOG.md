@@ -79,6 +79,10 @@ documented here, see the git tags.
 
 ### Added
 
+- Continuous integration (`.github/workflows/ci.yml`): on every push and pull request,
+  PHP 8.3, 8.4 and 8.5 with MySQL 8.4 run `composer validate --strict`,
+  `composer audit`, `composer lint` and the test suite. Dependabot watches the
+  Composer packages and the workflow actions. New scripts: `composer lint`.
 - Automated tests: PHPUnit 12 with unit and integration suites (63 tests) and a
   Docker test environment (`docker compose run --rm php composer test`).
 - Bound parameters: `Db::query()`, `fetchAssoc()`, `fetchObject()`,
@@ -142,6 +146,8 @@ documented here, see the git tags.
 
 ### Fixed
 
+- PHP 8.5 deprecations: the `(boolean)` cast spelling and a `case x;` with a
+  semicolon. The suite and the linter are clean on PHP 8.3, 8.4 and 8.5.
 - `Url\Exception\RunetimeException.php` and `Formater\Exception\RunetimeException.php`
   had a typo in the file name, so the classes could not be autoloaded on case
   sensitive file systems or with an authoritative classmap.

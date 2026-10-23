@@ -6,7 +6,11 @@
 # The database is created and seeded from tests/schema.sql on first start.
 services:
     php:
-        build: docker
+        build:
+            context: docker
+            args:
+                # docker compose run with PHP_VERSION=8.3 to test another version
+                PHP_VERSION: ${PHP_VERSION:-8.4}
         working_dir: /app
         volumes:
             - ./:/app

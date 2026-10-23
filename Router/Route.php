@@ -138,7 +138,7 @@
          * @return bool
          */
         public function isRouteMatch(){
-            return (boolean) $this->is_matched;
+            return (bool) $this->is_matched;
         }
 
 

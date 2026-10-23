@@ -40,7 +40,8 @@
   },
   "scripts": {
     "test": "phpunit",
-    "test:unit": "phpunit --testsuite unit"
+    "test:unit": "phpunit --testsuite unit",
+    "lint": "find . -name '*.php' -not -path './vendor/*' -not -path './.phpunit.cache/*' -print0 | xargs -0 -n1 php -d error_reporting=E_ALL -l > /dev/null"
   },
   "config": {
     "sort-packages": true
