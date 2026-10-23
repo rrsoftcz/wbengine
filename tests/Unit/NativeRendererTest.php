@@ -54,6 +54,20 @@ class NativeRendererTest extends TestCase
         $this->assertSame('ABX', $r->fetch('t.tpl'));
     }
 
+    public function testTheBundledErrorTemplateIsTranslatedAndEscaped(): void
+    {
+        copy($this->framework . '/Application/error.tpl', $this->dir . '/tpl/error.tpl');
+        $r = $this->renderer();
+        $r->assign('error', array('title' => 'x', 'code' => 404, 'msg' => '<b>gone</b>'));
+        $r->assign('t', array('title' => 'Chyba aplikace', 'info' => 'Informace o výjimce:'));
+
+        $html = $r->fetch('error.tpl');
+
+        $this->assertStringContainsString('Chyba aplikace</h1>', $html);
+        $this->assertStringContainsString('Informace o výjimce:', $html);
+        $this->assertStringContainsString('&lt;b&gt;gone&lt;/b&gt;', $html);
+    }
+
     public function testDisplayPrintsAndFetchReturns(): void
     {
         file_put_contents($this->dir . '/tpl/t.tpl', 'hello');

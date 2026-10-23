@@ -307,6 +307,13 @@ class Renderer extends Renderer\Adapter
             $error['msg'] = $exception->getMessage();
         }
 
+        // The error and the labels of the error templates, in the language of the request.
+        $this->assign('error', $error);
+        $this->assign('t', array(
+            'title' => \Wbengine\I18n::t('wb.error.title'),
+            'info' => \Wbengine\I18n::t('wb.error.info'),
+        ));
+
         // Here we can manage templates for an specify errors.
         switch ((int)$exception->getCode()) {
             case HTML_ERROR_404:
