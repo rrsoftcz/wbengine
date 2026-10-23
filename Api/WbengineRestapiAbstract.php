@@ -38,7 +38,6 @@ class WbengineRestapiAbstract {
 
     public function __construct(Api $api) {
         $this->_api = $api;
-        $this->_headers = getallheaders();
     }
 
 

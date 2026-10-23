@@ -16,6 +16,7 @@ namespace Wbengine;
 use Wbengine\Api\Exception\ApiException;
 use Wbengine\Api\Section;
 use Wbengine\Api\Auth;
+use Wbengine\Api\CacheAdmin;
 use Wbengine\Api\User;
 use Wbengine\Api\WbengineRestapiAbstract;
 use Wbengine\Application\Env\Http;
@@ -42,9 +43,14 @@ class Api
 
     private $_allow_credential_header = false;
     private $_found = array();
+    private $_terminator = null;
+    private $_cookieWriter = null;
+    private $_lastStatus = 200;
     // Short lived access token, long lived refresh token (rotated on every use).
     private $_token_expiration = 900;
     private $_cookie_expiration = 604800;
+    // However often a refresh token is used, the login ends after this many seconds.
+    private $_refresh_absolute_lifetime = 2592000;
     // Empty domain: the cookie belongs to the exact host that set it.
     private $_cookie_domain = "";
     private $_cookie_url = "/api/auth/";
@@ -117,6 +123,7 @@ class Api
             $this->Register(new Section($this));
             $this->Register(new User($this));
             $this->Register(new Auth($this));
+            $this->Register(new CacheAdmin($this));
 
         }catch(ApiException $e){
             throw new ApiException($e->getMessage());
@@ -137,7 +144,7 @@ class Api
 //            Http::PrintHeader('Access-Control-Allow-Credentials: true');
             Http::PrintHeader(sprintf("Access-Control-Allow-Headers: %s", implode(",", $this->_allow_headers)));
             Http::PrintHeader(sprintf("Access-Control-Allow-Methods: %s", implode(",",$this->_allow_methods)));
-            die;
+            $this->finish();
         });
     }
 
@@ -153,18 +160,58 @@ class Api
         if($code) {
             Http::PrintCode($code);
         }
-        if($pretty) {
-            print_r( json_encode( $value, JSON_PRETTY_PRINT ) );
-        }else{
-            die(json_encode($value));
-        }
-        die;
+        $this->_lastStatus = $code ?: 200;
+        $this->finish($pretty ? json_encode($value, JSON_PRETTY_PRINT) : json_encode($value));
     }
 
     public function toString($value, $code = 200) {
         Http::PrintCode($code);
         Http::PrintHeader(Http::HEADER_TYPE_PLAIN_TEXT);
-        die((string) $value);
+        $this->_lastStatus = $code;
+        $this->finish((string) $value);
+    }
+
+    /**
+     * Print the response body and end the request. An API response is always the last
+     * thing a request does.
+     */
+    private function finish($output = '') {
+        echo $output;
+        if (null !== $this->_terminator) {
+            call_user_func($this->_terminator);
+        }
+        exit;
+    }
+
+    /**
+     * Replace the end of the request, for tests. The callable must throw (an exception
+     * unwinds to the caller, which can then inspect the response); if it returns, the
+     * script exits as usual.
+     */
+    public function setTerminator(?callable $terminator) {
+        $this->_terminator = $terminator;
+    }
+
+    /**
+     * Replace setcookie(), for tests. Receives the name, the value and the options array.
+     */
+    public function setCookieWriter(?callable $writer) {
+        $this->_cookieWriter = $writer;
+    }
+
+    public function writeCookie($name, $value, array $options) {
+        if (null !== $this->_cookieWriter) {
+            call_user_func($this->_cookieWriter, $name, $value, $options);
+            return;
+        }
+        setcookie($name, $value, $options);
+    }
+
+    /**
+     * The HTTP status of the last response written.
+     */
+    public function getLastStatus() {
+        return $this->_lastStatus;
     }
 
     public function printApiError($msg, $code = Http::OK) {
@@ -261,6 +308,17 @@ class Api
 
     public function getCookieSameSite(){
         return $this->_cookie_same_site;
+    }
+
+    public function setRefreshAbsoluteLifetime(int $seconds){
+        $this->_refresh_absolute_lifetime = max(1, $seconds);
+    }
+
+    /**
+     * Seconds after the login in which a refresh token family stops working however often it is used.
+     */
+    public function getRefreshAbsoluteLifetime(){
+        return (int) $this->_refresh_absolute_lifetime;
     }
 
     /**

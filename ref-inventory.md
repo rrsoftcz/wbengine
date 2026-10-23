@@ -91,14 +91,13 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 * Syntax: `php -l` on every framework file under PHP 8.4 with `E_ALL`, no errors.
 * Runtime: all skeleton pages render with no PHP warnings or deprecations in the log, sections and boxes come from MySQL 8.4.
 * Security tests against the running stack: SQL payloads in URL and header, API injection attempts, token tampering, `alg=none`, forged old key, mass assignment, login and logout, session id regeneration and replay of the old id, legacy MD5 login with a narrow column, hash upgrade after widening, special character passwords through the web form and the API.
-* Session behaviour (lazy row, deferred write, logout leaves no row, old id replay fails) and cache invalidation were verified by hand against the running skeleton. There are no automated tests for `Session` yet.
+* Session behaviour (lazy row, deferred write, a destroyed session stays dead, regeneration, expiry, class-restricted unserialize), the API controllers (role matrix, refresh lifecycle, identify, logout everywhere, cache flush) and the page cache login decision have automated tests; the page cache end to end was verified by hand against the running skeleton.
 * Automated: a PHPUnit suite (91 tests, unit and integration against MySQL 8.4) runs in Docker with `composer test`.
 * PHP 8.3, 8.4 and 8.5: the linter and the whole suite are clean on all three (checked in Docker), and CI runs the same matrix on every push.
 * Not covered: load testing, MariaDB, Nginx.
 
 ## Recommended next steps
 
-1. Absolute lifetime for a refresh token family (it slides now), and automated tests for the API controllers.
 2. Per-page control of the page cache (an allow or deny list) and a `Vary` option for device or language.
 3. Cover `Url`, `Site`, `Session`, `Box\Auth` and the page cache with automated tests (all were verified by hand).
 4. Decide about `Locale` and `Registry`.

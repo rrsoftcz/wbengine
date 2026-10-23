@@ -114,6 +114,23 @@ class ApiUserModel extends ModelAbstract
     }
 
 
+    /**
+     * What goes into an access token: the user id, name, e-mail and current role.
+     * Read straight from the database, so a token can be issued without a PHP session.
+     *
+     * @param int $userId
+     * @return array|null
+     */
+    public function getTokenIdentity($userId)
+    {
+        $row = Db::fetchAssoc(
+            sprintf("SELECT `user_id`, `username`, `email`, `role` FROM %s WHERE `user_id` = ? AND `user_id` > 0 LIMIT 1;", S_TABLE_USERS),
+            array((int) $userId)
+        );
+        return is_array($row) ? $row : null;
+    }
+
+
     public function countAdmins()
     {
         return (int) Db::fetchAssoc(sprintf("SELECT COUNT(*) AS c FROM %s WHERE `role` = ?;", S_TABLE_USERS), array(Role::ADMIN))['c'];

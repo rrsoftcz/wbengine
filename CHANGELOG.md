@@ -49,6 +49,26 @@ documented here, see the git tags.
   `ac_active` and `user_ip` cannot be written through the API.
 - The user API no longer returns the password hash or `ac_key`.
 
+### Tests found real bugs
+
+Automated tests for the API controllers, the session and the page cache decision
+(426 tests now, green on PHP 8.3, 8.4 and 8.5) found and fixed:
+
+- The refresh endpoint started a PHP session after all (a `PHPSESSID` cookie and
+  session queries on a stateless endpoint). It now builds the access token straight
+  from the database row.
+- `WbengineRestapiAbstract` called `getallheaders()` directly, which does not exist
+  outside Apache and FPM, so the API crashed there. `Http::getHeader()` is now
+  case-insensitive (HTTP/2 and some proxies send lower case names) and falls back to
+  `$_SERVER`.
+- The `Bearer` scheme was matched case-sensitively, `bearer <token>` was rejected
+  (RFC 7235: schemes are case-insensitive).
+- A request without a `User-Agent` header raised a warning that the error handler
+  turned into a 500 (`Utils::getUserAgent()`); `Http::getCookie()` did the same for a
+  missing cookie.
+- `Api` can be tested without ending the request or sending cookies:
+  `Api::setTerminator()` and `Api::setCookieWriter()`, plus `Api::getLastStatus()`.
+
 ### Template engine
 
 - A native template engine, `Renderer\Adapter\NativeRenderer` (`Template\Engine`,
@@ -81,6 +101,10 @@ documented here, see the git tags.
 
 ### Refresh tokens
 
+- A token family has an absolute lifetime (30 days by default, `Api::setRefreshAbsoluteLifetime()`),
+  however often it is used. This needs the column `family_started_at`
+  (`schemas/migrations/004-refresh-token-family-start.sql`); without it logging in
+  works but no refresh token is issued.
 - Server side refresh tokens (`Api\Auth\RefreshTokens`): an opaque random value, only
   its SHA-256 hash is stored. Every refresh rotates the token. Presenting a token
   that was already used revokes its whole family (a stolen copy and the real owner
@@ -89,6 +113,10 @@ documented here, see the git tags.
   parallel processes). Logout revokes the device, the new
   `POST /api/auth/logout/all` revokes every device of the user, a password change
   and deleting a user revoke all their tokens.
+- `POST /api/cache/flush` (admin only) drops the cached data and pages after content
+  was edited directly in the database. It runs inside the web server, so it reaches
+  an APCu cache too, which a command line script could not.
+- `PageCache::sessionBelongsToAUser()`.
 - `Api::setCookieSameSite()`, `Api::getRefreshTokenTtl()`, `Db::forgetConnection()`
   (for forked workers), `Http::TOO_MANY_REQUESTS`.
 

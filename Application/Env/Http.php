@@ -100,12 +100,31 @@ abstract class Http
         }
     }
 
+    /**
+     * Value of a request header. Header names are case-insensitive (HTTP/2 and some proxies
+     * send them in lower case) and getallheaders() does not exist everywhere, so $_SERVER
+     * is used as a fallback.
+     */
     public static function getHeader(string $name) {
-         $_headers = getallheaders();
-         if(array_key_exists($name, $_headers)) {
-             return $_headers[$name];
-         }
-         return null;
+        $wanted = strtolower($name);
+
+        if (function_exists('getallheaders')) {
+            foreach ((array) getallheaders() as $key => $value) {
+                if (strtolower((string) $key) === $wanted) {
+                    return $value;
+                }
+            }
+        }
+
+        $server = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
+        if (isset($_SERVER[$server])) {
+            return $_SERVER[$server];
+        }
+        // Some setups only pass the Authorization header through a redirected variable.
+        if ('authorization' === $wanted && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        }
+        return null;
     }
 
     public static function secureClean($value = null){
@@ -186,7 +205,8 @@ abstract class Http
         $authorization = Http::getHeader(Http::HEADER_TYPE_AUTHORIZATION);
         // HEADER: Get the access token from the header
         if (!empty($authorization)) {
-            if (preg_match('/Bearer\s(\S+)/', $authorization, $matches)) {
+            // The scheme name is case-insensitive (RFC 7235).
+            if (preg_match('/^\s*Bearer\s+(\S+)/i', $authorization, $matches)) {
                 return $matches[1];
             } else {
                 return $authorization;
@@ -196,7 +216,7 @@ abstract class Http
     }
 
     public static function getCookie(string $cookieName){
-        return htmlspecialchars($_COOKIE[$cookieName]);
+        return isset($_COOKIE[$cookieName]) ? htmlspecialchars((string) $_COOKIE[$cookieName]) : null;
     }
 
     public static function isJson($string) {
