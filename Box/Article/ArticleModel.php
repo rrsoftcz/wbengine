@@ -18,6 +18,7 @@ use Wbengine\Box;
 use Wbengine\Config;
 use Wbengine\Counter\BatchCounter;
 use Wbengine\Db;
+use Wbengine\I18n\ContentTranslations;
 use Wbengine\Model\ModelAbstract;
 
 class ArticleModel extends ModelAbstract {
@@ -64,7 +65,7 @@ class ArticleModel extends ModelAbstract {
             ,S_TABLE_ARTICLES
         );
 
-	    $article = Db::fetchObject($sql, array((int)$this->getSiteId($this)));
+	    $article = ContentTranslations::overlayRow('article', Db::fetchObject($sql, array((int)$this->getSiteId($this))));
 
 	    if($updateView === true && is_object($article)){
 	        $this->updateViews($article->id);
