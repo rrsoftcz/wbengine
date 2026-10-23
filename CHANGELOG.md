@@ -7,7 +7,9 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
-### Internationalisation (planned 3.2.0)
+## [3.2.0] - 2026-10-24
+
+### Internationalisation
 
 - User interface translation, off by default (`i18n` setting). New `Wbengine\I18n`
   with `Translator`, `Plural`, `LocaleResolver` and `Format`.
