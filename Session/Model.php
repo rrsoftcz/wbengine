@@ -32,17 +32,18 @@ class Model extends ModelAbstract
     {
         $query = sprintf("
                         SELECT user_id,session_id,session_data,user_agent,user_ip,session_updated,session_expire,user_salt FROM %s s
-                        WHERE s.session_id = '%s'
-                        AND s.user_ip = '%s'
-                        AND s.user_salt = '%s'
+                        WHERE s.session_id = ?
+                        AND s.user_ip = ?
+                        AND s.user_salt = ?
                         LIMIT 1;"
             , S_TABLE_SESSIONS
-            , $session->getSessionId()
-            , $session->getUserIp()
-            , $session->getUserSalt()
         );
 
-        return Db::fetchObject($query);
+        return Db::fetchObject($query, array(
+            $session->getSessionId(),
+            $session->getUserIp(),
+            $session->getUserSalt()
+        ));
     }
 
 
@@ -55,8 +56,10 @@ class Model extends ModelAbstract
     {
         $query = sprintf("INSERT INTO %s " .
             " (`session_id`, `user_id`, `session_data`, `user_agent`, `user_ip`, `session_updated`,`session_expire`, `user_salt`) " .
-            " VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');",
-            S_TABLE_SESSIONS,
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+            S_TABLE_SESSIONS
+        );
+        return Db::query($query, array(
             $session->getSessionId(),
             $session->getUserId(),
             serialize($session->getSessionData()),
@@ -65,19 +68,15 @@ class Model extends ModelAbstract
             $session->getSessionLastUpdated(),
             $session->getSessionExpireTime(),
             $session->getUserSalt()
-        );
-        return Db::query($query);
+        ));
     }
 
 
     public function cleanSessions($limit = 3600)
     {
-        $sql = sprintf("DELETE FROM %s WHERE session_expire < '%s';",
-            S_TABLE_SESSIONS,
-            time() - $limit
-        );
-        Db::query($sql);
-        return mysqli_affected_rows(Db::getConnection());
+        $sql = sprintf("DELETE FROM %s WHERE session_expire < ?;", S_TABLE_SESSIONS);
+        Db::query($sql, array(time() - $limit));
+        return Db::getAffected();
     }
 
 
@@ -88,19 +87,34 @@ class Model extends ModelAbstract
      */
     public function updateSession(Session $session)
     {
-        $query = sprintf("UPDATE %s SET session_data = '%s', user_id = %d
-                            WHERE session_id = '%s'
-                            AND user_ip = '%s'
-                            AND user_salt = '%s';"
+        $query = sprintf("UPDATE %s SET session_data = ?, user_id = ?
+                            WHERE session_id = ?
+                            AND user_ip = ?
+                            AND user_salt = ?;"
             , S_TABLE_SESSIONS
-            , serialize($session->getSessionData())
-            , $session->getUserId()
-            , $session->getSessionId()
-            , $session->getUserIp()
-            , $session->getUserSalt()
         );
 
-        return Db::query($query);
+        return Db::query($query, array(
+            serialize($session->getSessionData()),
+            (int)$session->getUserId(),
+            $session->getSessionId(),
+            $session->getUserIp(),
+            $session->getUserSalt()
+        ));
+    }
+
+
+    /**
+     * Change the id of a stored session.
+     * @param string $oldId
+     * @param string $newId
+     * @return bool
+     */
+    public function renameSession($oldId, $newId)
+    {
+        $sql = sprintf("UPDATE %s SET session_id = ? WHERE session_id = ?", S_TABLE_SESSIONS);
+
+        return Db::query($sql, array((string)$newId, (string)$oldId));
     }
 
 
@@ -111,11 +125,8 @@ class Model extends ModelAbstract
      */
     public function deleteSession($session_id)
     {
-        $sql = sprintf("DELETE FROM %s WHERE session_id = '%s'"
-            , S_TABLE_SESSIONS
-            , $session_id
-        );
+        $sql = sprintf("DELETE FROM %s WHERE session_id = ?", S_TABLE_SESSIONS);
 
-        return Db::query($sql);
+        return Db::query($sql, array((string)$session_id));
     }
 }

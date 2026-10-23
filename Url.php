@@ -88,6 +88,13 @@
         private $_urlParams = NULL;
 
         /**
+         * Parent application object
+         *
+         * @var Application
+         */
+        private $_parent = NULL;
+
+        /**
          * Full url with a hostname
          * @var string
          */
@@ -243,6 +250,22 @@
          * @param arry $array
          * @return array
          */
+        private function _stripSlashesDeep($value)
+        {
+            if (is_array($value))
+            {
+                return array_map(array($this, '_stripSlashesDeep'), $value);
+            }
+            return is_string($value) ? stripslashes($value) : $value;
+        }
+
+
+        /**
+         * Add magic quotes to the array.
+         *
+         * @param array $array
+         * @return array
+         */
         private function _addMagicQuotes($array = NULL)
         {
             if (NULL === $array || !is_array($array))
@@ -252,7 +275,7 @@
             {
                 if (is_array($v))
                 {
-                    $array[$k] = add_magic_quotes($v);
+                    $array[$k] = $this->_addMagicQuotes($v);
                 }
                 else
                 {
@@ -280,7 +303,7 @@
             {
                 if (is_array($v))
                 {
-                    $array[$k] = remove_magic_quotes($v);
+                    $array[$k] = $this->_removeMagicQuotes($v);
                 }
                 else
                 {
@@ -553,7 +576,7 @@
                         {
                             if ($removeMagicQuote === TRUE)
                             {
-                                return $this->_cleanVar(remove_magic_quotes($this->_get[$value]));
+                                return $this->_cleanVar($this->_stripSlashesDeep($this->_get[$value]));
                             }
                             else
                             {
@@ -576,7 +599,7 @@
                         if (isset($this->_post[$value]))
                         {
                             return ($removeMagicQuote === TRUE)
-                                ? $this->_cleanVar(remove_magic_quotes($this->_post[$value]))
+                                ? $this->_cleanVar($this->_stripSlashesDeep($this->_post[$value]))
                                 : $this->_cleanVar($this->_post[$value]);
                         }
                     }

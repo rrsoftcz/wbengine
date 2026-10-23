@@ -86,26 +86,15 @@ class Model extends ModelAbstract
         } else {
 //            $where = array($userId);
 
-            $sql = sprintf('SELECT * FROM %s WHERE user_id = %d LIMIT 1'
-                , S_TABLE_USERS
-                , $userId
-            );
+            $sql = sprintf('SELECT * FROM %s WHERE user_id = ? LIMIT 1', S_TABLE_USERS);
 
-            return Db::fetchAssoc($sql);      }
+            return Db::fetchAssoc($sql, array((int)$userId));
+        }
     }
 
 
     public function update($user){
-        $query = Db::createUpdateQuery(
-            S_TABLE_USERS,
-            $user->toArray(),
-            array(
-                sprintf("user_id = %d", $user->getUserId())
-            )
-        );
-        Db::query($query);
-
-        return Db::getAffected();
+        return Db::update(S_TABLE_USERS, $user->toArray(), array('user_id' => (int)$user->getUserId()));
     }
 
 
@@ -136,14 +125,12 @@ class Model extends ModelAbstract
     public function authenticate(User $user)
     {
         $sql = sprintf("SELECT * FROM %s
-			WHERE MD5(email) = '%s'
-			AND password = '%s' LIMIT 1;"
+			WHERE MD5(email) = ?
+			AND password = ? LIMIT 1;"
             , S_TABLE_USERS
-            , $user->_getLoginName()
-            , $user->_getPassword()
         );
 
-        return Db::fetchAssoc($sql);
+        return Db::fetchAssoc($sql, array((string)$user->_getLoginName(), (string)$user->_getPassword()));
 
     }
 

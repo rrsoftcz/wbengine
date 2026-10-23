@@ -86,7 +86,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
         );
     }
 
-    public function validateJwtToken(string $token = null, $body = null){
+    public function validateJwtToken(?string $token = null, $body = null){
         if(null === $body || !is_array($body) || !array_key_exists("user_id", $body)) {
             $this->Api()->toJson(
                 Array(

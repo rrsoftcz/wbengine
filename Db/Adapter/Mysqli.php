@@ -21,9 +21,10 @@ class Mysqli implements DbAdapterInterface
     protected $_database;
     protected $_connection;
     protected $_charset;
+    protected $_dbencode;
 
 
-    public function __construct(Value $config = null)
+    public function __construct(?Value $config = null)
     {
         if ($config instanceof Value) {
             $this->_username = $this->Validate($config->username, 'username');
@@ -64,7 +65,7 @@ class Mysqli implements DbAdapterInterface
 
     private function _createConnection(){
 
-        mysqli_report(MYSQLI_REPORT_STRICT );
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
         try {
             $this->_connection = new \mysqli(
@@ -102,9 +103,9 @@ class Mysqli implements DbAdapterInterface
         return $this->getConnection()->server_version;
     }
 
-    public function getAllAssoc($sql)
+    public function getAllAssoc($sql, array $params = array())
     {
-        $mysqli_result = $this->getConnection()->query($sql);
+        $mysqli_result = $this->getConnection()->execute_query($sql, $params);
         if($mysqli_result instanceof \mysqli_result) {
             return mysqli_fetch_all($mysqli_result, MYSQLI_ASSOC);
         }else{

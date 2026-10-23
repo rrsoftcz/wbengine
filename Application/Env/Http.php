@@ -53,7 +53,7 @@ abstract class Http
     const NOT_ACCEPTABLE            = 406;
     const PROXY_AUTH_REQUIRED       = 407;
     const REQUEST_TIMEOUT           = 408;
-    const CONFLICT                  = 408;
+    const CONFLICT                  = 409;
     const GONE                      = 410;
     const LENGTH_REQUIRED           = 411;
     const PRECONDITION_FAILED       = 412;

@@ -94,16 +94,18 @@ class WbengineRestapiAbstract {
             $this->Api()->toJson(Array("success" => false, "message" => "Empty token."), Http::UNAUTHORIZED);
         }
 
+        // Only the token decoding is guarded here: any invalid token is a 401,
+        // while errors raised by $callable itself must not be reported as auth failures.
         try {
-            if(is_callable($callable)){
-                return $callable($this->wbAuth()->getDecodedData(Http::getBearerToken()));
-            }
-        }catch (SignatureInvalidException | ExpiredException | BeforeValidException $e){
-            $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::UNAUTHORIZED);
-//        }catch (\Exception $e){
-//            $this->Api()->toJson(Array("success" => false, "message" => $e->getMessage()), Http::OK); //@TODO ..or Http::BAD_REQUEST???
+            $payload = $this->wbAuth()->getDecodedData($_token);
+        } catch (ExpiredException $e) {
+            $this->Api()->toJson(Array("success" => false, "message" => "Expired token."), Http::UNAUTHORIZED);
+        } catch (\Throwable $e) {
+            error_log(sprintf('%s: token rejected (%s: %s)', __METHOD__, get_class($e), $e->getMessage()));
+            $this->Api()->toJson(Array("success" => false, "message" => "Invalid token."), Http::UNAUTHORIZED);
         }
-        return null;
+
+        return is_callable($callable) ? $callable($payload) : null;
     }
 
 
@@ -155,7 +157,8 @@ class WbengineRestapiAbstract {
      * @return mixed|string
      */
     public function getLastPartFromNamespace($namespace){
-        return end(explode('\\', $namespace));
+        $parts = explode('\\', $namespace);
+        return end($parts);
     }
 
 

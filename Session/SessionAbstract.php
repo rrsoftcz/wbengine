@@ -95,6 +95,12 @@ abstract class SessionAbstract
      */
     public function sessionStart(){
         if (session_status() == PHP_SESSION_NONE) {
+            ini_set('session.use_strict_mode', '1');
+            session_set_cookie_params(array(
+                'httponly' => true,
+                'samesite' => 'Lax',
+                'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+            ));
             session_start();
             return session_id();
         }else{
@@ -108,7 +114,7 @@ abstract class SessionAbstract
      * @return Session
      */
     private function _getSession(){
-        if(self::$_session instanceof Section) {
+        if(self::$_session instanceof Session) {
             return self::$_session;
         }else{
             return self::_createSession();
@@ -121,7 +127,7 @@ abstract class SessionAbstract
      * @return Session
      */
     private function _createSession(){
-        $this->_session = new Session();
+        self::$_session = new Session();
         return self::$_session;
     }
 

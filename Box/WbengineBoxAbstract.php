@@ -205,7 +205,7 @@ Abstract class WbengineBoxAbstract extends WbengineRestapiAbstract implements Co
             throw New BoxException(__METHOD__
                 . ': Excepts namespace as string, but null given.');
         }
-        if (NULL === $this->modelCache[$this->_clearNamespace($namespace)]) {
+        if (!isset($this->modelCache[$this->_clearNamespace($namespace)])) {
 
             return $this->_setModel($namespace);
         } else {

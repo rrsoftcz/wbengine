@@ -58,14 +58,13 @@ class ArticleModel extends ModelAbstract {
                           a.views, 
                           a.source  
                         FROM %s a
-                        WHERE  site_id = %d LIMIT 1;"
+                        WHERE  site_id = ? LIMIT 1;"
             ,S_TABLE_ARTICLES
-            ,$this->getSiteId($this)
         );
 
-	    $article = Db::fetchObject($sql);
+	    $article = Db::fetchObject($sql, array((int)$this->getSiteId($this)));
 
-	    if($updateView === true){
+	    if($updateView === true && is_object($article)){
 	        $this->updateViews($article->id);
         }
 
@@ -80,10 +79,7 @@ class ArticleModel extends ModelAbstract {
      */
     Public function updateViews($id)
     {
-        $sql = sprintf("UPDATE %s SET views = views + 1 WHERE id = %d;",
-            S_TABLE_ARTICLES,
-            $id
-        );
-        return Db::query($sql);
+        $sql = sprintf("UPDATE %s SET views = views + 1 WHERE id = ?;", S_TABLE_ARTICLES);
+        return Db::query($sql, array((int)$id));
     }
 }

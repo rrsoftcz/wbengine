@@ -11,6 +11,6 @@ namespace Wbengine\Model;
 
 interface ModelAbstractInterface
 {
-    public function query($query);
+    public function query($query, array $params = array());
     public function getConnectionx();
 }

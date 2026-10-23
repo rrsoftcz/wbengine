@@ -115,8 +115,8 @@ class User
     }
 
     private function _needReloadResource(){
-        if(key_exists('user_id', $this->_resource) && $this->getUserId() > 0) {
-            if (false === key_exists('email', $this->_resource)) {
+        if(array_key_exists('user_id', $this->_resource ?? array()) && $this->getUserId() > 0) {
+            if (false === array_key_exists('email', $this->_resource ?? array())) {
                 return true;
             }
         }
@@ -166,7 +166,7 @@ class User
      * @return integer
      */
     public function getUserId(){
-        return (key_exists('user_id', $this->_resource)) ? (int)$this->_resource['user_id'] : 0;
+        return (array_key_exists('user_id', $this->_resource ?? array())) ? (int)$this->_resource['user_id'] : 0;
     }
 
 
@@ -362,6 +362,7 @@ class User
 
         if($_usersData !== null) {
             $this->_resource = $_usersData;
+            $this->getSession()->regenerateId();
             $this->_setIdentity($this->getUserId());
             if($this->useJwt) {
                 try {

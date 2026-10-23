@@ -3,6 +3,7 @@
 namespace Wbengine\Box;
 
 use Wbengine\Application\Env\Http;
+use Wbengine\Config;
 use Wbengine\Box\Exception\BoxException;
 use Wbengine\Box\WbengineBoxAbstract;
 use Wbengine\Site\SiteException;
@@ -10,8 +11,6 @@ use Wbengine\User;
 
 class Auth extends WbengineStaticBox
 {
-    // Google recaptcha secret key
-    const SECRET_KEY = '6LeDc0UUAAAAAGTStMVRhObItiIWuGZn3XDS_e-Q';
     const CAPTCHA_RESPONSE = 'g-recaptcha-response';
     const CAPTCHA_RESPONSE_AJAX = 'grecaptcha';
     const FAILED_LOGINS = 'failed_logins_count';
@@ -148,16 +147,22 @@ class Auth extends WbengineStaticBox
         if ($this->_showCaptcha() === false) {
             return true;
         }
-        $response = json_decode(
-            file_get_contents(
-                sprintf("https://www.google.com/recaptcha/api/siteverify?secret=%s&response=%s&remoteip=%s"
-                    , self::SECRET_KEY
-                    , $captcha
-                    , $_SERVER['REMOTE_ADDR']
-                )
-            ), true
+        $secret = Config::getRecaptchaSecret();
+        if (!$secret) {
+            // Not configured: fail closed.
+            return false;
+        }
+        $raw = @file_get_contents(
+            "https://www.google.com/recaptcha/api/siteverify?" . http_build_query(array(
+                'secret' => $secret,
+                'response' => (string)$captcha,
+                'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            )),
+            false,
+            stream_context_create(array('http' => array('timeout' => 5)))
         );
-        return (bool)$response['success'];
+        $response = ($raw === false) ? null : json_decode($raw, true);
+        return is_array($response) && !empty($response['success']);
     }
 
     private function _generateToken($length = 32)

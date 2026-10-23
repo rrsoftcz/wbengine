@@ -36,6 +36,18 @@ Class Site implements ComponentParentInterface
      */
     private $_classUrl;
 
+    /**
+     * Url redirections map (from => to)
+     * @var array
+     */
+    private $_redirections = array();
+
+    /**
+     * Counter of magic assigned values
+     * @var int
+     */
+    public $count = 0;
+
 
     /**
      * Indicate that given URL is strict or dynamic
@@ -83,7 +95,7 @@ Class Site implements ComponentParentInterface
      * In constructor we parse URL and create all
      * needed variables.
      */
-    public function __construct(ComponentParentInterface $parent = null){
+    public function __construct(?ComponentParentInterface $parent = null){
         $this->_parent = $parent;
     }
 

@@ -72,7 +72,8 @@ class Session extends SessionAbstract
         if (is_object($_data)) {
             if ($this->isValid($_data->session_id, $_data->session_expire)) {
                 $this->_data = $_data;
-                $this->_data->session_data = unserialize($_data->session_data);
+                $sessionData = unserialize($_data->session_data, array('allowed_classes' => array('stdClass')));
+                $this->_data->session_data = ($sessionData instanceof \stdClass) ? $sessionData : new \stdClass();
             } else {
                 $this->getModel()->deleteSession($_data->session_id);
                 $this->_create();
@@ -169,6 +170,22 @@ class Session extends SessionAbstract
     public function getSessionId()
     {
         return $this->_data->session_id;
+    }
+
+    /**
+     * Issue a new session id (call after a privilege change, e.g. login) to prevent
+     * session fixation. The stored database row follows the new id.
+     */
+    public function regenerateId()
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE || headers_sent()) {
+            return;
+        }
+        $old = $this->_data->session_id;
+        session_regenerate_id(true);
+        $new = session_id();
+        $this->getModel()->renameSession($old, $new);
+        $this->_data->session_id = $new;
     }
 
     public function setUserId($userId){

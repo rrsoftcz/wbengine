@@ -61,8 +61,8 @@ class ModelAbstract implements ModelAbstractInterface
         return $model->site->getSiteid();
     }
 
-    public function query($query){
-        return Db::query($query);
+    public function query($query, array $params = array()){
+        return Db::query($query, $params);
     }
 
 
