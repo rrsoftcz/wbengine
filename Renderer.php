@@ -102,6 +102,7 @@ class Renderer extends Renderer\Adapter
         	$this->getConfigDir()
         );
 
+        $this->setCompileCheck(Config::getRendererCompileCheck());
         $this->disableCache();
     }
 

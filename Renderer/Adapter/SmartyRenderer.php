@@ -42,7 +42,7 @@ class SmartyRenderer implements RendererInterface
     }
 
     public function setConfigDir($path){
-
+        $this->getAdapter()->setConfigDir((string) $path);
     }
 
     public function setCacheDir($path){
@@ -50,7 +50,24 @@ class SmartyRenderer implements RendererInterface
     }
 
     public function registerObject($name, $value){
-        $this->getAdapter()->assign_by_ref($name, $value);
+        // Objects are handles in PHP 8, there is no need to assign by reference.
+        $this->getAdapter()->assign($name, $value);
+    }
+
+    public function setLeftDelimiter($value){
+        $this->getAdapter()->setLeftDelimiter((string) $value);
+    }
+
+    public function setRightDelimiter($value){
+        $this->getAdapter()->setRightDelimiter((string) $value);
+    }
+
+    /**
+     * When off, Smarty does not check whether a template changed on every request.
+     * Turn it off in production (the compiled cache must then be cleared on deploy).
+     */
+    public function setCompileCheck($value){
+        $this->getAdapter()->setCompileCheck($value ? Smarty::COMPILECHECK_ON : Smarty::COMPILECHECK_OFF);
     }
 
     public function enableCache(){

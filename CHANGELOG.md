@@ -48,8 +48,20 @@ documented here, see the git tags.
   routed to without it existing.
 - `Auth\Exception\AuthException::ERROR_MISSING_KEY`.
 
+### Removed
+
+- The `Db\Adapter\Zend` adapter (its dependency was never required and it did
+  not implement the adapter interface), the unused `Config\Adapter*` classes,
+  `Box\Model`, and the broken `Config::autodetectEnvironment()` with its
+  helpers (`addEnvironmentSafeKeyword()`, `addEnvironmentSafeIp()`,
+  `DETECT_ENV_TYPE_*`). They could not run: they used undefined constants and
+  methods that do not exist.
+
 ### Changed
 
+- `Renderer` options: new `renderer.compileCheck` setting. Set it to `false` in
+  production so Smarty does not check template files on every request (clear
+  `View/Compiled` on deploy). Defaults to `true`.
 - Session cookies are `HttpOnly`, `SameSite=Lax` (and `Secure` over HTTPS) and
   strict mode is on. Stored session data is unserialized with
   `allowed_classes` limited to `stdClass`.
@@ -69,6 +81,12 @@ documented here, see the git tags.
 
 ### Fixed
 
+- `Url\Exception\RunetimeException.php` and `Formater\Exception\RunetimeException.php`
+  had a typo in the file name, so the classes could not be autoloaded on case
+  sensitive file systems or with an authoritative classmap.
+- `Renderer\Adapter` wrappers (`setCacheDir`, `setLeftDelimiter`, `setRightDelimiter`,
+  `registerObject`) called a method with a missing argument. `SmartyRenderer`
+  used a Smarty call that no longer exists and ignored `setConfigDir`.
 - PHP 8.3 and 8.4: implicit nullable parameters, an optional parameter before a
   required one (`Application::setPath`), dynamic properties in `Section`, `Site`,
   `Url`, `Auth`, `Mysqli` and the session singleton, `sizeof(null)`, removed

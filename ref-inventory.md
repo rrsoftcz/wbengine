@@ -52,9 +52,10 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 | Router: query string broke matching, trailing slash made user routes unreachable behind the skeleton `.htaccess` | Fixed |
 | `Http::CONFLICT` was 408 | Fixed (409) |
 | `PATCH /api/users/patch/{id}` called a missing method | Fixed |
-| `Zend` adapter, `Config\Adapter*`, `Locale` model, `Box\Model`, `Config::autodetectEnvironment`, `Registry` and similar dead or broken code | Open: remove or finish |
-| Typo in exception file names (`RunetimeException.php`) breaks autoload on case sensitive systems | Open |
-| `Renderer/Adapter` methods call `getAdapter()` without its argument, `registerObject` uses a removed Smarty call | Open |
+| `Zend` adapter, `Config\Adapter*`, `Box\Model`, `Config::autodetectEnvironment` | Fixed: removed |
+| `Locale` (its model calls methods that do not exist) and `Registry` (static misuse) | Open: unfinished features, decide whether to finish or remove |
+| Typo in exception file names (`RunetimeException.php`) breaks autoload on case sensitive systems | Fixed, verified with an optimized classmap |
+| `Renderer/Adapter` methods call `getAdapter()` without its argument, `registerObject` uses a removed Smarty call, `setConfigDir` ignored | Fixed, covered by tests |
 | Remaining legacy style: no type declarations on most methods, `declare(strict_types)` not used | Open |
 
 ### Performance
@@ -87,13 +88,14 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 * Syntax: `php -l` on every framework file under PHP 8.4 with `E_ALL`, no errors.
 * Runtime: all skeleton pages render with no PHP warnings or deprecations in the log, sections and boxes come from MySQL 8.4.
 * Security tests against the running stack: SQL payloads in URL and header, API injection attempts, token tampering, `alg=none`, forged old key, mass assignment, login and logout, session id regeneration and replay of the old id, legacy MD5 login with a narrow column, hash upgrade after widening, special character passwords through the web form and the API.
-* Not covered: automated tests (there is no PHPUnit suite yet), load testing, MariaDB, Nginx, PHP 8.3 and 8.5.
+* Automated: a PHPUnit suite (68 tests, unit and integration against MySQL 8.4) runs in Docker with `composer test`.
+* Not covered: load testing, MariaDB, Nginx, PHP 8.3 and 8.5, CI.
 
 ## Recommended next steps
 
 1. Add a role claim to tokens and check it in every API module.
 2. Cache site, sections, menu and box list, defer session writes, batch view counting.
-3. Add PHPUnit with a Docker MySQL service and CI; start with `Router`, `Url`, `Db`, `Password` and the API models.
-4. Remove the dead code listed above and fix the exception file name typos.
+3. Add CI that runs `composer test`, and cover `Url`, `Site`, `Session` and `Box\Auth`.
+4. Decide about `Locale` and `Registry`.
 5. Template compiler with automatic escaping and fragment caching, keeping Smarty as an adapter.
 6. Tag a release (suggested 3.1.0) so the skeleton can require it instead of a development branch.

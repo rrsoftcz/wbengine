@@ -70,7 +70,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      * Return created object instance
      * @return Class_Renderer_Interface
      */
-    private function getAdapter($test)
+    private function getAdapter()
     {
         if ($this->_adapter && is_object($this->_adapter))
             return $this->_adapter;
@@ -87,7 +87,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
             );
         }
 
-        $this->_adapter = new $name($test);
+        $this->_adapter = new $name();
         return $this->_adapter;
     }
 
@@ -98,7 +98,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      */
     public function fetch($template, $cache_id = NULL, $compile_id = NULL)
     {
-        return $this->getAdapter($this)->fetch($template, $cache_id, $compile_id);
+        return $this->getAdapter()->fetch($template, $cache_id, $compile_id);
     }
 
 
@@ -107,7 +107,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      */
     public function display($template, $cache_id = NULL, $compile_id = NULL)
     {
-        $this->getAdapter($this)->display($template, $cache_id, $compile_id);
+        $this->getAdapter()->display($template, $cache_id, $compile_id);
     }
 
 
@@ -116,7 +116,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      */
     public function assign($varname, $var = NULL, $nocache = false)
     {
-        $this->getAdapter($this)->assign($varname, $var, $nocache);
+        $this->getAdapter()->assign($varname, $var, $nocache);
     }
 
 
@@ -125,7 +125,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      */
     public function setCompileDir($path)
     {
-        $this->getAdapter($this)->setCompileDir((string) $path);
+        $this->getAdapter()->setCompileDir((string) $path);
     }
 
 
@@ -134,7 +134,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      */
     public function setTemplateDir($path)
     {
-        $this->getAdapter($this)->setTemplateDir((string) $path);
+        $this->getAdapter()->setTemplateDir((string) $path);
     }
 
 
@@ -143,7 +143,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
      */
     public function setConfigDir($path)
     {
-        $this->getAdapter($this)->setConfigDir((string) $path);
+        $this->getAdapter()->setConfigDir((string) $path);
     }
 
 
@@ -182,12 +182,17 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
         $this->getAdapter()->registerObject($name, $value);
     }
 
+    public function setCompileCheck($value)
+    {
+        $this->getAdapter()->setCompileCheck((bool) $value);
+    }
+
     public function enableCache(){
-        $this->getAdapter($this)->enableCache();
+        $this->getAdapter()->enableCache();
     }
 
     public function disableCache(){
-        $this->getAdapter($this)->disableCache();
+        $this->getAdapter()->disableCache();
     }
 
 }
