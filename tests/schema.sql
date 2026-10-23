@@ -33,6 +33,23 @@ CREATE TABLE IF NOT EXISTS `cms_sections` (
   PRIMARY KEY (`section_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `cms_sites` (
+  `site_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `parent_id` int unsigned NOT NULL DEFAULT '0',
+  `left_id` int unsigned NOT NULL DEFAULT '0',
+  `right_id` int unsigned NOT NULL DEFAULT '0',
+  `strict` tinyint DEFAULT '0',
+  `visible` tinyint unsigned NOT NULL DEFAULT '0',
+  `link` varchar(100) NOT NULL,
+  `title` varchar(120) NOT NULL DEFAULT '',
+  `html_title` varchar(120) NOT NULL DEFAULT '',
+  `html_description` varchar(170) NOT NULL DEFAULT '',
+  `html_keywords` varchar(255) NOT NULL DEFAULT '',
+  `acl` int DEFAULT '0',
+  PRIMARY KEY (`site_id`),
+  KEY `link` (`link`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `cms_sessions` (
   `session_id` varchar(128) NOT NULL,
   `user_id` int NOT NULL DEFAULT '0',

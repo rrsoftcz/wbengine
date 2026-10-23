@@ -16,6 +16,7 @@
 namespace Wbengine\Api\Model;
 
 use Wbengine\Model\ModelAbstract;
+use Wbengine\Cache;
 use Wbengine\Db;
 use Wbengine\Api\Model\Exception\ApiModelException;
 
@@ -97,7 +98,9 @@ class ApiSectionModel extends ModelAbstract
         $sectionId = $this->_checkId($sectionId);
 
         Db::query(sprintf("DELETE FROM %s WHERE `section_id` = ? LIMIT 1;", S_TABLE_SECTIONS), array($sectionId));
-        return array("deleted" => Db::getAffected());
+        $deleted = Db::getAffected();
+        Cache::flush();
+        return array("deleted" => $deleted);
     }
 
 
@@ -106,13 +109,17 @@ class ApiSectionModel extends ModelAbstract
         $sectionId = $this->_checkId($sectionId);
         $sectionData = $this->_checkData($sectionData);
 
-        return array("updated" => Db::update(S_TABLE_SECTIONS, $sectionData, array('section_id' => $sectionId)));
+        $updated = Db::update(S_TABLE_SECTIONS, $sectionData, array('section_id' => $sectionId));
+        Cache::flush();
+        return array("updated" => $updated);
     }
 
 
     public function addSection($data)
     {
-        return Db::insert(S_TABLE_SECTIONS, $this->_checkData($data));
+        $id = Db::insert(S_TABLE_SECTIONS, $this->_checkData($data));
+        Cache::flush();
+        return $id;
     }
 
 

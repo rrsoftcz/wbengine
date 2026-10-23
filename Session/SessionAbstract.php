@@ -26,6 +26,12 @@ use Wbengine\Session\Exception\SessionException;
 
 abstract class SessionAbstract
 {
+    /**
+     * The request carried a session cookie. Without one no stored session can exist.
+     * @var bool
+     */
+    protected $_cookieReceived = false;
+
 
     CONST USER_AGENT                = 'user_agent';
     CONST USER_IP                   = 'user_ip';
@@ -95,6 +101,7 @@ abstract class SessionAbstract
      */
     public function sessionStart(){
         if (session_status() == PHP_SESSION_NONE) {
+            $this->_cookieReceived = isset($_COOKIE[session_name()]);
             ini_set('session.use_strict_mode', '1');
             session_set_cookie_params(array(
                 'httponly' => true,
@@ -220,6 +227,12 @@ abstract class SessionAbstract
 
 
     /**
+     * Forget unsaved changes and the knowledge of a stored row.
+     */
+    abstract protected function discardPendingWrites();
+
+
+    /**
      * This method do logout user from the existing
      * session and destroy them.
      * @void
@@ -233,6 +246,9 @@ abstract class SessionAbstract
 //        $this->setValue("user_pass", "");
 
         $this->getModel()->deleteSession($session_id);
+
+        // Nothing may be written back for a destroyed session.
+        $this->discardPendingWrites();
 
         session_unset();
         session_destroy();

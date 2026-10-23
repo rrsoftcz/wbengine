@@ -16,6 +16,7 @@
 namespace Wbengine\Section;
 
 use Wbengine\Application\Env\Stac\Utils;
+use Wbengine\Cache;
 use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
 use Wbengine\Section;
@@ -41,7 +42,9 @@ class Model extends ModelAbstract {
             , S_TABLE_BOXES
         );
 
-        return Db::fetchAllAssoc($sql, array($siteId, $siteId, $sectionId, $sectionId));
+        return Cache::remember('boxes:' . $siteId . ':' . $sectionId, function () use ($sql, $siteId, $sectionId) {
+            return Db::fetchAllAssoc($sql, array($siteId, $siteId, $sectionId, $sectionId));
+        }, null, true);
     }
 
 }

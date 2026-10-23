@@ -30,6 +30,20 @@ documented here, see the git tags.
   `ac_active` and `user_ip` cannot be written through the API.
 - The user API no longer returns the password hash or `ac_key`.
 
+### Performance
+
+- New opt-in cache for the site table, the menu, the sections and the box lists
+  (`Wbengine\Cache`, APCu or file driver, enable with the `cache` setting). On the
+  skeleton application a warm page needs 1 to 3 queries instead of 8 to 10, and
+  none for a visitor without a session cookie. The API flushes the cache when
+  sections change, call `Cache::flush()` after other direct edits.
+- Sessions: the row is read once per request, created only when something is
+  stored (anonymous visitors cost no `INSERT`), written once at the end of the
+  request instead of on every `setValue()`, and expired sessions are purged on
+  about 1 in 100 loads instead of on every request. A request without a session
+  cookie skips the lookup entirely.
+- `renderer.compileCheck: false` skips Smarty's per-request template check.
+
 ### Added
 
 - Automated tests: PHPUnit 12 with unit and integration suites (63 tests) and a
@@ -43,6 +57,10 @@ documented here, see the git tags.
   `cms_users.password` can hold a modern hash (`varchar(255)` recommended).
 - `Http::PostRaw()` for secrets that must not be altered by HTML cleaning.
 - `Config::getJwtKeys()` and `Config::getRecaptchaSecret()`.
+- `Cache` (`remember()`, `flush()`, `isEnabled()`, `setDriver()`), `Cache\FileCache`,
+  `Cache\ApcuCache`, `Cache\NullCache`, `Config::getCacheSettings()`.
+- `Session::flush()` writes pending session changes (called automatically at
+  shutdown).
 - `Session::regenerateId()`, called on login to prevent session fixation.
 - `Api\User::updateUser()`, which `PATCH /api/users/patch/{id}` had always
   routed to without it existing.
@@ -59,6 +77,9 @@ documented here, see the git tags.
 
 ### Changed
 
+- `Session::save()` no longer writes immediately, it marks the session for the
+  write at the end of the request. A destroyed (logged out) session is never
+  written again during that request.
 - `Renderer` options: new `renderer.compileCheck` setting. Set it to `false` in
   production so Smarty does not check template files on every request (clear
   `View/Compiled` on deploy). Defaults to `true`.

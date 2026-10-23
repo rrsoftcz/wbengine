@@ -31,6 +31,30 @@ class Session extends SessionAbstract
     private $_autoclean = true;
     private $_created = false;
 
+    /**
+     * Probability (1 in N) that loading a session also purges expired sessions.
+     */
+    const GC_DIVISOR = 100;
+
+    /**
+     * The database row was read (or the lookup was done) during this request.
+     */
+    private $_loaded = false;
+
+    /**
+     * A row for this session exists in the database.
+     */
+    private $_persisted = false;
+
+    /**
+     * Data changed and has to be written at the end of the request.
+     */
+    private $_dirty = false;
+
+    private $_shutdownRegistered = false;
+
+    private $_destroyed = false;
+
     function __construct()
     {
 //        var_dump(debug_backtrace()[0]);
@@ -52,8 +76,49 @@ class Session extends SessionAbstract
     }
 
 
+    /**
+     * Mark the session as changed. The database is written once, at the end of the
+     * request (see flush()), no matter how many values were set.
+     */
     public function save(){
-        $this->getModel()->updateSession($this);
+        $this->_dirty = true;
+
+        if (false === $this->_shutdownRegistered) {
+            $this->_shutdownRegistered = true;
+            register_shutdown_function(array($this, 'flush'));
+        }
+    }
+
+    /**
+     * Called when the session is destroyed (logout). It stays dead for the rest of
+     * the request: values set afterwards live in memory only and are never stored.
+     */
+    protected function discardPendingWrites(){
+        $this->_dirty = false;
+        $this->_persisted = false;
+        $this->_destroyed = true;
+    }
+
+    /**
+     * Write pending changes. The row is created on the first write, so visitors
+     * that never store anything do not cost an INSERT.
+     */
+    public function flush(){
+        if (false === $this->_dirty || true === $this->_destroyed) {
+            return;
+        }
+        $this->_dirty = false;
+
+        try {
+            if ($this->_persisted) {
+                $this->getModel()->updateSession($this);
+            } else {
+                $this->getModel()->insertSessionData($this);
+                $this->_persisted = true;
+            }
+        } catch (\Throwable $e) {
+            error_log(__METHOD__ . ': ' . $e->getMessage());
+        }
     }
 
     public function setAutoClean(bool $state)
@@ -61,46 +126,48 @@ class Session extends SessionAbstract
         $this->_autoclean = $state;
     }
 
-    private function _create()
-    {
-        $this->getModel()->insertSessionData($this);
-    }
-
+    /**
+     * Read the session row once per request. A missing or expired row is not
+     * created here, it is inserted by flush() when something is stored.
+     */
     public function _load()
     {
-        $_data = $this->getModel()->getSessionData($this);
+        if ($this->_loaded) {
+            return $this->_data;
+        }
+        $this->_loaded = true;
+
+        if ($this->isAutoCleanOn() && random_int(1, self::GC_DIVISOR) === 1) {
+            $this->getModel()->cleanSessions($this->getExpirationTime());
+        }
+
+        // A request without a session cookie cannot belong to a stored session.
+        $_data = $this->_cookieReceived ? $this->getModel()->getSessionData($this) : null;
         if (is_object($_data)) {
             if ($this->isValid($_data->session_id, $_data->session_expire)) {
                 $this->_data = $_data;
+                $this->_persisted = true;
                 $sessionData = unserialize($_data->session_data, array('allowed_classes' => array('stdClass')));
                 $this->_data->session_data = ($sessionData instanceof \stdClass) ? $sessionData : new \stdClass();
             } else {
                 $this->getModel()->deleteSession($_data->session_id);
-                $this->_create();
             }
-        } else {
-            $this->_create();
         }
-
         return $this->_data;
     }
 
+
     public function __set($name, $value)
     {
-        // @TODO Check if we need to preload data when updateing...!
-        //$this->_load();
+        // Load first: writing to a session that was not read would overwrite the stored data.
+        $this->_load();
         $this->getSessionData()->$name = $value;
         $this->save();
     }
 
     public function __get($name)
     {
-        if ($this->_data->user_id === self::SESSION_EMPTY_USER_ID) {
-        	if($this->isAutoCleanOn()) {
-		        $this->getModel()->cleanSessions($this->getExpirationTime());
-	        }
-            $this->_load();
-        }
+        $this->_load();
         if (isset($this->getSessionData()->$name)) {
             return $this->getSessionData()->$name;
         }
@@ -181,6 +248,7 @@ class Session extends SessionAbstract
         if (session_status() !== PHP_SESSION_ACTIVE || headers_sent()) {
             return;
         }
+        $this->_load();
         $old = $this->_data->session_id;
         session_regenerate_id(true);
         $new = session_id();

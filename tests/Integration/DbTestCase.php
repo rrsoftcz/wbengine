@@ -22,5 +22,6 @@ abstract class DbTestCase extends TestCase
         Db::query('DELETE FROM cms_users');
         Db::query('DELETE FROM cms_sections');
         Db::query('DELETE FROM cms_sessions');
+        Db::query('DELETE FROM cms_sites');
     }
 }
