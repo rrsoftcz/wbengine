@@ -7,6 +7,8 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+## [3.3.1] - 2026-10-24
+
 ### Fixed
 
 - The bundled `error.tpl` is translated (`wb.error.*`): `Renderer::getErrorBox()` now
