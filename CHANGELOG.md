@@ -5,7 +5,9 @@ All notable changes to WBengine are documented here. The format follows
 [Semantic Versioning](https://semver.org/). Versions before 3.1.0 are not
 documented here, see the git tags.
 
-## [Unreleased] (planned 3.1.0)
+## [Unreleased]
+
+## [3.1.0] - 2026-10-23
 
 ### Breaking changes
 
