@@ -218,6 +218,40 @@ class Config
     }
 
     /**
+     * Login rate limit settings with their defaults:
+     *   enabled (true),
+     *   maxAttempts per client IP and account together (5),
+     *   ipMaxAttempts per client IP over all accounts (20),
+     *   accountMaxAttempts per account from all IPs (25, catches distributed guessing),
+     *   window in seconds (900), dir for the counter files.
+     * Configure under "rateLimit": { "login": { ... } }.
+     * @return array
+     */
+    public static function getLoginRateLimit()
+    {
+        $custom = (is_object(self::$config) && isset(self::$config->rateLimit->login) && is_object(self::$config->rateLimit->login))
+            ? (array) self::$config->rateLimit->login
+            : array();
+
+        $db = self::getDbCredentials();
+        $defaults = array(
+            'enabled' => true,
+            'maxAttempts' => 5,
+            'ipMaxAttempts' => 20,
+            'accountMaxAttempts' => 25,
+            'window' => 900,
+            'dir' => sys_get_temp_dir() . '/wbengine-ratelimit-' . substr(hash('sha256', $db->hostname . '/' . $db->database), 0, 8),
+        );
+
+        $settings = array_merge($defaults, $custom);
+        $settings['enabled'] = (bool) $settings['enabled'];
+        foreach (array('maxAttempts', 'ipMaxAttempts', 'accountMaxAttempts', 'window') as $key) {
+            $settings[$key] = max(1, (int) $settings[$key]);
+        }
+        return $settings;
+    }
+
+    /**
      * Cache settings: array with enabled, driver, ttl, dir. Disabled when not configured.
      * @return array
      */

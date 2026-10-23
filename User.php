@@ -19,6 +19,9 @@ use Wbengine\User\Role;
 
 use Wbengine\User\Model;
 use Wbengine\User\UserException;
+use Wbengine\User\TooManyAttemptsException;
+use Wbengine\RateLimit\Limiter;
+use Wbengine\Application\Env\Stac\Utils;
 
 class User
 {
@@ -360,6 +363,28 @@ class User
         $this->_login = (string)$login;
         $this->_paswd = (string)$password;
 
+        $limits = Config::getLoginRateLimit();
+        $limiter = new Limiter($limits['dir']);
+        $ip = (string) Utils::getUserIp();
+        $account = mb_strtolower(trim($this->_login));
+        // A strict limit per IP and account together means somebody who keeps failing
+        // cannot lock the real owner out from another address. The looser per-IP and
+        // per-account limits still stop spraying and distributed guessing.
+        $pairKey = 'login:pair:' . $ip . '|' . $account;
+        $ipKey = 'login:ip:' . $ip;
+        $accountKey = 'login:account:' . $account;
+
+        if ($limits['enabled']) {
+            $wait = max(
+                $limiter->retryAfter($pairKey, $limits['maxAttempts'], $limits['window']),
+                $limiter->retryAfter($ipKey, $limits['ipMaxAttempts'], $limits['window']),
+                $limiter->retryAfter($accountKey, $limits['accountMaxAttempts'], $limits['window'])
+            );
+            if ($wait > 0) {
+                throw new TooManyAttemptsException($wait);
+            }
+        }
+
         $_usersData = $this->getModel()->authenticate($this);
 
         if($_usersData !== null) {
@@ -374,8 +399,19 @@ class User
                     die($e->getMessage());
                 }
             }
+            // The IP counter is not cleared: that would let an attacker reset it by
+            // logging in to an account of their own.
+            if ($limits['enabled']) {
+                $limiter->clear($pairKey);
+                $limiter->clear($accountKey);
+            }
             return true;
         }else{
+            if ($limits['enabled']) {
+                $limiter->hit($pairKey, $limits['window']);
+                $limiter->hit($ipKey, $limits['window']);
+                $limiter->hit($accountKey, $limits['window']);
+            }
             $this->_resetIdentity();
             return false;
         }

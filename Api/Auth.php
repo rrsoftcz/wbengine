@@ -15,6 +15,7 @@ use Wbengine\Api\WbengineRestapiAbstract;
 use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Application\Env\Http;
 use Wbengine\User;
+use Wbengine\User\TooManyAttemptsException;
 use Wbengine\Api\Auth\Exception\AuthException;
 
 class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
@@ -72,6 +73,9 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
                 ), ($status)? Http::OK : Http::UNAUTHORIZED
             );
 
+        }catch (TooManyAttemptsException $e){
+            Http::PrintHeader('Retry-After: ' . $e->getRetryAfter());
+            $this->Api()->toJson(Array("success"=>false, "message"=>$e->getMessage(), "retry_after"=>$e->getRetryAfter()), Http::TOO_MANY_REQUESTS);
         }catch (\Exception $e){
             $this->Api()->toJson(Array("success"=>false, "message"=>$e->getMessage()), Http::UNAUTHORIZED);
         }

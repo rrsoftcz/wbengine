@@ -132,6 +132,11 @@ class Auth extends WbengineStaticBox
                 header('Content-type: application/json');
                 die(json_encode($response));
             }
+        } catch (User\TooManyAttemptsException $e) {
+            http_response_code(429);
+            header('Retry-After: ' . $e->getRetryAfter());
+            header('Content-type: application/json');
+            die(json_encode(array('error' => $e->getMessage(), 'retry_after' => $e->getRetryAfter())));
         } catch (User\UserException $e) {
             die($e->getMessage());
         }

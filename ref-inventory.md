@@ -32,7 +32,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 | `unserialize` of session data without class restriction | Fixed: only `stdClass` |
 | SQL and exception details shown to clients, unescaped debug output | Fixed: logged server side, generic page unless debug, escaped |
 | API has no role check: any valid token can use every route | Fixed: `user`, `editor`, `admin`, checked against the database, verified with 17 scenarios including immediate effect of a demotion |
-| No rate limiting on `/api/auth/login`; web login counter lives in the session so a client without cookies avoids it | Open |
+| No rate limiting on `/api/auth/login`; web login counter lives in the session so a client without cookies avoids it | Fixed: server side limiter for all three login paths (pair, IP and account counters), verified end to end |
 | Refresh token is a second JWT with no server side store, rotation or revocation; logout does not invalidate tokens | Open |
 | Smarty output is not escaped by default (`escape_html` off) | Open |
 | A session row is created for every request without a cookie (database write per bot hit) | Fixed: rows are created only when something is stored |
@@ -95,7 +95,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 
 ## Recommended next steps
 
-1. Rate limiting for `/api/auth/login`, refresh token revocation.
+1. Refresh token revocation.
 2. Batch article view counting and cache whole anonymous pages.
 3. Add CI that runs `composer test`, and cover `Url`, `Site`, `Session` and `Box\Auth`.
 4. Decide about `Locale` and `Registry`.
