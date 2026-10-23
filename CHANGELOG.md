@@ -7,6 +7,20 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Internationalisation
+
+- Database content can be translated: site titles and meta tags, menu names and
+  articles. One table per kind (`cms_site_translations`, `cms_menu_translations`,
+  `cms_article_translations`), the default language stays in the original columns,
+  and a missing or empty translated field falls back to the default, field by field.
+  New `Wbengine\I18n\ContentTranslations`, applied in `SiteModel`, `getSiteMenu` and
+  `ArticleModel`. No extra query in the default language or with `i18n` off. Sites and
+  menu are cached per locale; articles are read by id. Without the new tables the
+  application logs once and stays in the default language.
+- REST API for editors: `GET`, `PUT` and `DELETE /api/translations/{site|menu|article}/{id}[/{locale}]`
+  (role `editor`), validating locale, fields and length, flushing the cache on writes.
+- Tests: 58 new (777 in total).
+
 ## [3.2.0] - 2026-10-24
 
 ### Internationalisation
