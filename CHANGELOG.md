@@ -32,6 +32,8 @@ documented here, see the git tags.
 
 ### Added
 
+- Automated tests: PHPUnit 12 with unit and integration suites (63 tests) and a
+  Docker test environment (`docker compose run --rm php composer test`).
 - Bound parameters: `Db::query()`, `fetchAssoc()`, `fetchObject()`,
   `fetchAllAssoc()`, `fetchRow()`, `fetchOne()` and `fetchAll()` accept an array
   of parameters for `?` placeholders. New `Db::insert()`, `Db::update()` and

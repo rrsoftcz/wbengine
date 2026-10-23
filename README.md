@@ -203,7 +203,7 @@ Rules:
 * A failed query throws `Wbengine\Db\Exception\DbException` with a generic message. The SQL and the server error go to the PHP error log, never to the client.
 * Every query is recorded with its time for the debug bar.
 
-The default connection charset is `utf8`; set `charset` in the configuration.
+Set the connection `charset` in the configuration. Use `utf8mb4` for new databases (`utf8` is the three byte variant and rejects emoji).
 
 ## Routing and the REST API
 
@@ -315,6 +315,18 @@ Measured costs per anonymous page in the skeleton: the site, sections and menu q
 * Smarty output is not escaped by default. Escape values in templates (`{$value|escape}`) until automatic escaping is added.
 * Put TLS in front of the application. The session cookie is marked `Secure` only when the request arrives over HTTPS.
 * Report problems privately to the maintainers.
+
+## Development and tests
+
+The test environment is Docker only: PHP 8.4 CLI and MySQL 8.4.
+
+```bash
+docker compose run --rm php composer install
+docker compose run --rm php composer test          # unit and integration suites
+docker compose run --rm php composer test:unit     # no database needed
+```
+
+The integration tests create their tables from `tests/schema.sql`. They are skipped when the database is not reachable. For new installations use the `utf8mb4` connection charset: the older `utf8` alias is three bytes per character and cannot carry emoji.
 
 ## Upgrading from 3.0
 

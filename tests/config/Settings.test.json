@@ -1,0 +1,32 @@
+{
+  "timeZone": "Europe/Prague",
+  "codePage": "utf8",
+  "minimizeHtml": false,
+  "minimizeCss": false,
+  "debug": false,
+  "cdnPath": "",
+  "renderer": {
+    "adapterName": "SmartyRenderer",
+    "templatesDir": "/View/",
+    "compiledDir": "Compiled/",
+    "configDir": "/Config/"
+  },
+  "dbAdapterDefinition": {
+    "adapterName": "Mysqli",
+    "database": "wbengine_test",
+    "charset": "utf8mb4",
+    "port": "3306",
+    "hostname": "db",
+    "username": "wb_test",
+    "password": "wb_test"
+  },
+  "jwt": {
+    "accessKey": "test-access-key-0123456789abcdef0123456789abcdef",
+    "refreshKey": "test-refresh-key-0123456789abcdef0123456789abcdef"
+  },
+  "recaptcha": {
+    "secretKey": ""
+  },
+  "cssFiles": [],
+  "ipAdmins": []
+}
