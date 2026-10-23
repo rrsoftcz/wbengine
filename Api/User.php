@@ -30,6 +30,12 @@ class User extends WbengineRestapiAbstract implements WbengineRestapiInterface
         );
     }
 
+    public function updateUser($userId, $user) {
+        $this->isAuthenticated(
+            fn() => $this->Api()->toJson($this->getUserModel()->updateUser($userId, is_array($user) ? $user : array()))
+        );
+    }
+
     public function addUser($user) {
         $this->isAuthenticated(
             function($payload) use ($user) {
