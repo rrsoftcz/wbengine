@@ -330,6 +330,11 @@ Class Site implements ComponentParentInterface
     public function setHtmlTitle($htmlTitle)
     {
         $this->html_title = $htmlTitle;
+        // The template reads the title from the variables stored by initialize(): keep them in
+        // step, or an error page (404, 401...), whose title is set after that, would have none.
+        if (null !== $this->_parent) {
+            $this->setVariable('title', $htmlTitle, 'meta');
+        }
     }
 
 
