@@ -7,31 +7,6 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
-### Compatibility
-
-- Tested on MySQL 8.4, MariaDB 10.11 and MariaDB 11.4: the whole suite passes on all
-  three, including the box lookup that uses `JSON_SEARCH` (new `BoxLookupTest`), and CI
-  runs MariaDB too. The skeleton's seeded schema loads on MariaDB 11.4.
-- Tested with Nginx and PHP-FPM (the skeleton on Nginx 1.30, PHP 8.4 FPM and MariaDB
-  11.4): pages, trailing slash redirects, login, roles, refresh rotation and theft
-  detection, the page cache with ETag, and the login rate limit all behave as on Apache.
-  An Nginx configuration equivalent to the skeleton's `.htaccess` is in the skeleton
-  (`etc/nginx/wbengine.conf`).
-
-### Added
-
-- `PageCache::setHeaderProvider()` (the command line SAPI keeps no response headers,
-  so tests supply them). The store rules of the page cache have automated tests,
-  each one proven by mutation: disabling a rule makes exactly its test fail.
-
-### Changed
-
-- `PageCache` sets its `X-WBengine-Cache` header only when headers can still be sent.
-- `Url` and `Http::getRequestMethod()` read `$_SERVER` instead of
-  `filter_input(INPUT_SERVER, ...)`, which is not available in every SAPI and
-  configuration (it always returns null on the command line). Behaviour is unchanged
-  where it worked; it is now also testable.
-
 ## [3.1.0] - 2026-10-23
 
 ### Breaking changes
@@ -76,10 +51,22 @@ documented here, see the git tags.
   `ac_active` and `user_ip` cannot be written through the API.
 - The user API no longer returns the password hash or `ac_key`.
 
+### Compatibility
+
+- Tested on MySQL 8.4, MariaDB 10.11 and MariaDB 11.4: the whole suite passes on all
+  three, including the box lookup that uses `JSON_SEARCH` (new `BoxLookupTest`), and CI
+  runs MariaDB too. The skeleton's seeded schema loads on MariaDB 11.4.
+- Tested with Nginx and PHP-FPM (the skeleton on Nginx 1.30, PHP 8.4 FPM and MariaDB
+  11.4): pages, trailing slash redirects, login, roles, refresh rotation and theft
+  detection, the page cache with ETag, and the login rate limit all behave as on Apache.
+  An Nginx configuration equivalent to the skeleton's `.htaccess` is in the skeleton
+  (`etc/nginx/wbengine.conf`).
+
+
 ### Tests found real bugs
 
 Automated tests for the API controllers, the session and the page cache decision
-(426 tests now, green on PHP 8.3, 8.4 and 8.5) found and fixed:
+(463 tests now, green on PHP 8.3, 8.4 and 8.5) found and fixed:
 
 - The refresh endpoint started a PHP session after all (a `PHPSESSID` cookie and
   session queries on a stateless endpoint). It now builds the access token straight
@@ -220,6 +207,9 @@ Automated tests for the API controllers, the session and the page cache decision
 - `Api\User::updateUser()`, which `PATCH /api/users/patch/{id}` had always
   routed to without it existing.
 - `Auth\Exception\AuthException::ERROR_MISSING_KEY`.
+- `PageCache::setHeaderProvider()` (the command line SAPI keeps no response headers,
+  so tests supply them). The store rules of the page cache have automated tests,
+  each one proven by mutation: disabling a rule makes exactly its test fail.
 
 ### Removed
 
@@ -254,6 +244,11 @@ Automated tests for the API controllers, the session and the page cache decision
 - The error handler no longer throws for deprecations and notices, and honors
   the `@` operator.
 - `username` defaults to the e-mail when a user is created through the API.
+- `PageCache` sets its `X-WBengine-Cache` header only when headers can still be sent.
+- `Url` and `Http::getRequestMethod()` read `$_SERVER` instead of
+  `filter_input(INPUT_SERVER, ...)`, which is not available in every SAPI and
+  configuration (it always returns null on the command line). Behaviour is unchanged
+  where it worked; it is now also testable.
 
 ### Fixed
 
