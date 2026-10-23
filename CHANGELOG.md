@@ -7,6 +7,8 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-24
+
 ### Internationalisation
 
 - Database content can be translated: site titles and meta tags, menu names and
