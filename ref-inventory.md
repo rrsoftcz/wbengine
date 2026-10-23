@@ -94,7 +94,8 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 * Session behaviour (lazy row, deferred write, a destroyed session stays dead, regeneration, expiry, class-restricted unserialize), the API controllers (role matrix, refresh lifecycle, identify, logout everywhere, cache flush) and the page cache login decision have automated tests; the page cache end to end was verified by hand against the running skeleton.
 * Automated: a PHPUnit suite (91 tests, unit and integration against MySQL 8.4) runs in Docker with `composer test`.
 * PHP 8.3, 8.4 and 8.5: the linter and the whole suite are clean on all three (checked in Docker), and CI runs the same matrix on every push.
-* Not covered: load testing, MariaDB, Nginx.
+* MySQL 8.4, MariaDB 10.11 and 11.4: the whole suite passes on each (CI runs them). The skeleton was run end to end on Nginx 1.30 with PHP-FPM and MariaDB 11.4 (pages, redirects, login, roles, refresh rotation and theft detection, page cache and ETag, rate limit) and on Apache with MySQL 8.4.
+* Not covered: load testing, other web servers (Caddy, LiteSpeed), Windows.
 
 ## Recommended next steps
 

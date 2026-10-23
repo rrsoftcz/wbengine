@@ -7,6 +7,24 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Compatibility
+
+- Tested on MySQL 8.4, MariaDB 10.11 and MariaDB 11.4: the whole suite passes on all
+  three, including the box lookup that uses `JSON_SEARCH` (new `BoxLookupTest`), and CI
+  runs MariaDB too. The skeleton's seeded schema loads on MariaDB 11.4.
+- Tested with Nginx and PHP-FPM (the skeleton on Nginx 1.30, PHP 8.4 FPM and MariaDB
+  11.4): pages, trailing slash redirects, login, roles, refresh rotation and theft
+  detection, the page cache with ETag, and the login rate limit all behave as on Apache.
+  An Nginx configuration equivalent to the skeleton's `.htaccess` is in the skeleton
+  (`etc/nginx/wbengine.conf`).
+
+### Changed
+
+- `Url` and `Http::getRequestMethod()` read `$_SERVER` instead of
+  `filter_input(INPUT_SERVER, ...)`, which is not available in every SAPI and
+  configuration (it always returns null on the command line). Behaviour is unchanged
+  where it worked; it is now also testable.
+
 ## [3.1.0] - 2026-10-23
 
 ### Breaking changes

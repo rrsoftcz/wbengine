@@ -71,6 +71,18 @@ class RequestHelpersTest extends TestCase
         $this->assertSame('&lt;b&gt;', Http::getCookie('probe'));
     }
 
+    public function testRequestMethodIsReadFromServerNotFromFilterInput(): void
+    {
+        // filter_input(INPUT_SERVER, ...) returns null under FastCGI and in the CLI.
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+
+        $this->assertTrue(Http::getRequestMethod(Http::TYPE_POST));
+        $this->assertFalse(Http::getRequestMethod(Http::TYPE_GET));
+
+        unset($_SERVER['REQUEST_METHOD']);
+        $this->assertFalse(Http::getRequestMethod(Http::TYPE_POST));
+    }
+
     public function testARequestWithoutAUserAgentOrAddressDoesNotWarn(): void
     {
         $this->assertSame('', Utils::getUserAgent());

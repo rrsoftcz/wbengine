@@ -70,6 +70,21 @@ CREATE TABLE IF NOT EXISTS `cms_refresh_tokens` (
   KEY `expires_at` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `cms_boxes` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL DEFAULT '',
+  `module` varchar(100) NOT NULL DEFAULT '',
+  `method` varchar(100) NOT NULL DEFAULT '',
+  `section_id` int unsigned NOT NULL DEFAULT '0',
+  `static` tinyint NOT NULL DEFAULT '0',
+  `shared` tinyint NOT NULL DEFAULT '0',
+  `device_min` int NOT NULL DEFAULT '0',
+  `device_strict` tinyint NOT NULL DEFAULT '0',
+  `order` int NOT NULL DEFAULT '0',
+  `sites` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `cms_sessions` (
   `session_id` varchar(128) NOT NULL,
   `user_id` int NOT NULL DEFAULT '0',

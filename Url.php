@@ -116,7 +116,8 @@
             $this->_post = filter_input_array(INPUT_POST);
             $this->_cookie = filter_input_array(INPUT_COOKIE);
 
-            $_requestUri = filter_input(INPUT_SERVER, "REQUEST_URI");
+            // Not filter_input(INPUT_SERVER, ...): it returns null under FastCGI (Nginx with PHP-FPM).
+            $_requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '');
 
             // try to store parameters from given uri request
             if (strstr($_requestUri, "?")) {
