@@ -329,9 +329,29 @@ Numbers and dates use built-in tables (no `intl` extension needed), for English,
 
 The page cache key includes the locale, so a page cached in English is never served to a Czech visitor of the same URL, and the ETags differ per language (verified in the running skeleton). A `/cs/blog/` request and a Czech visitor of `/blog/` share one copy.
 
-### Not translated yet
+### Translating database content
 
-Content that comes from the database (articles, menu names, site titles) is not translated: only the user interface is. The error box template (`error.tpl`) is not translated either.
+Site titles and meta tags, menu names and articles are translated with one table per kind, keyed by the item and the locale. The default language is the content itself (the original columns), so a translation exists only for the other locales and a missing one falls back to the default, field by field: a Czech article with only a translated title still shows the default intro and body.
+
+| Kind | Table | Translatable fields |
+|------|-------|---------------------|
+| `site` | `cms_site_translations` | `title`, `html_title`, `html_description`, `html_keywords` |
+| `menu` | `cms_menu_translations` | `name`, `description` |
+| `article` | `cms_article_translations` | `title`, `introtext`, `bodytext` |
+
+The overlay is applied in the models (`SiteModel::loadSiteData`, `getSiteMenu`, `ArticleModel::getArticleRow`), so templates and boxes need no change. Links, ordering, visibility and everything else stay as in the default language. The small tables (sites, menu) are read once per locale and held in the data cache; articles are read by id, so large bodies never fill the cache. In the default language, and when `i18n` is off, no extra query is made. If the translation tables do not exist yet (an upgraded database), the application logs it once and keeps working in the default language; create them with the migration in the skeleton (`schemas/migrations/005_content_translations.sql`).
+
+Editors manage translations through the API (role `editor` or higher):
+
+| Method and path | Purpose |
+|-----------------|---------|
+| `GET /api/translations/{kind}/{id}` | all translations of one item |
+| `PUT /api/translations/{kind}/{id}/{locale}` | store the fields given in the JSON body; fields not given stay, `null` or `""` falls back to the default |
+| `DELETE /api/translations/{kind}/{id}/{locale}` | show the item in the default language again |
+
+Unknown kinds and missing items answer `404`; an unsupported locale, the default locale, an unknown field, a non-text value or a text longer than the column answer `400`. Writing flushes the cache. Pages stored by the page cache are keyed by locale, so each language gets its own translated copy.
+
+If you write the tables directly in SQL, call `POST /api/cache/flush` afterwards, as for any other direct edit. The error box template (`error.tpl`) is not translated.
 
 ## Database layer
 
@@ -397,6 +417,9 @@ Modules included in 3.1:
 | `POST /api/auth/logout` | revoke this device's refresh token and clear the cookie | cookie |
 | `POST /api/auth/logout/all` | revoke the refresh tokens of every device | token |
 | `POST /api/cache/flush` | drop the cached data and pages (after editing the database directly) | admin |
+| `GET /api/translations/{kind}/{id}` | translations of a site, menu item or article | editor |
+| `PUT /api/translations/{kind}/{id}/{locale}` | create or change a translation | editor |
+| `DELETE /api/translations/{kind}/{id}/{locale}` | remove a translation | editor |
 | `POST /api/auth/jwt/identify` | check that a bearer token belongs to the `user_id` in the body | token |
 | `GET /api/users` | list users (never returns the password hash) | admin |
 | `GET /api/users/{id}` | read a user | admin, or the user themselves |
