@@ -33,7 +33,7 @@ A ready to run example application lives in the companion project `wbengine-skel
 
 ## Requirements
 
-* PHP 8.3 or newer. PHP 8.4 is the development target and is covered by the checks below.
+* PHP 8.3 or newer. PHP 8.4 is the development target. 8.3, 8.4 and 8.5 are tested in CI.
 * Extensions: `mysqli`, `json`, `mbstring`
 * MySQL 8 or MariaDB 10.6+ (box selection uses `JSON_SEARCH`)
 * Composer packages: `smarty/smarty` 5, `texy/texy` 3, `firebase/php-jwt` 7
@@ -346,6 +346,8 @@ docker compose run --rm php composer install
 docker compose run --rm php composer test          # unit and integration suites
 docker compose run --rm php composer test:unit     # no database needed
 ```
+
+Use `PHP_VERSION=8.3 docker compose build` (and `docker compose run --rm php composer test`) to test another PHP version; 8.3, 8.4 and 8.5 are supported and run in CI on every push (`composer lint` checks the syntax of every file).
 
 The integration tests create their tables from `tests/schema.sql`. They are skipped when the database is not reachable. For new installations use the `utf8mb4` connection charset: the older `utf8` alias is three bytes per character and cannot carry emoji.
 

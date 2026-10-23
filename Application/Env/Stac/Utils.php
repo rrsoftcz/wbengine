@@ -174,7 +174,7 @@ class Utils
 
     static function resolveEnvironmentByHostname($hostname, $keyword){
         if(preg_match("/{$keyword}/", $hostname, $mathes)){
-            return (boolean)$mathes;
+            return (bool) $mathes;
         }
     }
 

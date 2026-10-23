@@ -538,7 +538,7 @@
          */
         public function cleanVarsAsDefault($val = TRUE)
         {
-            $this->_cleanVarAsDefault = (boolean)$val;
+            $this->_cleanVarAsDefault = (bool) $val;
         }
 
 

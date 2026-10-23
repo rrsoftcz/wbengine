@@ -267,7 +267,7 @@ Class Site implements ComponentParentInterface
      */
     public function getIsUrlStrict()
     {
-        return (boolean)$this->strict;
+        return (bool) $this->strict;
     }
 
     /**

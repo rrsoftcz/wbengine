@@ -92,13 +92,14 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 * Security tests against the running stack: SQL payloads in URL and header, API injection attempts, token tampering, `alg=none`, forged old key, mass assignment, login and logout, session id regeneration and replay of the old id, legacy MD5 login with a narrow column, hash upgrade after widening, special character passwords through the web form and the API.
 * Session behaviour (lazy row, deferred write, logout leaves no row, old id replay fails) and cache invalidation were verified by hand against the running skeleton. There are no automated tests for `Session` yet.
 * Automated: a PHPUnit suite (91 tests, unit and integration against MySQL 8.4) runs in Docker with `composer test`.
-* Not covered: load testing, MariaDB, Nginx, PHP 8.3 and 8.5, CI.
+* PHP 8.3, 8.4 and 8.5: the linter and the whole suite are clean on all three (checked in Docker), and CI runs the same matrix on every push.
+* Not covered: load testing, MariaDB, Nginx.
 
 ## Recommended next steps
 
 1. Refresh token revocation.
 2. Per-page control of the page cache (an allow or deny list) and a `Vary` option for device or language.
-3. Add CI that runs `composer test`, and cover `Url`, `Site`, `Session` and `Box\Auth`.
+3. Cover `Url`, `Site`, `Session`, `Box\Auth` and the page cache with automated tests (all were verified by hand).
 4. Decide about `Locale` and `Registry`.
 5. Template compiler with automatic escaping and fragment caching, keeping Smarty as an adapter.
 6. Tag a release (suggested 3.1.0) so the skeleton can require it instead of a development branch.
