@@ -51,6 +51,24 @@ CREATE TABLE IF NOT EXISTS `cms_sites` (
   KEY `link` (`link`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `cms_refresh_tokens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned NOT NULL,
+  `family_id` char(32) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `expires_at` int unsigned NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  `used_at` int unsigned DEFAULT NULL,
+  `revoked_at` int unsigned DEFAULT NULL,
+  `ip` varchar(45) DEFAULT NULL,
+  `user_agent` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `token_hash` (`token_hash`),
+  KEY `family_id` (`family_id`),
+  KEY `user_id` (`user_id`),
+  KEY `expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `cms_sessions` (
   `session_id` varchar(128) NOT NULL,
   `user_id` int NOT NULL DEFAULT '0',

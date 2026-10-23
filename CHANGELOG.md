@@ -24,6 +24,19 @@ documented here, see the git tags.
   array.
 - `User::login()` no longer hashes the login and password with MD5 itself, and
   `User\Model::authenticate()` looks the user up by `email`.
+- Refresh tokens are now stored on the server (table `cms_refresh_tokens`, see
+  `schemas/migrations/003-add-refresh-tokens.sql` in the skeleton application).
+  Without the table logging in still works but `/api/auth/jwt/revalidate`
+  answers 401. The old refresh JWT cookie is not accepted any more, clients have to
+  log in again once.
+- `POST /api/auth/jwt/revalidate` no longer depends on a PHP session, only on the
+  refresh cookie, and it rotates the token. `POST /api/auth/jwt/identify` no longer
+  depends on a PHP session either: it checks that the bearer token belongs to the
+  `user_id` in the body.
+- New defaults: access token 900 seconds (was 3600), refresh token 7 days (was 3600),
+  cookie path `/api/auth/` (was `/`), cookie domain empty, meaning the host that set
+  it (was `localhost`, which browsers reject on any real host), `SameSite=Strict`,
+  `Secure` when the request is HTTPS (was always on).
 - The REST API now authorizes by role. Add the column
   `ALTER TABLE cms_users ADD COLUMN role varchar(20) NOT NULL DEFAULT 'user';`
   and promote your administrators (`UPDATE cms_users SET role = 'admin' WHERE ...`),
@@ -35,6 +48,19 @@ documented here, see the git tags.
   rejected with 400. `user_type`, `group_id`, `ac_status`, `ac_key`,
   `ac_active` and `user_ip` cannot be written through the API.
 - The user API no longer returns the password hash or `ac_key`.
+
+### Refresh tokens
+
+- Server side refresh tokens (`Api\Auth\RefreshTokens`): an opaque random value, only
+  its SHA-256 hash is stored. Every refresh rotates the token. Presenting a token
+  that was already used revokes its whole family (a stolen copy and the real owner
+  are both logged out); a 10 second grace period covers two browser tabs refreshing
+  at once, and exactly one of several simultaneous requests wins (tested with six
+  parallel processes). Logout revokes the device, the new
+  `POST /api/auth/logout/all` revokes every device of the user, a password change
+  and deleting a user revoke all their tokens.
+- `Api::setCookieSameSite()`, `Api::getRefreshTokenTtl()`, `Db::forgetConnection()`
+  (for forked workers), `Http::TOO_MANY_REQUESTS`.
 
 ### Rate limiting
 

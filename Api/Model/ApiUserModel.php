@@ -20,6 +20,7 @@ use Wbengine\Model\ModelAbstract;
 use Wbengine\Db;
 use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Db\Exception\DbException;
+use Wbengine\Api\Auth\RefreshTokens;
 use Wbengine\User\Password;
 use Wbengine\User\Role;
 
@@ -131,6 +132,20 @@ class ApiUserModel extends ModelAbstract
     }
 
 
+    /**
+     * Revoke every refresh token of a user. A missing token table must not break the
+     * user operation itself.
+     */
+    private function _revokeRefreshTokens($userId)
+    {
+        try {
+            (new RefreshTokens())->revokeAllForUser($userId);
+        } catch (\Throwable $e) {
+            error_log(__METHOD__ . ': ' . $e->getMessage());
+        }
+    }
+
+
     public function getUserById($userId)
     {
         $userId = $this->_checkId($userId);
@@ -158,6 +173,7 @@ class ApiUserModel extends ModelAbstract
         $this->_assertNotLastAdmin($userId);
 
         Db::query(sprintf("DELETE FROM %s WHERE `user_id` = ? LIMIT 1;", S_TABLE_USERS), array($userId));
+        $this->_revokeRefreshTokens($userId);
         $deleted = (bool) Db::getAffected();
 
         return array(
@@ -177,7 +193,12 @@ class ApiUserModel extends ModelAbstract
             $this->_assertNotLastAdmin($userId);
         }
 
-        return array("updated" => Db::update(S_TABLE_USERS, $data, array('user_id' => $userId)));
+        $updated = Db::update(S_TABLE_USERS, $data, array('user_id' => $userId));
+        if (array_key_exists('password', $data)) {
+            // A new password logs the user out of every device.
+            $this->_revokeRefreshTokens($userId);
+        }
+        return array("updated" => $updated);
     }
 
 

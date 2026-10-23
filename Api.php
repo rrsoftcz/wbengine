@@ -42,12 +42,17 @@ class Api
 
     private $_allow_credential_header = false;
     private $_found = array();
-    private $_token_expiration = 3600;
-    private $_cookie_expiration = 3600;
-    private $_cookie_domain = "localhost";
-    private $_cookie_url = "/";
+    // Short lived access token, long lived refresh token (rotated on every use).
+    private $_token_expiration = 900;
+    private $_cookie_expiration = 604800;
+    // Empty domain: the cookie belongs to the exact host that set it.
+    private $_cookie_domain = "";
+    private $_cookie_url = "/api/auth/";
     private $_cookie_http_only = true;
-    private $_cookie_secured = true;
+    // null: Secure when the request came over HTTPS.
+    private $_cookie_secured = null;
+    // Strict: the refresh cookie is never sent on a cross-site request (CSRF).
+    private $_cookie_same_site = "Strict";
 
 
 
@@ -237,7 +242,32 @@ class Api
     }
 
     public function getCookieIsSecured(){
-        return $this->_cookie_secured;
+        return (null === $this->_cookie_secured)
+            ? (!empty($_SERVER['HTTPS']) && 'off' !== $_SERVER['HTTPS'])
+            : (bool) $this->_cookie_secured;
+    }
+
+    /**
+     * Strict (default), Lax or None. None also needs Secure and is only for an API on
+     * another site than the client, which weakens the CSRF protection of the cookie.
+     */
+    public function setCookieSameSite(string $value){
+        $value = ucfirst(strtolower($value));
+        if (!in_array($value, array('Strict', 'Lax', 'None'), true)) {
+            throw new ApiException('The SameSite attribute must be Strict, Lax or None.');
+        }
+        $this->_cookie_same_site = $value;
+    }
+
+    public function getCookieSameSite(){
+        return $this->_cookie_same_site;
+    }
+
+    /**
+     * Lifetime of a refresh token in seconds.
+     */
+    public function getRefreshTokenTtl(){
+        return (int) $this->_cookie_expiration;
     }
 
     public function getDefaultContentSecurityPolicy(){

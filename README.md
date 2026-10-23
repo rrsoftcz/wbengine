@@ -239,7 +239,10 @@ Modules included in 3.1:
 | Method and path | Purpose | Auth |
 |-----------------|---------|------|
 | `POST /api/auth/login` | exchange e-mail and password for a JWT | no |
-| `POST /api/auth/logout`, `/jwt/identify`, `/jwt/revalidate` | session and token handling | cookie or token |
+| `POST /api/auth/jwt/revalidate` | exchange the refresh cookie for a new access token (rotates the refresh token) | refresh cookie |
+| `POST /api/auth/logout` | revoke this device's refresh token and clear the cookie | cookie |
+| `POST /api/auth/logout/all` | revoke the refresh tokens of every device | token |
+| `POST /api/auth/jwt/identify` | check that a bearer token belongs to the `user_id` in the body | token |
 | `GET /api/users` | list users (never returns the password hash) | admin |
 | `GET /api/users/{id}` | read a user | admin, or the user themselves |
 | `POST /api/users/create` | create a user (e-mail, password, optional profile fields and role) | admin |
@@ -269,6 +272,7 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 * **Web login** (`Box\Auth`) uses a CSRF token, a failed attempt counter and reCAPTCHA after repeated failures. The password is read untouched from the request (`Http::PostRaw`), so special characters work.
 * **Login rate limiting** covers the web form, the AJAX login and the API login. Within 15 minutes a client may fail 5 times for one account, 20 times over all accounts, and an account may fail 25 times from all addresses together; after that the answer is `429` with `Retry-After` (an error message on the web form). The strict limit is per IP and account pair, so an attacker cannot lock the real owner out from another address. A successful login clears the pair and account counters, not the IP counter. Counters are files in the temp directory (set `rateLimit.login.dir` to a shared directory with several servers). Behind a reverse proxy or load balancer the limiter sees the proxy's address unless the web server restores the real client IP (`mod_remoteip`, `real_ip_header`), otherwise all clients share one IP counter.
 * **Sessions** are stored in `cms_sessions`, bound to the client IP and a hash of the user agent. The session cookie is `HttpOnly` and `SameSite=Lax` (and `Secure` over HTTPS), strict mode is on, and the session id is regenerated on login to prevent fixation. Stored session data is unserialized with `allowed_classes` limited to `stdClass`.
+* **Refresh tokens** keep a client logged in without a long lived access token. Login returns a short lived access token (15 minutes by default) and sets the `refresh_token` cookie (`HttpOnly`, `SameSite=Strict`, scoped to `/api/auth/`, `Secure` over HTTPS, 7 days by default; `Api::setJwtTokenExpiration()`, `setCookieExpiration()`, `setCookieDomain()`, `setCookieSameSite()` change this). The cookie holds an opaque random token and the database stores only its SHA-256 hash (table `cms_refresh_tokens`). Each `POST /api/auth/jwt/revalidate` returns a new access token and replaces the cookie with a new token; the old one works no more. If an old token is presented again after a 10 second grace period it was copied, so the whole token family is revoked and both the thief and the owner must log in again. Logout revokes the device, `POST /api/auth/logout/all` every device, and a password change or deleting a user revokes all their tokens. An already issued access token stays valid until it expires, which is why it is short lived. Refresh is cookie based, so the API must be on the same site as the client (see the deployment notes above).
 * **JWT** uses HS256 with two secrets (access and refresh). The secrets are read from the configuration or the environment and are never stored in the source. Authentication fails closed if a secret is missing or shorter than 32 characters.
 * Access control for pages is the `acl` column of `cms_sites`: a value of `1` or more requires a logged in user.
 
@@ -361,6 +365,7 @@ The integration tests create their tables from `tests/schema.sql`. They are skip
 * Replace string built SQL with bound parameters. `Db::query()` and the fetch helpers accept an array of parameters. `Db::createUpdateQuery()` is removed, use `Db::update()`.
 * `SiteModel::getUrlId()` is replaced by `getUrlCandidates()`, which returns an array.
 * The `/api/sections` routes now require an admin token, and users and sections accept only whitelisted fields.
+* Create the refresh token table (`schemas/migrations/003-add-refresh-tokens.sql` in the skeleton). Without it logging in still works, but refreshing answers 401. Clients must log in again once, the old refresh cookie is not accepted. Check your cookie settings: the defaults changed (access token 15 minutes, refresh token 7 days, cookie path `/api/auth/`, `SameSite=Strict`).
 * Add `cms_users.role` (`ALTER TABLE cms_users ADD COLUMN role varchar(20) NOT NULL DEFAULT 'user';`) and promote your administrators, otherwise privileged API calls answer 403.
 * API routes accept URLs with or without a trailing slash. If your `.htaccess` adds a trailing slash with a 301 redirect, exclude `/api`, because a redirect turns a POST into a GET.
 
