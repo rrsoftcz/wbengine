@@ -18,6 +18,7 @@ namespace Wbengine\Site;
 use Wbengine\Application\ApplicationException;
 use Wbengine\Application\Env\Stac\Utils;
 use Wbengine\Cache;
+use Wbengine\I18n\ContentTranslations;
 use Wbengine\Db;
 use Wbengine\Session;
 use Wbengine\Site;
@@ -96,7 +97,7 @@ class SiteModel extends ModelAbstract
         $candidates = $this->getUrlCandidates($site->getUrl(), $site->isUrlStrict());
 
         if (Cache::isEnabled()) {
-            return $this->_findVisibleSite($candidates, (string)$site->getUrl());
+            return ContentTranslations::overlayRow('site', $this->_findVisibleSite($candidates, (string)$site->getUrl()));
         }
 
         $sql = sprintf("SELECT * FROM %s AS site
@@ -108,7 +109,7 @@ class SiteModel extends ModelAbstract
             , S_TABLE_SITES
             , implode(',', array_fill(0, count($candidates), '?'))
         );
-        return Db::fetchAssoc($sql, array_merge($candidates, array((string)$site->getUrl())));
+        return ContentTranslations::overlayRow('site', Db::fetchAssoc($sql, array_merge($candidates, array((string)$site->getUrl()))));
     }
 
 
@@ -199,9 +200,12 @@ class SiteModel extends ModelAbstract
 
         $type = ($site->getSiteParentId()) ? (int)$site->getSiteParentId() : 1;
 
-        return Cache::remember('menu:' . $type, function () use ($sql, $type) {
+        $menu = Cache::remember('menu:' . $type, function () use ($sql, $type) {
             return Db::fetchAllAssoc($sql, array($type));
         }, null, true);
+
+        // The cache holds the default language, the names are translated per request.
+        return ContentTranslations::overlayRows('menu', (array) $menu);
     }
 
 

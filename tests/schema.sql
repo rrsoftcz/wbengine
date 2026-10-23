@@ -85,6 +85,58 @@ CREATE TABLE IF NOT EXISTS `cms_boxes` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `cms_menu` (
+  `menu_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `site_id` int unsigned NOT NULL,
+  `type` tinyint DEFAULT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` varchar(50) DEFAULT NULL,
+  `visible` tinyint unsigned NOT NULL DEFAULT '1',
+  `order` tinyint DEFAULT NULL,
+  `parent` int DEFAULT '0',
+  PRIMARY KEY (`menu_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cms_articles` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `site_id` int NOT NULL DEFAULT '0',
+  `views` int DEFAULT '0',
+  `title` varchar(255) DEFAULT NULL,
+  `introtext` text,
+  `bodytext` text,
+  `published` int NOT NULL DEFAULT '0',
+  `author` varchar(255) DEFAULT NULL,
+  `source` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cms_site_translations` (
+  `site_id` int unsigned NOT NULL,
+  `locale` varchar(10) NOT NULL,
+  `title` varchar(120) DEFAULT NULL,
+  `html_title` varchar(120) DEFAULT NULL,
+  `html_description` varchar(170) DEFAULT NULL,
+  `html_keywords` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`site_id`, `locale`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cms_menu_translations` (
+  `menu_id` int unsigned NOT NULL,
+  `locale` varchar(10) NOT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `description` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`menu_id`, `locale`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cms_article_translations` (
+  `article_id` int unsigned NOT NULL,
+  `locale` varchar(10) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `introtext` text,
+  `bodytext` text,
+  PRIMARY KEY (`article_id`, `locale`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `cms_sessions` (
   `session_id` varchar(128) NOT NULL,
   `user_id` int NOT NULL DEFAULT '0',
