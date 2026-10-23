@@ -49,6 +49,36 @@ documented here, see the git tags.
   `ac_active` and `user_ip` cannot be written through the API.
 - The user API no longer returns the password hash or `ac_key`.
 
+### Template engine
+
+- A native template engine, `Renderer\Adapter\NativeRenderer` (`Template\Engine`,
+  `Template\Compiler`, `Template\ExpressionParser`, `Template\Runtime`). Select it
+  with `"renderer": { "adapterName": "NativeRenderer" }`; Smarty stays the default
+  and supported. Templates are compiled once to plain PHP and included, so with
+  opcache a render is just running compiled code.
+  - Output is HTML-escaped by default (`{$value|raw}` for trusted HTML). A
+    template written with explicit `|escape` and `|raw` works in both engines.
+    `renderer.autoEscape: false` keeps the Smarty behaviour for old templates.
+  - A subset of the Smarty syntax: `{$a.b}`, `{$o->p}`, `{$o->m()}`, modifiers,
+    `{if}`/`{elseif}`/`{else}`, `{foreach}` with key and `{foreachelse}`,
+    `{include}`, `{set}`, `{literal}`, comments. Lines break like Smarty after control
+    tags. New: `{cache 'key' ttl=60}...{/cache}` fragment caching on top of
+    `Cache`. Braces that do not start a tag (inline CSS and JavaScript) are plain
+    text, no `{literal}` needed.
+  - Safe by construction: expressions use a fixed grammar, so a template cannot call
+    functions or run PHP; PHP tags in template text and template syntax in data are
+    never executed; template names cannot leave the template directories; a missing
+    variable, key or property is empty and never a warning.
+  - Verified: 43 templates render byte for byte the same as Smarty, all skeleton pages
+    are identical with a settings change only, and a stored XSS probe is rendered
+    live by Smarty and as harmless text by the native engine. Measured: about the same
+    speed as Smarty for repeated renders (11 against 9 microseconds for the
+    skeleton layout) and about 2 ms less overhead on a cold request (2.3 against 4.5 ms
+    above a bare PHP process), because Smarty's classes are not loaded.
+- The bundled templates (`Login.tpl`, `Article.tpl`, `error.tpl`) now escape data
+  explicitly and mark trusted HTML with `|raw`. `Login.tpl` no longer writes a
+  password back into the form.
+
 ### Refresh tokens
 
 - Server side refresh tokens (`Api\Auth\RefreshTokens`): an opaque random value, only
@@ -172,6 +202,8 @@ documented here, see the git tags.
 
 ### Fixed
 
+- Deleting a user through the API reported `success: false` although the user was
+  deleted (the token revocation ran before the affected row count was read).
 - PHP 8.5 deprecations: the `(boolean)` cast spelling and a `case x;` with a
   semicolon. The suite and the linter are clean on PHP 8.3, 8.4 and 8.5.
 - `Url\Exception\RunetimeException.php` and `Formater\Exception\RunetimeException.php`

@@ -103,6 +103,7 @@ class Renderer extends Renderer\Adapter
         );
 
         $this->setCompileCheck(Config::getRendererCompileCheck());
+        $this->setAutoEscape(Config::getRendererAutoEscape());
         $this->disableCache();
     }
 

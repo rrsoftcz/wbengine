@@ -173,8 +173,9 @@ class ApiUserModel extends ModelAbstract
         $this->_assertNotLastAdmin($userId);
 
         Db::query(sprintf("DELETE FROM %s WHERE `user_id` = ? LIMIT 1;", S_TABLE_USERS), array($userId));
-        $this->_revokeRefreshTokens($userId);
+        // Read the row count first: revoking the tokens runs another statement.
         $deleted = (bool) Db::getAffected();
+        $this->_revokeRefreshTokens($userId);
 
         return array(
             "success" => $deleted,

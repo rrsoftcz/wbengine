@@ -207,6 +207,17 @@ class Config
         return (is_object($renderer) && isset($renderer->compileCheck)) ? (bool) $renderer->compileCheck : true;
     }
 
+    /**
+     * Whether the native renderer HTML-escapes output by default. Defaults to true.
+     * Set "renderer.autoEscape": false for old templates that print raw HTML as {$value}.
+     * @return bool
+     */
+    public static function getRendererAutoEscape()
+    {
+        $renderer = (is_object(self::$config) && isset(self::$config->renderer)) ? self::$config->renderer : null;
+        return (is_object($renderer) && isset($renderer->autoEscape)) ? (bool) $renderer->autoEscape : true;
+    }
+
     public static function getRendererCompiledDir()
     {
         return self::_getProperty('renderer','compiledDir');
