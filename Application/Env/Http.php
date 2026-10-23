@@ -139,7 +139,8 @@ abstract class Http
 
 
     public static function getRequestMethod($method){
-        return ((filter_input(INPUT_SERVER, 'REQUEST_METHOD') === $method)) ? true : false;
+        // Not filter_input(INPUT_SERVER, ...): it returns null under FastCGI (Nginx with PHP-FPM).
+        return (($_SERVER['REQUEST_METHOD'] ?? null) === $method);
     }
 
     public static function Post($name = null){

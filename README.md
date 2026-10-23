@@ -36,7 +36,8 @@ A ready to run example application lives in the companion project `wbengine-skel
 
 * PHP 8.3 or newer. PHP 8.4 is the development target. 8.3, 8.4 and 8.5 are tested in CI.
 * Extensions: `mysqli`, `json`, `mbstring`
-* MySQL 8 or MariaDB 10.6+ (box selection uses `JSON_SEARCH`)
+* MySQL 8 or MariaDB 10.6+ (box selection uses `JSON_SEARCH`). Tested on MySQL 8.4, MariaDB 10.11 and MariaDB 11.4.
+* A web server that sends every request that is not a file to `index.php`: Apache with `mod_rewrite` or Nginx with PHP-FPM (both tested, the skeleton has the configuration for each)
 * Composer packages: `smarty/smarty` 5, `texy/texy` 3, `firebase/php-jwt` 7
 
 PHP has no long term support releases. 8.4 receives security fixes until the end of 2028 and 8.3 until the end of 2027, which is why 8.3 is the minimum.

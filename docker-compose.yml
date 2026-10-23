@@ -1,4 +1,4 @@
-# Test environment: PHP 8.4 CLI and MySQL 8.4.
+# Test environment: PHP 8.4 CLI and MySQL 8.4 (DB_IMAGE=mariadb:11.4 and PHP_VERSION=8.3 pick others).
 #
 #   docker compose run --rm php composer install
 #   docker compose run --rm php composer test
@@ -20,7 +20,7 @@ services:
             db:
                 condition: service_healthy
     db:
-        image: mysql:8.4
+        image: ${DB_IMAGE:-mysql:8.4}
         environment:
             MYSQL_ROOT_PASSWORD: root_password
             MYSQL_DATABASE: wbengine_test
@@ -29,7 +29,8 @@ services:
         volumes:
             - ./tests/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
         healthcheck:
-            test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uwb_test", "-pwb_test"]
+            # MariaDB 11 renamed the client programs, so try both names.
+            test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uwb_test -pwb_test || mariadb-admin ping -h 127.0.0.1 -uwb_test -pwb_test"]
             interval: 3s
             timeout: 3s
             retries: 30
