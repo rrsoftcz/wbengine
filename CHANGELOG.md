@@ -18,8 +18,15 @@ documented here, see the git tags.
   An Nginx configuration equivalent to the skeleton's `.htaccess` is in the skeleton
   (`etc/nginx/wbengine.conf`).
 
+### Added
+
+- `PageCache::setHeaderProvider()` (the command line SAPI keeps no response headers,
+  so tests supply them). The store rules of the page cache have automated tests,
+  each one proven by mutation: disabling a rule makes exactly its test fail.
+
 ### Changed
 
+- `PageCache` sets its `X-WBengine-Cache` header only when headers can still be sent.
 - `Url` and `Http::getRequestMethod()` read `$_SERVER` instead of
   `filter_input(INPUT_SERVER, ...)`, which is not available in every SAPI and
   configuration (it always returns null on the command line). Behaviour is unchanged
