@@ -351,7 +351,7 @@ Editors manage translations through the API (role `editor` or higher):
 
 Unknown kinds and missing items answer `404`; an unsupported locale, the default locale, an unknown field, a non-text value or a text longer than the column answer `400`. Writing flushes the cache. Pages stored by the page cache are keyed by locale, so each language gets its own translated copy.
 
-If you write the tables directly in SQL, call `POST /api/cache/flush` afterwards, as for any other direct edit. The error box template (`error.tpl`) is not translated.
+If you write the tables directly in SQL, call `POST /api/cache/flush` afterwards, as for any other direct edit.
 
 ## Database layer
 
@@ -551,4 +551,4 @@ The integration tests create their tables from `tests/schema.sql`. They are skip
 
 ## License
 
-MIT
+MIT, see [LICENSE.md](LICENSE.md).

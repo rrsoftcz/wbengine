@@ -7,6 +7,15 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Fixed
+
+- The bundled `error.tpl` is translated (`wb.error.*`): `Renderer::getErrorBox()` now
+  assigns `error` and the labels `t` to the error templates.
+
+### Added
+
+- `LICENSE.md` (MIT, as declared in `composer.json`).
+
 ## [3.3.0] - 2026-10-24
 
 ### Internationalisation
