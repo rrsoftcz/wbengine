@@ -63,6 +63,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 | Finding | Status |
 |---------|--------|
 | About eight to ten queries per anonymous page; one box query per section | Fixed (opt-in): with the cache a warm page needs 0 to 3 queries |
+| Anonymous pages are rendered on every request | Fixed (opt-in): page cache, 0 queries on a hit, safety rules verified end to end |
 | `Site` menu and url helpers (`isMenuSelected`, `getUrlPairsWithSiteId`) are N+1 | Open |
 | Session written on every `setValue`; a global `DELETE` of expired sessions on reads; a row inserted for every visitor | Fixed: one lazy write at shutdown, probabilistic purge, no lookup without a cookie |
 | Article view counter is a write on every GET | Fixed (opt-in): batched counter, 12 views gave 2 writes and an exact total |
@@ -96,7 +97,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 ## Recommended next steps
 
 1. Refresh token revocation.
-2. Cache whole anonymous pages.
+2. Per-page control of the page cache (an allow or deny list) and a `Vary` option for device or language.
 3. Add CI that runs `composer test`, and cover `Url`, `Site`, `Session` and `Box\Auth`.
 4. Decide about `Locale` and `Registry`.
 5. Template compiler with automatic escaping and fragment caching, keeping Smarty as an adapter.

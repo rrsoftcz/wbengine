@@ -79,6 +79,24 @@ class Cache
     }
 
 
+    /**
+     * Raw access for callers that manage their own keys (the page cache).
+     *
+     * @param string $key
+     * @param bool $found
+     * @return mixed
+     */
+    public static function fetch($key, &$found)
+    {
+        return self::_driver()->get((string) $key, $found);
+    }
+
+    public static function store($key, $value, $ttl)
+    {
+        self::_driver()->set((string) $key, $value, (int) $ttl);
+    }
+
+
     public static function flush()
     {
         self::_driver()->flush();
