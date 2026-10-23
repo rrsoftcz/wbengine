@@ -15,6 +15,8 @@
 namespace Wbengine\Box\Article;
 
 use Wbengine\Box;
+use Wbengine\Config;
+use Wbengine\Counter\BatchCounter;
 use Wbengine\Db;
 use Wbengine\Model\ModelAbstract;
 
@@ -79,7 +81,18 @@ class ArticleModel extends ModelAbstract {
      */
     Public function updateViews($id)
     {
-        $sql = sprintf("UPDATE %s SET views = views + 1 WHERE id = ?;", S_TABLE_ARTICLES);
-        return Db::query($sql, array((int)$id));
+        $id = (int)$id;
+        $settings = Config::getViewCounterSettings();
+        $write = function ($count) use ($id) {
+            Db::query(sprintf("UPDATE %s SET views = views + ? WHERE id = ?;", S_TABLE_ARTICLES), array((int)$count, $id));
+        };
+
+        if (!$settings['enabled']) {
+            $write(1);
+            return true;
+        }
+
+        (new BatchCounter($settings['dir']))->increment('article:' . $id, $settings['hits'], $settings['seconds'], $write);
+        return true;
     }
 }

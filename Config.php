@@ -218,6 +218,32 @@ class Config
     }
 
     /**
+     * View counter batching: enabled (false), hits (50), seconds (60), dir.
+     * Configure under "counters": { "views": { ... } }. When disabled every view is
+     * written to the database immediately.
+     * @return array
+     */
+    public static function getViewCounterSettings()
+    {
+        $custom = (is_object(self::$config) && isset(self::$config->counters->views) && is_object(self::$config->counters->views))
+            ? (array) self::$config->counters->views
+            : array();
+
+        $db = self::getDbCredentials();
+        $settings = array_merge(array(
+            'enabled' => false,
+            'hits' => 50,
+            'seconds' => 60,
+            'dir' => sys_get_temp_dir() . '/wbengine-counters-' . substr(hash('sha256', $db->hostname . '/' . $db->database), 0, 8),
+        ), $custom);
+
+        $settings['enabled'] = (bool) $settings['enabled'];
+        $settings['hits'] = max(1, (int) $settings['hits']);
+        $settings['seconds'] = max(1, (int) $settings['seconds']);
+        return $settings;
+    }
+
+    /**
      * Login rate limit settings with their defaults:
      *   enabled (true),
      *   maxAttempts per client IP and account together (5),
