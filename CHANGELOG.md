@@ -7,6 +7,8 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-24
+
 ### Added
 
 - Native template engine: an output tag may start with a quoted text and a modifier,
