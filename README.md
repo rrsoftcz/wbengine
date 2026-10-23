@@ -23,14 +23,15 @@ A ready to run example application lives in the companion project `wbengine-skel
 4. [Request lifecycle](#request-lifecycle)
 5. [Writing boxes](#writing-boxes)
 6. [Template engine](#template-engine)
-7. [Database layer](#database-layer)
-8. [Routing and the REST API](#routing-and-the-rest-api)
-9. [Authentication, sessions and users](#authentication-sessions-and-users)
-10. [Configuration reference](#configuration-reference)
-11. [Debug tooling](#debug-tooling)
-12. [Performance notes and roadmap](#performance-notes-and-roadmap)
-13. [Security notes](#security-notes)
-14. [Upgrading from 3.0](#upgrading-from-30)
+7. [Internationalisation](#internationalisation)
+8. [Database layer](#database-layer)
+9. [Routing and the REST API](#routing-and-the-rest-api)
+10. [Authentication, sessions and users](#authentication-sessions-and-users)
+11. [Configuration reference](#configuration-reference)
+12. [Debug tooling](#debug-tooling)
+13. [Performance notes and roadmap](#performance-notes-and-roadmap)
+14. [Security notes](#security-notes)
+15. [Upgrading from 3.0](#upgrading-from-30)
 
 ## Requirements
 
@@ -240,6 +241,98 @@ Not supported: Smarty plugins, `{capture}`, `{section}`, config files, custom de
 
 The compiled template is a PHP file, so opcache keeps it in memory. Measured on the skeleton layout (6 menu items, about 9.7 KB of output): repeated renders in one process take about 11 microseconds with the native engine and 9 with Smarty (the native engine also escapes). On a cold request, the case that matters for PHP-FPM and Apache, the native engine adds about 2.3 ms over a bare PHP process against 4.5 ms for Smarty, because Smarty's classes are not loaded and initialised. The saving is about 2 ms per request, which is real but small next to a database query; the main reasons to switch are the automatic escaping and the fragment cache. Set `"compileCheck": false` in production (and clear the compiled directory on deploy) so the source files are not checked on every request.
 
+## Internationalisation
+
+The user interface can be shown in several languages. It is off by default. Switch it on in `Settings.json`:
+
+```json
+"i18n": {
+  "enabled": true,
+  "default": "en",
+  "locales": ["en", "cs"]
+}
+```
+
+### How the language is chosen
+
+For every request the first of these that gives a supported locale wins:
+
+1. **A language prefix in the URL**: `/cs/blog/`. It always wins, and it is removed from the URL before anything else reads it, so sites, boxes and routes are written without it. The default language has one canonical URL without a prefix: `/en/blog/` is redirected to `/blog/` (a `301`, only for `GET` and `HEAD`, the query string is kept).
+2. **The cookie** `wb_locale`, which remembers the last explicit choice (set when a prefixed URL is visited).
+3. **The `Accept-Language` header** of the browser, with quality values (`cs-CZ,cs;q=0.9,en;q=0.5`). `cs-CZ` matches the supported `cs`.
+4. **The default locale.**
+
+A value that is not a supported locale is ignored (a cookie with garbage, a language the site does not have). The response carries `Content-Language` and `Vary: Accept-Language, Cookie`, so proxies and CDNs do not mix languages up. Settings:
+
+| Key | Meaning |
+|-----|---------|
+| `enabled` | `false` by default |
+| `default` | the fallback locale (`en`) |
+| `locales` | supported locales, `["en"]` by default. `"pt_BR"` is written `/pt-BR/` in URLs |
+| `detect` | the sources and their order, default `["url", "cookie", "header"]` |
+| `urlPrefix` | `true`: use `/cs/` prefixes. `false`: only cookie and header decide |
+| `prefixDefault` | `true`: the default language has a prefix too (`/en/blog/`) |
+| `cookie`, `cookieDays` | name (`wb_locale`) and lifetime (365) of the cookie |
+| `dir` | where the application's catalogs are, `/Locale/` under the application directory |
+
+### Catalogs
+
+One PHP file per locale in `src/Locale/` (`en.php`, `cs.php`, `pt_BR.php`). PHP arrays are compiled by opcache, so there is nothing to parse per request:
+
+```php
+return [
+    'greeting' => 'Hello %name%',
+    'files'    => ['one' => '%count% file', 'other' => '%count% files'],
+];
+```
+
+A message is looked up in the locale, then in its language (`pt_BR`, then `pt`), then in the default locale. If it is nowhere, the key itself is shown, so a missing translation is visible on the page. `Wbengine\I18n::translator()->getMissing()` lists them in development. Parameters are `%name%`. Plural forms follow the CLDR rules of the language: Czech and Slovak `one` (1), `few` (2 to 4), `many` (fractions), `other`; Polish and Russian have their own rules; English and German `one` and `other`; French and Portuguese treat 0 and 1 as `one`; Japanese, Chinese and Korean have a single form. The framework's own messages (the login box, the article box, month names) are in `I18n/messages/` and start with `wb.`; an application overrides any of them in its own catalog.
+
+### In templates
+
+```smarty
+{t 'greeting' name=$user.name}                  {* Hello Eva *}
+{t 'files' count=$n}                            {* 1 file, 5 files, or 5 souborů in Czech *}
+{t 'files' count=($a + $b)}                     {* an expression in parentheses *}
+{t 'terms' url=$link raw}                       {* the message contains HTML, parameters are still escaped *}
+{$label|t}                                      {* the value is the key *}
+<a href="{$m->link|lurl}">{$m->name}</a>       {* /blog/ becomes /cs/blog/ in Czech *}
+{$price|number:2}  {$date|ldate:'long'}         {* 1 234,50 and 5. října 2026 *}
+```
+
+Translated text is HTML-escaped like any output. With `raw` the message is trusted HTML (a link inside a sentence) but each parameter is escaped first, so a hostile value cannot inject markup. `|lurl` leaves external URLs, anchors and `mailto:` alone. The modifiers `t`, `lurl`, `number` and `ldate` also work in Smarty templates; the `{t}` tag is native-engine only.
+
+The layout variables `locale` (`cs`), `lang` (`cs`) and `alternates` (a locale to URL map of the current page) are available for the language switcher and `hreflang` links:
+
+```smarty
+<html lang="{$lang}">
+{foreach $alternates as $code => $url}<link rel="alternate" hreflang="{$code}" href="{$url}">{/foreach}
+<ul>{foreach $alternates as $code => $url}<li><a href="{$url}" hreflang="{$code}">{$code|upper}</a></li>{/foreach}</ul>
+```
+
+### In PHP
+
+```php
+use Wbengine\I18n;
+
+I18n::t('greeting', ['name' => $name]);      // translate
+I18n::t('files', [], $count);                // plural
+I18n::locale(); I18n::language();            // "cs_CZ" and "cs"
+I18n::url('/blog/');                         // "/cs/blog/" in Czech
+I18n::number(1234.5, 1); I18n::date($time, 'long');
+I18n::setLocale($user->locale);              // e.g. a saved preference, for the rest of the request
+```
+
+Numbers and dates use built-in tables (no `intl` extension needed), for English, Czech, Slovak, Polish, German and French; other languages use the English conventions.
+
+### With the page cache
+
+The page cache key includes the locale, so a page cached in English is never served to a Czech visitor of the same URL, and the ETags differ per language (verified in the running skeleton). A `/cs/blog/` request and a Czech visitor of `/blog/` share one copy.
+
+### Not translated yet
+
+Content that comes from the database (articles, menu names, site titles) is not translated: only the user interface is. The error box template (`error.tpl`) is not translated either.
+
 ## Database layer
 
 `Db` is a static facade over a single lazily opened `mysqli` connection. Values are always passed as bound parameters with `?` placeholders:
@@ -352,6 +445,7 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 | `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
 | `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
 | `counters` | `views`: `enabled` (default `false`), `hits` (50) and `seconds` (60) per batch, `dir` for the counter files. Batches the article view counter |
+| `i18n` | `enabled` (default `false`), `default`, `locales`, `detect`, `urlPrefix`, `prefixDefault`, `cookie`, `cookieDays`, `dir`. See Internationalisation |
 | `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `{ "enabled": false, "ttl": 60 }` for the whole page cache. See the performance notes |
 | `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (native engine, default `true`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |

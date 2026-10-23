@@ -76,6 +76,31 @@ class PageCacheStoreTest extends DbTestCase
         return $found;
     }
 
+    public function testTheCacheKeyIsThePathWithoutI18n(): void
+    {
+        \Wbengine\I18n::configure(null, null);
+
+        $this->assertSame('page:/blog/', PageCache::cacheKey('/blog/'));
+    }
+
+    public function testTheLocaleIsPartOfTheCacheKey(): void
+    {
+        // The same URL in two languages must never share a cache entry.
+        $settings = ['enabled' => true, 'default' => 'en', 'locales' => ['en', 'cs'], 'urlPrefix' => true, 'prefixDefault' => false];
+        try {
+            \Wbengine\I18n::configure((new \Wbengine\I18n\Translator([], 'en'))->setLocale('cs'), $settings);
+            $czech = PageCache::cacheKey('/blog/');
+            \Wbengine\I18n::configure((new \Wbengine\I18n\Translator([], 'en'))->setLocale('en'), $settings);
+            $english = PageCache::cacheKey('/blog/');
+        } finally {
+            \Wbengine\I18n::configure(null, null);
+        }
+
+        $this->assertSame('page:cs:/blog/', $czech);
+        $this->assertSame('page:en:/blog/', $english);
+        $this->assertNotSame($czech, $english);
+    }
+
     public function testAPlainPageIsStoredAndTheBodyIsReturnedUnchanged(): void
     {
         $this->arm('/blog/');

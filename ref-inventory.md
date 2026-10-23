@@ -54,7 +54,8 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 | `Http::CONFLICT` was 408 | Fixed (409) |
 | `PATCH /api/users/patch/{id}` called a missing method | Fixed |
 | `Zend` adapter, `Config\Adapter*`, `Box\Model`, `Config::autodetectEnvironment` | Fixed: removed |
-| `Locale` (its model calls methods that do not exist) and `Registry` (static misuse) | Open: unfinished features, decide whether to finish or remove |
+| `Locale` (its model called methods that do not exist) | Fixed: replaced by the new `I18n` (user interface translation, English and Czech catalogs, verified in the skeleton in two languages); translating database content is open |
+| `Registry` (static misuse, unused) | Open: unfinished, decide whether to finish or remove |
 | Typo in exception file names (`RunetimeException.php`) breaks autoload on case sensitive systems | Fixed, verified with an optimized classmap |
 | `Renderer/Adapter` methods call `getAdapter()` without its argument, `registerObject` uses a removed Smarty call, `setConfigDir` ignored | Fixed, covered by tests |
 | Remaining legacy style: no type declarations on most methods, `declare(strict_types)` not used | Open |
@@ -101,6 +102,6 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 
 2. Per-page control of the page cache (an allow or deny list) and a `Vary` option for device or language.
 3. Cover `Url`, `Site`, `Session`, `Box\Auth` and the page cache with automated tests (all were verified by hand).
-4. Decide about `Locale` and `Registry`.
+4. Translate database content (articles, menu names, site titles) and the error box; decide about `Registry`.
 5. Convert the skeleton's templates to explicit `\|raw` and `\|escape`, then switch it to the native engine.
 6. Tag a release (suggested 3.1.0) so the skeleton can require it instead of a development branch.

@@ -1,0 +1,44 @@
+<?php
+
+/**
+ * WBengine's own messages (en). An application overrides any of them in its own catalog.
+ * Keys start with "wb." so they never collide with an application's keys.
+ */
+return array(
+    'wb.login.title' => 'Login form',
+    'wb.login.username' => 'Username',
+    'wb.login.password' => 'Password',
+    'wb.login.submit' => 'Login',
+    'wb.login.failed' => 'Login failed',
+    'wb.login.invalid_token' => 'Invalid Token.',
+    'wb.login.invalid_captcha' => 'Invalid Captcha.',
+    'wb.login.too_many' => 'Too many failed login attempts. Try again later.',
+    'wb.article.author' => 'Author:',
+    'wb.article.source' => 'Source:',
+    'wb.error.title' => 'Application Error',
+    'wb.error.info' => 'Exception info:',
+    'wb.month.1' => 'January',
+    'wb.month_short.1' => 'Jan',
+    'wb.month.2' => 'February',
+    'wb.month_short.2' => 'Feb',
+    'wb.month.3' => 'March',
+    'wb.month_short.3' => 'Mar',
+    'wb.month.4' => 'April',
+    'wb.month_short.4' => 'Apr',
+    'wb.month.5' => 'May',
+    'wb.month_short.5' => 'May',
+    'wb.month.6' => 'June',
+    'wb.month_short.6' => 'Jun',
+    'wb.month.7' => 'July',
+    'wb.month_short.7' => 'Jul',
+    'wb.month.8' => 'August',
+    'wb.month_short.8' => 'Aug',
+    'wb.month.9' => 'September',
+    'wb.month_short.9' => 'Sep',
+    'wb.month.10' => 'October',
+    'wb.month_short.10' => 'Oct',
+    'wb.month.11' => 'November',
+    'wb.month_short.11' => 'Nov',
+    'wb.month.12' => 'December',
+    'wb.month_short.12' => 'Dec',
+);

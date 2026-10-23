@@ -7,6 +7,37 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Internationalisation (planned 3.2.0)
+
+- User interface translation, off by default (`i18n` setting). New `Wbengine\I18n`
+  with `Translator`, `Plural`, `LocaleResolver` and `Format`.
+  - The locale of a request: a language prefix in the URL (`/cs/blog/`, removed from the
+    URL before the rest of the framework reads it; the default language redirects to its
+    unprefixed canonical URL), then the `wb_locale` cookie, then `Accept-Language` (with
+    quality values), then the default. `Content-Language` and `Vary` are sent.
+  - Catalogs are PHP arrays (`src/Locale/cs.php`), looked up with a fallback chain
+    (`pt_BR`, `pt`, default, the key). `%name%` parameters; plural forms by the CLDR rules
+    of Czech, Slovak, Polish, Russian, Ukrainian, English, German, French, Portuguese and
+    the languages without plurals.
+  - Templates: the `{t 'key' name=$x count=$n raw}` tag (native engine) and the modifiers
+    `|t`, `|lurl`, `|number`, `|ldate` (native engine and Smarty). Translated text is
+    escaped; with `raw` the parameters are escaped individually. Template variables
+    `locale`, `lang` and `alternates` for a language switcher and `hreflang` links.
+  - The page cache key includes the locale: verified that a page cached in one language is
+    never served in another, and that the ETags differ.
+  - The login and article boxes are translated (English and Czech catalogs in
+    `I18n/messages/`, keys start with `wb.`); applications can override them.
+  - Number and date formatting without the `intl` extension.
+- Removed the unfinished `Locale` classes (`Locale`, `Locale\*`) and `Session::getLocale()`;
+  nothing used them and their model called methods that do not exist. The tables
+  `cms_locales` and the `cms_users.locale` column are untouched.
+- `Application::getLocale()` now returns the locale code of the request (a string).
+- The login form posts to a localized URL, its labels are translated, its `label` elements
+  point at the right inputs, and its AJAX and form messages are translated.
+- Found by the tests: `Translator::normalize()` accepted `"cs\0"` (`trim()` removes NUL
+  bytes); `Format::date()` warned on a non-scalar value, which the error handler turns into
+  an exception.
+
 ## [3.1.0] - 2026-10-23
 
 ### Breaking changes

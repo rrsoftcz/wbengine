@@ -229,6 +229,56 @@ class Config
     }
 
     /**
+     * Internationalisation settings with their defaults:
+     *   enabled (false), default ("en"), locales (["en"]), detect (["url", "cookie", "header"],
+     *   in this order), urlPrefix (true), prefixDefault (false), cookie ("wb_locale"),
+     *   cookieDays (365), dir ("/Locale/", relative to the application directory).
+     * Configure under "i18n".
+     * @return array
+     */
+    public static function getI18nSettings()
+    {
+        $custom = (is_object(self::$config) && isset(self::$config->i18n) && is_object(self::$config->i18n))
+            ? (array) self::$config->i18n
+            : array();
+
+        $settings = array_merge(array(
+            'enabled' => false,
+            'default' => 'en',
+            'locales' => array('en'),
+            'detect' => array('url', 'cookie', 'header'),
+            'urlPrefix' => true,
+            'prefixDefault' => false,
+            'cookie' => 'wb_locale',
+            'cookieDays' => 365,
+            'dir' => '/Locale/',
+        ), $custom);
+
+        $settings['enabled'] = (bool) $settings['enabled'];
+        $settings['urlPrefix'] = (bool) $settings['urlPrefix'];
+        $settings['prefixDefault'] = (bool) $settings['prefixDefault'];
+        $settings['cookieDays'] = max(1, (int) $settings['cookieDays']);
+        $settings['cookie'] = preg_match('/^[A-Za-z0-9_]{1,40}$/', (string) $settings['cookie']) ? (string) $settings['cookie'] : 'wb_locale';
+        $settings['dir'] = (string) $settings['dir'];
+
+        $default = I18n\Translator::normalize($settings['default']) ?? 'en';
+        $locales = array();
+        foreach ((array) $settings['locales'] as $locale) {
+            $normalized = I18n\Translator::normalize($locale);
+            if (null !== $normalized) {
+                $locales[$normalized] = $normalized;
+            }
+        }
+        $locales[$default] = $default;
+        $settings['default'] = $default;
+        $settings['locales'] = array_values($locales);
+
+        $detect = array_values(array_intersect((array) $settings['detect'], array('url', 'cookie', 'header')));
+        $settings['detect'] = $detect;
+        return $settings;
+    }
+
+    /**
      * View counter batching: enabled (false), hits (50), seconds (60), dir.
      * Configure under "counters": { "views": { ... } }. When disabled every view is
      * written to the database immediately.

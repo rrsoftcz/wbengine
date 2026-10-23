@@ -79,7 +79,7 @@ class PageCache
         }
 
         self::$_ttl = max(1, (int) ($pages['ttl'] ?? self::DEFAULT_TTL));
-        self::$_key = 'page:' . $path;
+        self::$_key = self::cacheKey($path);
         self::$_path = $path;
 
         $page = Cache::fetch(self::$_key, $found);
@@ -89,6 +89,17 @@ class PageCache
 
         self::$_app = $app;
         ob_start(array(__CLASS__, 'capture'));
+    }
+
+
+    /**
+     * The cache key of a page. With i18n the locale is part of it: the same URL can be shown
+     * in different languages (chosen by cookie or Accept-Language), and a page in one
+     * language must never be served to a visitor of another.
+     */
+    public static function cacheKey($path)
+    {
+        return 'page:' . (I18n::isEnabled() ? I18n::locale() . ':' : '') . $path;
     }
 
 
