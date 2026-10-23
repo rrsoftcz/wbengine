@@ -36,6 +36,18 @@ documented here, see the git tags.
   `ac_active` and `user_ip` cannot be written through the API.
 - The user API no longer returns the password hash or `ac_key`.
 
+### Rate limiting
+
+- Failed logins are limited for the web form, the AJAX login and `POST /api/auth/login`
+  (all go through `User::login()`): 5 failures per client IP and account together,
+  20 per IP over all accounts, 25 per account from all IPs, within 15 minutes. The
+  API answers `429` with a `Retry-After` header. The strict limit is per IP and
+  account pair, so somebody failing on purpose cannot lock the real owner out.
+  Counters are small files (no new table); configure or switch off with
+  `rateLimit.login` in `Settings.json`. New: `RateLimit\Limiter`,
+  `User\TooManyAttemptsException`, `Config::getLoginRateLimit()`,
+  `Http::TOO_MANY_REQUESTS`.
+
 ### Performance
 
 - New opt-in cache for the site table, the menu, the sections and the box lists
