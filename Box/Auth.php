@@ -4,6 +4,7 @@ namespace Wbengine\Box;
 
 use Wbengine\Application\Env\Http;
 use Wbengine\Config;
+use Wbengine\I18n;
 use Wbengine\Box\Exception\BoxException;
 use Wbengine\Box\WbengineBoxAbstract;
 use Wbengine\Site\SiteException;
@@ -64,19 +65,29 @@ class Auth extends WbengineStaticBox
                                     exit();
                                 }
                             } else {
-                                $this->getRenderer()->assign('error', 'Login failed');
+                                $this->getRenderer()->assign('error', I18n::t('wb.login.failed'));
                                 $this->getSession()->setValue(self::FAILED_LOGINS, ++$failed_logins);
                             }
+                        } catch (User\TooManyAttemptsException $e) {
+                            $this->getRenderer()->assign('error', I18n::t('wb.login.too_many'));
                         } catch (User\UserException $e) {
                             $this->getRenderer()->assign('error', (string)$e->getMessage());
                         }
                     } else {
-                        $this->getRenderer()->assign('error', 'Invalid Token.');
+                        $this->getRenderer()->assign('error', I18n::t('wb.login.invalid_token'));
                     }
                 } else {
-                    $this->getRenderer()->assign('error', 'Invalid Captcha.');
+                    $this->getRenderer()->assign('error', I18n::t('wb.login.invalid_captcha'));
                 }
             }
+            // The labels of the form, in the language of the request.
+            $this->getRenderer()->assign('formAction', I18n::url('/login/'));
+            $this->getRenderer()->assign('t', array(
+                'title' => I18n::t('wb.login.title'),
+                'username' => I18n::t('wb.login.username'),
+                'password' => I18n::t('wb.login.password'),
+                'submit' => I18n::t('wb.login.submit'),
+            ));
             // Generate token for lates check...
             $token = $this->_generateToken();
             // Store generated token to session (db)...
@@ -114,19 +125,19 @@ class Auth extends WbengineStaticBox
                         die('OK');
                     } else {
                         $this->getSession()->setValue(self::FAILED_LOGINS, ++$failed_logins);
-                        $response['error'] = 'Login failed.';
+                        $response['error'] = I18n::t('wb.login.failed');
                         $response['tries'] = $failed_logins;
                         header('Content-type: application/json');
                         die(json_encode($response));
                     }
                 } else {
-                    $response['error'] = 'Invalid Token.';
+                    $response['error'] = I18n::t('wb.login.invalid_token');
                     $response['tries'] = $failed_logins;
                     header('Content-type: application/json');
                     die(json_encode($response));
                 }
             } else {
-                $response['error'] = 'Invalid captcha.';
+                $response['error'] = I18n::t('wb.login.invalid_captcha');
                 $response['code'] = 4;
                 $response['tries'] = $failed_logins;
                 header('Content-type: application/json');

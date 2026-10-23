@@ -15,6 +15,12 @@ class SmartyRenderer implements RendererInterface
 
     public function __construct(){
         $this->smarty = New Smarty();
+
+        // The i18n modifiers of the native engine, so templates can use them with Smarty too.
+        $this->smarty->registerPlugin(Smarty::PLUGIN_MODIFIER, 't', fn ($key, $count = null) => \Wbengine\Template\Runtime::tr($key, $count));
+        $this->smarty->registerPlugin(Smarty::PLUGIN_MODIFIER, 'lurl', fn ($url, $locale = null) => \Wbengine\Template\Runtime::lurl($url, $locale));
+        $this->smarty->registerPlugin(Smarty::PLUGIN_MODIFIER, 'number', fn ($value, $decimals = 0) => \Wbengine\Template\Runtime::number($value, $decimals));
+        $this->smarty->registerPlugin(Smarty::PLUGIN_MODIFIER, 'ldate', fn ($value, $style = 'medium') => \Wbengine\Template\Runtime::ldate($value, $style));
     }
 
     public function getAdapter(){

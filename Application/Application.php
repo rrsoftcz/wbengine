@@ -26,8 +26,7 @@ use Wbengine\Config;
 use Wbengine\Db;
 use Wbengine\Error;
 use Wbengine\Exception\RuntimeException;
-use Wbengine\Locale;
-use Wbengine\Locale\LocaleAbstract;
+use Wbengine\I18n;
 use Wbengine\PageCache;
 use Wbengine\Router;
 use Wbengine\Section;
@@ -44,12 +43,6 @@ include_once dirname(__DIR__) . '/Application/Env/Const.php';
 
 class Application implements ComponentParentInterface, ResponseInterface
 {
-    /**
-     * Locale class
-     * @var int
-     */
-    private $_locale = NULL;
-
     /**
      * Loaded user's data
      * @var array
@@ -209,6 +202,22 @@ class Application implements ComponentParentInterface, ResponseInterface
              */
             date_default_timezone_set(Config::getTimeZone());
 
+
+            /**
+             * Internationalisation (opt-in): choose the locale and remove a language prefix
+             * ("/cs/blog/") from the URL before anything else reads it.
+             */
+            $redirect = I18n::boot($appBaseDir);
+            if (null !== $redirect) {
+                header('Location: ' . $redirect, true, 301);
+                exit;
+            }
+            if (I18n::isEnabled()) {
+                $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+                $this->getClassVars()->addValue('locale', I18n::locale());
+                $this->getClassVars()->addValue('lang', I18n::language());
+                $this->getClassVars()->addValue('alternates', I18n::alternates($path));
+            }
 
             /**
              * Anonymous visitors may get the whole page from the page cache (opt-in).
@@ -407,15 +416,6 @@ class Application implements ComponentParentInterface, ResponseInterface
 
 
     /**
-     * Store locale class.
-     * @param LocaleAbstract $locale
-     */
-    private function _setLocale(LocaleAbstract $locale){
-        $this->_locale = $locale;
-    }
-
-
-    /**
      * @return null|Path
      * @internal param string $name
      * @internal param string $include
@@ -572,19 +572,11 @@ class Application implements ComponentParentInterface, ResponseInterface
 
 
     /**
-     * Return a created locale instance.
-     * @return int
+     * The locale of this request, for example "cs" or "pt_BR" (see Wbengine\I18n).
+     * @return string
      */
     public function getLocale(){
-        if (!$this->_locale instanceof Locale) {
-            $this->_createLocale();
-        }
-        return $this->_locale;
-    }
-
-
-    private function _createLocale(){
-        $this->_locale = new Locale();
+        return I18n::locale();
     }
 
 

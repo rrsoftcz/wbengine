@@ -95,6 +95,42 @@ class NativeRendererTest extends TestCase
 
     // ------------------------------------------------- bundled templates
 
+    /** The label array the bundled boxes pass to their templates. */
+    private function labels(array $names, string $box): array
+    {
+        $labels = [];
+        foreach ($names as $name) {
+            $labels[$name] = \Wbengine\I18n::t("wb.$box.$name");
+        }
+        return $labels;
+    }
+
+    public function testBundledTemplatesAreTranslated(): void
+    {
+        \Wbengine\I18n::configure(
+            (new \Wbengine\I18n\Translator([$this->framework . '/I18n/messages'], 'en'))->setLocale('cs'),
+            ['enabled' => true, 'default' => 'en', 'locales' => ['en', 'cs'], 'urlPrefix' => true, 'prefixDefault' => false]
+        );
+        try {
+            $login = $this->renderer();
+            $login->assign('t', $this->labels(['title', 'username', 'password', 'submit'], 'login'));
+            $login->assign('captcha', false);
+            $html = $login->fetch($this->framework . '/Box/Login/View/Login.tpl');
+
+            $this->assertStringContainsString('Uživatelské jméno', $html);
+            $this->assertStringContainsString('Heslo', $html);
+            $this->assertStringContainsString('Přihlásit', $html);
+            $this->assertStringNotContainsString('Username', $html);
+
+            $article = $this->renderer();
+            $article->assign('Article', (object) ['title' => 'T', 'author' => 'A', 'source' => 'S', 'introtext' => '', 'bodytext' => '']);
+            $article->assign('t', $this->labels(['author', 'source'], 'article'));
+            $this->assertStringContainsString('Autor:', $article->fetch($this->framework . '/Box/Article/View/Article.tpl'));
+        } finally {
+            \Wbengine\I18n::configure(null, null);
+        }
+    }
+
     public function testBundledLoginTemplateEscapesAndNeverEchoesAPassword(): void
     {
         $r = $this->renderer();
@@ -103,6 +139,7 @@ class NativeRendererTest extends TestCase
         $r->assign('userName', '"><b>');
         $r->assign('userPassword', 'secret-password');
         $r->assign('captcha', false);
+        $r->assign('t', $this->labels(['title', 'username', 'password', 'submit'], 'login'));
 
         $html = $r->fetch($this->framework . '/Box/Login/View/Login.tpl');
 
@@ -124,6 +161,7 @@ class NativeRendererTest extends TestCase
         );
         $r = $this->renderer();
         $r->assign('Article', $article);
+        $r->assign('t', $this->labels(['author', 'source'], 'article'));
 
         $html = $r->fetch($this->framework . '/Box/Article/View/Article.tpl');
 
@@ -141,9 +179,11 @@ class NativeRendererTest extends TestCase
         $smarty->setTemplateDir($this->framework . '/Box');
         $smarty->setCompileDir($this->dir . '/compiled');
         $smarty->assign('Article', $article);
+        $smarty->assign('t', $this->labels(['author', 'source'], 'article'));
 
         $native = $this->renderer();
         $native->assign('Article', $article);
+        $native->assign('t', $this->labels(['author', 'source'], 'article'));
 
         $this->assertSame(
             $smarty->fetch('Article/View/Article.tpl'),

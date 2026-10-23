@@ -3,6 +3,7 @@
 namespace Wbengine\Template;
 
 use Wbengine\Cache;
+use Wbengine\I18n;
 
 /**
  * Helpers called by compiled templates. They are total: whatever a template is given
@@ -166,6 +167,42 @@ class Runtime
             return '';
         }
         return implode(self::s($separator), array_map(array(self::class, 's'), $value));
+    }
+
+    // ------------------------------------------------------ internationalisation
+
+    /**
+     * The {t 'key' ...} tag. With $raw the message is trusted HTML (a link in a sentence),
+     * so the parameters are escaped one by one before they are put into it.
+     */
+    public static function t($key, array $params = array(), $count = null, $raw = false)
+    {
+        if ($raw) {
+            $params = array_map(array(self::class, 'e'), $params);
+        }
+        return I18n::t(self::s($key), $params, null === $count ? null : (is_numeric($count) ? $count + 0 : 0));
+    }
+
+    /** The |t modifier: the value is the key. */
+    public static function tr($key, $count = null)
+    {
+        return self::t($key, array(), $count);
+    }
+
+    /** The |lurl modifier: a site URL in the current locale ("/blog/" becomes "/cs/blog/"). */
+    public static function lurl($url, $locale = null)
+    {
+        return I18n::url(self::s($url), null === $locale ? null : self::s($locale));
+    }
+
+    public static function number($value, $decimals = 0)
+    {
+        return I18n::number($value, self::n($decimals));
+    }
+
+    public static function ldate($value, $style = 'medium')
+    {
+        return I18n::date($value, self::s($style));
     }
 
     // ------------------------------------------------------- fragment cache

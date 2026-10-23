@@ -51,6 +51,11 @@ class Article extends WbengineStaticBox
      */
     public function getArticleBox()
     {
+        // The labels of the template, in the language of the request.
+        $this->getRenderer()->assign('t', array(
+            'author' => \Wbengine\I18n::t('wb.article.author'),
+            'source' => \Wbengine\I18n::t('wb.article.source'),
+        ));
         return $this->getRenderer()->render(
         	$this->getStaticBoxTemplatePath(self::BOX_ARTICLE), $this->getArticle(), true);
     }

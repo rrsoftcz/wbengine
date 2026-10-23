@@ -19,7 +19,6 @@
 namespace Wbengine\Session;
 
 use Wbengine\Application\Env\Stac\Utils;
-use Wbengine\Locale;
 use Wbengine\Section;
 use Wbengine\Session;
 use Wbengine\Session\Exception\SessionException;
@@ -45,12 +44,6 @@ abstract class SessionAbstract
     CONST SESSION_EXPIRE            = 'session_expire';
     CONST SESSION_DEFALT_LOCALE     = DEFAULT_LOCALE;
     CONST SESSION_EMPTY_USER_ID     = 0;
-
-    /**
-     * Locale class instance.
-     * @var Class_Locale
-     */
-    private $_locale = NULL;
 
     /**
      * Eexpiration time in seconds.
@@ -188,41 +181,6 @@ abstract class SessionAbstract
      */
     private function _setModel(){
         $this->_model = new Model();
-    }
-
-
-    /**
-     * Return session locale
-     * @param $local_id
-     * @return Locale
-     */
-    public function getLocale($local_id){
-        return $this->_getClassLocale($local_id);
-    }
-
-
-    /**
-     * Return locale class related to given locale's id.
-     * @param integer $locale
-     * @return Locale
-     */
-    private function _getClassLocale($locale){
-        if ($this->_locale instanceof Locale) {
-            return $this->_locale;
-        } else {
-            $this->_setClassLocale($locale);
-        }
-        return $this->_locale->getLocale($locale);
-    }
-
-
-    /**
-     * Create and set instance object of Class_Locale
-     * @void
-     */
-    public function _setClassLocale($locale_id){
-        $locale = (is_int($locale_id))?$locale_id:self::SESSION_DEFALT_LOCALE;
-        $this->_locale = new Locale($locale);
     }
 
 

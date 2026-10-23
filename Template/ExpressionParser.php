@@ -35,6 +35,11 @@ class ExpressionParser
         'count'    => 'Runtime::length',
         'date'     => 'Runtime::date',
         'join'     => 'Runtime::join',
+        // internationalisation, see Wbengine\I18n
+        't'        => 'Runtime::tr',
+        'lurl'     => 'Runtime::lurl',
+        'number'   => 'Runtime::number',
+        'ldate'    => 'Runtime::ldate',
     );
 
     private $_tokens = array();

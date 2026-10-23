@@ -152,7 +152,7 @@ class Compiler
             return array('kind' => 'close', 'body' => $m[1], 'end' => $brace + strlen($m[0]));
         } elseif (preg_match('/^\{(else|foreachelse)\}/', $rest, $m)) {
             return array('kind' => $m[1], 'body' => '', 'end' => $brace + strlen($m[0]));
-        } elseif (preg_match('/^\{(if|elseif|foreach|include|set|cache)(?=[\s(\'"$])/', $rest, $m)) {
+        } elseif (preg_match('/^\{(if|elseif|foreach|include|set|cache|t)(?=[\s(\'"$])/', $rest, $m)) {
             $kind = $m[1];
         }
         if (null === $kind) {
@@ -288,7 +288,97 @@ class Compiler
             case 'cache':
                 $this->_cache($body);
                 return;
+
+            case 't':
+                $this->_translate($body);
+                return;
         }
+    }
+
+    /**
+     * {t 'key' name=$value count=$n raw}
+     *
+     * Arguments are separated by spaces, so a value with spaces goes in parentheses:
+     * count=($a + 1). "count" selects the plural form; every other name=value becomes a
+     * %name% placeholder. The text is escaped like any output, "raw" prints it as HTML
+     * (the parameters are then escaped one by one).
+     */
+    private function _translate($body)
+    {
+        $terms = $this->_splitTerms($body);
+        if (!$terms) {
+            $this->_fail('{t} needs a message key');
+        }
+
+        $key = $this->_parser->parse(array_shift($terms), $this->_line);
+        $params = array();
+        $count = 'null';
+        $raw = false;
+
+        foreach ($terms as $term) {
+            if ('raw' === $term) {
+                $raw = true;
+            } elseif (preg_match('/^([A-Za-z_][A-Za-z0-9_]*)=(.+)$/s', $term, $m)) {
+                $value = $this->_parser->parse($m[2], $this->_line);
+                if ('count' === $m[1]) {
+                    $count = $value;
+                } else {
+                    $params[] = var_export($m[1], true) . ' => ' . $value;
+                }
+            } else {
+                $this->_fail('{t} does not understand "' . $term . '", use name=value or raw');
+            }
+        }
+
+        $call = 'Runtime::t(' . $key . ', array(' . implode(', ', $params) . '), ' . $count . ', ' . ($raw ? 'true' : 'false') . ')';
+        $this->_echo($raw ? 'Runtime::s(' . $call . ')' : 'Runtime::e(' . $call . ')');
+    }
+
+    /**
+     * Split on whitespace that is outside quotes, parentheses and brackets.
+     */
+    private function _splitTerms($body)
+    {
+        $terms = array();
+        $current = '';
+        $depth = 0;
+        $quote = null;
+        $length = strlen($body);
+
+        for ($i = 0; $i < $length; $i++) {
+            $c = $body[$i];
+            if (null !== $quote) {
+                $current .= $c;
+                if ('\\' === $c && $i + 1 < $length) {
+                    $current .= $body[++$i];
+                } elseif ($c === $quote) {
+                    $quote = null;
+                }
+            } elseif ("'" === $c || '"' === $c) {
+                $quote = $c;
+                $current .= $c;
+            } elseif ('(' === $c || '[' === $c) {
+                $depth++;
+                $current .= $c;
+            } elseif (')' === $c || ']' === $c) {
+                $depth--;
+                $current .= $c;
+            } elseif (ctype_space($c) && 0 === $depth) {
+                if ('' !== $current) {
+                    $terms[] = $current;
+                    $current = '';
+                }
+            } else {
+                $current .= $c;
+            }
+        }
+        if (null !== $quote || 0 !== $depth) {
+            $this->_fail('unbalanced quotes or parentheses in {t}');
+        }
+        if ('' !== $current) {
+            $terms[] = $current;
+        }
+        return $terms;
     }
 
     private function _foreach($body)
