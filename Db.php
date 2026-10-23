@@ -48,6 +48,8 @@ abstract class Db implements DbInterface
      * Return Queries count as integer
      * @var int
      */
+    private static $_inherited = array();
+
     private static $_qcount    = 0;
 
     /**
@@ -88,6 +90,20 @@ abstract class Db implements DbInterface
     /**
      * @return DbAdapterInterface
      */
+    /**
+     * Call in a forked child process (pcntl_fork): drop the connection inherited from
+     * the parent so the next query opens the child's own. The inherited connection is
+     * NOT closed, closing it would send a quit on the socket the parent still uses.
+     * The child must end with posix_kill() or exit without destructing it.
+     */
+    public static function forgetConnection(){
+        if (null !== self::$_adapter) {
+            self::$_inherited[] = self::$_adapter;
+            self::$_adapter = null;
+        }
+    }
+
+
     public static function getAdapter(){
         if(!self::isConnected()){
             self::createAdapter();

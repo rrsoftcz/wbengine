@@ -33,7 +33,8 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 | SQL and exception details shown to clients, unescaped debug output | Fixed: logged server side, generic page unless debug, escaped |
 | API has no role check: any valid token can use every route | Fixed: `user`, `editor`, `admin`, checked against the database, verified with 17 scenarios including immediate effect of a demotion |
 | No rate limiting on `/api/auth/login`; web login counter lives in the session so a client without cookies avoids it | Fixed: server side limiter for all three login paths (pair, IP and account counters), verified end to end |
-| Refresh token is a second JWT with no server side store, rotation or revocation; logout does not invalidate tokens | Open |
+| Refresh token is a second JWT with no server side store, rotation or revocation; logout does not invalidate tokens | Fixed: hashed server side tokens, rotation, theft detection, logout, logout everywhere, revoked on password change and deletion; verified end to end |
+| Refresh and identify endpoints depended on a PHP session, the cookie `domain` defaulted to `localhost` | Fixed: stateless, host-only cookie, `SameSite=Strict` |
 | Smarty output is not escaped by default (`escape_html` off) | Open |
 | A session row is created for every request without a cookie (database write per bot hit) | Fixed: rows are created only when something is stored |
 | Private keys and a customer certificate were tracked in the skeleton repository | Fixed in the working tree (untracked, ignored). History still contains them: rotate the keys and, if needed, rewrite history |
@@ -97,7 +98,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 
 ## Recommended next steps
 
-1. Refresh token revocation.
+1. Absolute lifetime for a refresh token family (it slides now), and automated tests for the API controllers.
 2. Per-page control of the page cache (an allow or deny list) and a `Vary` option for device or language.
 3. Cover `Url`, `Site`, `Session`, `Box\Auth` and the page cache with automated tests (all were verified by hand).
 4. Decide about `Locale` and `Registry`.

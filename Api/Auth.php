@@ -17,6 +17,8 @@ use Wbengine\Application\Env\Http;
 use Wbengine\User;
 use Wbengine\User\TooManyAttemptsException;
 use Wbengine\Api\Auth\Exception\AuthException;
+use Wbengine\Api\Auth\Exception\InvalidRefreshTokenException;
+use Wbengine\Api\Auth\RefreshTokens;
 
 class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
 
@@ -55,15 +57,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
                 throw new Api\Exception\ApiException("Login failed, wrong username or password.");
             }
 
-            setcookie(
-                "refresh_token",
-                $this->User()->getRefreshToken($this->Api()->getCookieExpiration()),
-                $this->Api()->getCookieExpiration(),
-                $this->Api()->getCookieUrl(),
-                $this->Api()->getCookieDomain(),
-                $this->Api()->getCookieIsSecured(),
-                $this->Api()->getCookieIsHttpOnly()
-            );
+            $this->_issueRefreshCookie((int) $this->User()->getUserId());
 
             $this->Api()->toJson(
                 array(
@@ -81,7 +75,15 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
         }
     }
 
+    /**
+     * Log out this device: revoke the refresh token family of the cookie, clear the
+     * cookie and end the PHP session. A short lived access token that was already
+     * issued stays valid until it expires.
+     */
     public function logout() {
+        $this->_revokeCookieToken();
+        $this->_clearRefreshCookie();
+
         $this->Api()->toJson(
             Array(
                 "success" => $this->User()->logout(),
@@ -90,82 +92,139 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
         );
     }
 
+    /**
+     * Log out everywhere: revoke every refresh token of the authenticated user.
+     */
+    public function logoutAll() {
+        $this->isAuthenticated(function ($payload, $actor) {
+            $count = $this->_refreshTokens()->revokeAllForUser((int) $actor['user_id']);
+            $this->_clearRefreshCookie();
+            $this->Api()->toJson(Array("success" => true, "revoked" => $count));
+        }, \Wbengine\User\Role::USER);
+    }
+
+    /**
+     * Check an access token and that it belongs to the user id in the request body.
+     * Stateless: it does not depend on a PHP session.
+     */
     public function validateJwtToken(?string $token = null, $body = null){
         if(null === $body || !is_array($body) || !array_key_exists("user_id", $body)) {
             $this->Api()->toJson(
                 Array(
                     "success" => false,
-                    "message"=> __FUNCTION__.": Empty UID"
+                    "message"=> "Empty UID"
                 ),Http::UNAUTHORIZED
             );
         }
 
         try {
-            $payload = $this->wbAuth()->getDecodedData($token);
-            $fn = fn($b) => (int)$b === (int)$payload["data"]->user_id;
-            $this->Api()->toJson(
-                Array(
-                    "success" =>  $fn((int)$this->User()->getUserId()),
-                    "user_id" => (int)$this->User()->getUserId(),
-                    "message"=> "JWT token successfuly decoded and user has authenticated."
-                ),($fn((int)$this->User()->getUserId())) ? Http::OK : Http::UNAUTHORIZED
-            );
+            $payload = $this->wbAuth()->getDecodedData((string) $token);
+        } catch (\Throwable $e) {
+            $this->Api()->toJson(Array("success" => false, "message" => "Invalid token."), Http::UNAUTHORIZED);
+        }
 
-        }catch(\Exception $e){
-            $this->Api()->toJson(
-                Array(
-                    "success" => false,
-                    "message"=> $e->getMessage()
-                ),Http::UNAUTHORIZED
+        $ok = (int) $body["user_id"] === (int) ($payload["data"]->user_id ?? 0);
+        $this->Api()->toJson(
+            Array(
+                "success" => $ok,
+                "user_id" => (int) ($payload["data"]->user_id ?? 0),
+                "message" => $ok ? "The token is valid for this user." : "The token belongs to another user."
+            ), $ok ? Http::OK : Http::UNAUTHORIZED
+        );
+    }
+
+    /**
+     * Exchange the refresh token cookie for a new access token. The refresh token is
+     * rotated: the cookie is replaced by a new token and the old one stops working.
+     * Presenting an old token again revokes the whole family (see RefreshTokens).
+     * It needs no PHP session, only the cookie.
+     */
+    public function validateRefreshToken(){
+        $token = $_COOKIE[self::REFRESH_COOKIE] ?? null;
+
+        try {
+            $rotated = $this->_refreshTokens()->rotate(
+                $token,
+                $this->Api()->getRefreshTokenTtl(),
+                (string) \Wbengine\Application\Env\Stac\Utils::getUserIp(),
+                (string) \Wbengine\Application\Env\Stac\Utils::getUserAgent()
             );
+        } catch (InvalidRefreshTokenException $e) {
+            error_log(__METHOD__ . ': refresh refused (' . $e->getReason() . ')');
+            $this->_clearRefreshCookie();
+            $this->Api()->toJson(
+                Array("success" => false, "message" => "Invalid refresh token, has expired or unavailable."),
+                Http::UNAUTHORIZED
+            );
+        } catch (\Throwable $e) {
+            error_log(__METHOD__ . ': ' . $e->getMessage() . ' (is cms_refresh_tokens present?)');
+            $this->Api()->toJson(Array("success" => false, "message" => "Refresh is not available."), Http::UNAUTHORIZED);
+        }
+
+        $this->_setRefreshCookie($rotated['token'], time() + $this->Api()->getRefreshTokenTtl());
+        $this->User()->loadUserDataFromModel($rotated['user_id']);
+
+        $this->Api()->toJson(
+            Array(
+                "success" => true,
+                "user_id" => $rotated['user_id'],
+                "token" => $this->User()->createJwtToken($this->Api()->getJwtTokenExpiration()),
+                "message" => "The new JWT token has successfuly created."
+            ), Http::OK
+        );
+    }
+
+    const REFRESH_COOKIE = 'refresh_token';
+
+    private $_refreshTokens = null;
+
+    private function _refreshTokens() {
+        return $this->_refreshTokens ?? ($this->_refreshTokens = new RefreshTokens());
+    }
+
+    /**
+     * Start a refresh token family for a user who just logged in. If the token table
+     * is missing the login still works, only refreshing is unavailable.
+     */
+    private function _issueRefreshCookie($userId) {
+        try {
+            $token = $this->_refreshTokens()->issue(
+                $userId,
+                $this->Api()->getRefreshTokenTtl(),
+                null,
+                (string) \Wbengine\Application\Env\Stac\Utils::getUserIp(),
+                (string) \Wbengine\Application\Env\Stac\Utils::getUserAgent()
+            );
+            $this->_setRefreshCookie($token, time() + $this->Api()->getRefreshTokenTtl());
+        } catch (\Throwable $e) {
+            error_log(__METHOD__ . ': no refresh token issued: ' . $e->getMessage() . ' (is cms_refresh_tokens present?)');
         }
     }
 
-
-    public function validateRefreshToken(){
-        $refresh_token = Http::getCookie("refresh_token");
-
-        if(null === $refresh_token || empty($refresh_token)) {
-            $this->Api()->toJson(
-                Array(
-                    "success" => false,
-                    "message"=> "Invalid refresh token, has expired or unavailable."
-                ),Http::UNAUTHORIZED
-            );
-        }
-
-        try {
-            $payload = $this->wbAuth()->validateRefreshToken($refresh_token);
-            $fn = fn($b) => (int)$b === (int)$payload["data"]->user_id;
-            $id = $this->User()->getUserId();
-
-            if(!$fn($id)) {
-                $this->Api()->toJson(
-                    Array(
-                        "success" => false,
-                        "message"=> "Unverified or invalid UID."
-                    ),Http::UNAUTHORIZED
-                );
+    private function _revokeCookieToken() {
+        $token = $_COOKIE[self::REFRESH_COOKIE] ?? null;
+        if (is_string($token)) {
+            try {
+                $this->_refreshTokens()->revoke($token);
+            } catch (\Throwable $e) {
+                error_log(__METHOD__ . ': ' . $e->getMessage());
             }
-
-            $this->User()->loadUserDataFromModel();
-            $this->Api()->toJson(
-                Array(
-                    "success" => $fn($id),
-                    "user_id" => $id,
-                    "token" => $this->User()->createJwtToken($this->Api()->getJwtTokenExpiration()),
-                    "message"=> "Verification OK. The new JWT token has successfuly created."
-                ),($fn((int)$id)) ? Http::OK : Http::UNAUTHORIZED
-            );
-
-        }catch(\Exception $e){
-            $this->Api()->toJson(
-                Array(
-                    "success" => false,
-                    "message"=> $e->getMessage()
-                ),Http::UNAUTHORIZED
-            );
         }
+    }
+
+    private function _setRefreshCookie($value, $expires) {
+        setcookie(self::REFRESH_COOKIE, $value, array(
+            'expires' => $expires,
+            'path' => $this->Api()->getCookieUrl(),
+            'domain' => $this->Api()->getCookieDomain(),
+            'secure' => $this->Api()->getCookieIsSecured(),
+            'httponly' => $this->Api()->getCookieIsHttpOnly(),
+            'samesite' => $this->Api()->getCookieSameSite(),
+        ));
+    }
+
+    private function _clearRefreshCookie() {
+        $this->_setRefreshCookie('', time() - 3600);
     }
 
     private function validate($credentials) {
