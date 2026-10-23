@@ -14,8 +14,12 @@ $config['dbAdapterDefinition']['hostname'] = getenv('WB_TEST_DB_HOST') ?: 'db';
 
 $file = sys_get_temp_dir() . '/wbengine-test-settings-' . getmypid() . '.json';
 file_put_contents($file, json_encode($config));
-register_shutdown_function(static function () use ($file) {
-    @unlink($file);
+$ownerPid = getmypid();
+register_shutdown_function(static function () use ($file, $ownerPid) {
+    // Forked test workers share this callback, only the owner may clean up.
+    if (getmypid() === $ownerPid) {
+        @unlink($file);
+    }
 });
 
 Config::load(new File($file));

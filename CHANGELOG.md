@@ -60,6 +60,10 @@ documented here, see the git tags.
   request instead of on every `setValue()`, and expired sessions are purged on
   about 1 in 100 loads instead of on every request. A request without a session
   cookie skips the lookup entirely.
+- Opt-in batched view counting (`counters.views`): the article view counter is
+  written once per N views or per interval instead of on every request (new
+  `Counter\BatchCounter`, `Config::getViewCounterSettings()`). Off by default, so
+  views are written immediately as before.
 - `renderer.compileCheck: false` skips Smarty's per-request template check.
 
 ### Added

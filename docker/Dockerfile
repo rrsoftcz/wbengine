@@ -3,7 +3,7 @@ FROM php:8.4-cli
 RUN apt-get update \
     && apt-get install -y --no-install-recommends unzip git libzip-dev \
     && rm -rf /var/lib/apt/lists/* \
-    && docker-php-ext-install mysqli zip \
+    && docker-php-ext-install mysqli zip pcntl \
     && pecl install apcu \
     && docker-php-ext-enable apcu \
     && echo "apc.enable_cli=1" > /usr/local/etc/php/conf.d/apcu-cli.ini

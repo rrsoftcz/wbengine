@@ -285,6 +285,7 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 | `cdnPath` | prefix for static assets |
 | `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
 | `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
+| `counters` | `views`: `enabled` (default `false`), `hits` (50) and `seconds` (60) per batch, `dir` for the counter files. Batches the article view counter |
 | `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver. See the performance notes |
 | `renderer` | `adapterName` (`SmartyRenderer`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |
@@ -317,12 +318,12 @@ Indicative throughput (ApacheBench, 2000 requests, concurrency 4, PHP 8.4 with o
 What changed:
 
 * **Session:** the row is read once per request, created only when something is stored, written once at the end of the request, expired rows are purged on about 1 in 100 loads, and a request without a session cookie skips the lookup.
+* **View counter** (opt-in): `"counters": {"views": {"enabled": true, "hits": 50, "seconds": 60}}` turns the `UPDATE` on every article view into one `UPDATE` per 50 views or per minute. The counts are kept in small locked files, so concurrent requests lose nothing (tested with parallel processes); only increments still pending when the server crashes are lost. The displayed count lags by at most one batch.
 * **Cache** (opt-in): the site table, menu, sections and box lists. Enable with `"cache": {"enabled": true, "driver": "apcu", "ttl": 300}` (or `"driver": "file"`). APCu is the fastest and is shared by all PHP workers of a server; the file driver works everywhere and benefits from opcache. The API flushes the cache when sections change. After editing `cms_sites`, `cms_menu`, `cms_sections` or `cms_boxes` directly in the database, call `Wbengine\Cache::flush()` or wait for the TTL. When the cache is on, the site is looked up in PHP on the cached table of visible sites (links are compared case-insensitively, as the database collation does). That table is cached once, so random URLs cannot grow the cache. Very large site tables (tens of thousands of rows) are better served without the cache.
 
 Still open, in the order I recommend:
 
-1. Count article views in batches instead of an `UPDATE` on every view.
-2. Cache whole HTML responses for anonymous GET requests.
+1. Cache whole HTML responses for anonymous GET requests.
 3. A small template compiler to plain PHP with automatic output escaping and per box fragment caching. Smarty 5 stays available behind `RendererInterface` during migration. This is worth doing after the query count is down, because the queries dominate today.
 4. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (verified: Smarty then stops checking template files on every request).
 
