@@ -240,15 +240,18 @@ Modules included in 3.1:
 |-----------------|---------|------|
 | `POST /api/auth/login` | exchange e-mail and password for a JWT | no |
 | `POST /api/auth/logout`, `/jwt/identify`, `/jwt/revalidate` | session and token handling | cookie or token |
-| `GET /api/users`, `GET /api/users/{id}` | list and read users (never returns the password hash) | token |
-| `POST /api/users/create` | create a user (e-mail, password, optional profile fields) | token |
-| `PATCH /api/users/patch/{id}` | update profile fields or password | token |
-| `DELETE /api/users/{id}` | delete a user | token |
-| `GET/POST /api/sections`, `GET/PUT/DELETE /api/sections/{id}` | sections CRUD | token |
+| `GET /api/users` | list users (never returns the password hash) | admin |
+| `GET /api/users/{id}` | read a user | admin, or the user themselves |
+| `POST /api/users/create` | create a user (e-mail, password, optional profile fields and role) | admin |
+| `PATCH /api/users/patch/{id}` | update profile fields or password; `role` only by an admin | admin, or the user themselves (not the role) |
+| `DELETE /api/users/{id}` | delete a user (not yourself, not the last admin) | admin |
+| `GET/POST /api/sections`, `GET/PUT/DELETE /api/sections/{id}` | sections CRUD | admin |
 
 Conventions:
 
-* Send `Authorization: Bearer <token>`. A missing, malformed, expired or wrongly signed token returns `401`.
+* Send `Authorization: Bearer <token>`. A missing, malformed, expired or wrongly signed token returns `401`. A valid token without the required role returns `403`.
+* Roles are `user`, `editor` and `admin` (`cms_users.role`, class `Wbengine\User\Role`). The role is read from the database on every privileged call, so demoting or deleting a user takes effect immediately, not when their token expires. The token carries the role only so a client can show or hide controls.
+* To protect your own action: `$this->isAuthenticated(function ($payload, $actor) { ... }, Role::EDITOR);`
 * Writes accept only whitelisted fields. Unknown fields (for example `user_type`) are rejected with `400`, so a client cannot raise its own privileges.
 * Success bodies are the plain data, errors are `{"success": false, "error": <code>, "message": "..."}`. Creates return `201` for sections.
 * CORS: `Access-Control-Allow-Origin` defaults to `*`. Use `Api::setSingleOrigin()` and `Api::allowHeader('Authorization')` for a browser based admin application, and `Api::setHeaderAllowOredentials(true)` only together with a single explicit origin.
@@ -325,7 +328,7 @@ Still open, in the order I recommend:
 
 * Use bound parameters for every value (see the database layer).
 * Keep `debug` off in production and `Settings.json` out of git.
-* The API currently authorizes by "has a valid token". Before exposing it beyond administrators, add a role claim to the token and check it in each module.
+* The API authorizes by role (`user`, `editor`, `admin`) checked against the database. Give every new API action an explicit role: `isAuthenticated()` without one only checks that the token is valid.
 * Smarty output is not escaped by default. Escape values in templates (`{$value|escape}`) until automatic escaping is added.
 * Put TLS in front of the application. The session cookie is marked `Secure` only when the request arrives over HTTPS.
 * Report problems privately to the maintainers.
@@ -351,7 +354,8 @@ The integration tests create their tables from `tests/schema.sql`. They are skip
 * Widen the password column: `ALTER TABLE cms_users MODIFY password varchar(255) NOT NULL DEFAULT '0';`
 * Replace string built SQL with bound parameters. `Db::query()` and the fetch helpers accept an array of parameters. `Db::createUpdateQuery()` is removed, use `Db::update()`.
 * `SiteModel::getUrlId()` is replaced by `getUrlCandidates()`, which returns an array.
-* The `/api/sections` routes now require a token, and users and sections accept only whitelisted fields.
+* The `/api/sections` routes now require an admin token, and users and sections accept only whitelisted fields.
+* Add `cms_users.role` (`ALTER TABLE cms_users ADD COLUMN role varchar(20) NOT NULL DEFAULT 'user';`) and promote your administrators, otherwise privileged API calls answer 403.
 * API routes accept URLs with or without a trailing slash. If your `.htaccess` adds a trailing slash with a 301 redirect, exclude `/api`, because a redirect turns a POST into a GET.
 
 ## License

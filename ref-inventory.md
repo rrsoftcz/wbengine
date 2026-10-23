@@ -31,7 +31,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 | Session fixation (no id regeneration), no cookie flags | Fixed: regenerate on login, `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS, strict mode |
 | `unserialize` of session data without class restriction | Fixed: only `stdClass` |
 | SQL and exception details shown to clients, unescaped debug output | Fixed: logged server side, generic page unless debug, escaped |
-| API has no role check: any valid token can use every route | Open |
+| API has no role check: any valid token can use every route | Fixed: `user`, `editor`, `admin`, checked against the database, verified with 17 scenarios including immediate effect of a demotion |
 | No rate limiting on `/api/auth/login`; web login counter lives in the session so a client without cookies avoids it | Open |
 | Refresh token is a second JWT with no server side store, rotation or revocation; logout does not invalidate tokens | Open |
 | Smarty output is not escaped by default (`escape_html` off) | Open |
@@ -95,7 +95,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 
 ## Recommended next steps
 
-1. Add a role claim to tokens and check it in every API module.
+1. Rate limiting for `/api/auth/login`, refresh token revocation.
 2. Batch article view counting and cache whole anonymous pages.
 3. Add CI that runs `composer test`, and cover `Url`, `Site`, `Session` and `Box\Auth`.
 4. Decide about `Locale` and `Registry`.

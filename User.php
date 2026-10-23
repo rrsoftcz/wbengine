@@ -15,6 +15,8 @@
 
 namespace Wbengine;
 
+use Wbengine\User\Role;
+
 use Wbengine\User\Model;
 use Wbengine\User\UserException;
 
@@ -401,7 +403,9 @@ class User
         return array(
             "user_id" => $this->getUserId(),
             "username" => $this->getUserName(),
-            "email" => $this->getUserEmail()
+            "email" => $this->getUserEmail(),
+            // Informational for clients. The server authorizes from the database, not from this value.
+            "role" => $this->_resource['role'] ?? Role::USER
         );
     }
 

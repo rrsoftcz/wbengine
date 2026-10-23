@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `cms_users` (
   `ac_active` int unsigned DEFAULT '0',
   `user_ip` varchar(45) DEFAULT NULL,
   `locale` int DEFAULT '1',
+  `role` varchar(20) NOT NULL DEFAULT 'user',
   PRIMARY KEY (`user_id`),
   KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

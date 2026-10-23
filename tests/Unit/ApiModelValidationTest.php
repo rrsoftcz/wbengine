@@ -60,6 +60,26 @@ class ApiModelValidationTest extends TestCase
         (new ApiUserModel())->updateUser(1, array('user_type' => 0));
     }
 
+    #[DataProvider('badRoles')]
+    public function testUserRejectsUnknownRoles($role): void
+    {
+        $this->expectException(ApiModelException::class);
+        $this->expectExceptionMessage('The role must be one of');
+        (new ApiUserModel())->updateUser(1, array('role' => $role));
+    }
+
+    public static function badRoles(): array
+    {
+        return [
+            'superuser' => ['superuser'],
+            'uppercase' => ['ADMIN'],
+            'sql'       => ["admin' OR '1'='1"],
+            'int'       => [1],
+            'empty'     => [''],
+            'null'      => [null],
+        ];
+    }
+
     public function testUserRejectsInvalidEmail(): void
     {
         $this->expectException(ApiModelException::class);
