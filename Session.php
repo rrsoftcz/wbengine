@@ -55,6 +55,15 @@ class Session extends SessionAbstract
 
     private $_destroyed = false;
 
+    /**
+     * Something was stored in the session during this request.
+     */
+    private $_modified = false;
+
+    public function wasModified(){
+        return $this->_modified;
+    }
+
     function __construct()
     {
 //        var_dump(debug_backtrace()[0]);
@@ -82,6 +91,7 @@ class Session extends SessionAbstract
      */
     public function save(){
         $this->_dirty = true;
+        $this->_modified = true;
 
         if (false === $this->_shutdownRegistered) {
             $this->_shutdownRegistered = true;

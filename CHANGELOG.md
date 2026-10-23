@@ -60,6 +60,17 @@ documented here, see the git tags.
   request instead of on every `setValue()`, and expired sessions are purged on
   about 1 in 100 loads instead of on every request. A request without a session
   cookie skips the lookup entirely.
+- Opt-in whole page cache for anonymous visitors (`cache.pages`, `PageCache`). A
+  hit is served from the `Application` constructor before any box runs: no query
+  for a visitor without a session cookie, one session lookup for a returning one,
+  `ETag` and `304 Not Modified` support. A page is stored only for a plain GET of a
+  site's own URL, for a visitor who is not logged in, with a 200 HTML response, when
+  nothing was written to the session (a page with a login token is never stored) and
+  the site needs no login. Verified: a logged-in visitor never reads or fills the
+  cache and the admin's e-mail never appears in the anonymous copy. New:
+  `Cache::fetch()`, `Cache::store()`, `Session::wasModified()`,
+  `Application::hasModifiedSession()`. The API flushes pages together with the data
+  cache.
 - Opt-in batched view counting (`counters.views`): the article view counter is
   written once per N views or per interval instead of on every request (new
   `Counter\BatchCounter`, `Config::getViewCounterSettings()`). Off by default, so

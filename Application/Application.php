@@ -28,6 +28,7 @@ use Wbengine\Error;
 use Wbengine\Exception\RuntimeException;
 use Wbengine\Locale;
 use Wbengine\Locale\LocaleAbstract;
+use Wbengine\PageCache;
 use Wbengine\Router;
 use Wbengine\Section;
 use Wbengine\Site;
@@ -210,6 +211,12 @@ class Application implements ComponentParentInterface, ResponseInterface
 
 
             /**
+             * Anonymous visitors may get the whole page from the page cache (opt-in).
+             * A hit exits here, before any box runs.
+             */
+            PageCache::handle($this);
+
+            /**
              * INITIALIZE OBJECT SITE...
              */
             if(empty($this->getClassVars()->getValue('central'))) {
@@ -320,6 +327,14 @@ class Application implements ComponentParentInterface, ResponseInterface
      * Return created session instance.
      * @return Session
      */
+    /**
+     * Whether anything was written to the session during this request.
+     * @return bool
+     */
+    public function hasModifiedSession(){
+        return $this->_session instanceof Session && $this->_session->wasModified();
+    }
+
     public function getSession(){
         if ($this->_session instanceof Session) {
             return $this->_session;
