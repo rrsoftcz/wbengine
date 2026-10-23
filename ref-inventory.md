@@ -35,7 +35,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 | No rate limiting on `/api/auth/login`; web login counter lives in the session so a client without cookies avoids it | Open |
 | Refresh token is a second JWT with no server side store, rotation or revocation; logout does not invalidate tokens | Open |
 | Smarty output is not escaped by default (`escape_html` off) | Open |
-| A session row is created for every request without a cookie (database write per bot hit) | Open |
+| A session row is created for every request without a cookie (database write per bot hit) | Fixed: rows are created only when something is stored |
 | Private keys and a customer certificate were tracked in the skeleton repository | Fixed in the working tree (untracked, ignored). History still contains them: rotate the keys and, if needed, rewrite history |
 
 ### PHP 8.3 and 8.4 compatibility
@@ -62,10 +62,11 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 
 | Finding | Status |
 |---------|--------|
-| About eight to ten queries per anonymous page; one box query per section; `Site` menu and url helpers are N+1 | Open |
-| Session written on every `setValue`; a global `DELETE` of expired sessions on reads | Open |
+| About eight to ten queries per anonymous page; one box query per section | Fixed (opt-in): with the cache a warm page needs 0 to 3 queries |
+| `Site` menu and url helpers (`isMenuSelected`, `getUrlPairsWithSiteId`) are N+1 | Open |
+| Session written on every `setValue`; a global `DELETE` of expired sessions on reads; a row inserted for every visitor | Fixed: one lazy write at shutdown, probabilistic purge, no lookup without a cookie |
 | Article view counter is a write on every GET | Open |
-| No cache of site, sections, menu or box list | Open |
+| No cache of site, sections, menu or box list | Fixed: `Wbengine\Cache` (APCu or file driver), opt-in, flushed by the API |
 | HTML minification is a whitespace collapse that breaks `<pre>`, `<textarea>` and inline script comments | Open |
 | CSS minify hashes files on every request | Open |
 | Composer autoload with an empty PSR-4 prefix root | Open: use a `src/` layout or a classmap |
@@ -88,13 +89,14 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 * Syntax: `php -l` on every framework file under PHP 8.4 with `E_ALL`, no errors.
 * Runtime: all skeleton pages render with no PHP warnings or deprecations in the log, sections and boxes come from MySQL 8.4.
 * Security tests against the running stack: SQL payloads in URL and header, API injection attempts, token tampering, `alg=none`, forged old key, mass assignment, login and logout, session id regeneration and replay of the old id, legacy MD5 login with a narrow column, hash upgrade after widening, special character passwords through the web form and the API.
-* Automated: a PHPUnit suite (68 tests, unit and integration against MySQL 8.4) runs in Docker with `composer test`.
+* Session behaviour (lazy row, deferred write, logout leaves no row, old id replay fails) and cache invalidation were verified by hand against the running skeleton. There are no automated tests for `Session` yet.
+* Automated: a PHPUnit suite (91 tests, unit and integration against MySQL 8.4) runs in Docker with `composer test`.
 * Not covered: load testing, MariaDB, Nginx, PHP 8.3 and 8.5, CI.
 
 ## Recommended next steps
 
 1. Add a role claim to tokens and check it in every API module.
-2. Cache site, sections, menu and box list, defer session writes, batch view counting.
+2. Batch article view counting and cache whole anonymous pages.
 3. Add CI that runs `composer test`, and cover `Url`, `Site`, `Session` and `Box\Auth`.
 4. Decide about `Locale` and `Registry`.
 5. Template compiler with automatic escaping and fragment caching, keeping Smarty as an adapter.

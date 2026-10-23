@@ -218,6 +218,16 @@ class Config
     }
 
     /**
+     * Cache settings: array with enabled, driver, ttl, dir. Disabled when not configured.
+     * @return array
+     */
+    public static function getCacheSettings()
+    {
+        $cache = (is_object(self::$config) && isset(self::$config->cache)) ? self::$config->cache : null;
+        return is_object($cache) ? (array) $cache : array('enabled' => false);
+    }
+
+    /**
      * Return JWT signing keys as array('access' => string, 'refresh' => string).
      * Environment variables WBENGINE_JWT_KEY and WBENGINE_JWT_REFRESH_KEY take precedence
      * over the "jwt" section of the settings file. Missing keys are returned as null.

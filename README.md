@@ -280,6 +280,7 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 | `minimizeHtml`, `minimizeCss`, `minimizeJs` | output minification (HTML minification is a whitespace collapse, so avoid it with `<pre>`, `<textarea>` or inline scripts) |
 | `cdnPath` | prefix for static assets |
 | `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
+| `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver. See the performance notes |
 | `renderer` | `adapterName` (`SmartyRenderer`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |
 | `jwt` | `accessKey` and `refreshKey`, at least 32 characters each |
@@ -298,14 +299,27 @@ Debug mode also turns on `display_errors`. It exposes SQL and paths, so it must 
 
 What the engine does well today: a single connection opened only when needed, no model hydration, compiled Smarty templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
 
-Measured costs per anonymous page in the skeleton: the site, sections and menu queries, one query per section for boxes, and the session read or write. Known ways to reduce it, in the order I recommend:
+Measured queries per page in the skeleton application (debug bar):
 
-1. Cache the site row, sections, menu and box list per site (APCu or a file), invalidated when the admin API writes. This removes about half of the queries.
-2. Write the session once at the end of the request, and do not create a session row for visitors without a cookie.
-3. Count article views in batches instead of an `UPDATE` on every view.
-4. Cache whole HTML responses for anonymous GET requests.
-5. A small template compiler to plain PHP with automatic output escaping and per box fragment caching. Smarty 5 stays available behind `RendererInterface` during migration. This is worth doing after the query count is down, because the queries dominate today.
-6. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (verified: Smarty then stops checking template files on every request).
+| Page | Before | Cache off, new session handling | Cache on, warm |
+|------|--------|-------------------------------|----------------|
+| `/` first visit, no cookie | 9 | 6 | 0 |
+| `/` returning visitor | 8 | 7 | 1 |
+| `/blog/` (article plus view counter) | 10 | 9 | 3 |
+
+Indicative throughput (ApacheBench, 2000 requests, concurrency 4, PHP 8.4 with opcache, Apache and MySQL 8.4 in Docker Desktop, home page of the skeleton): about 540 to 600 requests per second with the cache off against about 725 to 745 with the cache on (cache and `compileCheck: false`), roughly 25 to 30 percent more. The runs were noisy and some were dropped, so treat this as a direction and measure on your own hardware.
+
+What changed:
+
+* **Session:** the row is read once per request, created only when something is stored, written once at the end of the request, expired rows are purged on about 1 in 100 loads, and a request without a session cookie skips the lookup.
+* **Cache** (opt-in): the site table, menu, sections and box lists. Enable with `"cache": {"enabled": true, "driver": "apcu", "ttl": 300}` (or `"driver": "file"`). APCu is the fastest and is shared by all PHP workers of a server; the file driver works everywhere and benefits from opcache. The API flushes the cache when sections change. After editing `cms_sites`, `cms_menu`, `cms_sections` or `cms_boxes` directly in the database, call `Wbengine\Cache::flush()` or wait for the TTL. When the cache is on, the site is looked up in PHP on the cached table of visible sites (links are compared case-insensitively, as the database collation does). That table is cached once, so random URLs cannot grow the cache. Very large site tables (tens of thousands of rows) are better served without the cache.
+
+Still open, in the order I recommend:
+
+1. Count article views in batches instead of an `UPDATE` on every view.
+2. Cache whole HTML responses for anonymous GET requests.
+3. A small template compiler to plain PHP with automatic output escaping and per box fragment caching. Smarty 5 stays available behind `RendererInterface` during migration. This is worth doing after the query count is down, because the queries dominate today.
+4. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (verified: Smarty then stops checking template files on every request).
 
 ## Security notes
 
