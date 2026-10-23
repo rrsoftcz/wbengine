@@ -201,6 +201,7 @@ A subset of Smarty, so existing templates mostly work unchanged:
 {$user.address.city}  {$menu[0]->name}   {* array keys, properties *}
 {$item->active()}                        {* method call *}
 {$name|default:'anonymous'|upper}        {* modifiers *}
+{'/blog/'|lurl}                          {* quoted text with a modifier *}
 
 {if $n > 1 && !$hidden}...{elseif $n === 1}...{else}...{/if}
 
