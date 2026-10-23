@@ -1,0 +1,31 @@
+# Test environment: PHP 8.4 CLI and MySQL 8.4.
+#
+#   docker compose run --rm php composer install
+#   docker compose run --rm php composer test
+#
+# The database is created and seeded from tests/schema.sql on first start.
+services:
+    php:
+        build: docker
+        working_dir: /app
+        volumes:
+            - ./:/app
+        environment:
+            WB_TEST_DB_HOST: db
+        depends_on:
+            db:
+                condition: service_healthy
+    db:
+        image: mysql:8.4
+        environment:
+            MYSQL_ROOT_PASSWORD: root_password
+            MYSQL_DATABASE: wbengine_test
+            MYSQL_USER: wb_test
+            MYSQL_PASSWORD: wb_test
+        volumes:
+            - ./tests/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uwb_test", "-pwb_test"]
+            interval: 3s
+            timeout: 3s
+            retries: 30
