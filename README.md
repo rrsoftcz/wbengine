@@ -280,7 +280,7 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 | `minimizeHtml`, `minimizeCss`, `minimizeJs` | output minification (HTML minification is a whitespace collapse, so avoid it with `<pre>`, `<textarea>` or inline scripts) |
 | `cdnPath` | prefix for static assets |
 | `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
-| `renderer` | `adapterName` (`SmartyRenderer`), `templatesDir`, `compiledDir`, `configDir` |
+| `renderer` | `adapterName` (`SmartyRenderer`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |
 | `jwt` | `accessKey` and `refreshKey`, at least 32 characters each |
 | `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed |
@@ -305,7 +305,7 @@ Measured costs per anonymous page in the skeleton: the site, sections and menu q
 3. Count article views in batches instead of an `UPDATE` on every view.
 4. Cache whole HTML responses for anonymous GET requests.
 5. A small template compiler to plain PHP with automatic output escaping and per box fragment caching. Smarty 5 stays available behind `RendererInterface` during migration. This is worth doing after the query count is down, because the queries dominate today.
-6. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, and `php.ini-production`.
+6. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (verified: Smarty then stops checking template files on every request).
 
 ## Security notes
 
