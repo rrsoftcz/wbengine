@@ -162,13 +162,25 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
         }
 
         $this->_setRefreshCookie($rotated['token'], time() + $this->Api()->getRefreshTokenTtl());
-        $this->User()->loadUserDataFromModel($rotated['user_id']);
+
+        // The token is built from the database row, not through a User object, so this
+        // endpoint stays free of the PHP session.
+        $identity = $this->getUserModel()->getTokenIdentity($rotated['user_id']);
+        $accessToken = $this->wbAuth()
+            ->setExpiredTime($this->Api()->getJwtTokenExpiration())
+            ->setPayloadData(Array(
+                "user_id" => (int) $identity['user_id'],
+                "username" => $identity['username'],
+                "email" => $identity['email'],
+                "role" => $identity['role'],
+            ))
+            ->getJwtToken();
 
         $this->Api()->toJson(
             Array(
                 "success" => true,
                 "user_id" => $rotated['user_id'],
-                "token" => $this->User()->createJwtToken($this->Api()->getJwtTokenExpiration()),
+                "token" => $accessToken,
                 "message" => "The new JWT token has successfuly created."
             ), Http::OK
         );
@@ -179,7 +191,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
     private $_refreshTokens = null;
 
     private function _refreshTokens() {
-        return $this->_refreshTokens ?? ($this->_refreshTokens = new RefreshTokens());
+        return $this->_refreshTokens ?? ($this->_refreshTokens = new RefreshTokens(null, $this->Api()->getRefreshAbsoluteLifetime()));
     }
 
     /**
@@ -213,7 +225,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
     }
 
     private function _setRefreshCookie($value, $expires) {
-        setcookie(self::REFRESH_COOKIE, $value, array(
+        $this->Api()->writeCookie(self::REFRESH_COOKIE, $value, array(
             'expires' => $expires,
             'path' => $this->Api()->getCookieUrl(),
             'domain' => $this->Api()->getCookieDomain(),

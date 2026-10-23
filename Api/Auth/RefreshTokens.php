@@ -15,6 +15,9 @@ use Wbengine\Db;
  * owner and the thief are both logged out. A short grace period covers two browser
  * tabs refreshing at the same moment.
  *
+ * A token family also has an absolute lifetime: however often it is used, it stops
+ * working that long after the login, so a stolen device cannot stay logged in for ever.
+ *
  * Table: cms_refresh_tokens (see schemas/migrations in the skeleton application).
  */
 class RefreshTokens
@@ -22,14 +25,20 @@ class RefreshTokens
     /** Seconds in which a second use of a just rotated token is refused without revoking. */
     const REUSE_GRACE = 10;
 
+    /** Seconds after the login in which a family stops working however often it is used. */
+    const DEFAULT_FAMILY_LIFETIME = 2592000;
+
     private $_clock;
+    private $_familyLifetime;
 
     /**
      * @param callable|null $clock returns the current unix time, for tests
+     * @param int $familyLifetime absolute lifetime of a token family in seconds
      */
-    public function __construct(?callable $clock = null)
+    public function __construct(?callable $clock = null, $familyLifetime = self::DEFAULT_FAMILY_LIFETIME)
     {
         $this->_clock = $clock ?? 'time';
+        $this->_familyLifetime = max(1, (int) $familyLifetime);
     }
 
     private function _now()
@@ -47,7 +56,7 @@ class RefreshTokens
      *
      * @return string the raw token, to be sent to the client once and never stored
      */
-    public function issue($userId, $ttl, $familyId = null, $ip = '', $userAgent = '')
+    public function issue($userId, $ttl, $familyId = null, $ip = '', $userAgent = '', $familyStartedAt = null)
     {
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $now = $this->_now();
@@ -58,6 +67,7 @@ class RefreshTokens
             'token_hash' => self::hash($token),
             'expires_at' => $now + max(1, (int) $ttl),
             'created_at' => $now,
+            'family_started_at' => (int) ($familyStartedAt ?? $now),
             'ip' => substr((string) $ip, 0, 45),
             'user_agent' => substr((string) $userAgent, 0, 255),
         ));
@@ -85,6 +95,11 @@ class RefreshTokens
         }
         if ((int) $row['expires_at'] <= $now) {
             throw new InvalidRefreshTokenException('expired');
+        }
+        $started = (int) ($row['family_started_at'] ?? 0) ?: (int) $row['created_at'];
+        if ($now - $started >= $this->_familyLifetime) {
+            $this->_revokeFamily($row['family_id'], $now);
+            throw new InvalidRefreshTokenException('expired: the family reached its absolute lifetime');
         }
         if (null !== $row['used_at']) {
             if ($now - (int) $row['used_at'] > self::REUSE_GRACE) {
@@ -114,7 +129,7 @@ class RefreshTokens
 
         return array(
             'user_id' => (int) $row['user_id'],
-            'token' => $this->issue((int) $row['user_id'], $ttl, $row['family_id'], $ip, $userAgent),
+            'token' => $this->issue((int) $row['user_id'], $ttl, $row['family_id'], $ip, $userAgent, $started),
         );
     }
 

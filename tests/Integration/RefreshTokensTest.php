@@ -103,6 +103,40 @@ class RefreshTokensTest extends DbTestCase
         $this->assertSame($this->userId, $this->tokens->rotate($second, 3600)['user_id'], 'the winner of the race is unaffected');
     }
 
+    public function testAFamilyHasAnAbsoluteLifetimeNoMatterHowOftenItIsUsed(): void
+    {
+        $tokens = new RefreshTokens(fn () => $this->now, 1000);
+        $token = $tokens->issue($this->userId, 400);
+
+        // Used every 300 seconds, well inside the 400 second sliding window.
+        for ($i = 0; $i < 3; $i++) {
+            $this->now += 300;
+            $token = $tokens->rotate($token, 400)['token'];
+        }
+
+        $this->now += 300;  // 1200 seconds after the login
+        try {
+            $tokens->rotate($token, 400);
+            $this->fail('Expected the family to have reached its absolute lifetime');
+        } catch (InvalidRefreshTokenException $e) {
+            $this->assertStringContainsString('absolute lifetime', $e->getReason());
+        }
+
+        $this->assertSame(0, (int) Db::fetchAssoc('SELECT COUNT(*) c FROM cms_refresh_tokens WHERE revoked_at IS NULL')['c'], 'the whole family is revoked');
+    }
+
+    public function testTheStartOfTheFamilyIsKeptAcrossRotations(): void
+    {
+        $token = $this->tokens->issue($this->userId, 3600);
+        $start = (int) Db::fetchAssoc('SELECT family_started_at s FROM cms_refresh_tokens')['s'];
+
+        $this->now += 500;
+        $this->tokens->rotate($token, 3600);
+
+        $starts = array_unique(array_column(Db::fetchAllAssoc('SELECT family_started_at FROM cms_refresh_tokens'), 'family_started_at'));
+        $this->assertSame([$start], array_map('intval', $starts));
+    }
+
     public function testRevokeLogsOutOnlyThatFamily(): void
     {
         $a = $this->tokens->issue($this->userId, 3600);

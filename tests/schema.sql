@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS `cms_refresh_tokens` (
   `token_hash` char(64) NOT NULL,
   `expires_at` int unsigned NOT NULL,
   `created_at` int unsigned NOT NULL,
+  `family_started_at` int unsigned NOT NULL DEFAULT '0',
   `used_at` int unsigned DEFAULT NULL,
   `revoked_at` int unsigned DEFAULT NULL,
   `ip` varchar(45) DEFAULT NULL,

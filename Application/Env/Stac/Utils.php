@@ -29,7 +29,8 @@ class Utils
      * @return string
      */
     static function getUserAgent(){
-        return $_SERVER['HTTP_USER_AGENT'];
+        // The header is optional: clients and bots may leave it out.
+        return (string) ($_SERVER['HTTP_USER_AGENT'] ?? '');
     }
 
 
@@ -56,6 +57,7 @@ class Utils
         } elseif (isset($_SERVER["HTTP_CLIENT_IP"])) {
             return $_SERVER["HTTP_CLIENT_IP"];
         }
+        return '';
     }
 
 

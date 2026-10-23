@@ -118,11 +118,19 @@ class PageCache
     private static function _isLoggedIn()
     {
         $name = session_name();
-        if (!isset($_COOKIE[$name])) {
-            return false;
-        }
+        return isset($_COOKIE[$name]) && self::sessionBelongsToAUser($_COOKIE[$name]);
+    }
 
-        $sid = $_COOKIE[$name];
+
+    /**
+     * Whether a session cookie value belongs to a logged in user. Anything that is not
+     * clearly an anonymous visitor counts as logged in: that only costs a cache miss.
+     *
+     * @param mixed $sid the value of the session cookie
+     * @return bool
+     */
+    public static function sessionBelongsToAUser($sid)
+    {
         if (!is_string($sid) || !preg_match('/^[A-Za-z0-9,-]{16,128}$/', $sid)) {
             return true;
         }
