@@ -9,6 +9,7 @@ namespace Wbengine\Api;
 
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\ExpiredException;
+use Wbengine\User\Role;
 use Firebase\JWT\SignatureInvalidException;
 // use http\Header;
 use Wbengine\Api;
@@ -84,10 +85,14 @@ class WbengineRestapiAbstract {
     /**
      * Check whatever http request include authentication JWT token.
      * Return the Array with decrypted payload or NULL.
+     * With $role the caller must also have at least that role (see User\Role), otherwise 403.
+     * The callable receives the token payload and, when a role was required, the actor
+     * row (user_id, role).
      * @param $callable
+     * @param string|null $role
      * @return Array|null
      */
-    public function isAuthenticated($callable) {
+    public function isAuthenticated($callable, $role = null) {
         $_token = Http::getBearerToken();
 
         if(empty($_token)) {
@@ -105,7 +110,21 @@ class WbengineRestapiAbstract {
             $this->Api()->toJson(Array("success" => false, "message" => "Invalid token."), Http::UNAUTHORIZED);
         }
 
-        return is_callable($callable) ? $callable($payload) : null;
+        // Authorization: the role is read from the database on every call, never from the token.
+        $actor = null;
+        if (null !== $role) {
+            try {
+                $actor = $this->getUserModel()->getAuthorization((int) ($payload['data']->user_id ?? 0));
+            } catch (\Throwable $e) {
+                error_log(sprintf('%s: role lookup failed (%s). Is cms_users.role present?', __METHOD__, $e->getMessage()));
+            }
+
+            if (!is_array($actor) || !Role::atLeast($actor['role'], $role)) {
+                $this->Api()->toJson(Array("success" => false, "message" => "Forbidden."), Http::FORBIDDEN);
+            }
+        }
+
+        return is_callable($callable) ? $callable($payload, $actor) : null;
     }
 
 

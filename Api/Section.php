@@ -7,6 +7,7 @@ use Wbengine\Api\WbengineRestapiAbstract;
 use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Api\Section\ApiSectionInterface;
 use Wbengine\Application\Env\Http;
+use Wbengine\User\Role;
 
 class Section extends WbengineRestapiAbstract implements ApiSectionInterface
 {
@@ -24,28 +25,32 @@ class Section extends WbengineRestapiAbstract implements ApiSectionInterface
     public function getSections($active = false)
     {
         $this->isAuthenticated(
-            fn() => $this->Api()->toJson($this->getSectionModel()->getSections($active))
+            fn() => $this->Api()->toJson($this->getSectionModel()->getSections($active)),
+            Role::ADMIN
         );
     }
 
     public function updateSection($id, $data)
     {
         $this->isAuthenticated(
-            fn() => $this->Api()->toJson($this->getSectionModel()->updateSection($id, $data))
+            fn() => $this->Api()->toJson($this->getSectionModel()->updateSection($id, $data)),
+            Role::ADMIN
         );
     }
 
     public function deleteSection($id)
     {
         $this->isAuthenticated(
-            fn() => $this->Api()->toJson($this->getSectionModel()->deleteSection($id))
+            fn() => $this->Api()->toJson($this->getSectionModel()->deleteSection($id)),
+            Role::ADMIN
         );
     }
 
     public function getSectionById($id)
     {
         $this->isAuthenticated(
-            fn() => $this->Api()->toJson($this->getSectionModel()->getSectionById($id))
+            fn() => $this->Api()->toJson($this->getSectionModel()->getSectionById($id)),
+            Role::ADMIN
         );
     }
 
@@ -60,7 +65,7 @@ class Section extends WbengineRestapiAbstract implements ApiSectionInterface
                 throw new ApiModelException("Something went wrong, seems data has added but any ID has returned.", 1);
             }
             $this->Api()->toJson($this->getSectionModel()->getSectionById($_lastId), Http::CREATED);
-        });
+        }, Role::ADMIN);
     }
 
 }

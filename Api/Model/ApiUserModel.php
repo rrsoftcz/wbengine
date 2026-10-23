@@ -21,19 +21,21 @@ use Wbengine\Db;
 use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Db\Exception\DbException;
 use Wbengine\User\Password;
+use Wbengine\User\Role;
 
 class ApiUserModel extends ModelAbstract
 {
     /**
      * Columns returned to API clients. Never the password hash or the activation key.
      */
-    const PUBLIC_COLUMNS = '`user_id`, `user_type`, `group_id`, `username`, `firstname`, `lastname`, `email`, `age`, `sex`, `ac_status`, `address`, `city`, `postcode`, `country`, `ac_active`, `user_ip`, `locale`';
+    const PUBLIC_COLUMNS = '`user_id`, `user_type`, `group_id`, `username`, `firstname`, `lastname`, `email`, `age`, `sex`, `ac_status`, `address`, `city`, `postcode`, `country`, `ac_active`, `user_ip`, `locale`, `role`';
 
     /**
      * Columns a client is allowed to write. Privileged columns (user_type, group_id,
      * ac_status, ac_key, ac_active, user_ip) are intentionally not writable here.
+     * "role" is writable but the controller only lets administrators send it.
      */
-    const WRITABLE_COLUMNS = array('username', 'firstname', 'lastname', 'password', 'email', 'age', 'sex', 'address', 'city', 'postcode', 'country', 'locale');
+    const WRITABLE_COLUMNS = array('username', 'firstname', 'lastname', 'password', 'email', 'age', 'sex', 'address', 'city', 'postcode', 'country', 'locale', 'role');
 
 
     /**
@@ -79,6 +81,10 @@ class ApiUserModel extends ModelAbstract
             }
         }
 
+        if (array_key_exists('role', $user) && !Role::isValid($user['role'])) {
+            throw new ApiModelException(sprintf('The role must be one of: %s.', implode(', ', Role::all())), 10);
+        }
+
         if (isset($user['email']) && false === filter_var($user['email'], FILTER_VALIDATE_EMAIL)) {
             throw new ApiModelException('Invalid e-mail address.', 10);
         }
@@ -87,6 +93,41 @@ class ApiUserModel extends ModelAbstract
             $user['password'] = Password::hash((string)$user['password']);
         }
         return $user;
+    }
+
+
+    /**
+     * The facts needed to authorize an API call: the user id and the current role.
+     * Returns null for an unknown user and for the anonymous user.
+     *
+     * @param int $userId
+     * @return array|null
+     */
+    public function getAuthorization($userId)
+    {
+        $row = Db::fetchAssoc(
+            sprintf("SELECT `user_id`, `role` FROM %s WHERE `user_id` = ? AND `user_id` > 0 LIMIT 1;", S_TABLE_USERS),
+            array((int) $userId)
+        );
+        return is_array($row) ? $row : null;
+    }
+
+
+    public function countAdmins()
+    {
+        return (int) Db::fetchAssoc(sprintf("SELECT COUNT(*) AS c FROM %s WHERE `role` = ?;", S_TABLE_USERS), array(Role::ADMIN))['c'];
+    }
+
+
+    /**
+     * The last administrator can neither be demoted nor deleted: nobody could repair it.
+     */
+    private function _assertNotLastAdmin($userId)
+    {
+        $current = $this->getAuthorization($userId);
+        if ($current && Role::ADMIN === $current['role'] && $this->countAdmins() <= 1) {
+            throw new ApiModelException('The last administrator cannot be demoted or deleted.', 10);
+        }
     }
 
 
@@ -114,6 +155,7 @@ class ApiUserModel extends ModelAbstract
     public function deleteUser($userId)
     {
         $userId = $this->_checkId($userId);
+        $this->_assertNotLastAdmin($userId);
 
         Db::query(sprintf("DELETE FROM %s WHERE `user_id` = ? LIMIT 1;", S_TABLE_USERS), array($userId));
         $deleted = (bool) Db::getAffected();
@@ -130,7 +172,12 @@ class ApiUserModel extends ModelAbstract
     {
         $userId = $this->_checkId($userId);
 
-        return array("updated" => Db::update(S_TABLE_USERS, $this->_checkData($user), array('user_id' => $userId)));
+        $data = $this->_checkData($user);
+        if (isset($data['role']) && Role::ADMIN !== $data['role']) {
+            $this->_assertNotLastAdmin($userId);
+        }
+
+        return array("updated" => Db::update(S_TABLE_USERS, $data, array('user_id' => $userId)));
     }
 
 

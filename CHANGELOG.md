@@ -24,6 +24,12 @@ documented here, see the git tags.
   array.
 - `User::login()` no longer hashes the login and password with MD5 itself, and
   `User\Model::authenticate()` looks the user up by `email`.
+- The REST API now authorizes by role. Add the column
+  `ALTER TABLE cms_users ADD COLUMN role varchar(20) NOT NULL DEFAULT 'user';`
+  and promote your administrators (`UPDATE cms_users SET role = 'admin' WHERE ...`),
+  otherwise every privileged call answers 403 (the reason is written to the error
+  log). Sections are admin only. Listing, creating and deleting users is admin
+  only. A user can read and edit their own profile, but not their role.
 - All `/api/sections` routes now require a bearer token.
 - API user and section writes accept only whitelisted fields, other fields are
   rejected with 400. `user_type`, `group_id`, `ac_status`, `ac_key`,
@@ -57,6 +63,13 @@ documented here, see the git tags.
   `cms_users.password` can hold a modern hash (`varchar(255)` recommended).
 - `Http::PostRaw()` for secrets that must not be altered by HTML cleaning.
 - `Config::getJwtKeys()` and `Config::getRecaptchaSecret()`.
+- `User\Role` (`user`, `editor`, `admin`) and `cms_users.role`.
+  `WbengineRestapiAbstract::isAuthenticated($callable, $role)` requires a role and
+  hands the callable the token payload and the actor row. The role is read from the
+  database on every privileged call, so a demotion or deletion takes effect at once
+  and not when the token expires. The token also carries the role, for display only.
+- Guards: nobody can delete their own account through the API, and the last
+  administrator can be neither demoted nor deleted.
 - `Cache` (`remember()`, `flush()`, `isEnabled()`, `setDriver()`), `Cache\FileCache`,
   `Cache\ApcuCache`, `Cache\NullCache`, `Config::getCacheSettings()`.
 - `Session::flush()` writes pending session changes (called automatically at
