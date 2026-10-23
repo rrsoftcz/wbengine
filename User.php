@@ -355,8 +355,8 @@ class User
             throw new UserException('User password is empty.');
         }
 
-        $this->_login = md5($login);
-        $this->_paswd = md5($password);
+        $this->_login = (string)$login;
+        $this->_paswd = (string)$password;
 
         $_usersData = $this->getModel()->authenticate($this);
 
@@ -488,11 +488,11 @@ class User
     }
 
     public function setLoginPassword(string $password) {
-        $this->_paswd = md5($password);
+        $this->_paswd = $password;
     }
 
     public function setLoginName(string $name) {
-        $this->_login = md5($name);
+        $this->_login = $name;
     }
 
     public function getFullName(){

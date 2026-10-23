@@ -128,6 +128,15 @@ abstract class Http
     }
 
 
+    /**
+     * Return a POST value untouched. Use it for secrets such as passwords: the value
+     * must not be altered by HTML or slash cleaning before it is hashed.
+     */
+    public static function PostRaw($name){
+        return (isset($_POST[$name]) && is_string($_POST[$name])) ? $_POST[$name] : null;
+    }
+
+
     public static function Get($name = null){
         return ($name) ? self::secureClean($_GET[$name]) : $_GET;
     }
