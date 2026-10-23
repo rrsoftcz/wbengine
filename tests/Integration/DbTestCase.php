@@ -24,6 +24,9 @@ abstract class DbTestCase extends TestCase
         Db::query('DELETE FROM cms_sessions');
         Db::query('DELETE FROM cms_sites');
         Db::query('DELETE FROM cms_boxes');
+        foreach (['cms_menu', 'cms_articles', 'cms_site_translations', 'cms_menu_translations', 'cms_article_translations'] as $table) {
+            Db::query('DELETE FROM ' . $table);
+        }
         Db::query('DELETE FROM cms_refresh_tokens');
     }
 }

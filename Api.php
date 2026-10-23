@@ -17,6 +17,7 @@ use Wbengine\Api\Exception\ApiException;
 use Wbengine\Api\Section;
 use Wbengine\Api\Auth;
 use Wbengine\Api\CacheAdmin;
+use Wbengine\Api\Translation;
 use Wbengine\Api\User;
 use Wbengine\Api\WbengineRestapiAbstract;
 use Wbengine\Application\Env\Http;
@@ -124,6 +125,7 @@ class Api
             $this->Register(new User($this));
             $this->Register(new Auth($this));
             $this->Register(new CacheAdmin($this));
+            $this->Register(new Translation($this));
 
         }catch(ApiException $e){
             throw new ApiException($e->getMessage());
