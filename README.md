@@ -22,14 +22,15 @@ A ready to run example application lives in the companion project `wbengine-skel
 3. [Core concepts](#core-concepts)
 4. [Request lifecycle](#request-lifecycle)
 5. [Writing boxes](#writing-boxes)
-6. [Database layer](#database-layer)
-7. [Routing and the REST API](#routing-and-the-rest-api)
-8. [Authentication, sessions and users](#authentication-sessions-and-users)
-9. [Configuration reference](#configuration-reference)
-10. [Debug tooling](#debug-tooling)
-11. [Performance notes and roadmap](#performance-notes-and-roadmap)
-12. [Security notes](#security-notes)
-13. [Upgrading from 3.0](#upgrading-from-30)
+6. [Template engine](#template-engine)
+7. [Database layer](#database-layer)
+8. [Routing and the REST API](#routing-and-the-rest-api)
+9. [Authentication, sessions and users](#authentication-sessions-and-users)
+10. [Configuration reference](#configuration-reference)
+11. [Debug tooling](#debug-tooling)
+12. [Performance notes and roadmap](#performance-notes-and-roadmap)
+13. [Security notes](#security-notes)
+14. [Upgrading from 3.0](#upgrading-from-30)
 
 ## Requirements
 
@@ -179,6 +180,65 @@ Template data is assigned under the name of the last part of the template path, 
 
 To add a page: insert a row into `cms_sites` (and `cms_menu` for navigation), write the box class and template, then insert a `cms_boxes` row that points at them.
 
+## Template engine
+
+Two renderers are included. **Smarty 5** is the default. The **native engine** is a small compiler that turns a template into plain PHP once and then just includes that file, so with opcache a render is running compiled code. Select it in `Settings.json`:
+
+```json
+"renderer": { "adapterName": "NativeRenderer", "autoEscape": true, "compileCheck": false }
+```
+
+### Syntax
+
+A subset of Smarty, so existing templates mostly work unchanged:
+
+```smarty
+{* a comment *}
+<h1>{$title}</h1>                        {* escaped *}
+{$article->introtext|raw}                {* trusted HTML, printed as is *}
+{$user.address.city}  {$menu[0]->name}   {* array keys, properties *}
+{$item->active()}                        {* method call *}
+{$name|default:'anonymous'|upper}        {* modifiers *}
+
+{if $n > 1 && !$hidden}...{elseif $n === 1}...{else}...{/if}
+
+<ul>
+{foreach $menu as $m}
+  <li><a href="{$m->link}">{$m->name}</a></li>
+{foreachelse}
+  <li>empty</li>
+{/foreach}
+</ul>
+
+{set $total = $price * $count}
+{include 'Shared/footer.tpl'}
+{literal}{$not parsed}{/literal}
+
+{cache 'sidebar' ttl=300}...expensive, rendered once per 5 minutes...{/cache}
+{cache 'item-' ~ $id}...key may use variables...{/cache}
+```
+
+Operators: `== != === !== < <= > >= && || ! and or not + - * / % ~` (`~` joins text). Modifiers: `raw`, `nofilter`, `escape`, `upper`, `lower`, `trim`, `default`, `truncate`, `nl2br`, `json`, `url`, `length` (`count`), `date`, `join`. A `{` that does not start a tag is plain text, so inline CSS and JavaScript need no `{literal}`. The line break right after a control tag (`{if}`, `{foreach}`, `{/if}` ...) is dropped, as in Smarty.
+
+### Security model
+
+* **Escaping is on by default.** `{$x}` is HTML-escaped. `|raw` (or `|nofilter`) prints as is, and `|escape`, `|nl2br`, `|json` and `|url` already produce safe output, so they are not escaped a second time. `|json` is safe inside a `<script>` element.
+* **A template cannot run PHP.** Expressions use a fixed grammar: no function calls (only the modifiers above), no assignment, no constants, no `new`. PHP tags written in a template are plain text, and template syntax inside data is never interpreted.
+* **A template cannot read arbitrary files.** Names resolve inside the template directory and the framework's own bundled template directories only; `..`, absolute paths elsewhere and symlinks out of the root are refused.
+* **Missing things are empty.** An undefined variable, key or property, a method on `null`, or an array printed as text gives an empty string, never a warning (which this framework's error handler would turn into an exception).
+
+### Moving from Smarty
+
+1. Switch `adapterName` to `NativeRenderer` and set `"autoEscape": false`. The pages render the same: the skeleton's pages are identical, and a 43 template corpus matches Smarty byte for byte.
+2. Mark trusted HTML with `|raw` (the section variables `{$header}`, `{$central}`, the debug bar, formatted article text) and data with `|escape`. This is valid Smarty 5 too, so you can do it while still on Smarty.
+3. Remove `"autoEscape": false`. From now on every plain `{$x}` is escaped.
+
+Not supported: Smarty plugins, `{capture}`, `{section}`, config files, custom delimiters, `{$smarty...}`, template inheritance (`{extends}`/`{block}`). Use Smarty for templates that need them.
+
+### Performance
+
+The compiled template is a PHP file, so opcache keeps it in memory. Measured on the skeleton layout (6 menu items, about 9.7 KB of output): repeated renders in one process take about 11 microseconds with the native engine and 9 with Smarty (the native engine also escapes). On a cold request, the case that matters for PHP-FPM and Apache, the native engine adds about 2.3 ms over a bare PHP process against 4.5 ms for Smarty, because Smarty's classes are not loaded and initialised. The saving is about 2 ms per request, which is real but small next to a database query; the main reasons to switch are the automatic escaping and the fragment cache. Set `"compileCheck": false` in production (and clear the compiled directory on deploy) so the source files are not checked on every request.
+
 ## Database layer
 
 `Db` is a static facade over a single lazily opened `mysqli` connection. Values are always passed as bound parameters with `?` placeholders:
@@ -291,7 +351,7 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 | `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
 | `counters` | `views`: `enabled` (default `false`), `hits` (50) and `seconds` (60) per batch, `dir` for the counter files. Batches the article view counter |
 | `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `{ "enabled": false, "ttl": 60 }` for the whole page cache. See the performance notes |
-| `renderer` | `adapterName` (`SmartyRenderer`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
+| `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (native engine, default `true`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |
 | `jwt` | `accessKey` and `refreshKey`, at least 32 characters each |
 | `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed |
@@ -329,7 +389,7 @@ What changed:
 
 Still open, in the order I recommend:
 
-1. A small template compiler to plain PHP with automatic output escaping and per box fragment caching. Smarty 5 stays available behind `RendererInterface` during migration. This is worth doing after the query count is down, because the queries dominate today.
+1. Automatic invalidation of the page cache when content tables change (today the API flushes it, other edits use `Cache::flush()` or the TTL).
 4. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (verified: Smarty then stops checking template files on every request).
 
 ## Security notes
@@ -337,7 +397,7 @@ Still open, in the order I recommend:
 * Use bound parameters for every value (see the database layer).
 * Keep `debug` off in production and `Settings.json` out of git.
 * The API authorizes by role (`user`, `editor`, `admin`) checked against the database. Give every new API action an explicit role: `isAuthenticated()` without one only checks that the token is valid.
-* Smarty output is not escaped by default. Escape values in templates (`{$value|escape}`) until automatic escaping is added.
+* Smarty does not escape output by default. Use the native engine (automatic escaping), or write `{$value|escape}` and `{$html|raw}` explicitly, which works in both.
 * Put TLS in front of the application. The session cookie is marked `Secure` only when the request arrives over HTTPS.
 * Report problems privately to the maintainers.
 

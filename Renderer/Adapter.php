@@ -182,6 +182,17 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
         $this->getAdapter()->registerObject($name, $value);
     }
 
+    /**
+     * Only the native renderer escapes output automatically, for Smarty this is a no-op.
+     */
+    public function setAutoEscape($value)
+    {
+        $adapter = $this->getAdapter();
+        if (method_exists($adapter, 'setAutoEscape')) {
+            $adapter->setAutoEscape((bool) $value);
+        }
+    }
+
     public function setCompileCheck($value)
     {
         $this->getAdapter()->setCompileCheck((bool) $value);

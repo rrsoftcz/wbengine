@@ -23,3 +23,6 @@ register_shutdown_function(static function () use ($file, $ownerPid) {
 });
 
 Config::load(new File($file));
+
+// Used by the template injection tests: if a template ever manages to call it, the flag flips.
+function wb_pwn() { $GLOBALS['wb_pwned'] = true; return 'pwned'; }
