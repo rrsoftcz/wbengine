@@ -51,7 +51,7 @@ class Auth extends WbengineStaticBox
                     if ($this->_checkToken() === true) {
                         try {
                             // Authenticate...
-                            $loginResponse = $usr->login((string)Http::Post('userName'), (string)Http::Post('userPassword'));
+                            $loginResponse = $usr->login((string)Http::PostRaw('userName'), (string)Http::PostRaw('userPassword'));
                             // ...success login...?
                             if ($loginResponse === true) {
                                 $this->getSession()->unsetKey(self::FAILED_LOGINS);
@@ -107,7 +107,7 @@ class Auth extends WbengineStaticBox
             if ($this->_checkCaptcha() === true) {
                 // ..success token...?
                 if ($this->_checkToken() === true) {
-                    $res = $usr->login((string)Http::Post('userName'), (string)Http::Post('userPassword'));
+                    $res = $usr->login((string)Http::PostRaw('userName'), (string)Http::PostRaw('userPassword'));
                     if ($res === true) {
                         $this->getSession()->unsetKey(self::FAILED_LOGINS);
                         $this->getSession()->unsetKey(self::SECRET_TOKEN);

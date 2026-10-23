@@ -20,6 +20,7 @@ use Wbengine\Model\ModelAbstract;
 use Wbengine\Db;
 use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Db\Exception\DbException;
+use Wbengine\User\Password;
 
 class ApiUserModel extends ModelAbstract
 {
@@ -83,7 +84,7 @@ class ApiUserModel extends ModelAbstract
         }
 
         if (array_key_exists('password', $user)) {
-            $user['password'] = md5((string)$user['password']);
+            $user['password'] = Password::hash((string)$user['password']);
         }
         return $user;
     }
@@ -141,6 +142,10 @@ class ApiUserModel extends ModelAbstract
 
         if (!is_array($user) || empty($user['email']) || empty($user['password'])) {
             throw new ApiException("Minimum fields error, email and password required.", 1);
+        }
+
+        if (empty($user['username'])) {
+            $user['username'] = $user['email'];
         }
 
         $user = $this->_checkData($user);

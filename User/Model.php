@@ -93,6 +93,21 @@ class Model extends ModelAbstract
     }
 
 
+    /**
+     * Replace a legacy hash with a modern one. A failure must never break the login.
+     */
+    private function _upgradePasswordHash($userId, $plain)
+    {
+        try {
+            if (Password::canStoreModernHash()) {
+                Db::update(S_TABLE_USERS, array('password' => Password::hash($plain)), array('user_id' => $userId));
+            }
+        } catch (\Throwable $e) {
+            error_log(__METHOD__ . ': ' . $e->getMessage());
+        }
+    }
+
+
     public function update($user){
         return Db::update(S_TABLE_USERS, $user->toArray(), array('user_id' => (int)$user->getUserId()));
     }
@@ -124,13 +139,27 @@ class Model extends ModelAbstract
      */
     public function authenticate(User $user)
     {
-        $sql = sprintf("SELECT * FROM %s
-			WHERE MD5(email) = ?
-			AND password = ? LIMIT 1;"
-            , S_TABLE_USERS
-        );
+        $sql = sprintf("SELECT * FROM %s WHERE email = ? LIMIT 1;", S_TABLE_USERS);
 
-        return Db::fetchAssoc($sql, array((string)$user->_getLoginName(), (string)$user->_getPassword()));
+        $row = Db::fetchAssoc($sql, array((string)$user->_getLoginName()));
+        $plain = (string)$user->_getPassword();
+
+        if (!is_array($row)) {
+            Password::verifyDummy($plain);
+            return null;
+        }
+
+        if (!Password::verify($plain, $row['password'])) {
+            return null;
+        }
+
+        if (Password::needsRehash($row['password'])) {
+            $this->_upgradePasswordHash((int)$row['user_id'], $plain);
+        }
+
+        // The hash is not needed by the application after authentication.
+        unset($row['password']);
+        return $row;
 
     }
 
