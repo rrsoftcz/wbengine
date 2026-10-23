@@ -224,7 +224,7 @@ class Debug
             $tmp.= sprintf('
                     <div class="row %s">
                         <div class="col"><b>'
-                            .$i.'.</b> '.$query['query']
+                            .$i.'.</b> '.htmlspecialchars((string)$query['query'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
                             .'&nbsp;<span class="ltime">('
                             .$query['time']
                             .' ms</span>)

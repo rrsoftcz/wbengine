@@ -23,178 +23,139 @@ use Wbengine\Db\Exception\DbException;
 
 class ApiUserModel extends ModelAbstract
 {
+    /**
+     * Columns returned to API clients. Never the password hash or the activation key.
+     */
+    const PUBLIC_COLUMNS = '`user_id`, `user_type`, `group_id`, `username`, `firstname`, `lastname`, `email`, `age`, `sex`, `ac_status`, `address`, `city`, `postcode`, `country`, `ac_active`, `user_ip`, `locale`';
 
     /**
-     * Return site sections as assoc array.
+     * Columns a client is allowed to write. Privileged columns (user_type, group_id,
+     * ac_status, ac_key, ac_active, user_ip) are intentionally not writable here.
+     */
+    const WRITABLE_COLUMNS = array('username', 'firstname', 'lastname', 'password', 'email', 'age', 'sex', 'address', 'city', 'postcode', 'country', 'locale');
+
+
+    /**
+     * Return all users as assoc array (without secrets).
      * @return array
      */
     public function getAllUsers()
     {
-        $sql = sprintf("
-            SELECT `user_id`, `user_type`, `group_id`, `username`, `firstname`, `lastname`, `password`, `email`, `age`, `sex`, `ac_status`, `ac_key`, `address`, `city`, `postcode`, `country`, `ac_active`, `user_ip`, `locale`
-            FROM %s WHERE NOT user_id = 0;",
-            S_TABLE_USERS);
+        $sql = sprintf("SELECT %s FROM %s WHERE NOT user_id = 0;", self::PUBLIC_COLUMNS, S_TABLE_USERS);
 
         return Db::fetchAllAssoc($sql);
     }
 
 
+    private function _checkId($userId)
+    {
+        if (!is_scalar($userId) || !ctype_digit((string)$userId)) {
+            throw new ApiModelException('The user\'s ID must be a number.', 10);
+        }
+        return (int)$userId;
+    }
+
+
+    /**
+     * Keep only writable columns, reject anything else. Password is hashed here.
+     * @param array $user
+     * @return array
+     */
+    private function _checkData($user)
+    {
+        if (!is_array($user) || !$user) {
+            throw new ApiModelException('Empty user data.', 500);
+        }
+
+        $unknown = array_diff(array_keys($user), self::WRITABLE_COLUMNS);
+        if ($unknown) {
+            throw new ApiModelException(sprintf('Unknown user field(s): %s', implode(', ', array_map('strval', $unknown))), 10);
+        }
+
+        foreach ($user as $value) {
+            if (!is_scalar($value) && null !== $value) {
+                throw new ApiModelException('User field values must be scalar.', 10);
+            }
+        }
+
+        if (isset($user['email']) && false === filter_var($user['email'], FILTER_VALIDATE_EMAIL)) {
+            throw new ApiModelException('Invalid e-mail address.', 10);
+        }
+
+        if (array_key_exists('password', $user)) {
+            $user['password'] = md5((string)$user['password']);
+        }
+        return $user;
+    }
+
 
     public function getUserById($userId)
     {
-    	if(!is_numeric($userId)){
-        	throw new ApiModelException(sprintf('The user\'s ID must be a number.', $userId), 10);
+        $userId = $this->_checkId($userId);
+
+        $res = Db::fetchAssoc(sprintf("SELECT %s FROM %s WHERE `user_id` = ? LIMIT 1;", self::PUBLIC_COLUMNS, S_TABLE_USERS), array($userId));
+        if (!is_array($res)) {
+            throw new ApiModelException(sprintf('User ID:%s not found', $userId), 10);
         }
-
-        $sql = sprintf("SELECT `user_id`, `user_type`, `group_id`, `username`, `firstname`, `lastname`, `password`, `email`, `age`, `sex`, `ac_status`, `ac_key`, `address`, `city`, `postcode`, `country`, `ac_active`, `user_ip`, `locale` 
-            FROM %s
-			WHERE `user_id` = %d
-            LIMIT 1;",
-            S_TABLE_USERS,
-            $userId
-        );
-        
-        $res = Db::fetchAssoc($sql);
-        if(!is_array($res)){
-        	throw new ApiModelException(sprintf('User ID:%s not found', $userId), 10);
-        }else{
-	        return $res;
-    	}
-
+        return $res;
     }
 
 
     public function getUserByEmail($email) {
-    	if(empty($email)){
-        	throw new ApiModelException(sprintf('Invalid E-mail, expected string, but got %s.', gettype($email)), 10);
+        if (!is_string($email) || '' === $email) {
+            throw new ApiModelException(sprintf('Invalid E-mail, expected string, but got %s.', gettype($email)), 10);
         }
 
-        $sql = sprintf("SELECT `user_id` FROM %s WHERE `email` = '%s' ORDER BY user_id;",
-            S_TABLE_USERS,
-            $email
-        );
-
-        $res = Db::fetchAssoc($sql);
-        return $res;
+        return Db::fetchAssoc(sprintf("SELECT `user_id` FROM %s WHERE `email` = ? ORDER BY user_id;", S_TABLE_USERS), array($email));
     }
 
 
     public function deleteUser($userId)
     {
-    	if(!is_numeric($userId)){
-        	throw new ApiModelException(sprintf('The user ID must be a number.', $userId), 10);
-        }
+        $userId = $this->_checkId($userId);
 
-        $sql = sprintf("DELETE FROM %s
-			WHERE `user_id` = '%d'
-			LIMIT 1;"
-            , S_TABLE_USERS
-            , $userId
-        );
-        
-        $res = Db::query($sql);
+        Db::query(sprintf("DELETE FROM %s WHERE `user_id` = ? LIMIT 1;", S_TABLE_USERS), array($userId));
+        $deleted = (bool) Db::getAffected();
+
         return array(
-            "success" => (bool) Db::getAffected(),
+            "success" => $deleted,
             "user_id" => $userId,
-            "message" =>  Db::getAffected() ? "The user successfully deleted." : "The user delete operation failed!"
+            "message" => $deleted ? "The user successfully deleted." : "The user delete operation failed!"
         );
-	    // return array("deleted" => Db::getAffected());
-
     }
-    
-    public function updateUser(int $userId, array $user)
+
+
+    public function updateUser($userId, array $user)
     {
-        $i = 0;
-        $statement = '';
+        $userId = $this->_checkId($userId);
 
-    	if(!is_numeric($userId)){
-        	throw new ApiModelException('The user ID must be a number.', 500);
-        }
-
-        if(!is_array($user) || sizeof($user) === 0){
-        	throw new ApiModelException('Empty user data.', 500);
-        }
-
-        foreach($user as $key => $value) {
-            $fn1 = fn($v, $k) => ($k === 'password') ? md5($v) : $value;
-            $fn2 = fn($i, $c) => ($i < ($c - 1));
-            $fn3 = fn($i, $c, $s) => ($fn2($i, $c)) ? $s . ', ' : $s;
-
-            $s = "`" . $key . "` = '" . $fn1($value, $key) . "'" ;
-            $statement .= $fn3($i, count($user), $s);
-            $i++;
-        }
-
-        $sql = sprintf("UPDATE %s SET %s WHERE `user_id` = %d;"
-            , S_TABLE_USERS
-            , $statement
-            , $userId
-        );
-        die(json_encode(array("success" => true, "sql" => $sql), JSON_PRETTY_PRINT));
-
-        $res = Db::query($sql);
-	    return array("updated" => Db::getAffected());
-
+        return array("updated" => Db::update(S_TABLE_USERS, $this->_checkData($user), array('user_id' => $userId)));
     }
+
 
     public function createUser($user, $exist)
     {
-        $names = null;
-        $email = $user['email'];
-        $paswd = $user['password'];
-
-        if(true === $exist){
-            throw new ApiException(sprintf("The user with email '%s' already exist, please try another one.", $user["email"]), 400);
+        if (true === $exist) {
+            throw new ApiException("The user with this email already exist, please try another one.", 400);
         }
 
-        if(true === empty($email) || true === empty($paswd)){
+        if (!is_array($user) || empty($user['email']) || empty($user['password'])) {
             throw new ApiException("Minimum fields error, email and password required.", 1);
         }
 
-        if(!empty($paswd)){
-            $user['password'] = md5($paswd);
-        }
+        $user = $this->_checkData($user);
 
-        foreach ($user as $key => $value) {
-            if(is_null($names)){
-                $names .= "`".$key."`";
-            }else{
-                $names .= ",`".$key."`";
-            }
-        }
-
-        $sql = sprintf("INSERT INTO `%s` (%s)VALUES('%s');"
-            , S_TABLE_USERS
-            , $names
-            , implode("','", $user)
-        );
-        
-//        die(json_encode(array("success" => true, "sql" => $sql), JSON_PRETTY_PRINT));
         try {
-            Db::query($sql);
+            $id = Db::insert(S_TABLE_USERS, $user);
             return array(
                 "success" => true,
-                "user_id" => Db::getInserted(),
+                "user_id" => $id,
                 "message" => "The user successfully created."
             );
-//            return Db::getInserted();
-        }catch(DbException $e){
-            throw new ApiException($e->getMessage());
+        } catch (DbException $e) {
+            throw new ApiException("The user could not be created.");
         }
-
     }
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-

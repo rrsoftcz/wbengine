@@ -143,7 +143,7 @@ class Api
 
     }
 
-    public function toJson($value, int $code = null, $pretty = true) {
+    public function toJson($value, ?int $code = null, $pretty = true) {
         Http::PrintHeader(Http::HEADER_TYPE_JSON);
         if($code) {
             Http::PrintCode($code);

@@ -174,7 +174,7 @@ class Path {
      * @return int
      */
     public function getPathCount(){
-        return (int)sizeof($this->_paths);
+        return is_array($this->_paths) ? count($this->_paths) : 0;
     }
 
 

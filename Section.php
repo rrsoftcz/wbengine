@@ -61,6 +61,12 @@ class Section implements ComponentParentInterface
     private $_content;
 
     /**
+     * Last created box instance
+     * @var object|null
+     */
+    private $_module;
+
+    /**
      * Object parent
      * @var ComponentParentInterface
      */

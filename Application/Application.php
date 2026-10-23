@@ -184,7 +184,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 
         if($this->isDebugOn() === true){
             ini_set('display_errors', 1);
-            $this->setStartTime(microtime());
+            $this->setStartTime(microtime(true));
         }
 
 
@@ -222,7 +222,7 @@ class Application implements ComponentParentInterface, ResponseInterface
         }
 
         if(Config::isDebugEnabled()) {
-            $this->setEndtime(microtime());
+            $this->setEndtime(microtime(true));
             $this->setValue('debug', new Debug($this));
         }
 
@@ -417,7 +417,7 @@ class Application implements ComponentParentInterface, ResponseInterface
      * @param $_path
      * @param bool $appBaseDir
      */
-    public function setPath($name = null, $_path, $appBaseDir = false){
+    public function setPath($name, $_path, $appBaseDir = false){
         return $this->_getObjectPath()->addPath($name, $_path, $appBaseDir);
     }
 

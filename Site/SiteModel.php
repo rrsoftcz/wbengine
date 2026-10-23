@@ -57,38 +57,27 @@ class SiteModel extends ModelAbstract
     }
 
     /**
-     * Return cleaned url.
-     * If url stricted mode is "TRUE" then all possible
-     * combinations with all sections well returned.
+     * Return all url candidates for the given link.
+     * If url stricted mode is "TRUE" then only the link itself is returned,
+     * otherwise all possible combinations ("/a/", "/a/b/", ...) are returned.
      *
      * @param string $link
      * @param boolean $strict
-     * @return string
+     * @return array
      */
-    public function getUrlId($link, $strict = FALSE)
+    public function getUrlCandidates($link, $strict = FALSE)
     {
         if ($strict == TRUE) {
-            return $link;
-        } else {
-
-            $tmp = "";
-            $pices = explode('/', trim($link, '/'));
-
-            // Here we create all url combination when trict mode is off
-            foreach ($pices as $p) {
-                $b = $p;
-                $a = (empty($c)) ? $b : $c . "/" . $b;
-                $c = $a;
-
-                // just put slashes to ends of each url part ..
-                $a = preg_replace('/^(.*)$/', "/$1/", $a);
-
-                $tmp .= (empty($tmp)) ? $a : "','" . $a;
-            }
-            $urlId = $tmp;
+            return array($link);
         }
 
-        return $urlId;
+        $candidates = array();
+        $path = "";
+        foreach (explode('/', trim($link, '/')) as $piece) {
+            $path = ($path === "") ? $piece : $path . "/" . $piece;
+            $candidates[] = "/" . $path . "/";
+        }
+        return $candidates;
     }
 
 
@@ -101,17 +90,18 @@ class SiteModel extends ModelAbstract
      */
     public function loadSiteData(Site $site)
     {
+        $candidates = $this->getUrlCandidates($site->getUrl(), $site->isUrlStrict());
+
         $sql = sprintf("SELECT * FROM %s AS site
                         WHERE (
-                        (link IN ('%s') AND strict = 0)
-                        OR (link = '%s' AND strict = 1)
+                        (link IN (%s) AND strict = 0)
+                        OR (link = ? AND strict = 1)
                         ) AND visible = 1
                         ORDER BY site_id DESC LIMIT 1;"
             , S_TABLE_SITES
-            , $this->getUrlId($site->getUrl(), $site->isUrlStrict())
-            , $site->getUrl()
+            , implode(',', array_fill(0, count($candidates), '?'))
         );
-        return Db::fetchAssoc($sql);
+        return Db::fetchAssoc($sql, array_merge($candidates, array((string)$site->getUrl())));
     }
 
 
@@ -124,13 +114,8 @@ class SiteModel extends ModelAbstract
      */
     public function getTitleByUrl($part)
     {
-        $sql = sprintf("SELECT title FROM %s
-			WHERE link='%s'
-			LIMIT 1;"
-            , S_TABLE_SITES
-            , ($part)?"/".$part."/":"/"
-        );
-        $_res = Db::fetchObject($sql);
+        $sql = sprintf("SELECT title FROM %s WHERE link = ? LIMIT 1;", S_TABLE_SITES);
+        $_res = Db::fetchObject($sql, array(($part) ? "/" . $part . "/" : "/"));
         return (is_object($_res))
             ? $_res->title
             : null;
@@ -141,14 +126,12 @@ class SiteModel extends ModelAbstract
     public function getSiteTypeKey($site)
     {
         $sql = sprintf("SELECT t.type_id, t.name, t.key FROM %s AS t
-			WHERE t.type_id='%d' LIMIT 1;"
+			WHERE t.type_id = ? LIMIT 1;"
             , S_TABLE_SITE_TYPES
-            , ($site->getSiteParentId())?$site->getSiteParentId():1
         );
 
-        $title = $this->getDbAdapter()->query($sql, array())->current();
-//        var_dump($site->getSiteId());die($sql);
-        return $title->key;
+        $type = Db::fetchObject($sql, array(($site->getSiteParentId()) ? (int)$site->getSiteParentId() : 1));
+        return $type ? $type->key : null;
     }
 
 
@@ -164,14 +147,13 @@ class SiteModel extends ModelAbstract
                         LEFT JOIN %s s ON (s.site_id = m.site_id)
                         WHERE m.visible = 1
                         AND m.parent = 0
-                        AND m.type = %s
+                        AND m.type = ?
                         ORDER BY m.order ASC;'
             , S_TABLE_MENU
             , S_TABLE_SITES
-            , ($site->getSiteParentId())?$site->getSiteParentId():1
         );
 
-        return $data = Db::fetchAllAssoc($sql);
+        return Db::fetchAllAssoc($sql, array(($site->getSiteParentId()) ? (int)$site->getSiteParentId() : 1));
     }
 
 
@@ -183,17 +165,8 @@ class SiteModel extends ModelAbstract
      */
     public function isBoxExist($siteId)
     {
-        $db = $this->getDbAdapter();
-
-        $sql = sprintf('SELECT COUNT(box_id)AS count
-			FROM %s
-			WHERE site_id = %d;'
-            , S_TABLE_BOX_ORDERS
-            , $siteId
-        );
-
-        $res = $db->sql_query($sql);
-        $row = $db->sql_fetchrow($res);
+        $sql = sprintf('SELECT COUNT(box_id) AS count FROM %s WHERE site_id = ?;', S_TABLE_BOX_ORDERS);
+        $row = Db::fetchAssoc($sql, array((int)$siteId));
 
         return ($row['count'] > 0) ? TRUE : FALSE;
     }
@@ -207,15 +180,10 @@ class SiteModel extends ModelAbstract
      */
     public function getSiteIdByUrl($url)
     {
-        $sql = sprintf("SELECT site_id FROM %s
-			WHERE link='%s'
-			LIMIT 1;"
-            , S_TABLE_SITES
-            , $url
-        );
-//        Utils::dump($sql,true);
+        $sql = sprintf("SELECT site_id FROM %s WHERE link = ? LIMIT 1;", S_TABLE_SITES);
+        $row = Db::fetchAssoc($sql, array((string)$url));
 
-        return (int)$this->query($sql)->fetch_field()->site_id;
+        return $row ? (int)$row['site_id'] : 0;
     }
 
 

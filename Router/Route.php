@@ -107,8 +107,9 @@
          * @return string
          */
         public function getPattern(){
-            $this->preg_pattern = preg_replace('/\{[a-z0-9\_]+\}/','([A-Za-z0-9\_\-]+)', $this->getUserRoute());
-            $this->pattern = sprintf("~^%s$~", $this->route->preg_pattern);
+            // The trailing slash is optional, so "/api/users" and "/api/users/" both match.
+            $this->preg_pattern = preg_replace('/\{[a-z0-9\_]+\}/','([A-Za-z0-9\_\-]+)', rtrim($this->getUserRoute(), '/'));
+            $this->pattern = sprintf("~^%s/?$~", $this->route->preg_pattern);
             return $this->pattern;
         }
 
@@ -121,6 +122,8 @@
          */
         public function compare($uri)
         {
+            // The query string is not part of the route.
+            $uri = (string) strtok((string) $uri, '?');
             $this->uri = $uri;
             if($this->is_matched = preg_match($this->getPattern(), $uri, $matches)) {
                 $this->_parse($matches);

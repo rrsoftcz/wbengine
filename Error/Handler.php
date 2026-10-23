@@ -40,7 +40,7 @@ class Handler
      */
     public function __toString()
     {
-        if (sizeof($this->_errors)) {
+        if ($this->getcount() > 0) {
 
             foreach ($this->_errors as $error) {
                 return $error->getCode() . "# - " . $error->getMessage();
@@ -66,7 +66,7 @@ class Handler
      */
     public function getcount()
     {
-        return sizeof($this->_errors);
+        return is_array($this->_errors) ? count($this->_errors) : 0;
     }
 
 
@@ -87,7 +87,12 @@ class Handler
 
 
         if ($code === 0) {
-	        return;
+            return false;
+        }
+
+        // Deprecations and notices are not fatal: let PHP handle them normally.
+        if (in_array($code, array(E_DEPRECATED, E_USER_DEPRECATED, E_NOTICE, E_USER_NOTICE), true)) {
+            return false;
         }
 
         switch ($code) {
@@ -124,9 +129,6 @@ class Handler
             case E_USER_NOTICE:
                 $ePrefix = "User Notice ";
                 break;
-            case E_STRICT:
-                $ePrefix = "Strict Notice ";
-                break;
             case E_RECOVERABLE_ERROR:
                 $ePrefix = "Recoverable Error ";
                 break;
@@ -146,10 +148,8 @@ class Handler
 
         $this->_errors[] = New Template($_properties);
 
-        if ($code !== E_NOTICE) {
-            throw New Exception\ErrorHandlerException($ePrefix. ": " . $message .
-                " in file: " . $file . " on line: " . $line, $code);
-        }
+        throw New Exception\ErrorHandlerException($ePrefix. ": " . $message .
+            " in file: " . $file . " on line: " . $line, $code);
     }
 
 }

@@ -23,13 +23,20 @@ class ApiSectionModel extends ModelAbstract
 {
 
     /**
+     * Columns a client is allowed to write.
+     */
+    const WRITABLE_COLUMNS = array('title', 'description', 'active', 'key', 'return_error_code');
+
+
+    /**
      * Return site sections as assoc array.
+     * @param bool $active
      * @return array
      */
-    public function getSections($active)
+    public function getSections($active = false)
     {
         $sql = sprintf("
-            SELECT `section_id`, `title`, `Description`, `active`, `key`, `return_error_code`
+            SELECT `section_id`, `title`, `description`, `active`, `key`, `return_error_code`
             FROM %s %s;",
             S_TABLE_SECTIONS,
             ($active) ? " WHERE active = 1" : null
@@ -39,105 +46,74 @@ class ApiSectionModel extends ModelAbstract
     }
 
 
+    private function _checkId($sectionId)
+    {
+        if (!is_scalar($sectionId) || !ctype_digit((string)$sectionId)) {
+            throw new ApiModelException('The section ID must be a number.', 10);
+        }
+        return (int)$sectionId;
+    }
+
+
+    /**
+     * Keep only writable columns, reject anything else.
+     * @param mixed $data
+     * @return array
+     */
+    private function _checkData($data)
+    {
+        if (!is_array($data) || !$data) {
+            throw new ApiModelException('The section\'s data can\'t be empty.', 10);
+        }
+
+        $unknown = array_diff(array_keys($data), self::WRITABLE_COLUMNS);
+        if ($unknown) {
+            throw new ApiModelException(sprintf('Unknown section field(s): %s', implode(', ', array_map('strval', $unknown))), 10);
+        }
+
+        foreach ($data as $value) {
+            if (!is_scalar($value) && null !== $value) {
+                throw new ApiModelException('Section field values must be scalar.', 10);
+            }
+        }
+        return $data;
+    }
+
 
     public function getSectionById($sectionId)
     {
-    	if(!is_numeric($sectionId)){
-        	throw new ApiModelException(sprintf('The section ID must be a number.', $sectionId), 10);
+        $sectionId = $this->_checkId($sectionId);
+
+        $res = Db::fetchAssoc(sprintf("SELECT * FROM %s WHERE `section_id` = ? LIMIT 1;", S_TABLE_SECTIONS), array($sectionId));
+        if (!is_array($res)) {
+            throw new ApiModelException(sprintf('Section ID:%s not found', $sectionId), 10);
         }
-
-        $sql = sprintf("SELECT * FROM %s
-			WHERE `section_id` = '%d'
-			LIMIT 1;"
-            , S_TABLE_SECTIONS
-            , $sectionId
-        );
-        
-        $res = Db::fetchAssoc($sql);
-        if(!is_array($res)){
-        	throw new ApiModelException(sprintf('Section ID:%s not found', $sectionId), 10);
-        }else{
-	        return $res;
-    	}
-
+        return $res;
     }
+
 
     public function deleteSection($sectionId)
     {
-    	if(!is_numeric($sectionId)){
-        	throw new ApiModelException(sprintf('The section ID must be a number.', $sectionId), 10);
-        }
+        $sectionId = $this->_checkId($sectionId);
 
-        $sql = sprintf("DELETE FROM %s
-			WHERE `section_id` = '%d'
-			LIMIT 1;"
-            , S_TABLE_SECTIONS
-            , $sectionId
-        );
-        
-        $res = Db::query($sql);
-	    return array("deleted" => Db::getAffected());
-
+        Db::query(sprintf("DELETE FROM %s WHERE `section_id` = ? LIMIT 1;", S_TABLE_SECTIONS), array($sectionId));
+        return array("deleted" => Db::getAffected());
     }
+
 
     public function updateSection($sectionId, $sectionData)
     {
-        $i = 0;
-    	if(!is_numeric($sectionId)){
-        	throw new ApiModelException(sprintf('The section ID must be a number.', $sectionId), 10);
-        }
+        $sectionId = $this->_checkId($sectionId);
+        $sectionData = $this->_checkData($sectionData);
 
-        if(!is_array($sectionData)){
-        	throw new ApiModelException(sprintf('The section\'s data can\'t be empty.', $sectionId), 10);
-        }
-
-        foreach($sectionData as $key => $value) {
-            $statement .= "`".$key."` = '".$value."'";
-            if ($i < count($sectionData) - 1) {
-                $statement.= " , ";
-        }
-        $i++;
+        return array("updated" => Db::update(S_TABLE_SECTIONS, $sectionData, array('section_id' => $sectionId)));
     }
 
-        $sql = sprintf("UPDATE %s SET %s
-			WHERE `section_id` = '%d';"
-            , S_TABLE_SECTIONS
-            , $statement
-            , $sectionId
-        );
-        
-        $res = Db::query($sql);
-	    return array("updated" => Db::getAffected());
-
-    }
 
     public function addSection($data)
     {
-        $sql = sprintf("INSERT INTO `%s` (`title`, `Description`, `active`, `key`, `return_error_code`)VALUES('%s');"
-            , S_TABLE_SECTIONS
-            , implode("','", $data)
-        );
-        
-        $res = Db::query($sql);
-
-        if(!$res){
-        	throw new ApiModelException(Db::getError(), 1);
-        }else{
-	        return Db::getInserted();
-    	}
+        return Db::insert(S_TABLE_SECTIONS, $this->_checkData($data));
     }
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-

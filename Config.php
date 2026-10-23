@@ -350,6 +350,43 @@ class Config
         return self::$config->cssFiles;
     }
 
+    /**
+     * Return JWT signing keys as array('access' => string, 'refresh' => string).
+     * Environment variables WBENGINE_JWT_KEY and WBENGINE_JWT_REFRESH_KEY take precedence
+     * over the "jwt" section of the settings file. Missing keys are returned as null.
+     * @return array
+     */
+    public static function getJwtKeys()
+    {
+        $jwt = (is_object(self::$config) && isset(self::$config->jwt) && is_object(self::$config->jwt))
+            ? self::$config->jwt
+            : new \stdClass();
+
+        $access = getenv('WBENGINE_JWT_KEY');
+        $refresh = getenv('WBENGINE_JWT_REFRESH_KEY');
+
+        return array(
+            'access' => ($access !== false && $access !== '') ? $access : ($jwt->accessKey ?? null),
+            'refresh' => ($refresh !== false && $refresh !== '') ? $refresh : ($jwt->refreshKey ?? null),
+        );
+    }
+
+    /**
+     * Return the reCAPTCHA secret key or null when it is not configured.
+     * Environment variable WBENGINE_RECAPTCHA_SECRET takes precedence over "recaptcha.secretKey".
+     * @return string|null
+     */
+    public static function getRecaptchaSecret()
+    {
+        $env = getenv('WBENGINE_RECAPTCHA_SECRET');
+        if ($env !== false && $env !== '') {
+            return $env;
+        }
+        return (is_object(self::$config) && isset(self::$config->recaptcha->secretKey))
+            ? self::$config->recaptcha->secretKey
+            : null;
+    }
+
     public static function getAdminIpCollection()
     {
         return self::$config->ipAdmins;

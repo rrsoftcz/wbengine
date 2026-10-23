@@ -193,10 +193,11 @@ abstract class Db implements DbInterface
      */
     public static function getAllQueriesEstimatedTime()
     {
+        $sum = 0.0;
         foreach (self::getAllQueries() as $query){
-            self::$_qtime =+ $query['time'];
+            $sum += (float)$query['time'];
         }
-        return self::$_qtime;
+        return self::$_qtime = $sum;
     }
 
 
@@ -204,7 +205,7 @@ abstract class Db implements DbInterface
      * Dump all queries to screen
      * @var void
      */
-    public function dumpAllQueries()
+    public static function dumpAllQueries()
     {
         foreach (self::getAllQueries() as $query){
             echo('<pre>');
@@ -215,28 +216,91 @@ abstract class Db implements DbInterface
 
 
     /**
-     * @param $sql
-     * @return \mysqli_result
+     * Run a query. Values MUST be passed as $params (positional "?" placeholders),
+     * never concatenated into $sql.
+     *
+     * @param string $sql
+     * @param array $params
+     * @return \mysqli_result|bool
+     * @throws DbException
      */
-    public static function query($sql)
+    public static function query($sql, array $params = array())
     {
         $start = microtime(true);
-        $res = self::getConnection()->query($sql);
-        $end = microtime(true);
-        $time = ($end - $start);
+        try {
+            $res = self::getConnection()->execute_query($sql, $params);
+        } catch (\mysqli_sql_exception $e) {
+            self::updateStats($sql, sprintf('%f', microtime(true) - $start));
+            // The SQL text stays in the server log, it must not reach the client.
+            error_log(sprintf('%s: %s | SQL: %s', __METHOD__, $e->getMessage(), $sql));
+            throw new DbException(__METHOD__ . ' : Query execution error.', 0, $e);
+        }
 
-        self::updateStats($sql, sprintf('%f', $time));
+        self::updateStats($sql, sprintf('%f', microtime(true) - $start));
 
-        if($res === false){
-            throw new DbException(
-                sprintf('%s : Query execution error: %s <br><h4>Query:</h4><pre>%s</pre>)'
-                , __METHOD__
-                , mysqli_error(self::getConnection())
-                , $sql)
-            );
+        if ($res === false) {
+            error_log(sprintf('%s: %s | SQL: %s', __METHOD__, self::getConnection()->error, $sql));
+            throw new DbException(__METHOD__ . ' : Query execution error.');
         }
 
         return $res;
+    }
+
+
+    /**
+     * Quote a table or column name. Only [A-Za-z0-9_] is accepted.
+     * @param string $name
+     * @return string
+     * @throws DbException
+     */
+    public static function identifier($name)
+    {
+        if (!is_string($name) || !preg_match('/^[A-Za-z0-9_]+$/', $name)) {
+            throw new DbException(__METHOD__ . ' : Invalid SQL identifier.');
+        }
+        return '`' . $name . '`';
+    }
+
+
+    /**
+     * INSERT one row. Column names are validated, values are bound.
+     * @param string $table
+     * @param array $data column => value
+     * @return int inserted id
+     * @throws DbException
+     */
+    public static function insert($table, array $data)
+    {
+        if (!$data) {
+            throw new DbException(__METHOD__ . ' : No data to insert.');
+        }
+        $cols = implode(',', array_map(array(self::class, 'identifier'), array_keys($data)));
+        $marks = implode(',', array_fill(0, count($data), '?'));
+        self::query(sprintf('INSERT INTO %s (%s) VALUES (%s)', self::identifier($table), $cols, $marks), array_values($data));
+        return (int)self::getInserted();
+    }
+
+
+    /**
+     * UPDATE rows. Column names are validated, values are bound.
+     * @param string $table
+     * @param array $data column => value
+     * @param array $where column => value, combined with AND
+     * @return int affected rows
+     * @throws DbException
+     */
+    public static function update($table, array $data, array $where)
+    {
+        if (!$data || !$where) {
+            throw new DbException(__METHOD__ . ' : Data and where must not be empty.');
+        }
+        $set = implode(',', array_map(function ($c) { return self::identifier($c) . '=?'; }, array_keys($data)));
+        $cond = implode(' AND ', array_map(function ($c) { return self::identifier($c) . '=?'; }, array_keys($where)));
+        self::query(
+            sprintf('UPDATE %s SET %s WHERE %s', self::identifier($table), $set, $cond),
+            array_merge(array_values($data), array_values($where))
+        );
+        return (int)self::getAffected();
     }
 
     /**
@@ -244,8 +308,8 @@ abstract class Db implements DbInterface
      * @param $sql
      * @return mixed
      */
-    public function fetchRow($sql){
-        return self::query($sql)->fetch_row();
+    public static function fetchRow($sql, array $params = array()){
+        return self::query($sql, $params)->fetch_row();
     }
 
 
@@ -254,8 +318,8 @@ abstract class Db implements DbInterface
      * @param $sql
      * @return object
      */
-    public function fetchOne($sql){
-        return self::query($sql)->fetch_field();
+    public static function fetchOne($sql, array $params = array()){
+        return self::query($sql, $params)->fetch_field();
     }
 
 
@@ -264,8 +328,8 @@ abstract class Db implements DbInterface
      * @param $sql
      * @return mixed
      */
-    public function fetchAll($sql){
-        return self::query($sql)->fetch_all();
+    public static function fetchAll($sql, array $params = array()){
+        return self::query($sql, $params)->fetch_all();
     }
 
 
@@ -274,8 +338,8 @@ abstract class Db implements DbInterface
      * @param $sql
      * @return object|\stdClass
      */
-    public static function fetchObject($sql){
-        return self::query($sql)->fetch_object();
+    public static function fetchObject($sql, array $params = array()){
+        return self::query($sql, $params)->fetch_object();
     }
 
 
@@ -284,8 +348,8 @@ abstract class Db implements DbInterface
      * @param $sql
      * @return array
      */
-    public static function fetchAssoc($sql){
-        return self::query($sql)->fetch_assoc();
+    public static function fetchAssoc($sql, array $params = array()){
+        return self::query($sql, $params)->fetch_assoc();
     }
 
     public static function getInserted(){
@@ -302,30 +366,15 @@ abstract class Db implements DbInterface
     }
 
 
-    public static function createUpdateQuery($table, $data, $statements = array()){
-        $sql = "UPDATE ".$table . " SET ";
-        $i=1;
-        array_walk($data,function(&$value, &$key){$value = "`".$key."`='".$value."'";});
-        foreach ($data as $value){
-            $sql .= $value;
-            $sql .= ($i< sizeof($data))?",":"";
-            ++$i;
-        }
-
-        $sql .= " WHERE " . implode(" AND ", $statements).";";
-        return $sql;
-    }
-
-
     /**
      * Return DB data all records as assoc array
      * @param $sql
      * @return mixed
      */
-    public static function fetchAllAssoc($sql)
+    public static function fetchAllAssoc($sql, array $params = array())
     {
         $start  = microtime(true);
-        $res    = self::getAdapter()->getAllAssoc($sql);
+        $res    = self::getAdapter()->getAllAssoc($sql, $params);
         $end    = microtime(true);
         $time   = ($end-$start);
 

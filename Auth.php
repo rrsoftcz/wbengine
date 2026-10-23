@@ -2,12 +2,18 @@
 
 namespace Wbengine;
 use \Firebase\JWT\JWT;
+use \Firebase\JWT\Key;
 use \Wbengine\Auth\Exception\AuthException;
 
 class Auth {
 
-    protected $default_token_key = "e866430c28a90a559f650791c48e8dcadd3d32b53345205d187f1002ecf64df8bcb564a04632efda6664af2083a62f09ee9f40eac165084d553dff182201e522";
-    protected $refresh_token_key = "67f459df91c4c5b6d18e9b2c3e10921b34dd1cc3d3531fdd0ca13f4b5bc6899817ba80016a202d85a885390d4510975b4e93246b7a93b10cc93329c65976f274";
+    /**
+     * Signing keys, loaded from the configuration (never stored in the source code).
+     */
+    protected $default_token_key;
+    protected $refresh_token_key;
+
+    const MIN_KEY_LENGTH = 32;
 
     private $payload = array(
         "iss" => "",
@@ -17,6 +23,7 @@ class Auth {
     );
 
     protected $default_jwt;
+    protected $key;
     protected $refresh_jwt;
 
     private $_user = null;
@@ -24,6 +31,19 @@ class Auth {
     const HASH_ALGORITHM = 'HS256';
 
     public function __construct() {
+
+        $keys = Config::getJwtKeys();
+        foreach (array('access', 'refresh') as $name) {
+            if (!is_string($keys[$name]) || strlen($keys[$name]) < self::MIN_KEY_LENGTH) {
+                throw new AuthException(
+                    sprintf("The JWT %s key is not configured or is shorter than %d characters. Set \"jwt\" in the settings file or the WBENGINE_JWT_%sKEY environment variable.",
+                        $name, self::MIN_KEY_LENGTH, ($name === 'refresh') ? 'REFRESH_' : ''),
+                    AuthException::ERROR_MISSING_KEY
+                );
+            }
+        }
+        $this->default_token_key = $keys['access'];
+        $this->refresh_token_key = $keys['refresh'];
 
         $_issued_time = time();
         $_expired_time = $_issued_time + (60*60);
@@ -83,11 +103,11 @@ class Auth {
     }
 
     public function getDecodedData($jwt) {
-        return (array) JWT::decode($jwt, $this->default_token_key, array(self::HASH_ALGORITHM));
+        return (array) JWT::decode($jwt, new Key($this->default_token_key, self::HASH_ALGORITHM));
     }
 
     public function validateRefreshToken(string $refreshToken) {
-        return (array) JWT::decode($refreshToken, $this->refresh_token_key, array(self::HASH_ALGORITHM));
+        return (array) JWT::decode($refreshToken, new Key($this->refresh_token_key, self::HASH_ALGORITHM));
     }
 
     private function _setPaylodValue($name, $value) {
