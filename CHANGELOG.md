@@ -7,6 +7,11 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Fixed
+
+- An error page (404, 401, 410, 500) had an empty `<title>`: the title was set after the
+  template variables were stored. `Site::setHtmlTitle()` now keeps `meta.title` in step.
+
 ## [3.3.1] - 2026-10-24
 
 ### Fixed
