@@ -217,6 +217,7 @@ class Application implements ComponentParentInterface, ResponseInterface
                 $this->getClassVars()->addValue('locale', I18n::locale());
                 $this->getClassVars()->addValue('lang', I18n::language());
                 $this->getClassVars()->addValue('alternates', I18n::alternates($path));
+                $this->getClassVars()->addValue('hreflangs', I18n::hreflangs($path));
             }
 
             /**

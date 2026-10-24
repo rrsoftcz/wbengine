@@ -252,6 +252,7 @@ class Config
             'cookie' => 'wb_locale',
             'cookieDays' => 365,
             'dir' => '/Locale/',
+            'baseUrl' => '',
         ), $custom);
 
         $settings['enabled'] = (bool) $settings['enabled'];
@@ -260,6 +261,9 @@ class Config
         $settings['cookieDays'] = max(1, (int) $settings['cookieDays']);
         $settings['cookie'] = preg_match('/^[A-Za-z0-9_]{1,40}$/', (string) $settings['cookie']) ? (string) $settings['cookie'] : 'wb_locale';
         $settings['dir'] = (string) $settings['dir'];
+        // "https://example.com": the public address, for the absolute hreflang links.
+        $base = rtrim((string) $settings['baseUrl'], '/');
+        $settings['baseUrl'] = preg_match('~^https?://[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?(:[0-9]{1,5})?$~', $base) ? $base : '';
 
         $default = I18n\Translator::normalize($settings['default']) ?? 'en';
         $locales = array();

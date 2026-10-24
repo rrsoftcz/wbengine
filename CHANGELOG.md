@@ -7,6 +7,13 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added
+
+- Absolute `hreflang` links: the layout variable `hreflangs` (every language plus `x-default`),
+  `I18n::origin()`, `I18n::hreflangs()` and the `i18n.baseUrl` setting. Lighthouse and search
+  engines reject relative `hreflang` URLs. Without `baseUrl` the address is taken from the
+  validated `Host` header and the page cache keeps one copy per host.
+
 ## [3.4.0] - 2026-10-24
 
 ### Added
