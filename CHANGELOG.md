@@ -7,6 +7,8 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-24
+
 ### Added
 
 - Absolute `hreflang` links: the layout variable `hreflangs` (every language plus `x-default`),
