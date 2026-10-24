@@ -177,6 +177,28 @@ class I18nFacadeTest extends TestCase
         $property->setValue(null, $config);
     }
 
+    #[DataProvider('baseUrls')]
+    public function testTheBaseUrlSettingIsValidated(string $given, string $expected): void
+    {
+        $this->bootWith(['enabled' => true, 'baseUrl' => $given]);
+
+        $this->assertSame($expected, Config::getI18nSettings()['baseUrl']);
+    }
+
+    public static function baseUrls(): array
+    {
+        return [
+            'https' => ['https://example.com', 'https://example.com'],
+            'trailing slash' => ['https://example.com/', 'https://example.com'],
+            'port' => ['http://localhost:8080', 'http://localhost:8080'],
+            'a path is not an origin' => ['https://example.com/app', ''],
+            'markup' => ['https://"><script>', ''],
+            'no scheme' => ['example.com', ''],
+            'other scheme' => ['ftp://example.com', ''],
+            'empty' => ['', ''],
+        ];
+    }
+
     // ---------------------------------------------------------------- URLs
 
     private function configured(string $locale = 'en'): void

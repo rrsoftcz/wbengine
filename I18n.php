@@ -313,6 +313,61 @@ class I18n
         return $urls;
     }
 
+    /**
+     * The public address of the site, "https://example.com", for links that must be absolute.
+     * The "baseUrl" setting wins. Without it the address comes from the request (the Host
+     * header, which a client controls, so it is accepted only when it looks like a host name)
+     * and the scheme of the connection. An empty string when neither is known.
+     *
+     * @param array|null $server defaults to $_SERVER
+     * @return string
+     */
+    public static function origin(?array $server = null)
+    {
+        $configured = (string) (self::$_settings['baseUrl'] ?? '');
+        if ('' !== $configured) {
+            return $configured;
+        }
+        $server = $server ?? $_SERVER;
+        $host = strtolower((string) ($server['HTTP_HOST'] ?? ''));
+        if (!preg_match('/^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?(:[0-9]{1,5})?$/', $host)) {
+            return '';
+        }
+        $https = !empty($server['HTTPS']) && 'off' !== strtolower((string) $server['HTTPS']);
+        return ($https ? 'https://' : 'http://') . $host;
+    }
+
+    /**
+     * True when the origin is taken from the request, so a cached page depends on the host.
+     */
+    public static function originFollowsHost()
+    {
+        return self::isEnabled() && '' === (string) (self::$_settings['baseUrl'] ?? '');
+    }
+
+    /**
+     * The absolute URL of the current page in every locale, plus "x-default" (the default
+     * language), for <link rel="alternate" hreflang>. Search engines and Lighthouse refuse
+     * relative hreflang URLs. Empty when the origin is not known.
+     *
+     * @param string $path the path without a language prefix
+     * @param array|null $server defaults to $_SERVER
+     * @return array code => url
+     */
+    public static function hreflangs($path, ?array $server = null)
+    {
+        $origin = self::origin($server);
+        if ('' === $origin) {
+            return array();
+        }
+        $urls = array();
+        foreach (self::alternates($path) as $locale => $url) {
+            $urls[str_replace('_', '-', $locale)] = $origin . $url;
+        }
+        $urls['x-default'] = $origin . self::url($path, self::translator()->getDefaultLocale());
+        return $urls;
+    }
+
     // --------------------------------------------------------------- formatting
 
     public static function number($value, $decimals = 0)

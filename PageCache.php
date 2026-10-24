@@ -99,7 +99,11 @@ class PageCache
      */
     public static function cacheKey($path)
     {
-        return 'page:' . (I18n::isEnabled() ? I18n::locale() . ':' : '') . $path;
+        // The absolute hreflang links of a page contain its host, so without a configured
+        // baseUrl a copy belongs to one host: a forged Host header cannot poison the copies of
+        // the real one.
+        $host = (I18n::originFollowsHost() && '' !== I18n::origin()) ? substr(md5(I18n::origin()), 0, 8) . ':' : '';
+        return 'page:' . (I18n::isEnabled() ? I18n::locale() . ':' : '') . $host . $path;
     }
 
 

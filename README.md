@@ -275,6 +275,17 @@ A value that is not a supported locale is ignored (a cookie with garbage, a lang
 | `prefixDefault` | `true`: the default language has a prefix too (`/en/blog/`) |
 | `cookie`, `cookieDays` | name (`wb_locale`) and lifetime (365) of the cookie |
 | `dir` | where the application's catalogs are, `/Locale/` under the application directory |
+| `baseUrl` | the public address, `"https://example.com"`, used for the absolute `hreflang` links. Without it the address is taken from the request |
+
+### hreflang links
+
+Search engines and Lighthouse require `hreflang` URLs to be absolute. The layout variable `hreflangs` holds them (code to URL, plus `x-default` for the default language):
+
+```smarty
+{foreach $hreflangs as $code => $url}<link rel="alternate" hreflang="{$code}" href="{$url}">{/foreach}
+```
+
+Set `i18n.baseUrl` in production. Without it the address comes from the `Host` header, which a client controls: it is accepted only when it looks like a host name, and the page cache then keeps one copy per host, so a forged `Host` cannot put its address into the page other visitors get. With `baseUrl` there is one copy and the header is ignored. If neither is known (no `Host`, as on the command line), `hreflangs` is empty. `I18n::origin()` and `I18n::hreflangs($path)` are the PHP side.
 
 ### Catalogs
 
