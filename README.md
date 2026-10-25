@@ -718,7 +718,7 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 | `timeZone` | PHP time zone, for example `Europe/Prague` |
 | `codePage` | HTML charset, `utf8` |
 | `debug` | `true` shows the debug bar and detailed errors. Never in production |
-| `minimizeHtml`, `minimizeCss`, `minimizeJs` | output minification (HTML minification is a whitespace collapse, so avoid it with `<pre>`, `<textarea>` or inline scripts) |
+| `minimizeHtml`, `minimizeCss`, `minimizeJs` | `minimizeHtml` is deprecated and ignored by core dispatch in 4.0; CSS/JS settings retain their existing behavior |
 | `cdnPath` | prefix for static assets |
 | `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
 | `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
@@ -749,6 +749,32 @@ Reading `dbinfo` may open a database connection even though no SQL query is coun
 Production initialization with a warm site-data cache avoids that diagnostic-only
 connection. Content, navigation and custom boxes can still require database access.
 Keep diagnostic output restricted to trusted users and escape the values normally.
+
+### HTML whitespace and transfer compression in 4.0
+
+`Renderer::dispatch()` emits the rendered template through the selected adapter's
+`display()` method. It does not rewrite whitespace in the result. Both adapters
+preserve the rendered bytes of trusted HTML, including `pre`, `textarea`, inline
+JavaScript/CSS, attribute values and JSON script text. Ordinary template variables
+still use the renderer's existing output-escaping rules.
+
+The legacy `minimizeHtml` setting is ignored by core dispatch, including when true.
+`Config::minimizeHtml()` remains readable for existing external callers and is
+marked deprecated; remove this setting from new application configurations. The
+old whole-document whitespace regex is no longer available as a runtime option.
+CSS/JS settings and template compilation rules are outside this change.
+
+Enable gzip or Brotli at the webserver or reverse proxy to reduce transfer size
+without changing HTML content. Keep encoding negotiation and `Vary: Accept-Encoding`
+correct at that layer. If a project needs source minification, use a build step
+that understands its HTML and embedded languages. No minifier dependency or PHP
+compression handler is added by the framework.
+
+**Migration:** clear existing page caches and any external HTML caches on deployment.
+They may still contain output damaged by the old whitespace collapse; changing
+renderer behavior cannot repair an already stored response. Render fresh output
+from the original templates/content. Uncompressed bodies can be larger after this
+change, so check transfer compression in the deployment configuration.
 
 ## Performance notes and roadmap
 

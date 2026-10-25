@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02 a PERF-06 dokončeny, následuje PERF-07. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02, PERF-06 a PERF-07 dokončeny, následuje ARCH-01. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -50,7 +50,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [ ] PERF-04: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-05: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [x] PERF-06: hotovo (Codex, 2026-10-25), jeden průchod parserem na volání Json, raw/decoded kontrakt a nativní chyby zachovány včetně NUL-leading klíčů.
-- [ ] PERF-07: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] PERF-07: hotovo (Codex, 2026-10-25), odstraněn globální whitespace regex, dispatch zachovává výstup obou adaptérů a ignoruje legacy minimizeHtml.
 - [ ] ARCH-01: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] DX-01: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] DX-02: čeká. Postup a akceptace jsou v odpovídající části níže.
@@ -551,3 +551,21 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - README a CHANGELOG popisují návratové hodnoty, okamžité čtení error state, validní null a legacy NUL klíče. Jde o lokální snížení počtu parserových průchodů, nikoli benchmark latence/memory celého webu. Stávající Http facade a namespaces zachovány, žádný nový runtime subsystém či balíček.
 - Kód, testy a plán patří do stejného checkpointu; hash je v git historii. Push a shoda upstreamu se ověřují před pokračováním.
 - Další konkrétní krok: PERF-07, Renderer::dispatch a globální slučování whitespace. Nejprve regresní corpus pre/textarea/inline JS/CSS a významových textových mezer, potom bezpečný výchozí výstup a migrační pravidla pro dosavadní minimizeHtml. Přenosovou kompresi ponechat webserveru. Po této etapě ARCH-01 odložený lifecycle podle schválených závislostí.
+
+### PERF-07: Postup a smlouva HTML výstupu
+
+- Výchozí checkpoint ef28474, větev codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization; HEAD a upstream shodné. Renderer::dispatch při minimizeHtml=true provádí preg_replace na celém fetch výsledku, jinak display. Regex mění pre/textarea, JS line comments i whitespace ve string literals/atributech.
+- Rozhodnutí: dispatch vždy přiřadí aplikační proměnné a vypíše site template přes stávající display adaptér bez globální úpravy obsahu. Zachovat strom Application -> Renderer -> adapter a stávající escapování. Bez HTML parseru, závislosti nebo alternativního nebezpečného legacy režimu.
+- minimizeHtml zůstává kompatibilní čitelná konfigurační položka/getter pro externí kód, ale v core dispatch je od major4.0 ignorována; getter označit deprecated v dokumentaci bez runtime warningů. minimizeCss/minimizeJs se v této fázi nemění. Přenosovou kompresi konfiguruje webserver/reverse proxy, ne runtime PHP frameworku.
+- Testy nejprve RED přes skutečný Renderer::dispatch s NativeRenderer i SmartyRenderer a s oběma hodnotami flagu; byte-exact výstup předaného důvěryhodného obsahu a escapování běžných proměnných. Pre, textarea, JS line comment a multiline string, CSS string, významové inline mezery/atributy a script JSON. Chybějící minimizeHtml nesmí vyvolat warning.
+- Akceptace: oba adaptéry zobrazí stejný beze změny emitovaný obsah při true/false/missing config. Nezavádět produkční kompresi nebo deployment změny. Dokumentace výslovně vyžaduje při upgradu vyčistit dřívější HTML page cache, která mohla obsahovat poškozený výstup. Poté plná sada, lint, nezávislé review, plán+commit+push.
+
+### 2026-10-25: PERF-07 dokončen
+
+- Renderer::dispatch vždy přiřadí aplikační proměnné a vypíše site template stávajícím adapter display. Celoplošné preg_replace odstraněno. OOP strom a výstupní escapování zachovány, žádná nová runtime třída/dependency ani kompresní handler.
+- minimizeHtml v core dispatch ignorováno i při true; Config::minimizeHtml getter zachován a označen deprecated bez runtime warningů. Změna zapadá do major4.0. Cena bezpečného výstupu: nekomprimované HTML může být větší; gzip/Brotli patří do deployment konfigurace webserveru/proxy. Žádné skutečné serverové nastavení v této fázi změněno nebylo.
+- TDD: 30 scénářů pro NativeRenderer a SmartyRenderer, true/false/missing konfiguraci. RED ukázal14 poškozených výstupů a jeden PHP warning vyvolaný ve dvou missing případech. GREEN **30 testů / 30 assertions**: byte-exact pre/textarea, JS line comment/template literal, CSS string, inline mezery/atributy a JSON script; běžný suffix nadále escapovaný.
+- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1095 testů / 2622 assertions**, 12.719 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review bez nálezů; reviewer také samostatně spustil cílené30/30 unit ověření.
+- README/CHANGELOG/ref-inventory aktualizovány. Při nasazení vyčistit page/external HTML cache, protože dříve uložené poškozené tělo nelze opravit pouhou změnou dispatch. Kompilace šablon a minimizeCss/minimizeJs zůstávají mimo rozsah.
+- Tento checkpoint zahrnuje implementaci, testy i plán; hash je v git historii. Push a shoda upstreamu se ověřují před další fází.
+- Další konkrétní krok: ARCH-01, inventura constructor/get/run/Router a i18n/page-cache pořadí. Vypracovat konkrétní lifecycle ve stávajícím Application stromu: konfigurace služeb a registrace vlastních rout před CMS/boxy, vlastní ukončená route bez CMS dotazů, page cache až po routách a správných politikách. Nejprve regresní testy pořadí a kompatibility, nepřesouvat pouze Site::initialize bez definovaného řízení požadavku.

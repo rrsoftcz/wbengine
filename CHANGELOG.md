@@ -31,6 +31,10 @@ the remaining template, Markdown, API and central administration work.
 
 ### Changed
 
+- Core HTML dispatch always uses the renderer adapter's `display()` path and keeps
+  rendered whitespace intact. `minimizeHtml` is ignored; its getter remains as a
+  deprecated compatibility API. Configure transfer compression at the webserver.
+
 - `Http::Json(true)` parses the request body once instead of validating and decoding
   separately. Raw mode, associative/scalar results, parser errors and the distinction
   between valid JSON null and an error through `json_last_error()` are preserved.
@@ -63,6 +67,10 @@ the remaining template, Markdown, API and central administration work.
   applied to input. See the request-data migration notes before updating older apps.
 
 ### Fixed
+
+- Removed whole-document whitespace collapsing that damaged preformatted text,
+  textarea values, inline JavaScript/CSS, attributes and JSON script strings.
+  Clear old HTML/page caches during upgrade to remove previously damaged responses.
 
 - Parent menu links ending in `/` now match the URL parser's bare prefixes when no
   exact bare link exists. Empty prefix sets no longer warn; missing or nonpositive

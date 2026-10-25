@@ -429,6 +429,7 @@ class Config
         return self::$config->minimizeCss;
     }
 
+    /** @deprecated Since 4.0, Renderer::dispatch ignores this legacy setting. */
     public static function minimizeHtml(){
         return self::$config->minimizeHtml;
     }

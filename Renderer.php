@@ -208,14 +208,8 @@ class Renderer extends Renderer\Adapter
             if ($App instanceof Application) {
                 // assign all application vars to templater ...
                 $this->assign($App->getVars(), NULL, false);
-                // ...and show content...
-                if (Config::minimizeHtml()) {
-                    //@TODO JUST TESTING TO MINIFY HTML SOURCE CODE...
-                    $source = preg_replace("'\s+'ms", " ", $this->fetch('site' . $this->getExtension()));
-                    echo($source);
-                } else {
-                    $this->display('site' . $this->getExtension());
-                }
+                // Preserve rendered whitespace in text, attributes and embedded languages.
+                $this->display('site' . $this->getExtension());
             } else {
                 throw New Exception\RuntimeException(__METHOD__
                     . ': Method Excepts Wbengine\Application\Application argument.');

@@ -70,7 +70,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 | Session written on every `setValue`; a global `DELETE` of expired sessions on reads; a row inserted for every visitor | Fixed: one lazy write at shutdown, probabilistic purge, no lookup without a cookie |
 | Article view counter is a write on every GET | Fixed (opt-in): batched counter, 12 views gave 2 writes and an exact total |
 | No cache of site, sections, menu or box list | Fixed: `Wbengine\Cache` (APCu or file driver), opt-in, flushed by the API |
-| HTML minification is a whitespace collapse that breaks `<pre>`, `<textarea>` and inline script comments | Open |
+| HTML minification is a whitespace collapse that breaks `<pre>`, `<textarea>` and inline script comments | Fixed in 4.0: dispatch preserves rendered output; legacy minimizeHtml is ignored, transfer compression belongs at the webserver |
 | CSS minify hashes files on every request | Open |
 | Composer autoload with an empty PSR-4 prefix root | Open: use a `src/` layout or a classmap |
 
