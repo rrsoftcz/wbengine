@@ -783,6 +783,49 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 * **JWT** uses HS256 with two secrets (access and refresh). The secrets are read from the configuration or the environment and are never stored in the source. Authentication fails closed if a secret is missing or shorter than 32 characters.
 * Access control for pages is the `acl` column of `cms_sites`: a value of `1` or more requires a logged in user.
 
+For long exports or parallel AJAX requests, finish authentication, session writes
+and creation of the CSRF secret first, then call `$app->closeSession()` (or
+`$session->close()`). This explicitly loads the session snapshot, persists pending
+WBengine database changes while holding the PHP session lock, and then calls
+`session_write_close()`. Application does nothing if no session has been created.
+The default lifecycle continues to allow writes until request shutdown.
+
+```php
+$session = $app->getSession();
+$filter = $session->getValue('export_filter');
+$app->closeSession();
+// Perform slow work using $filter without blocking the next same-session request.
+```
+
+After close, the object is sealed against persistence. Reads and CSRF verification
+remain available from the snapshot; an existing CSRF secret can still derive
+purpose tokens without writing. Creating a missing secret, changing values,
+`save()`, `unsetKey()`, ID rotation, logout and reopening through `sessionStart()`
+throw `SessionException`. Close is idempotent and never implicitly reopens a session.
+Object references returned by getters can still change locally, but a closed
+`flush()` never stores them. Treat the snapshot as request-local data: it can be
+stale after another request logs out and must not authorize new privileged work.
+Complete authorization and state changes before closing.
+
+A failed WBengine database write keeps the lock and pending changes, and close
+throws so the caller can handle the failure or retry. Once native closing begins,
+the object stays sealed even if a custom save handler throws. Native handler
+persistence/error semantics remain those of PHP. Use the WBengine close method
+instead of calling native `session_write_close()` directly: the native function
+does not flush WBengine's database or seal its object. Closing without the matching
+active native session is rejected. Handlers must provide session locking for
+cross-request write serialization; custom Redis/database handlers need their own
+locking verification.
+
+Reproduce the file-handler comparison with
+`docker compose -p wbengine-modernization run --rm php php tests/benchmarks/session-lock.php`.
+It uses the test database and independent CLI workers with one cookie, five runs
+per mode and 250 ms of simulated remaining work. On PHP 8.4.27 / MySQL 8.4 the
+second worker waited about 247 ms with the lock held and about 1 ms after early
+close. This measures lock wait in that scenario, not end-to-end website throughput.
+The integration suite also proves serialization, preservation of both writers'
+changes and absence of logout resurrection after an older closed worker exits.
+
 ## Configuration reference
 
 `src/Config/Settings.json`:

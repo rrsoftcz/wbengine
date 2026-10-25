@@ -350,6 +350,14 @@ class Application implements ComponentParentInterface, ResponseInterface
         return $this->getSession()->getCsrf();
     }
 
+    /** Release an existing session after all writes, without starting an unused one. */
+    public function closeSession(): void
+    {
+        if ($this->_session instanceof Session) {
+            $this->_session->close();
+        }
+    }
+
     public function getSession(){
         if ($this->_session instanceof Session) {
             return $this->_session;
