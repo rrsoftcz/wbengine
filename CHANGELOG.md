@@ -12,11 +12,23 @@ the remaining template, Markdown, API and central administration work.
 
 ### Changed
 
+- Request helpers return PHP-parsed values unchanged. `Post()` / `Get()` without a
+  field name return their complete input map; missing keys return null. `getCookie()`
+  returns raw strings and rejects arrays. String-only `PostString()` / `GetString()`
+  accessors provide explicit shape validation; `PostRaw()` remains a compatibility alias.
+  Application code must validate fields and escape at output.
 - Both renderer adapters now HTML-escape by default. Set `renderer.autoEscape` to
   false only for a temporary legacy migration, and mark trusted HTML explicitly.
 
+### Removed
+
+- `Http::secureClean()`: the legacy slash/tag/HTML transformations are no longer
+  applied to input. See the request-data migration notes before updating older apps.
+
 ### Fixed
 
+- Login CSRF and CAPTCHA fields reject non-string input without PHP type errors;
+  stored CSRF tokens are checked before constant-time comparison.
 - Native output escaping now follows the final modifier of the complete expression;
   modifiers inside method arguments, array keys or concatenation operands no longer
   suppress escaping of unrelated output. Earlier escaping does not trust a later fallback.

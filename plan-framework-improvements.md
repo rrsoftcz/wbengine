@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01 a SEC-03 dokončeny, následuje SEC-04. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01, SEC-03 a SEC-04 dokončeny, následuje SEC-05. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -39,7 +39,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [ ] SEC-01: rozpracováno (Codex, 2026-10-25). Pravidla odpovědí, personalizace, hlavičky HIT/304 a řízení cest/bypass hotové; zbývá sjednotit invalidaci všech obsahových zápisů a nové API publish.
 - [x] SEC-02: hotovo (Codex, 2026-10-25). Žádný nový MD5 fallback, kontrola skutečné délky hashe, ověřeno i na reálném varchar(32) se zachovaným legacy přihlášením.
 - [x] SEC-03: hotovo (Codex, 2026-10-25). Oba adaptéry escapují defaultně, native metadata a fallbacky opraveny, režimy cache odděleny, migrační a kontextová pravidla zdokumentována.
-- [ ] SEC-04: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] SEC-04: hotovo (Codex, 2026-10-25), nezměněné vstupy, řetězcové helpery, validace autentizačních polí a migrační dokumentace.
 - [ ] SEC-05: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] SEC-06: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [x] FIX-01: hotovo (Codex, 2026-10-25). iat setter zachovává iss, regresní test RED a GREEN.
@@ -416,3 +416,28 @@ Stav: rozpracováno, Codex. Výchozí kontrolní bod `b3a7116`, lokální a vzd�
 - Dokumentace popisuje bezpečný HTML text, quoted atributy, validaci URL schémat, script-safe JSON a důvěryhodnost šablon. Smarty je stále dočasný adaptér; odstranění z runtime závislostí patří do TPL-03.
 - CACHE-01 je uložen a pushnut jako `f998303`. Tento následující kontrolní bod zahrnuje kód SEC-03 i stav plánu; přesný hash je v git log pracovní větve.
 - Další konkrétní krok: SEC-04, inventarizace volání Http::Post/Get/getCookie/secureClean, zavedení nezměněných vstupů a explicitní validace, regresní testy apostrofů, lomítek, polí a chybějících hodnot. Neměnit současně autentizační model nebo routování. SEC-01 obsahová invalidace navazuje na nové write API v pozdější etapě.
+
+### SEC-04: Postup a smlouva vstupních helperů
+
+Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Pracovní větev `codex/wbengine-4.0`, odpovědnost Codex.
+
+- Inventura: interní secureClean používají pouze Post/Get. Box\Auth používá Post pro CSRF a CAPTCHA; přihlášení již používá PostRaw. Další runtime volající v knihovně ani ve zdrojích vzorové aplikace nebyli nalezeni. API JSON příjem se v tomto balíku nemění.
+- Post($name=null) a Get($name=null) vracejí beze změny hodnotu z PHP superglobálu, při null celý odpovídající vstupní map; chybějící klíč vrací null bez warningu. Platné názvy jsou string a int, včetně 0 a prázdného řetězce. Jiný typ názvu vrací null.
+- PostString($name), GetString($name) a getCookie(string $name) vracejí pouze nezměněný string nebo null, nikdy nepřevádějí pole/objekt/scalar na text. PostRaw zůstává kompatibilní alias PostString.
+- Rozhodnutí: raw znamená hodnoty po standardním zpracování HTTP v PHP, ne původní wire bytes. Bez trimování, HTML entit a přidávání/odstraňování lomítek. I neplatné UTF-8 bajty zůstávají nezměněné; textová pole musí validovat typ, UTF-8, délku a význam ve své aplikační vrstvě. Řetězcový helper řeší pouze tvar hodnoty, ne její důvěryhodnost.
+- Rozhodnutí pro major 4.0: secureClean odstranit, nevracet pod jeho bezpečnostně zavádějícím názvem tiše raw hodnoty. Migraci přímých externích volání výslovně popsat v README a CHANGELOG. Staré již znečištěné DB hodnoty automaticky neodkódovávat.
+- Box\Auth převede token a CAPTCHA na PostString. Neřetězcový CSRF token odmítne před hash_equals. SQL se nadále parametruje v Db, výstup escapuje renderer (SEC-03 hotovo).
+- Postup: nejprve RED testy apostrofů, lomítek, HTML, prázdných/zero hodnot, nested polí, chybějících klíčů, neplatného UTF-8 a malformed tokenů. Pak minimální změna helperů a volajících; integrační průchod raw -> parametrizované SQL -> escaped HTML v obou adaptérech.
+- Akceptace: žádná změna hodnot v DB, žádné dvojí escapování ve výsledku, neplatné tvary protokolových vstupů bez TypeError. Cílené testy, plná sada, lint a nezávislé review; poté commit+push kódu i plánu před další větší změnou.
+
+- SEC-04 review: bez runtime nálezů. Reviewer upozornil, že původní CAPTCHA test s prázdným secretem neprokazuje odmítnutí před sítí. Rozhodnutí: zpřesnit požadovaný důkaz, neodkládat jej jako kosmetickou změnu. Síťový kód zůstává stejný, pouze vyčleněn do protected verifyCaptcha v témže Box\Auth. Mockovaný ověřovač s nakonfigurovaným testovacím secretem musí mít nulové volání pro malformed vstup v běžném i AJAX POST; platné řetězce se předávají beze změny. Žádné skutečné CAPTCHA požadavky se při testech neposílají.
+
+### 2026-10-25: SEC-04 dokončen
+
+- Post/Get zachovávají původní PHP-parsed hodnoty a při vynechání názvu vracejí celou mapu. PostString/GetString, kompatibilní PostRaw a getCookie přijímají pouze řetězce. Chybějící hodnoty vracejí null bez warningů. secureClean je v major 4.0 odstraněn.
+- Box\Auth odmítá neplatné tvary CSRF a CAPTCHA polí. Stávající síťové ověření CAPTCHA je vyčleněno do protected metody v téže třídě; nevznikla další produkční služba ani závislost. Architektura a namespaces zůstávají zachovány.
+- TDD: původních 42 cílených testů ukázalo 14 errors a 7 failures. Dva integrační průchody přes parametrizovanou DB a oba renderery před změnou selhaly na změněných hodnotách. Nové testy hranice CAPTCHA před implementací selhaly kvůli chybějícímu ověřovači; po doplnění prokazují odmítnutí před sítí i přesné předání platných řetězců v běžném a AJAX požadavku.
+- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **933 testů / 1876 assertions**, 10.049 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review bez runtime nálezů; upozornění na slabší test CAPTCHA bylo zapracováno.
+- README a CHANGELOG popisují major změnu, explicitní validaci, parametrizaci SQL a escapování výstupu. Historická data se automaticky nepřepisují. API JSON a autentizační model se v tomto balíku nemění.
+- Kontrolní bod zahrnuje kód, testy i tento plán; přesný hash je v historii pracovní větve. Push a shoda upstreamu se ověřují před navazující fází.
+- Další konkrétní krok: SEC-05, inventura detekce IP/HTTPS a všech cookie flags, návrh lazy služby v existující stromové architektuře a testy explicitně důvěryhodných proxy IPv4/IPv6. Výchozí konfigurace bude důvěřovat pouze přímému spojení.

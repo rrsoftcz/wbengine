@@ -156,18 +156,27 @@ class Auth extends WbengineStaticBox
     private function _checkCaptcha()
     {
         if (Http::isAjaxCall() === true) {
-            $captcha = Http::Post(self::CAPTCHA_RESPONSE_AJAX);
+            $captcha = Http::PostString(self::CAPTCHA_RESPONSE_AJAX);
         } else {
-            $captcha = Http::Post(self::CAPTCHA_RESPONSE);
+            $captcha = Http::PostString(self::CAPTCHA_RESPONSE);
         }
         if ($this->_showCaptcha() === false) {
             return true;
+        }
+        if (null === $captcha || '' === $captcha) {
+            return false;
         }
         $secret = Config::getRecaptchaSecret();
         if (!$secret) {
             // Not configured: fail closed.
             return false;
         }
+        return $this->verifyCaptcha($secret, $captcha);
+    }
+
+    /** Network boundary; malformed input is rejected by _checkCaptcha before this call. */
+    protected function verifyCaptcha($secret, string $captcha): bool
+    {
         $raw = @file_get_contents(
             "https://www.google.com/recaptcha/api/siteverify?" . http_build_query(array(
                 'secret' => $secret,
@@ -189,13 +198,13 @@ class Auth extends WbengineStaticBox
     private function _checkToken()
     {
         $token = $this->getSession()->getValue('token');
-        $tpost = Http::Post('token');
-        if ($token === null || $token === '') {
+        $tpost = Http::PostString('token');
+        if (!is_string($token) || '' === $token) {
             return false;
         } elseif ($tpost === null || $tpost === '') {
             return false;
         }
-        return (hash_equals($tpost, $token)) ? true : false;
+        return hash_equals($token, $tpost);
     }
 
     private function _showCaptcha()

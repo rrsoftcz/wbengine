@@ -422,6 +422,48 @@ Rules:
 
 Set the connection `charset` in the configuration. Use `utf8mb4` for new databases (`utf8` is the three byte variant and rejects emoji).
 
+### Reading request data in 4.0
+
+`Http::Post($name)` and `Http::Get($name)` return the corresponding PHP-parsed value
+unchanged, including nested arrays. Omit the name to read the whole POST or GET map.
+A missing field returns null without a warning; integer/string keys such as `0` and
+`"0"` work normally. Other key types return null.
+
+Use `Http::PostString($name)` and `Http::GetString($name)` when the field must be a
+string. They return null for arrays and other non-string values, preserving empty
+strings and `"0"`. `Http::PostRaw($name)` remains an alias of `PostString`.
+`Http::getCookie($name)` likewise returns an unchanged string or null, rejecting
+array-shaped cookies. These helpers do not trim, add or remove backslashes, turn
+characters into HTML entities, strip tags or silently repair invalid UTF-8.
+"Unchanged" means after PHP parsed the HTTP input, not the original wire bytes.
+
+Validate each field's type, encoding, length and meaning separately. A string-only
+helper is a shape check, not a sanitizer. For example:
+
+```php
+use Wbengine\Application\Env\Http;
+use Wbengine\Db;
+
+$title = Http::PostString('title');
+if ($title === null || !mb_check_encoding($title, 'UTF-8') || mb_strlen($title, 'UTF-8') > 100) {
+    throw new \InvalidArgumentException('Invalid title.');
+}
+$id = Db::insert('cms_sections', ['title' => $title, 'key' => 'content']);
+```
+
+Pass values as SQL parameters and whitelist writable fields; never pass a whole
+request map directly to a database write. Render ordinary text with `{$title}`
+(automatic escaping) or explicit `|escape`. Do not mark a value as raw just because
+it came through a request helper. Keep password bytes unchanged; apply the intended
+password policy without HTML encoding or slash manipulation.
+
+**Migration:** `Http::secureClean()` has been removed in major version 4.0. Replace
+calls with the appropriate input accessor and field validation, and escape at the
+output context. Audit direct `echo` calls, custom renderers and templates using
+`autoEscape: false`; those no longer receive pre-escaped input. Previously stored
+backslashes or HTML entities are not automatically undone: blanket `stripslashes`
+or entity decoding would also corrupt legitimate historical content.
+
 ## Routing and the REST API
 
 Routes are registered with static methods and match on the HTTP method and the path. A trailing slash is optional and the query string is ignored:
