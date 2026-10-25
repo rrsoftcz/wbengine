@@ -22,6 +22,20 @@ Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odlož
 
 Každý úkol musí mít účel, odpovědnost, závislosti, postup, migrační dopad, akceptační testy, datum poslední změny a důkazy dokončení. `Připraveno` znamená vyřešené rozhraní a testovací scénáře. `Hotovo` znamená implementováno, ověřeno a zdokumentováno. Rozpracovaná práce musí uvádět další konkrétní krok. Důkazy a commity jsou v záznamu postupu.
 
+### Závazné verzování a bezpečné pokračování
+
+Po každé větší samostatné změně a na konci každé fáze vytvořit kontrolní bod:
+
+1. Spustit kontroly odpovídající změně a zaznamenat skutečný výsledek.
+2. Aktualizovat tento plán: hotové a rozpracované úkoly, zbývající práci, rozhodnutí, případné blokace, migrace a nejbližší konkrétní krok.
+3. Commitnout související kód společně s aktuálním stavem plánu. Čistě dokumentační změny mohou mít samostatný commit.
+4. Provést push do pracovní větve `codex/wbengine-4.0` a ověřit, že vzdálená větev obsahuje vytvořený commit. Aktuální PR musí odpovídat skutečnému rozsahu změn.
+5. Teprve potom pokračovat další větší změnou nebo fází. Odeslání commitu není samo o sobě merge, tag ani vydání nové verze.
+
+Při přerušení uprostřed změny uložit dosažený stav jako výslovně rozpracovaný kontrolní bod, uvést neúspěšné či neprovedené kontroly a přesný další krok. Takový commit se nesmí vydávat za dokončený nebo připravený k nasazení. Pokud push selže, výslovně uvést, že kontrolní bod je pouze lokální, a vzdálené uložení dokončit před další větší změnou.
+
+Při navázání nejprve přečíst tento plán, ověřit větev, poslední commity, pracovní změny a stav vzdálené větve. Dokončené kroky neopakovat; pokračovat od zaznamenaného dalšího kroku a zachovat cizí změny.
+
 - [ ] SEC-01: rozpracováno (Codex, 2026-10-25). Pravidla odpovědí, personalizace, hlavičky HIT/304 a řízení cest/bypass hotové; zbývá sjednotit invalidaci všech obsahových zápisů a nové API publish.
 - [x] SEC-02: hotovo (Codex, 2026-10-25). Žádný nový MD5 fallback, kontrola skutečné délky hashe, ověřeno i na reálném varchar(32) se zachovaným legacy přihlášením.
 - [ ] SEC-03: čeká. Postup a akceptace jsou v odpovídající části níže.
@@ -352,3 +366,5 @@ Release gate: vzorová aplikace a jeden pilot, funkční záloha a návrat, ově
 - Git commit prvního balíku: `6e799ed`. GitHub: [draft PR #2](https://github.com/rrsoftcz/wbengine/pull/2), větev `codex/wbengine-4.0`, základ `master`. Tag ani release nebyly vytvořeny. Lokální testovací databáze byla po ověření zastavena.
 
 - GitHub CI pro commit `6e799ed`: všech 5 jobs úspěšných, PHP 8.3/8.4/8.5 s MySQL 8.4 a PHP 8.4 s MariaDB 10.11/11.4. Výsledky jsou dostupné v draft PR #2.
+
+- 2026-10-25: na žádost uživatele doplněno závazné pravidlo commitovat a pushovat po každé větší změně nebo fázi také aktuální stav plánu, včetně pravidel rozpracovaných kontrolních bodů a bezpečného navázání. Před změnou ověřena shoda lokálního HEAD a upstreamu na `1d98025`.
