@@ -723,6 +723,28 @@ Keep diagnostic output restricted to trusted users and escape the values normall
 
 What the engine does well today: a single connection opened only when needed, no model hydration, compiled Smarty templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
 
+`Site::isMenuSelected()` now resolves all parent URL prefixes in one bound SQL
+statement and reuses their IDs for the rest of that Site's current prefix snapshot.
+Checking only the current positive site ID needs no lookup. This avoids a query per
+prefix for every menu item. A changed prefix list or `Site::initialize()` resets the
+snapshot. `Menu::selected()` retains its existing current-page-only behavior.
+
+The parent lookup still includes hidden and strict sites and uses the database's
+actual column collation for case/accent/binary comparisons. Duplicate links now pick
+the lowest `site_id` deterministically. The URL parser's bare prefix `/blog` first
+matches an exact stored link, then falls back to `/blog/` when the exact link is
+missing. Missing prefixes retain ID 0 in `getUrlPairsWithSiteId()`, but zero/negative
+IDs are never active menu entries.
+
+This uses at most one menu-selection SQL statement even with a warm data cache;
+`sites:visible` alone cannot preserve hidden-parent and database collation behavior.
+There is no persistent cache entry per requested URL. The new model method
+`SiteModel::getSiteIdsByUrls(array $urls)` resolves exact URLs in input order,
+including duplicates, and returns integer IDs or zero for misses. SQL work still
+scales with the number of URL prefixes, while statement round trips do not scale
+with the number of menu items. Navigation using this parent helper can therefore
+add one statement to the historical skeleton figures below.
+
 Measured queries per page in the skeleton application (debug bar):
 
 | Page | Before | Cache off, new session handling | Cache on, warm |

@@ -12,6 +12,9 @@ the remaining template, Markdown, API and central administration work.
 
 ### Added
 
+- Batched `SiteModel::getSiteIdsByUrls()` resolves exact URLs using database collation,
+  preserves input order and chooses the lowest site ID for duplicate links.
+
 - `Site::assignDiagnostics()` explicitly assigns the existing server, DB-version
   and PHP-version template variables through the site's model and variable tree.
 
@@ -27,6 +30,10 @@ the remaining template, Markdown, API and central administration work.
   Forwarded headers are disabled by default; invalid configuration fails closed.
 
 ### Changed
+
+- Site menu-parent selection shares one request-local batch lookup across menu items,
+  with or without data cache. Hidden/strict parent and collation rules are preserved;
+  warm cache still incurs at most one lookup statement for parent selection.
 
 - Runtime diagnostic template variables are now assigned automatically only in
   debug mode. Production site initialization no longer opens a DB connection just
@@ -52,6 +59,10 @@ the remaining template, Markdown, API and central administration work.
   applied to input. See the request-data migration notes before updating older apps.
 
 ### Fixed
+
+- Parent menu links ending in `/` now match the URL parser's bare prefixes when no
+  exact bare link exists. Empty prefix sets no longer warn; missing or nonpositive
+  site IDs cannot activate an orphan menu entry. Duplicate-link selection is stable.
 
 - Token-bearing responses cannot be stored in public or user native fragments or
   page cache. Session-ID regeneration and session destruction invalidate CSRF tokens.

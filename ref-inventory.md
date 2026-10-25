@@ -66,7 +66,7 @@ Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -
 |---------|--------|
 | About eight to ten queries per anonymous page; one box query per section | Fixed (opt-in): with the cache a warm page needs 0 to 3 queries |
 | Anonymous pages are rendered on every request | Fixed (opt-in): page cache, 0 queries on a hit, safety rules verified end to end |
-| `Site` menu and url helpers (`isMenuSelected`, `getUrlPairsWithSiteId`) are N+1 | Open |
+| `Site` menu and url helpers (`isMenuSelected`, `getUrlPairsWithSiteId`) are N+1 | Fixed in 4.0: one parameterized batch per Site prefix snapshot, including warm-cache paths; DB collation and hidden parents preserved |
 | Session written on every `setValue`; a global `DELETE` of expired sessions on reads; a row inserted for every visitor | Fixed: one lazy write at shutdown, probabilistic purge, no lookup without a cookie |
 | Article view counter is a write on every GET | Fixed (opt-in): batched counter, 12 views gave 2 writes and an exact total |
 | No cache of site, sections, menu or box list | Fixed: `Wbengine\Cache` (APCu or file driver), opt-in, flushed by the API |

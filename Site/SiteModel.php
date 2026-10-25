@@ -225,6 +225,30 @@ class SiteModel extends ModelAbstract
 
 
     /**
+     * Resolve exact URLs in one statement, keeping column collation and input order.
+     * Includes hidden/strict sites, as the legacy menu lookup does. No URL-keyed cache.
+     * @return int[] One ID per input value, or zero when no row matches.
+     */
+    public function getSiteIdsByUrls(array $urls): array
+    {
+        if ([] === $urls) {
+            return [];
+        }
+        $queries = $params = [];
+        foreach (array_values($urls) as $position => $url) {
+            $queries[] = sprintf('SELECT %d AS request_index, (SELECT MIN(site_id) FROM %s WHERE link = ?) AS site_id',
+                $position, S_TABLE_SITES);
+            $params[] = (string) $url;
+        }
+        $rows = Db::fetchAllAssoc(implode(' UNION ALL ', $queries), $params);
+        $ids = array_fill(0, count($urls), 0);
+        foreach ($rows as $row) {
+            $ids[(int) $row['request_index']] = (int) $row['site_id'];
+        }
+        return $ids;
+    }
+
+    /**
      * Return site ID from given URL.
      *
      * @param string $url
@@ -232,10 +256,7 @@ class SiteModel extends ModelAbstract
      */
     public function getSiteIdByUrl($url)
     {
-        $sql = sprintf("SELECT site_id FROM %s WHERE link = ? LIMIT 1;", S_TABLE_SITES);
-        $row = Db::fetchAssoc($sql, array((string)$url));
-
-        return $row ? (int)$row['site_id'] : 0;
+        return $this->getSiteIdsByUrls([(string) $url])[0];
     }
 
 

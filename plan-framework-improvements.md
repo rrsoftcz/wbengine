@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01, SEC-02 až SEC-06 a PERF-01 dokončeny, následuje PERF-02. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01 a PERF-02 dokončeny, následuje PERF-06. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -45,7 +45,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] FIX-01: hotovo (Codex, 2026-10-25). iat setter zachovává iss, regresní test RED a GREEN.
 - [x] CACHE-01: hotovo (Codex, 2026-10-25). Veřejný/osobní scope, lazy identita, locale, anonymní bypass a ochrana public obalů ověřeny včetně HTTP. Jiné obsahové varianty vyžadují explicitní klíče.
 - [x] PERF-01: hotovo (Codex, 2026-10-25), diagnostika pouze v debug nebo přes Site::assignDiagnostics; ověřeno odstranění jednoho zbytečného spojení při cache HIT.
-- [ ] PERF-02: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] PERF-02: hotovo (Codex, 2026-10-25), requestová množina aktivních ID a jeden dávkový SQL statement pro prefixy, zachované hidden/strict/collation a opravené koncové lomítko rodičů.
 - [ ] PERF-03: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-04: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-05: čeká. Postup a akceptace jsou v odpovídající části níže.
@@ -508,3 +508,25 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1029 testů / 2200 assertions**, 11.207 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé read-only review bez nálezů.
 - README a CHANGELOG popisují změnu výchozích template proměnných v major 4.0 a explicitní použití diagnostiky. Kód i tento plán tvoří jeden checkpoint; přesný hash je v git historii. Push a shoda upstreamu se ověřují před další fází.
 - Další konkrétní krok: PERF-02, odstranění N+1 lookupů menu. Před změnou ověřit selekci rodičů, skryté stránky, duplicitní URL, strict stránky a DB collation; sdílet jednou vyhodnocenou sadu aktivních ID bez změny zamýšlené navigace. Při vypnuté cache použít dávkový lookup. PERF-06 a další etapy zůstávají otevřené.
+
+### PERF-02: Postup a rozhodnutí o sémantice
+
+- Výchozí checkpoint 2047280, větev codex/wbengine-4.0, izolovaný worktree /private/tmp/wbengine-modernization; HEAD i upstream shodné. Site::isMenuSelected pro každou neaktuální položku znovu vyhodnocuje všechny URL prefixy přes SQL getSiteIdByUrl. Menu::selected má vlastní přímé porovnání aktuální stránky, které se v tomto balíku nemění.
+- Rozhodnutí: requestová memoizace výsledných dvojic prefix -> ID a množina existujících aktivních ID v Site. Jedna metoda SiteModel::getSiteIdsByUrls provede všechny indexové lookupy v jednom parametrizovaném SQL statementu, výstup je zarovnaný s původním pořadím včetně opakovaných/chybějících prefixů. Prázdná/neplatná kolekce prefixů bez SQL a bez foreach warningu. Aktuální kladné site ID zůstává aktivní bez lookupu.
+- Ruling: dávkový SQL lookup použít také při zapnuté cache. Pouhá sites:visible mapa vynechává skryté rodiče a její PHP lowercase porovnávání nereprodukuje databázovou collation (accent/case/binary pravidla). Úplnou DB sémantiku bez spojení by vyžadoval nový canonical URL kontrakt nebo další kolacionální index. Cena tohoto konzervativního rozhodnutí: při potřebě rodičů nejvýše jeden SQL statement i s warm cache, nikoli slib nuly SQL. Přínos: počet dotazů nezávislý na počtu menu položek a hloubce URL, bez neomezené persistentní cache pro náhodné URL.
+- Ruling: duplicitní DB linky deterministicky vybírají nejnižší site_id, místo dosavadního LIMIT 1 bez ORDER BY; stejné pravidlo použije jednopoložkový helper. Viditelnost a strict režim se pro výběr prefixového rodiče nadále nefiltrují. Site ID 0 a záporné hodnoty nejsou aktivní položky, chybějící lookup vrací 0 pouze ve veřejných dvojicích prefixů.
+- Zachovat SQL porovnávání link = ? přímo nad sloupcem, bez PHP napodobování collation a bez JOIN mezi dvěma implicitními odlišnými collations. SQL UNION ALL scalar lookupů vrací pozice a minimum ID; parametry zůstávají daty. Strom Site -> SiteModel -> Db, bez dalšího produkčního subsystému.
+- Testy nejprve RED: mnoho menu položek a několik prefixů s cache i bez ní, skrytí a strict rodiče, duplicity, neexistující prefix, case/accent citlivost a binary collation, apostrofy/injection vstup, opakování a změna prefixů, prázdné URL a ID0. Akceptace: 0 dotazů pro samotné aktuální ID, nejvýše1 pro celou další selekci nad stejnými prefixy; skutečná shoda s DB lookupem. Poté celá sada, lint, nezávislé review, plán+commit+push.
+
+- Inventura skutečného Url::_setUrlPairs navíc odhalila prefixy bez koncového lomítka (/blog), zatímco standardní DB link je /blog/. Původní helper proto takového rodiče vůbec neoznačí. Ruling: Site zachová původní URL v returned dvojicích, nejprve hledá přesný prefix a teprve při miss variantu s jedním koncovým lomítkem. SiteModel batch zůstává exact-URL kontrakt; obě varianty předá Site v jednom statementu. Přesné odkazy bez lomítka mají přednost, takže existující takto uložené weby fungují dál. Test musí zahrnovat skutečný Url parser, nikoli pouze ručně zkonstruované prefixy s lomítkem.
+
+### 2026-10-25: PERF-02 dokončen
+
+- Site ukládá výsledné dvojice URL/ID a množinu aktivních kladných ID pro aktuální seznam prefixů. Změna prefixů a initialize snapshot invalidují. Aktuální ID bez SQL; ostatní selekce sdílejí jeden batch. SiteModel::getSiteIdsByUrls zachovává pořadí, opakování, miss=0, parametrizaci a skutečnou collation; jedno-URL helper používá stejnou cestu.
+- Záměrné major změny: duplicity deterministicky nejnižší site_id; prefix nejprve přesný a až při miss s koncovým lomítkem; nula/záporné ID neoznačují aktivní položku. Skrytí a strict rodiče dál povolení. Menu::selected zůstává přímou selekcí aktuální stránky.
+- Ruling platí: i s warm cache nejvýše jeden statement, protože sites:visible není ekvivalent starého SQL. Nulový warm lookup z této fáze neslibujeme; žádný neomezený persistentní cache klíč podle URL. DB indexových vyhledání je stále úměrně prefixům, ale síťových round trips není úměrně položkám menu. Není to benchmark latence celého webu.
+- RED: 7 scénářů, 2 errors kvůli chybějícímu batch API, 4 failures a foreach warning. Opakované menu kontroly + veřejný getter původně provedly 244 SQL statementů při cache off i warm cache. Nově v obou případech **1 statement**, stejné očekávané výběry, opravený skutečný parser/slash případ. Cílené testy 7 / 156 assertions prošly.
+- Collation test na skutečné DB střídá utf8mb4_unicode_ci a utf8mb4_bin, ověřuje case i accent shody a původní schéma obnovuje ve finally. Další scénáře: hidden/strict, přesný bare link versus slash, nejnižší ID duplicity, apostrof/injection, prázdné prefixy/ID0, změna seznamu. Nezávislé review bez nálezů.
+- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1036 testů / 2356 assertions**, 11.198 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. OOP strom Site -> model -> Db zachován; bez nového runtime subsystému a závislosti.
+- README, CHANGELOG a ref-inventory popisují chování i cenu jednoho dotazu s cache. Tento checkpoint zahrnuje kód, testy a plán; přesný hash je v git historii. Push a shoda upstreamu se ověřují před další etapou.
+- Další konkrétní krok podle pořadí etapy 3: PERF-06, jedno dekódování JSON. Nejprve popsat dosavadní Json(true/false) pro validní null, skaláry, objekty/pole, prázdné a neplatné tělo, UTF-8 a hloubku; pak odstranit duplicitní json_decode bez nechtěné změny controller kontraktu. Následuje PERF-07 a ARCH-01, ostatní položky zůstávají v registru otevřené.
