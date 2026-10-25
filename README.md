@@ -895,6 +895,54 @@ change, so check transfer compression in the deployment configuration.
 
 ## Performance notes and roadmap
 
+For large box tables, the optional migration
+[`migrations/4.0.0/001-boxes-section-order.sql`](migrations/4.0.0/001-boxes-section-order.sql)
+adds `(section_id, order)`. `Section\Model::getBoxes()` now filters the section
+outside the site-membership/shared alternative, allowing this index to provide
+ordering on the tested MySQL and MariaDB plans. JSON membership, shared boxes,
+returned columns, parameter binding and the existing cache keys are preserved.
+The framework never applies this DDL during a web request.
+
+Before deployment, inspect `SHOW INDEX FROM cms_boxes` for an equivalent index
+whose first two columns are `section_id, order`, adapt the table prefix, and apply
+the SQL file through the installation's normal database migration procedure.
+Schedule the DDL for the size and traffic of that installation. Do not add a
+redundant index if an equivalent one already exists. Verify the actual query with
+`EXPLAIN` and compare result IDs/order before and after. Rollback is
+`ALTER TABLE cms_boxes DROP INDEX wb_boxes_section_order`; roll back only the
+index created by this migration. The PHP query also works without the index.
+Invalidate box/data/page caches after content edits as usual; a schema-only index
+change does not alter cached rows.
+
+The repeatable test benchmark is
+`docker compose -p wbengine-modernization run --rm php php tests/benchmarks/content-lookup.php`.
+It uses connection-local temporary tables, 30,000 boxes over 100 sections, 20 percent
+shared boxes in each section and 140 matching boxes. Median SQL times from 15 runs:
+MySQL 8.4, original/no index 5.3782 ms versus factored/section-order 0.3839 ms;
+MariaDB 11.4, 6.6089 ms versus 0.3637 ms. EXPLAIN estimates fall from about 30,000
+rows to 300. The chosen combination avoids filesort in these datasets; the
+`(section_id, shared, order)` candidate still needs filesort. These are warm DB
+buffer measurements with application cache off, not cold-disk or web throughput
+claims. Warm memory/file box-cache samples execute zero SQL queries.
+
+Indexes add write work: median batches of 1,000 inserts increased from 2.4174 to
+2.9838 ms on MySQL and from 2.1693 to 2.7339 ms on MariaDB in this fixture. Cleanup
+is outside the timed insertion samples. Remeasure for a different section count,
+shared ratio or write-heavy workload. A relational membership table is deferred
+until measured JSON filtering cost warrants its migration and API complexity.
+
+The URL-map optimization is deferred. At 10,000 visible sites, measured MySQL
+lookup times were 0.1468 ms via the existing link index, 0.9076 ms for a warm
+in-memory full-table scan, and 20.0181 ms for a warm file-cache read/scan. Building
+a lowercase map alone cost 0.7137 ms, excluding storage/decoding and lookup. The
+memory driver in this benchmark is a reference-array control, not APCu.
+Also, the current site cache uses lowercase comparison: `/cafe/` fails to match
+stored `/café/` under `utf8mb4_unicode_ci`, while `/CAFÉ/` incorrectly matches
+under `utf8mb4_bin`. The benchmark reports these existing mismatches explicitly.
+A new URL index must first establish a comparison contract consistent with the
+actual database collation. The current lookup behavior is unchanged in this phase;
+this parity issue remains tracked as FIX-02 before release.
+
 What the engine does well today: a single connection opened only when needed, no model hydration, compiled Smarty templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
 
 `Site::isMenuSelected()` now resolves all parent URL prefixes in one bound SQL

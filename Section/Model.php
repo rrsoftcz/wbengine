@@ -35,15 +35,15 @@ class Model extends ModelAbstract {
         $sectionId = (int)$section->getSectionId();
 
         $sql = sprintf("SELECT CONCAT(?) AS site_id, %s FROM %s b
-              WHERE (JSON_SEARCH(sites, 'one', ?) IS NOT NULL AND b.section_id = ?)
-                                OR (b.section_id = ? AND b.shared = 1)
+              WHERE b.section_id = ?
+                AND (JSON_SEARCH(sites, 'one', ?) IS NOT NULL OR b.shared = 1)
                               ORDER BY b.order ASC;"
             , '`id`, `name`, `module`, `method`, `section_id`, `static`, `shared`, `device_min`, `device_strict`, `order`'
             , S_TABLE_BOXES
         );
 
         return Cache::remember('boxes:' . $siteId . ':' . $sectionId, function () use ($sql, $siteId, $sectionId) {
-            return Db::fetchAllAssoc($sql, array($siteId, $siteId, $sectionId, $sectionId));
+            return Db::fetchAllAssoc($sql, array($siteId, $sectionId, $siteId));
         }, null, true);
     }
 
