@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: 1, první ověřený implementační balík připraven k review na GitHubu; širší SEC-01 a CACHE-01 zůstávají částečně otevřené. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: 1, první ověřený implementační balík v draft PR #2 na GitHubu; širší SEC-01 a CACHE-01 zůstávají částečně otevřené. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -348,3 +348,7 @@ Release gate: vzorová aplikace a jeden pilot, funkční záloha a návrat, ově
 - Změny zůstávají ve stávajících produkčních třídách a namespaces. Nové samostatné PHP soubory v tomto balíku jsou pouze HTTP test a jeho fixture; nevznikl paralelní produkční framework.
 - Neimplementováno: vlastní Markdown, odstranění Smarty/Texy, API v2 ani centrální administrace. Jejich úkoly zůstávají otevřené.
 - Další krok: dokončit explicitní scope fragmentů a návrh obsahové invalidace, poté SEC-03 až SEC-06. Pro GitHub připravit draft PR 4.0.0, bez tagu/release a bez merge do master.
+
+- Git commit prvního balíku: `6e799ed`. GitHub: [draft PR #2](https://github.com/rrsoftcz/wbengine/pull/2), větev `codex/wbengine-4.0`, základ `master`. Tag ani release nebyly vytvořeny. Lokální testovací databáze byla po ověření zastavena.
+
+- GitHub CI pro commit `6e799ed`: všech 5 jobs úspěšných, PHP 8.3/8.4/8.5 s MySQL 8.4 a PHP 8.4 s MariaDB 10.11/11.4. Výsledky jsou dostupné v draft PR #2.
