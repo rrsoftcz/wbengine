@@ -708,6 +708,17 @@ With `"debug": true` a bar is appended to the page showing the PHP version, the 
 
 Debug mode also turns on `display_errors`. It exposes SQL and paths, so it must never be enabled on a public server. With debug off, an uncaught exception shows a generic error page and the details go to the error log.
 
+In 4.0, `Site::initialize()` automatically assigns `server`, `dbinfo` and
+`phpversion` only when debug is enabled. Production templates no longer receive
+these diagnostic values by default. If an internal page explicitly needs them,
+call `$app->getSite()->assignDiagnostics()` after site initialization; it assigns
+the same template keys and returns that Site instance.
+
+Reading `dbinfo` may open a database connection even though no SQL query is counted.
+Production initialization with a warm site-data cache avoids that diagnostic-only
+connection. Content, navigation and custom boxes can still require database access.
+Keep diagnostic output restricted to trusted users and escape the values normally.
+
 ## Performance notes and roadmap
 
 What the engine does well today: a single connection opened only when needed, no model hydration, compiled Smarty templates, bound parameter queries, and a debug bar that makes the query count visible on every page.

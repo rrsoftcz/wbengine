@@ -12,6 +12,9 @@ the remaining template, Markdown, API and central administration work.
 
 ### Added
 
+- `Site::assignDiagnostics()` explicitly assigns the existing server, DB-version
+  and PHP-version template variables through the site's model and variable tree.
+
 - Session-owned CSRF service with purpose-bound tokens, stable multi-tab forms,
   form/AJAX request validation and private/no-store cache handling. Application
   exposes the same lazy service; public routes without CSRF usage remain unchanged.
@@ -24,6 +27,10 @@ the remaining template, Markdown, API and central administration work.
   Forwarded headers are disabled by default; invalid configuration fails closed.
 
 ### Changed
+
+- Runtime diagnostic template variables are now assigned automatically only in
+  debug mode. Production site initialization no longer opens a DB connection just
+  to obtain `dbinfo`; templates requiring these values must request them explicitly.
 
 - Web login uses shared CSRF tokens. GET logout now returns 405; POST logout requires
   its own purpose token. Invalid login/logout tokens return 403 before authentication.

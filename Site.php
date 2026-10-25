@@ -541,6 +541,18 @@ Class Site implements ComponentParentInterface
     }
 
     /**
+     * Explicitly expose runtime diagnostics to this site's template variables.
+     * Reading the database version may open a connection even without a SQL query.
+     */
+    public function assignDiagnostics(): self
+    {
+        $this->setVariable('server', $_SERVER['SERVER_SOFTWARE'] ?? '');
+        $this->setVariable('dbinfo', $this->getModel()->getDBVersion());
+        $this->setVariable('phpversion', phpversion());
+        return $this;
+    }
+
+    /**
      * This method load all needed data from model and assign
      * all needed variables to local array.
      * @param Application $app
@@ -565,9 +577,9 @@ Class Site implements ComponentParentInterface
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
         $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
-        $this->setVariable('server', $_SERVER['SERVER_SOFTWARE']);
-        $this->setVariable('dbinfo', $this->getModel()->getDBVersion());
-        $this->setVariable('phpversion', phpversion());
+        if ($app->isDebugOn()) {
+            $this->assignDiagnostics();
+        }
 
         $this->_setSections($this->getSections());
 

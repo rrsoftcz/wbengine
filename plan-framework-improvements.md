@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01 a SEC-02 až SEC-06 dokončeny, následuje PERF-01. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01, SEC-02 až SEC-06 a PERF-01 dokončeny, následuje PERF-02. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -44,7 +44,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] SEC-06: hotovo (Codex, 2026-10-25), session CSRF služba, účely formulářů, POST logout, ochrana cache a stateless cookie API hranice.
 - [x] FIX-01: hotovo (Codex, 2026-10-25). iat setter zachovává iss, regresní test RED a GREEN.
 - [x] CACHE-01: hotovo (Codex, 2026-10-25). Veřejný/osobní scope, lazy identita, locale, anonymní bypass a ochrana public obalů ověřeny včetně HTTP. Jiné obsahové varianty vyžadují explicitní klíče.
-- [ ] PERF-01: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] PERF-01: hotovo (Codex, 2026-10-25), diagnostika pouze v debug nebo přes Site::assignDiagnostics; ověřeno odstranění jednoho zbytečného spojení při cache HIT.
 - [ ] PERF-02: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-03: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-04: čeká. Postup a akceptace jsou v odpovídající části níže.
@@ -491,3 +491,20 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - HTTP testy: více panelů, cizí session, invalidní/platný AJAX, GET a POST logout s různými účely, no-store i při opakovaném tokenu, veřejný GET jako cache HIT bez session cookie a DB zápisu. Integrační test ověřuje invalidaci/přetrvání po rotaci ID i nemožnost obnovit zničenou session přes flush. Unit test dokládá odmítnutí tvarů a vyloučení již cachovaných user/public fragmentů i nového tokenového obalu.
 - README a CHANGELOG obsahují rozhraní, použití v šabloně/AJAX, cache a upgrade API klientů. Tato major změna není nasazena ani releasována. Kontrolní bod obsahuje kód i plán; hash je v historii a push se ověřuje před další fází.
 - Další konkrétní krok: PERF-01, diagnostické dbinfo ve Site::initialize/getDBVersion pouze v debug nebo na explicitní žádost. Nejprve změřit SQL dotazy a otevření DB spojení pro zahřátou stránku s datovou cache, poté odstranit pouze zbytečný diagnostický přístup. Následují PERF-02 menu N+1 a PERF-06 jediné dekódování JSON podle závislostí plánu.
+
+### PERF-01: Postup a smlouva diagnostiky
+
+- Výchozí checkpoint dd352b8, větev codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization. Lokální HEAD a upstream shodné. Site::initialize vždy přiřazuje server, dbinfo a phpversion; SiteModel::getDBVersion přes Mysqli::getDbVersion otevírá skutečné spojení bez SQL dotazu. Db::isConnected znamená pouze vytvořený adapter, nikoli potvrzený socket.
+- Rozhodnutí: stávající diagnostické proměnné automaticky přiřadit pouze podle Application::isDebugOn. Pro explicitní použití přidat Site::assignDiagnostics vracející Site, s původními názvy proměnných. Zůstává ve stávajícím stromu Site -> model -> Db, bez nové služby, konfigurace nebo balíčku. Chybějící SERVER_SOFTWARE má bezpečný prázdný výsledek.
+- Produkční inicializace diagnostické klíče nově nepřipravuje; šablony, které je potřebují, musí požádat explicitně. Diagnostika může otevřít DB spojení a neslouží pro veřejné stránky. Neměnit routing/lifecycle ani cache identitu v tomto balíku.
+- Testy: zahřát lookup skutečného SiteModel do file cache, provést initialize v novém PHP procesu s odděleným adapterem a bez menu/sekčního obsahu, měřit rozdíl SQL statistik a mysqlnd connect_success. Porovnat produkci bez diagnostiky, debug, explicitní žádost a chybějící server metadata; ověřit zachování site/metadat. Toto měření izoluje diagnostickou cenu, neslibuje nula spojení pro libovolný obsah nebo custom boxy.
+- RED musí prokázat jedno spojení při nule SQL dotazů v původní produkční inicializaci. Po opravě produkce 0/0, debug/explicitní žádost jedno spojení a stejné diagnostické údaje. Pak kompletní sada, lint, nezávislé review, záznam výsledků, commit a push kódu i plánu.
+
+### 2026-10-25: PERF-01 dokončen
+
+- Site::initialize automaticky přiřazuje server/dbinfo/phpversion jen v debug. Explicitní Site::assignDiagnostics zachovává původní názvy, modelovou cestu i přiřazení do Vars a vrací Site. Bez nové runtime třídy nebo závislosti. SERVER_SOFTWARE při chybějící hodnotě vrací prázdný text.
+- RED: ze čtyř integračních scénářů tři selhaly, produkční warm lookup otevřel jedno spojení při nule SQL; explicitní metoda chyběla a chybějící server metadata vyvolala warning. Po opravě čtyři scénáře / 36 assertions prošly. Nové PHP procesy nezdědí adapter ani socket z PHPUnit, mysqlnd connect_success ověřuje skutečné spojení odděleně od SQL statistik.
+- Výsledek izolované inicializace s warm site-data cache: produkce 0 spojení / 0 SQL, debug a explicitní diagnostika 1 spojení / 0 SQL; zachované site resource a meta title. Menu, sekční obsah a custom boxy jsou z měření vyjmuty, proto se tento výsledek nevydává za univerzální počet spojení kompletního webu ani za měření latence.
+- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1029 testů / 2200 assertions**, 11.207 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé read-only review bez nálezů.
+- README a CHANGELOG popisují změnu výchozích template proměnných v major 4.0 a explicitní použití diagnostiky. Kód i tento plán tvoří jeden checkpoint; přesný hash je v git historii. Push a shoda upstreamu se ověřují před další fází.
+- Další konkrétní krok: PERF-02, odstranění N+1 lookupů menu. Před změnou ověřit selekci rodičů, skryté stránky, duplicitní URL, strict stránky a DB collation; sdílet jednou vyhodnocenou sadu aktivních ID bez změny zamýšlené navigace. Při vypnuté cache použít dávkový lookup. PERF-06 a další etapy zůstávají otevřené.
