@@ -25,6 +25,7 @@ class TemplateEngineTest extends TestCase
     protected function tearDown(): void
     {
         Cache::setDriver(null);
+        (new \ReflectionProperty(\Wbengine\PageCache::class, '_bypassed'))->setValue(null, false);
         $this->rmTree($this->dir);
         unset($GLOBALS['wb_pwned']);
     }
@@ -511,6 +512,148 @@ class TemplateEngineTest extends TestCase
     }
 
     // ------------------------------------------------------ fragment cache
+
+    public function testUserFragmentsSeparateUsersAndDoNotFallBackToPublicStorage(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('user.tpl', "{cache 'profile' scope='user' ttl=60}{\$name}{/cache}");
+        $this->write('public.tpl', "{cache 'profile' ttl=60}{\$name}{/cache}");
+        $userId = 7;
+        $engine = $this->engine()->setCacheUserResolver(function () use (&$userId) { return $userId; });
+        $this->assertSame('Alice', $engine->fetch('user.tpl', ['name' => 'Alice']));
+        $userId = 8;
+        $this->assertSame('Bob', $engine->fetch('user.tpl', ['name' => 'Bob']));
+        $userId = 7;
+        $this->assertSame('Alice', $engine->fetch('user.tpl', ['name' => 'changed']));
+        $this->assertSame('Public', $engine->fetch('public.tpl', ['name' => 'Public']));
+        $userId = null;
+        $this->assertSame('Guest one', $engine->fetch('user.tpl', ['name' => 'Guest one']));
+        $this->assertSame('Guest two', $engine->fetch('user.tpl', ['name' => 'Guest two']));
+    }
+
+    public function testPublicFragmentsNeverResolveTheUser(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'public'}{\$name}{/cache}");
+        $engine = $this->engine()->setCacheUserResolver(function () { throw new \LogicException('Must stay lazy'); });
+        $this->assertSame('Public', $engine->fetch('t.tpl', ['name' => 'Public']));
+        $this->assertSame('Public', $engine->fetch('t.tpl', ['name' => 'changed']));
+    }
+
+    public function testUserFragmentWithoutResolverNeverCaches(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'profile' scope='user'}{\$name}{/cache}");
+        $engine = $this->engine();
+        $this->assertSame('Guest one', $engine->fetch('t.tpl', ['name' => 'Guest one']));
+        $this->assertSame('Guest two', $engine->fetch('t.tpl', ['name' => 'Guest two']));
+        $this->assertSame([], glob($this->dir . '/cache/*.cache.php'));
+    }
+
+    #[DataProvider('invalidCacheUsers')]
+    public function testInvalidUserIdentityNeverCaches($identity): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'profile' scope='user'}{\$name}{/cache}");
+        $engine = $this->engine()->setCacheUserResolver(fn () => $identity);
+        $this->assertSame('one', $engine->fetch('t.tpl', ['name' => 'one']));
+        $this->assertSame('two', $engine->fetch('t.tpl', ['name' => 'two']));
+        $this->assertSame([], glob($this->dir . '/cache/*.cache.php'));
+    }
+
+    public static function invalidCacheUsers(): array
+    {
+        return [[null], [0], [-1], ['0'], ['-1'], [''], ['guest'], [false], [true], [1.5], [[]], [new \stdClass()]];
+    }
+
+    public function testPublicWrapperDoesNotCachePersonalFragments(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'wrapper'}before:{cache 'name' scope='user'}{\$name}{/cache}:after{/cache}");
+        $userId = 7;
+        $engine = $this->engine()->setCacheUserResolver(function () use (&$userId) { return $userId; });
+        $this->assertSame('before:Alice:after', $engine->fetch('t.tpl', ['name' => 'Alice']));
+        $userId = 8;
+        $this->assertSame('before:Bob:after', $engine->fetch('t.tpl', ['name' => 'Bob']));
+    }
+
+    public function testPersonalScopeDisablesPageCacheEvenWithoutAFragmentCacheDriver(): void
+    {
+        $this->write('t.tpl', "{cache 'name' scope='user'}{\$name}{/cache}");
+        $this->assertSame('Alice', $this->engine()->fetch('t.tpl', ['name' => 'Alice']));
+        $this->assertTrue((new \ReflectionProperty(\Wbengine\PageCache::class, '_bypassed'))->getValue());
+    }
+
+    public function testPersonalFragmentsAreSeparatedByLocale(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'profile' ttl=60 scope='user'}{\$name}{/cache}");
+        $engine = $this->engine()->setCacheUserResolver(fn () => '7');
+        $settings = ['enabled' => true, 'default' => 'en', 'locales' => ['en', 'cs']];
+        try {
+            \Wbengine\I18n::configure((new \Wbengine\I18n\Translator([], 'en'))->setLocale('cs'), $settings);
+            $this->assertSame('Cesky', $engine->fetch('t.tpl', ['name' => 'Cesky']));
+            \Wbengine\I18n::configure((new \Wbengine\I18n\Translator([], 'en'))->setLocale('en'), $settings);
+            $this->assertSame('English', $engine->fetch('t.tpl', ['name' => 'English']));
+        } finally {
+            \Wbengine\I18n::configure(null, null);
+        }
+    }
+
+    public function testResolverFailureNeverFallsBackToSharedStorage(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'profile' scope='user'}{\$name}{/cache}");
+        $engine = $this->engine()->setCacheUserResolver(function () { throw new \RuntimeException('unavailable'); });
+        $this->assertSame('one', $engine->fetch('t.tpl', ['name' => 'one']));
+        $this->assertSame('two', $engine->fetch('t.tpl', ['name' => 'two']));
+        $this->assertSame([], glob($this->dir . '/cache/*.cache.php'));
+    }
+
+    public function testNestedPersonalRenderFailureDoesNotLeakBuffersOrCachePartialHtml(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'outer'}before{cache 'inner' scope='user'}{\$o->fail()}{/cache}{/cache}");
+        $o = new class { public function fail() { throw new \RuntimeException('render failed'); } };
+        $level = ob_get_level();
+        try {
+            $this->engine()->setCacheUserResolver(fn () => 7)->fetch('t.tpl', ['o' => $o]);
+            $this->fail('Expected the template method to fail');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('render failed', $e->getMessage());
+        }
+        $this->assertSame($level, ob_get_level());
+        $this->assertSame([], glob($this->dir . '/cache/*.cache.php'));
+    }
+
+    public function testLegacyPublicHelperCannotCaptureAPersonalFragment(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'inner' scope='user'}{\$name}{/cache}");
+        $user = 7;
+        $engine = $this->engine()->setCacheUserResolver(function () use (&$user) { return $user; });
+        $this->assertSame('Alice', \Wbengine\Template\Runtime::cache('outer', 60,
+            fn () => $engine->fetch('t.tpl', ['name' => 'Alice'])));
+        $user = 8;
+        $this->assertSame('Bob', \Wbengine\Template\Runtime::cache('outer', 60,
+            fn () => $engine->fetch('t.tpl', ['name' => 'Bob'])));
+    }
+
+    #[DataProvider('invalidCacheScopes')]
+    public function testInvalidCacheScopeIsRejected(string $source): void
+    {
+        $this->expectException(TemplateException::class);
+        $this->render($source);
+    }
+
+    public static function invalidCacheScopes(): array
+    {
+        return [
+            ["{cache 'key' scope='admin'}x{/cache}"],
+            ["{cache 'key' scope='user' scope='public'}x{/cache}"],
+            ["{cache 'key' ttl=60 ttl=20}x{/cache}"],
+        ];
+    }
 
     public function testFragmentCacheRendersOnce(): void
     {

@@ -63,5 +63,14 @@ if ('/late-bypass/' === $path) {
     PageCache::bypass();
 }
 http_response_code(200);
+if ('/scoped/' === $path) {
+    $dir = getenv('WB_PAGE_CACHE_HTTP_DIR');
+    file_put_contents($dir . '/fragment.tpl', "{cache 'profile' scope='user'}{\$name}{/cache}");
+    $id = (int) ($_SERVER['HTTP_X_FIXTURE_USER'] ?? 0);
+    $engine = (new \Wbengine\Template\Engine())->setTemplateDir($dir)->setCompileDir($dir)
+        ->setCacheUserResolver(fn () => $id)->assign('name', 'user-' . $id);
+    echo $engine->fetch('fragment.tpl');
+    return;
+}
 echo '<p>' . bin2hex(random_bytes(12)) . '</p>';
 echo htmlspecialchars((string) ($_COOKIE['audience'] ?? ''), ENT_QUOTES, 'UTF-8');

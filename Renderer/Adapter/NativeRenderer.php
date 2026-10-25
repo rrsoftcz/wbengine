@@ -80,6 +80,11 @@ class NativeRenderer implements RendererInterface
         $this->_engine->setAutoEscape($value);
     }
 
+    public function setCacheUserResolver(?callable $resolver)
+    {
+        $this->_engine->setCacheUserResolver($resolver);
+    }
+
     public function setLeftDelimiter($value)
     {
         throw new \Wbengine\Renderer\Exception\RendererException('The native renderer does not support custom delimiters.');

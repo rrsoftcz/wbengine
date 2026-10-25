@@ -104,6 +104,13 @@ class Renderer extends Renderer\Adapter
 
         $this->setCompileCheck(Config::getRendererCompileCheck());
         $this->setAutoEscape(Config::getRendererAutoEscape());
+        $this->setCacheUserResolver(function () {
+            if (!$this->_app instanceof Application) {
+                return null;
+            }
+            $user = $this->_app->getClassUser();
+            return $user->getUserIsLogged() ? $this->_app->getSession()->getUserId() : null;
+        });
         $this->disableCache();
     }
 

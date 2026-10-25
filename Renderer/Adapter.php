@@ -198,6 +198,14 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
         $this->getAdapter()->setCompileCheck((bool) $value);
     }
 
+    public function setCacheUserResolver(?callable $resolver)
+    {
+        $adapter = $this->getAdapter();
+        if (method_exists($adapter, 'setCacheUserResolver')) {
+            $adapter->setCacheUserResolver($resolver);
+        }
+    }
+
     public function enableCache(){
         $this->getAdapter()->enableCache();
     }

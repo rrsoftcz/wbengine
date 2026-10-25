@@ -45,6 +45,11 @@ class PageCache
         self::$_bypassed = true;
     }
 
+    public static function isBypassed(): bool
+    {
+        return self::$_bypassed;
+    }
+
     /** @var callable|null returns the response headers, headers_list() unless replaced */
     private static $_headerProvider = null;
 

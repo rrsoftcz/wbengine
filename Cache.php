@@ -91,9 +91,10 @@ class Cache
         return self::_driver()->get((string) $key, $found);
     }
 
-    public static function store($key, $value, $ttl)
+    public static function store($key, $value, $ttl = null)
     {
-        self::_driver()->set((string) $key, $value, (int) $ttl);
+        $driver = self::_driver();
+        $driver->set((string) $key, $value, null === $ttl ? self::$_ttl : (int) $ttl);
     }
 
 

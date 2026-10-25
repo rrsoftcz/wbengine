@@ -117,4 +117,14 @@ class PageCacheHttpTest extends TestCase
         $this->assertStringContainsString('vip', $personal['body']);
         $this->assertSame($public['body'], $this->request('/cached/')['body']);
     }
+
+    public function testPersonalFragmentPreventsPageStorageBeforeAnotherUserVisits(): void
+    {
+        $first = $this->request('/scoped/', ['X-Fixture-User: 7']);
+        $this->assertSame('user-7', $first['body']);
+        $this->assertSame('BYPASS', $first['x-wbengine-cache'] ?? null);
+        $second = $this->request('/scoped/', ['X-Fixture-User: 8']);
+        $this->assertSame('user-8', $second['body']);
+        $this->assertSame('BYPASS', $second['x-wbengine-cache'] ?? null);
+    }
 }

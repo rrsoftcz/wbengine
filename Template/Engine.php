@@ -20,6 +20,8 @@ class Engine
     private $_autoEscape = true;
     private $_compileCheck = true;
     private $_depth = 0;
+    private $_fragmentCache = null;
+    private $_cacheUserResolver = null;
 
     /** Compiled templates already loaded in this process, so a template rendered again is not included again. */
     private $_loaded = array();
@@ -68,6 +70,39 @@ class Engine
     {
         $this->_compileCheck = (bool) $value;
         return $this;
+    }
+
+    /** Called lazily only for a user-scoped fragment, never for public rendering. */
+    public function setCacheUserResolver(?callable $resolver)
+    {
+        $this->_cacheUserResolver = $resolver;
+        return $this;
+    }
+
+    public function resolveCacheUserId(): ?int
+    {
+        if (null === $this->_cacheUserResolver) {
+            return null;
+        }
+        try {
+            $id = ($this->_cacheUserResolver)();
+        } catch (\Throwable $e) {
+            error_log(__METHOD__ . ': user context unavailable (' . get_class($e) . ')');
+            return null;
+        }
+        if (!is_int($id) && !is_string($id)) {
+            return null;
+        }
+        $valid = filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        return false === $valid ? null : $valid;
+    }
+
+    public function cache($key, $ttl, callable $render, string $scope = 'public'): string
+    {
+        if (null === $this->_fragmentCache) {
+            $this->_fragmentCache = new FragmentCache($this);
+        }
+        return $this->_fragmentCache->render($key, $ttl, $render, $scope);
     }
 
     public function assign($name, $value = null)

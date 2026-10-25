@@ -28,7 +28,7 @@ use Wbengine\Template\Exception\TemplateException;
 class Compiler
 {
     /** Bump when the generated code changes, so old compiled files are not reused. */
-    const VERSION = 1;
+    const VERSION = 2;
 
     /** Tags that swallow one line break directly after them. */
     const TRIM_AFTER = array('if', 'elseif', 'else', 'foreach', 'foreachelse', 'close', 'set', 'cache', 'comment');
@@ -402,15 +402,31 @@ class Compiler
     private function _cache($body)
     {
         $ttl = 'null';
-        if (preg_match('/^(.*?)\s+ttl\s*=\s*(\d+)\s*$/s', $body, $m)) {
+        $scope = 'public';
+        $seen = [];
+        while (preg_match('/^(.*?)\s+(ttl|scope)\s*=\s*(\d+|\x27[^\x27]*\x27|"[^"]*"|[A-Za-z]+)\s*$/s', $body, $m)) {
             $body = $m[1];
-            $ttl = (string) (int) $m[2];
+            if (isset($seen[$m[2]])) {
+                $this->_fail('duplicate cache option ' . $m[2]);
+            }
+            $seen[$m[2]] = true;
+            if ('ttl' === $m[2]) {
+                if (!ctype_digit($m[3])) {
+                    $this->_fail('cache ttl must be a non-negative integer');
+                }
+                $ttl = (string) (int) $m[3];
+            } else {
+                $scope = trim($m[3], "\x27\"");
+                if (!in_array($scope, ['public', 'user'], true)) {
+                    $this->_fail('cache scope must be public or user');
+                }
+            }
         }
         $key = $this->_parser->parse($body, $this->_line);
 
-        $this->_stack[] = array('type' => 'cache', 'line' => $this->_line, 'else' => false);
+        $this->_stack[] = array('type' => 'cache', 'line' => $this->_line, 'else' => false, 'scope' => $scope);
         // The echo and the closure stay open until the matching {/cache} closes them.
-        $this->_out .= '<?= Runtime::cache(' . $key . ', ' . $ttl . ', function () use (&$_v, $_engine) { ob_start(); ?>';
+        $this->_out .= '<?= $_engine->cache(' . $key . ', ' . $ttl . ', function () use (&$_v, $_engine) { ob_start(); ?>';
         $this->_afterPhp = true;
     }
 
@@ -430,7 +446,7 @@ class Compiler
                 $this->_php($top['else'] ? 'endif;' : 'endforeach;');
                 break;
             case 'cache':
-                $this->_php('return ob_get_clean(); })');
+                $this->_php('return ob_get_clean(); }, ' . var_export($top['scope'], true) . ')');
                 break;
         }
     }

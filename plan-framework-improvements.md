@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: 1, první ověřený implementační balík v draft PR #2 na GitHubu; širší SEC-01 a CACHE-01 zůstávají částečně otevřené. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: dokončen CACHE-01, přechod k SEC-03. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -43,7 +43,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [ ] SEC-05: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] SEC-06: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [x] FIX-01: hotovo (Codex, 2026-10-25). iat setter zachovává iss, regresní test RED a GREEN.
-- [ ] CACHE-01: rozpracováno (Codex, 2026-10-25). Automatické locale oddělení hotové; pro ostatní varianty zatím explicitní klíče, zbývá obecné rozhraní veřejného/osobního scope.
+- [x] CACHE-01: hotovo (Codex, 2026-10-25). Veřejný/osobní scope, lazy identita, locale, anonymní bypass a ochrana public obalů ověřeny včetně HTTP. Jiné obsahové varianty vyžadují explicitní klíče.
 - [ ] PERF-01: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-02: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-03: čeká. Postup a akceptace jsou v odpovídající části níže.
@@ -368,3 +368,26 @@ Release gate: vzorová aplikace a jeden pilot, funkční záloha a návrat, ově
 - GitHub CI pro commit `6e799ed`: všech 5 jobs úspěšných, PHP 8.3/8.4/8.5 s MySQL 8.4 a PHP 8.4 s MariaDB 10.11/11.4. Výsledky jsou dostupné v draft PR #2.
 
 - 2026-10-25: na žádost uživatele doplněno závazné pravidlo commitovat a pushovat po každé větší změně nebo fázi také aktuální stav plánu, včetně pravidel rozpracovaných kontrolních bodů a bezpečného navázání. Před změnou ověřena shoda lokálního HEAD a upstreamu na `1d98025`.
+
+### CACHE-01: Navazující implementační postup
+
+Stav: rozpracováno, Codex. Výchozí kontrolní bod `b3a7116`, lokální a vzdálená větev shodná.
+
+- Rozšířit blok `{cache}` o literální `scope='public'` (výchozí) a `scope='user'`, volitelně s `ttl`. Neznámý nebo duplicitní parametr odmítnout.
+- Přidat objekt `Wbengine\Template\FragmentCache` jako lazy potomka `Template\Engine`. Kompilátor volá engine, renderer adapter předává resolver uživatele a `Renderer` jej napojuje přes Application na aktuální User. Veřejný scope resolver nevolá.
+- Rozhraní: `Engine::setCacheUserResolver(?callable)`, `Engine::cache($key, $ttl, callable $render, $scope = 'public')`; NativeRenderer a Renderer\Adapter zprostředkují nastavení resolveru.
+- Osobní klíč obsahuje platné kladné user ID, locale a název fragmentu; veřejný a osobní klíč mají různé jmenné prostory. Chybějící nebo neplatná identita nesmí spadnout do veřejné cache. Resolver se vyhodnotí při použití, ne při konstrukci.
+- Osobní scope vyvolá page-cache bypass i při vypnuté cache nebo anonymním návštěvníkovi. Veřejný obal, který při renderování použil osobní fragment, se nesmí sdíleně uložit. Public blok musí mít obsah nezávislý na uživateli; jiné varianty patří do explicitních klíčů.
+- Zachovat původní syntaxi cache bloků a Runtime::cache pro přímé veřejné volání; změnit verzi kompilátoru a namespace fragmentových klíčů, aby se nepoužily staré obaly.
+- Testy před implementací: oddělení dvou uživatelů a locale, veřejný versus osobní scope, anonymní/neplatná identita, odložený resolver, nested/private obal, neplatná syntaxe, předání přes NativeRenderer a Renderer\Adapter, page-cache bypass přes skutečné HTTP.
+- Po cílených testech spustit celou sadu, lint, nezávislé review a zapsat výsledky. Commit a push kódu i aktualizovaného plánu před dalším větším úkolem.
+
+### 2026-10-25: CACHE-01 dokončen
+
+- Nová služba `Template\FragmentCache` je lazy potomkem Engine. Kompilátor volá engine; NativeRenderer a Renderer\Adapter předávají resolver napojený na Application. Veřejný scope nevyvolává autentizaci ani session lookup.
+- Scope user odděluje klíče podle aktuální autentizované session a locale. Neplatná nebo chybějící identita ani chyba resolveru nepoužijí veřejnou cache. Při změně identity se nepoužije zastaralé ID z User resource.
+- Osobní fragmenty vypínají page cache; veřejný obal s vykonaným osobním fragmentem se neuloží. Stejná ochrana platí přes kompatibilní Runtime helper. Chyba renderování uklidí vnořené buffery.
+- Rozhodnutí: po osobním scope se konzervativně obchází i ostatní veřejné fragmenty do konce požadavku. Může to snížit počet HIT u přihlášených, ale zabrání sdílenému uložení osobního obalu. Public blok musí být nezávislý na návštěvníkovi i na větvích, které při cache hitu neběží.
+- Rozhodnutí: zachován public-only Runtime helper, vnitřně deleguje stejnému OOP cache mechanismu. Compiler VERSION=2 a prefix tpl:v3 brání použití starých sdílených obalů.
+- Před implementací 17 scénářů chybělo (neexistující resolver/syntaxe); další regresní test zachytil stale User ID. Po opravě celá sada: **862 testů, 1676 assertions**, 10.126 s, PHP 8.4.27 / MySQL 8.4. Lint a git diff --check prošly. Nezávislé review bez konkrétních nálezů.
+- Další krok po push: SEC-03, sjednotit automatické escapování obou rendererů a dokumentovat bezpečné výstupní kontexty; změny vstupních helperů ponechat na následující samostatný balík SEC-04.

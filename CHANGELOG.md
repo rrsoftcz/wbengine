@@ -25,6 +25,9 @@ the remaining template, Markdown, API and central administration work.
 
 ### Added
 
+- Native fragment cache scopes: `public` (default) and `user`, with a lazy identity
+  resolver integrated through Application and Renderer. Personal fragments separate
+  users and locales, do not cache guests, and prevent shared page/public-wrapper storage.
 - Exact `cache.pages.allowPaths` and `denyPaths` policies, plus request-wide
   `PageCache::bypass()`; deny rules take precedence.
 - A persistent modernization tracker with task IDs, dependencies, verification

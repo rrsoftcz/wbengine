@@ -213,7 +213,7 @@ class Runtime
      */
     public static function cache($key, $ttl, callable $render)
     {
-        $locale = I18n::isEnabled() ? I18n::locale() : '';
-        return (string) Cache::remember('tpl:v2:' . $locale . ':' . self::s($key), $render, $ttl);
+        // Compatibility for callers of the old public-only helper. Compiled templates use their own engine.
+        return (new Engine())->cache($key, $ttl, $render);
     }
 }

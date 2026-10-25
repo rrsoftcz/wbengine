@@ -564,9 +564,35 @@ data bypass the shared cache. The locale cookie is supported when i18n is enable
 Security headers are retained on hits and 304 responses; headers already supplied
 by the current request take precedence. Cache entries from older versions are
 ignored. Clear all cache drivers during deployment when changing content or policy.
-Fragment caches include the locale automatically. Other fragment variants, including
-user-specific content, still require distinct explicit keys; do not share personal
-HTML under a public fragment name.
+Fragment caches include the locale automatically. Public blocks must contain only
+content that is independent of the visitor. Use the user scope for personal HTML:
+
+```smarty
+{cache 'navigation' ttl=300}...public content...{/cache}
+{cache 'profile' scope='user' ttl=60}...personal content...{/cache}
+```
+
+User-scoped blocks use the current authenticated session identity, supplied lazily
+through Application, Renderer and the native template engine. They are separated
+by user ID and locale. Anonymous visitors, invalid identities or unavailable user
+context render without storing a personal fragment; there is no public fallback.
+Public blocks never load the user just to decide their cache key.
+
+Using a user-scoped block bypasses the whole-page cache, even for anonymous visitors
+or when the fragment cache is disabled. A public outer block that renders a personal
+inner block is not stored. Once personal scope has been used, public fragment storage
+and lookup are conservatively bypassed for the rest of that request. Do not wrap
+conditional personal content in a public block: a public cache hit does not execute
+its body, so public content must be visitor-independent on every rendering path.
+
+Standalone native engines can configure `setCacheUserResolver(fn () => $authenticatedUserId)`;
+return a positive integer ID from trusted authentication state or null for a guest.
+The resolver must not use request parameters as identity. Other variants, such as
+device or permissions-dependent output, still require explicit keys and suitable TTL
+or invalidation. Personal scope separates identity, not every possible role or state.
+Existing compiled templates are recompiled into a new compiler version and old
+fragment entries are not reused. Clear compiled templates during deployment when
+`compileCheck` is disabled. The legacy `Runtime::cache()` helper remains public-only.
 
 Before deploying 4.0, widen `cms_users.password` to `varchar(255)`. Creating or
 changing a password now fails when a secure hash cannot fit. Existing legacy MD5
