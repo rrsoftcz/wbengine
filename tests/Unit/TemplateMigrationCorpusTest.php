@@ -31,6 +31,12 @@ class TemplateMigrationCorpusTest extends TestCase
     public function testDocumentedMigrationOutput(array $case): void
     {
         $this->assertNotEmpty($case, 'The versioned migration corpus is missing');
+        if (is_array($case['output']) && isset($case['output']['exception'])) {
+            $this->expectException(\Wbengine\Template\Exception\TemplateException::class);
+            $this->expectExceptionMessage($case['output']['exception']);
+            $this->render($case);
+            return;
+        }
         $this->assertSame($case['output'], $this->render($case));
     }
 

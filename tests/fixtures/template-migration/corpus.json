@@ -169,12 +169,14 @@
     },
     "migration": "Native cache uses WBengine Cache; no driver means render every time."
   },
-  "unknown tag stays text": {
+  "unsupported Smarty tag is rejected": {
     "source": "{assign var=\"x\" value=\"y\"}END",
     "vars": {},
     "expected": {
-      "native": "{assign var=\"x\" value=\"y\"}END"
+      "native": {
+        "exception": "Unsupported Smarty tag"
+      }
     },
-    "migration": "Current behavior only, never a compatibility certificate; migrate before switching."
+    "migration": "Known unsupported Smarty tags now throw with source/line; use native set or literal for a textual example."
   }
 }

@@ -27,7 +27,7 @@ use Wbengine\Template\Exception\TemplateException;
 class Compiler
 {
     /** Bump when the generated code changes, so old compiled files are not reused. */
-    const VERSION = 3;
+    const VERSION = 4;
 
     /** Tags that swallow one line break directly after them. */
     const TRIM_AFTER = array('if', 'elseif', 'else', 'foreach', 'foreachelse', 'close', 'set', 'cache', 'comment');
@@ -157,6 +157,13 @@ class Compiler
             $kind = $m[1];
         }
         if (null === $kind) {
+            // Return a normal token: compile() counts preceding text before reporting
+            // the error, so the diagnostic uses the tag's actual source line.
+            $unsupported = $this->_unsupportedSmartyTag($brace);
+            if (null !== $unsupported) {
+                return array('kind' => 'unsupported', 'body' => $unsupported,
+                    'end' => $brace + strlen($unsupported) + 1);
+            }
             return null;
         }
 
@@ -166,6 +173,24 @@ class Compiler
             $inner = ltrim(substr($inner, strlen($kind)));
         }
         return array('kind' => $kind, 'body' => $inner, 'end' => $end + 1);
+    }
+
+    /**
+     * Reserved Smarty syntax, not a catch-all for words inside CSS/JS braces.
+     * Function and loop headers need Smarty-shaped arguments to avoid rejecting
+     * JavaScript declarations and loops. Exact reserved-tag examples use literal.
+     */
+    private function _unsupportedSmartyTag(int $brace): ?string
+    {
+        $names = 'assign|append|extends|block|capture|section|sectionelse|config_load|eval|fetch|insert|php|include_php|strip|nocache|ldelim|rdelim|call|forelse';
+        if (preg_match('/\G\{(\/?(?:' . $names . '))(?=[\s}])/', $this->_source, $match, 0, $brace)
+            || preg_match('/\G\{(\/(?:function|for|while))(?=[\s}])/', $this->_source, $match, 0, $brace)
+            || preg_match('/\G\{(function)(?=\s*}|\s+[A-Za-z_]\w*\s*=)/', $this->_source, $match, 0, $brace)
+            || preg_match('/\G\{(for)(?=\s*}|\s+\$)/', $this->_source, $match, 0, $brace)
+            || preg_match('/\G\{(while)(?=\s*}|\s++[^\s(])/', $this->_source, $match, 0, $brace)) {
+            return $match[1];
+        }
+        return null;
     }
 
     /**
@@ -225,6 +250,10 @@ class Compiler
     private function _handle($kind, $body)
     {
         switch ($kind) {
+            case 'unsupported':
+                $this->_fail('Unsupported Smarty tag {' . $body . '}; migrate it to WBengine syntax or wrap a literal example in {literal}');
+                return;
+
             case 'comment':
                 return;
 

@@ -292,7 +292,7 @@ mark trusted section HTML, such as `{$header|raw}`, `{$central|raw}` and
 `{$debug|raw}`, explicitly. Ordinary database values remain escaped. A temporary
 `autoEscape: false` setting is available while migrating those templates.
 
-1. Inventory each application's templates, direct Smarty calls, plugins and configuration. Run the read-only `tests/tools/template-inventory.php` aid and review its hints. Successful native compilation alone is not proof of compatibility: unknown Smarty tags can remain literal text.
+1. Inventory each application's templates, direct Smarty calls, plugins and configuration. Run the read-only `tests/tools/template-inventory.php` aid and review its hints. Known unsupported Smarty constructs now throw TemplateException with source and line. Successful compilation alone is still not proof of compatibility: other unknown plugin tags can remain literal text.
 2. Convert unsupported constructs explicitly. Native include uses a path expression without `file=`, and set replaces Smarty assign. The 43-scenario legacy common-subset corpus remains covered, but the current skeleton also uses native-only set/t tags. Default with zero, truncate limits and nl2br output differ between adapters; use the new migration corpus to review expected output.
 3. Keep automatic escaping enabled, mark only trusted section/formatted HTML with `|raw`, and verify ordinary data in its output context. `autoEscape: false` is a temporary option for controlled legacy migration, not a compatibility guarantee.
 4. After comparing real page output and login/CSRF/logout, locale and cache behavior, select `NativeRenderer` and clear compiled, fragment, page and external HTML caches. Keep matching source/configuration backups for rollback; native-only templates cannot simply be switched back to Smarty.
@@ -303,6 +303,14 @@ TPL-02/TPL-03 gates. The temporary Smarty adapter remains installed in this phas
 Smarty plugins, capture/section, config files, custom delimiters, smarty metadata
 and inheritance are outside the supported native language; migrate them before
 removing the compatibility dependency.
+
+Compiler version 4 prevents reuse of version-3 compiled files even when
+`compileCheck` is disabled. Reserved Smarty syntax (such as assign, extends,
+block/capture and their closing tags) now reports an explicit error. Ordinary
+CSS/JS object keys and loop/declaration forms remain covered by regression tests;
+exact syntax collisions, such as JS shorthand `{capture}`, need a literal block.
+See the reference for the finite detection rules and remaining ambiguities.
+Clear all HTML and compiled caches during deployment. TPL-02 is still in progress.
 
 ### Performance
 

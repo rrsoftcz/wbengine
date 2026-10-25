@@ -1,12 +1,12 @@
 # Inventura a migrační smlouva šablon WBengine 4.0
 
-Stav k 2026-10-26, TPL-01. Cílem je vlastní kompilovaný renderer ve stávajícím stromu WBengine. Tato etapa dokumentuje skutečnou podporu a rozdíly, přidává corpus a inventurní nástroj. Nemění produkční renderer, výchozí adaptér ani Composer závislosti. TPL-02 dokončí migraci, TPL-03 odstraní Smarty z jádra.
+Stav k 2026-10-26: TPL-01 dokončen, TPL-02 rozpracován. Cílem je vlastní kompilovaný renderer ve stávajícím stromu WBengine. TPL-01 zdokumentoval podporu a rozdíly, přidal corpus a inventurní nástroj. První část TPL-02 doplňuje diagnostiku v existujícím Compileru; výchozí adaptér ani Composer závislosti se nemění. TPL-02 dokončí migraci, TPL-03 odstraní Smarty z jádra.
 
 ## Rozsah a důkazy
 
 Framework: větev `codex/wbengine-4.0`, výchozí commit `b7cf3d4`. Vzorová aplikace: lokální `wbengine-skeleton-app`, čistý commit `d22281fc86e9efd63a333ac6668b9261f22777e9`, zdroje `src/View`. Aplikace byla pouze čtena; její konfigurace již vybírá NativeRenderer. Kompilované soubory, vendor, node_modules a testovací fixtures nejsou zdrojovou inventurou.
 
-Snapshot cest, SHA-256 a kompilace je v [inventory.json](tests/fixtures/template-migration/inventory.json). Jsou to identity zdrojů v okamžiku inventury, nikoli kopie externí aplikace ani náhrada jejího checkoutu. CI na externím adresáři nezávisí. [corpus.json](tests/fixtures/template-migration/corpus.json) obsahuje 17 pojmenovaných scénářů, 31 konkrétních výstupů podle adaptéru. Dalších pět testů porovnává skutečné frameworkové šablony, včetně obou větví CAPTCHA. Při místním ověření: PHP 8.4.27 a Smarty 5.8.5, požadavek Composeru zůstává `^5.5.2`.
+Snapshot cest, SHA-256 a kompilace je v [inventory.json](tests/fixtures/template-migration/inventory.json). Jsou to identity zdrojů v okamžiku inventury, nikoli kopie externí aplikace ani náhrada jejího checkoutu. CI na externím adresáři nezávisí. [corpus.json](tests/fixtures/template-migration/corpus.json) obsahuje 17 pojmenovaných scénářů a 31 očekávaných výsledků podle adaptéru: 30 výstupů a jednu diagnostiku nepodporovaného tagu. Dalších pět testů porovnává skutečné frameworkové šablony, včetně obou větví CAPTCHA. Při místním ověření: PHP 8.4.27 a Smarty 5.8.5, požadavek Composeru zůstává `^5.5.2`.
 
 Knihovna obsahuje sedm `.tpl` souborů:
 
@@ -74,7 +74,7 @@ docker compose -p wbengine-modernization run --rm --no-deps \
 
 Nástroj načte zdroje a sestaví PHP řetězec pomocí stávajícího Compileru; zdroje nevykonává a nezapisuje kompiláty. Nekonfiguruje aplikaci ani session/DB. Vypíše JSON na stdout, SHA-256, spotřebitele, výsledek kompilace a heuristické tag/modifier hints. Neprochází symlinky a vynechává vendor, node_modules, .git, Compiled a tests.
 
-Status `compiled-only` znamená pouze úspěšnou kompilaci. Neznámý Smarty tag, například assign, může současný Compiler vypsat doslova a přesto nevyvolat chybu. Status `review` a reviewHints vyžadují kontrolu člověkem. Hints ignorují comment/literal těla, ale nejsou plným lexerem, mohou zachytit text uvnitř řetězců a neodhalí všechny dynamické konstrukce, pluginy nebo externí resources. Nástroj není runtime bezpečnostní filtr ani automatický migrátor.
+Status `compiled-only` znamená pouze úspěšnou kompilaci. Známé vyhrazené Smarty konstrukce, například assign, nyní vyvolají výjimku; jiné neznámé nebo dynamické pluginové tagy mohou stále zůstat textem. Status `review` a reviewHints vyžadují kontrolu člověkem. Hints ignorují comment/literal těla, ale nejsou plným lexerem, mohou zachytit text uvnitř řetězců a neodhalí všechny dynamické konstrukce, pluginy nebo externí resources. Nástroj není runtime bezpečnostní filtr ani automatický migrátor.
 
 ```sh
 docker compose -p wbengine-modernization run --rm --no-deps php php vendor/bin/phpunit --filter 'TemplateMigrationCorpusTest|TemplateInventoryTest'
@@ -82,8 +82,23 @@ docker compose -p wbengine-modernization run --rm --no-deps php php vendor/bin/p
 
 ## Navazující provedení TPL-02 a brána TPL-03
 
-1. Doplnit v existujícím Compileru konkrétní diagnostiku nepodporovaných Smarty řídicích tagů a jejich uzavírání, s cestou a řádkem. Zachovat obyčejné CSS/JS závorky a literal příklady. Současná charakterizace assign-as-text se pak záměrně změní na test výjimky. Nevydávat regex hints inventurního nástroje za parser.
+1. První část dokončena: existující Compiler diagnostikuje níže vyjmenované vyhrazené Smarty konstrukce a uzavírací tagy s cestou a řádkem. Corpus assign-as-text byl záměrně změněn na test výjimky. Inventurní regex hints zůstávají pomocnou heuristikou, nikoli parserem.
 2. Rozhodnout a otestovat přesnou podporovanou smlouvu include/set a modifikátorů, zachovat explicitní rozdíly a ukázky přípravy dat. Přidat chybnou syntaxi, chybějící partial, traversal/symlink, výjimku v metodě a obnovu output bufferů. Využít stávající bezpečnostní a cache regresní sady.
 3. Provést celý vzorový web na NativeRenderer: menu a aktivní odkazy, oba stavy uživatele, login/CSRF/POST logout, 404, článek, locale, native fragmenty a page-cache HIT/BYPASS. Zkontrolovat odkazy GET logout ve vzorovém layoutu, produkční diagnostické proměnné a raw obsah; samotná kompilace je nezachytí. Změny oddělené aplikace verzovat v jejím vlastním repozitáři.
 4. Pro každou cílovou instalaci zazálohovat zdroje a konfiguraci, inventarizovat rozšíření, převést šablony po částech, porovnat výstupy a potom změnit adapterName. Vyčistit kompiláty, fragmenty, stránky i externí HTML cache. Při rollbacku obnovit konfiguraci, kompatibilní zdroje a znovu vyčistit cache; native-only set/t vyžadují obnovení původní verze šablon.
 5. Až po této bráně v TPL-03 změnit výchozí příklady a testovací infrastrukturu, určit podobu případného samostatného kompatibilního balíčku a odstranit Smarty adaptér/závislost z jádra. Paritní corpus přesunout na nativní očekávané výstupy a historické migrační fixtures, aby čisté jádro nevyžadovalo Smarty ani pro testy. Ověřit instalaci bez balíčku a celý release gate. Texy se řeší až v MD-01 až MD-04.
+
+
+## TPL-02, první kontrolní bod: diagnostika
+
+Compiler verze 4 vrací nepodporované tagy jako běžné tokeny a chybu vyvolá po započtení předcházejícího textu. Výjimka `TemplateException` obsahuje název zdroje, řádek a doporučení převést konstrukci nebo textový příklad obalit literal. Nejde o další preprocesor nebo změnu stromu služeb. CRLF se počítá po stávající normalizaci na LF.
+
+Vyhrazené tvary zahrnují assign, append, extends, block, capture, section/sectionelse, config_load, eval, fetch, insert, php/include_php, strip, nocache, ldelim/rdelim, call a forelse; rozeznávají se také jejich uzavírací tvary. Názvy jsou case-sensitive, za jménem musí být whitespace nebo `}`, takže například `{blockade}` ani CSS `block-size` není tento tag. Komentáře a literal těla se netestují jako vykonávaná syntaxe.
+
+U function, for a while se rozpoznává Smarty podoba hlavičky: function s atributem `name=` či jiným pojmenovaným atributem, for s `$` proměnnou, while s neparentetickým výrazem. Zachovávají se běžné JavaScriptové deklarace funkcí, `for (...)`, `while (ready)` i `while ($ready)` a objektové vlastnosti s dvojtečkou. Není to obecná detekce celého Smarty jazyka: while s libovolným parentetickým výrazem může zůstat textem, protože se jeho hlavička shoduje s JavaScriptem. Další dynamické konstrukce vyžadují inventuru a ruční převod.
+
+Přesné kolize syntaxe jsou vyhrazené šablonovému jazyku: například JS objekt shorthand `{capture}` má stejný zápis jako detekovaná Smarty konstrukce. Pro takový doslovný CSS/JS/textový úsek použít `{literal}...{/literal}`. Kompilátor neparsuje HTML/JS kontexty a neslibuje automatické rozlišení totožných bajtů. Neznámý plugin může stále projít jako text; úspěch kompilace není obecná migrační záruka.
+
+Verze kompilátů se mění z 3 na 4. Starý soubor s verze-3 identitou se nepoužije ani s `compileCheck: false`; test to ověřuje se skutečně předpřipraveným starým kompilátem. Při nasazení nadále vyčistit page/fragment/kompilované a externí HTML cache podle migračního postupu, aby stará uložená odpověď nezakryla novou diagnostiku.
+
+TPL-02 zůstává rozpracován: následuje dokončení smlouvy include/set/modifikátorů a HTTP smoke test vzorového webu s jeho aplikačními daty a autentizací. Tento checkpoint nedeklaruje odstranění Smarty ani kompletní migraci externí aplikace.

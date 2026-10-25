@@ -28,6 +28,8 @@ class TemplateInventoryTest extends TestCase
             $this->assertSame('compiled', $files['common.tpl']['compile']);
             $this->assertSame('review', $files['smarty.tpl']['status']);
             $this->assertSame(['assign'], $files['smarty.tpl']['reviewHints']);
+            $this->assertSame('failed', $files['smarty.tpl']['compile']);
+            $this->assertStringContainsString('Unsupported Smarty tag', $files['smarty.tpl']['diagnostic']);
             $this->assertSame('failed', $files['broken.tpl']['compile']);
             $this->assertSame([], $files['literal.tpl']['reviewHints']);
             $this->assertSame(hash_file('sha256', $directory . '/common.tpl'), $files['common.tpl']['sha256']);
