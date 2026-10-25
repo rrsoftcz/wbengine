@@ -174,7 +174,7 @@ class I18n
         $options = array(
             'expires' => time() + $s['cookieDays'] * 86400,
             'path' => '/',
-            'secure' => !empty($server['HTTPS']) && 'off' !== $server['HTTPS'],
+            'secure' => \Wbengine\Application\Env\Http::isSecure($server),
             'httponly' => true,
             'samesite' => 'Lax',
         );
@@ -333,7 +333,7 @@ class I18n
         if (!preg_match('/^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?(:[0-9]{1,5})?$/', $host)) {
             return '';
         }
-        $https = !empty($server['HTTPS']) && 'off' !== strtolower((string) $server['HTTPS']);
+        $https = \Wbengine\Application\Env\Http::isSecure($server);
         return ($https ? 'https://' : 'http://') . $host;
     }
 

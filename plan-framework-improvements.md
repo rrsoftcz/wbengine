@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01, SEC-03 a SEC-04 dokončeny, následuje SEC-05. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01 a SEC-03 až SEC-05 dokončeny, následuje SEC-06. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -40,7 +40,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] SEC-02: hotovo (Codex, 2026-10-25). Žádný nový MD5 fallback, kontrola skutečné délky hashe, ověřeno i na reálném varchar(32) se zachovaným legacy přihlášením.
 - [x] SEC-03: hotovo (Codex, 2026-10-25). Oba adaptéry escapují defaultně, native metadata a fallbacky opraveny, režimy cache odděleny, migrační a kontextová pravidla zdokumentována.
 - [x] SEC-04: hotovo (Codex, 2026-10-25), nezměněné vstupy, řetězcové helpery, validace autentizačních polí a migrační dokumentace.
-- [ ] SEC-05: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] SEC-05: hotovo (Codex, 2026-10-25), explicitní důvěryhodné proxy IPv4/IPv6, společná detekce IP/HTTPS a cookie flags včetně I18n.
 - [ ] SEC-06: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [x] FIX-01: hotovo (Codex, 2026-10-25). iat setter zachovává iss, regresní test RED a GREEN.
 - [x] CACHE-01: hotovo (Codex, 2026-10-25). Veřejný/osobní scope, lazy identita, locale, anonymní bypass a ochrana public obalů ověřeny včetně HTTP. Jiné obsahové varianty vyžadují explicitní klíče.
@@ -441,3 +441,28 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - README a CHANGELOG popisují major změnu, explicitní validaci, parametrizaci SQL a escapování výstupu. Historická data se automaticky nepřepisují. API JSON a autentizační model se v tomto balíku nemění.
 - Kontrolní bod zahrnuje kód, testy i tento plán; přesný hash je v historii pracovní větve. Push a shoda upstreamu se ověřují před navazující fází.
 - Další konkrétní krok: SEC-05, inventura detekce IP/HTTPS a všech cookie flags, návrh lazy služby v existující stromové architektuře a testy explicitně důvěryhodných proxy IPv4/IPv6. Výchozí konfigurace bude důvěřovat pouze přímému spojení.
+
+### SEC-05: Implementační postup a rozhodnutí
+
+- Výchozí checkpoint d1e319a, izolovaný worktree /private/tmp/wbengine-modernization. Stávající Utils používají REMOTE_ADDR a nebezpečný fallback hlaviček při chybějícím peeru. SessionAbstract a Api detekují HTTPS samostatně. API refresh issuance i vymazání používají společné cookie options.
+- Zavést Application\Env\RequestContext jako lazy potomka Application s getParent. Pro stávající samostatné API a statické Http/Utils zůstane dostupná stejná služba bez Application rodiče. Resolver nemá cache uživatelských dat, aktuální server/config čte při použití, takže nezmění bootstrap ani session inicializaci.
+- Rozhodnutí: explicitní http.trustedProxies (IP/CIDR IPv4/IPv6) a http.forwardedHeaders (pouze x-forwarded-for, x-forwarded-proto); výchozí oba seznamy prázdné. Chybná konfigurace vyvolá výjimku, nikoli rozšíření důvěry. Nepoužívat starý IPv4-only ipInRange pro bezpečnostní hranici.
+- XFF: ověřit přímého peera, projít řetězec zprava přes povolené proxy a zastavit na prvním nedůvěryhodném klientovi. Chybějící/neplatný peer vrací prázdnou IP, nikdy fallback na Client-IP nebo jinou hlavičku. Neplatný procházený hop nebo nadlimitní hlavička použije přímého peera. IPv6 výstup kanonizovat, žádné porty, zone ID ani obfuscated adresy.
+- XFP: podporovat pouze jedinou hodnotu http/https od povoleného přímého peera a jen při explicitním povolení této hlavičky. Proxy ji musí přepsat podle skutečného původního schématu, ne připojit klientský text. Seznamy a alternativní hlavičky se ignorují. Platné http může přepsat backend TLS. Bez důvěryhodné hodnoty použít pouze lokální HTTPS on/1. Explicitní API override Secure zachovat.
+- Postup: RED testy spoofingu, chybějícího peera, řetězců, IPv6/CIDR hranic a konfigurace; minimální implementace; integrační test skutečných session/API cookie flags; cílené a plné testy, lint a nezávislé review. Pak aktualizace plánu, commit a push.
+- Zdroj pravidel pro řetězce a schéma: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For a https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-Proto. Žádné automatické načítání Cloudflare/AWS rozsahů ani univerzální trust všech proxy.
+
+- SEC-05 review: nezávislé čtecí review bez bezpečnostních/regresních nálezů. Doplněny dvě drobné mezery v důkazech: neplatný peer pro XFP a změna metadat i konfigurace u dlouho žijící statické fasády.
+- Diagnostika plné sady: 988 testů, jedno starší kolísavé selhání testARequestWithoutACookieCostsNoSessionQuery. Session::_load před lookupem s pravděpodobností 1/100 spouští úklid. Izolovaný diagnostický proces s vynuceným GC prokázal přesně jeden DELETE FROM cms_sessions WHERE session_expire < ?, bez SELECT. Tentýž proces se setAutoClean(false) prokázal nula dotazů. Rozhodnutí: v testu lookupu vypnout GC existujícím setterem; produkční úklid se nemění. Dočasný diagnostický soubor byl v ignorované .phpunit.cache a po ověření odstraněn.
+
+- Závěrečná globální inventura nalezla také I18n::_remember a I18n::origin se samostatnou HTTPS detekcí. Zahrnuty do SEC-05: isSecure přijímá volitelný server snapshot, aby zůstalo zachováno existující explicitní rozhraní I18n::boot/origin. Nejprve dvě RED selhání cookie flags, po propojení cookie další dvě RED selhání schématu origin. Test záměrně nastavuje opačné ambientní HTTPS, aby prokázal použití předaného požadavku. Hreflang page-cache klíče již vycházejí z I18n::origin, tedy budou rozlišovat původní schéma; host z forwarded hlaviček se nepřijímá.
+
+### 2026-10-25: SEC-05 dokončen
+
+- Hotovo: lazy Application::getRequestContext, parent vazba a společný resolver pro Http/Utils, session, API i I18n. Žádné další balíčky, DB dotazy nebo session start při samotném vyhodnocení spojení. Cache obsahuje pouze validovanou deployment politiku, nikoli údaje požadavků.
+- Ve výchozím stavu žádná důvěra ve forwarded hlavičky. Explicitní proxy IP/CIDR i hlavičky, IPv4/IPv6, validace peera, XFF zprava, kanonizace IPv6, limity délky/hopů, odmítnutí neplatné konfigurace. XFP pouze jedna hodnota od důvěryhodného přímého peera; nedůvěryhodné a alternativní hlavičky se ignorují. API Secure override zůstává.
+- TDD: počáteční 51testová sada ukázala 26 failures a chybějící getRequestContext. Dva integrační RED scénáře doložily chybné Secure za TLS terminací. Další RED scénáře potvrdily vlastní chyby I18n cookie a origin; všechny byly následně opraveny a ověřeny. Session integrace ověřuje také skutečně uloženou IP v DB; API integrace vydání i smazání refresh cookie.
+- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **993 testů / 1993 assertions**, 10.061 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review i navazující review I18n změny bez nálezů.
+- Dokumentace obsahuje nasazovací konfiguraci, požadavek na přepsání XFP a správné sestavení XFF na proxy, oddělení adresních rodin a dopad změny IP na sessions/rate limit. Při nasazení vyčistit page cache; absolutní locale odkazy nově respektují důvěryhodné původní schéma. Žádné změny skutečných produkčních proxy ani deploymentu nebyly provedeny.
+- Kontrolní bod zahrnuje kód, testy, dokumentaci i stav plánu. Přesný hash je v git historii; commit a push před dalším větším krokem.
+- Další konkrétní krok: SEC-06, inventarizace formulářů a operací autentizovaných cookies; lazy CSRF služba navázaná na session ve stromu Application, ochrana formulářů/AJAX a odstranění odhlašování přes GET. Zachovat veřejné GET bez session zápisu a zabránit sdílení tokenů přes cache.

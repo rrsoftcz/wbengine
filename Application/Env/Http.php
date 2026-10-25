@@ -11,6 +11,23 @@ namespace Wbengine\Application\Env;
 abstract class Http
 {
 
+    private static ?RequestContext $_requestContext = null;
+
+    private static function _requestContext(): RequestContext
+    {
+        return self::$_requestContext ??= new RequestContext();
+    }
+
+    public static function getClientIp(): string
+    {
+        return self::_requestContext()->getClientIp();
+    }
+
+    public static function isSecure(?array $server = null): bool
+    {
+        return self::_requestContext()->isSecure($server);
+    }
+
     const TYPE_POST                 = 'POST';
     const TYPE_GET                  = 'GET';
     const TYPE_PUT                  = 'PUT';

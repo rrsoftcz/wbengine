@@ -3,6 +3,8 @@
 namespace Wbengine\Tests\Integration;
 
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Wbengine\Config;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Wbengine\Db;
 use Wbengine\Session;
@@ -20,6 +22,37 @@ class SessionTest extends DbTestCase
         $_SERVER['HTTP_USER_AGENT'] = 'PHPUnit';
         $_SERVER['REMOTE_ADDR'] = '203.0.113.9';
         unset($_COOKIE[session_name()]);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    #[DataProvider('proxyConnections')]
+    public function testSessionCookiesAndStoredIpFollowTrustedConnection(array $server, bool $secure, string $ip): void
+    {
+        Config::$config->http = (object) [
+            'trustedProxies' => ['10.0.0.0/8'],
+            'forwardedHeaders' => ['x-forwarded-for', 'x-forwarded-proto'],
+        ];
+        $_SERVER = $server + ['HTTP_USER_AGENT' => 'PHPUnit'];
+        $session = new Session();
+        $options = session_get_cookie_params();
+        $this->assertSame($secure, $options['secure']);
+        $this->assertTrue($options['httponly']);
+        $this->assertSame('Lax', $options['samesite']);
+        $this->assertSame($ip, $session->getUserIp());
+        $session->setValue('content', 'private');
+        $session->flush();
+        $this->assertSame($ip, Db::fetchAssoc('SELECT user_ip FROM cms_sessions WHERE session_id = ?', [$session->getSessionId()])['user_ip']);
+        session_write_close();
+    }
+
+    public static function proxyConnections(): array
+    {
+        return [
+            'TLS termination' => [['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9', 'HTTP_X_FORWARDED_PROTO' => 'https'], true, '203.0.113.9'],
+            'untrusted headers' => [['REMOTE_ADDR' => '198.51.100.2', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9', 'HTTP_X_FORWARDED_PROTO' => 'https'], false, '198.51.100.2'],
+            'native HTTPS' => [['REMOTE_ADDR' => '198.51.100.2', 'HTTPS' => 'on'], true, '198.51.100.2'],
+        ];
     }
 
     private function rows(): int
@@ -58,6 +91,8 @@ class SessionTest extends DbTestCase
         $before = Db::getQueriesCount();
 
         $session = new Session();
+        // Measure request lookup cost independently of the probabilistic GC DELETE.
+        $session->setAutoClean(false);
         $session->getValue('anything');
 
         $this->assertSame($before, Db::getQueriesCount(), 'no cookie, so no stored session can exist');

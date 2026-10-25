@@ -5,6 +5,7 @@ namespace Wbengine\Tests\Integration;
 use Wbengine\Api\Auth;
 use Wbengine\Api\Auth\RefreshTokens;
 use Wbengine\Db;
+use Wbengine\Config;
 use Wbengine\User\Role;
 
 /**
@@ -78,6 +79,32 @@ class ApiAuthControllerTest extends ApiTestCase
             $this->assertTrue($this->lastCookie()['options']['secure']);
         } finally {
             unset($_SERVER['HTTPS']);
+        }
+    }
+
+    public function testRefreshIssueAndDeletionUseTrustedOriginalScheme(): void
+    {
+        $config = Config::$config;
+        $server = $_SERVER;
+        Config::$config = clone $config;
+        Config::$config->http = (object) [
+            'trustedProxies' => ['10.0.0.0/8'],
+            'forwardedHeaders' => ['x-forwarded-for', 'x-forwarded-proto'],
+        ];
+        try {
+            foreach (['10.0.0.1' => true, '198.51.100.2' => false] as $peer => $secure) {
+                $_SERVER = ['REMOTE_ADDR' => $peer, 'HTTP_X_FORWARDED_PROTO' => 'https', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9'];
+                $this->assertSame(200, $this->refreshWith($this->tokens->issue($this->userId, 3600))['status']);
+                $this->assertSame($secure, $this->lastCookie()['options']['secure']);
+                $this->assertTrue($this->lastCookie()['options']['httponly']);
+                $this->assertSame('Strict', $this->lastCookie()['options']['samesite']);
+                $this->assertSame(401, $this->refreshWith('invalid')['status']);
+                $this->assertSame($secure, $this->lastCookie()['options']['secure']);
+                $this->assertLessThan(time(), $this->lastCookie()['options']['expires']);
+            }
+        } finally {
+            Config::$config = $config;
+            $_SERVER = $server;
         }
     }
 

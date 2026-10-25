@@ -148,6 +148,8 @@ class Application implements ComponentParentInterface, ResponseInterface
      */
     private $_namespace = null;
 
+    private ?Env\RequestContext $_requestContext = null;
+
 
     const APP_BASE_DIR              = '/App';
     const APP_CONFIG_PATH           = '/Config/';
@@ -343,6 +345,12 @@ class Application implements ComponentParentInterface, ResponseInterface
      */
     public function hasModifiedSession(){
         return $this->_session instanceof Session && $this->_session->wasModified();
+    }
+
+    /** Lazy connection context in the application object tree. */
+    public function getRequestContext(): Env\RequestContext
+    {
+        return $this->_requestContext ??= new Env\RequestContext($this);
     }
 
     public function getSession(){

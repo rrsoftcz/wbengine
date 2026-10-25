@@ -292,7 +292,7 @@ class Api
 
     public function getCookieIsSecured(){
         return (null === $this->_cookie_secured)
-            ? (!empty($_SERVER['HTTPS']) && 'off' !== $_SERVER['HTTPS'])
+            ? \Wbengine\Application\Env\Http::isSecure()
             : (bool) $this->_cookie_secured;
     }
 

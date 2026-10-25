@@ -10,6 +10,14 @@ documented here, see the git tags.
 Target: **4.0.0**. The major-version modernization is in progress; the roadmap tracks
 the remaining template, Markdown, API and central administration work.
 
+### Added
+
+- Lazy `Application::getRequestContext()` with shared client-IP and HTTPS resolution.
+  Explicit `http.trustedProxies` IP/CIDR and `http.forwardedHeaders` settings enable
+  trusted IPv4/IPv6 proxy chains and original-scheme detection for session/API/locale
+  cookies and absolute locale links.
+  Forwarded headers are disabled by default; invalid configuration fails closed.
+
 ### Changed
 
 - Request helpers return PHP-parsed values unchanged. `Post()` / `Get()` without a
@@ -26,6 +34,11 @@ the remaining template, Markdown, API and central administration work.
   applied to input. See the request-data migration notes before updating older apps.
 
 ### Fixed
+
+- Missing or invalid connection addresses no longer fall back to spoofable forwarding
+  headers. IPv6 addresses are canonicalized, and both session and API Secure cookies
+  follow the same explicit trusted-proxy policy. Review session/rate-limit changes
+  when deploying behind a proxy; see the configuration and migration notes.
 
 - Login CSRF and CAPTCHA fields reject non-string input without PHP type errors;
   stored CSRF tokens are checked before constant-time comparison.

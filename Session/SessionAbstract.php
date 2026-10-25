@@ -99,7 +99,7 @@ abstract class SessionAbstract
             session_set_cookie_params(array(
                 'httponly' => true,
                 'samesite' => 'Lax',
-                'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+                'secure' => \Wbengine\Application\Env\Http::isSecure(),
             ));
             session_start();
             return session_id();

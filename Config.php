@@ -342,6 +342,26 @@ class Config
         return $settings;
     }
 
+    /** Explicit opt-in to forwarded connection metadata, disabled by default. */
+    public static function getHttpSettings(): array
+    {
+        $http = is_object(self::$config) ? (self::$config->http ?? null) : null;
+        if (null !== $http && !is_object($http)) {
+            throw new \InvalidArgumentException('The http configuration must be an object.');
+        }
+        $proxies = $http->trustedProxies ?? [];
+        $headers = $http->forwardedHeaders ?? [];
+        if (!is_array($proxies) || !is_array($headers)) {
+            throw new \InvalidArgumentException('http.trustedProxies and http.forwardedHeaders must be arrays.');
+        }
+        foreach ($headers as $header) {
+            if (!in_array($header, ['x-forwarded-for', 'x-forwarded-proto'], true)) {
+                throw new \InvalidArgumentException('Unsupported trusted forwarded header.');
+            }
+        }
+        return ['trustedProxies' => $proxies, 'forwardedHeaders' => $headers];
+    }
+
     /**
      * Cache settings: array with enabled, driver, ttl, dir. Disabled when not configured.
      * @return array

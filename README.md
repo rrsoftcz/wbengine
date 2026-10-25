@@ -464,6 +464,62 @@ output context. Audit direct `echo` calls, custom renderers and templates using
 backslashes or HTML entities are not automatically undone: blanket `stripslashes`
 or entity decoding would also corrupt legitimate historical content.
 
+### Trusted reverse proxies in 4.0
+
+Forwarded metadata is disabled by default. `Utils::getUserIp()` and
+`Http::getClientIp()` return the validated connection peer, or an empty string
+when `REMOTE_ADDR` is missing or invalid. `Client-IP`, `Forwarded`, forwarded host,
+port and alternative TLS headers are never used as fallbacks.
+
+For a deployment behind a reverse proxy, configure its actual source addresses
+in `Settings.json`. These documentation addresses must be replaced for deployment:
+
+```json
+{
+  "http": {
+    "trustedProxies": ["192.0.2.10", "2001:db8:100::/64"],
+    "forwardedHeaders": ["x-forwarded-for", "x-forwarded-proto"]
+  }
+}
+```
+
+Each header is opt-in. Proxy entries accept exact IPv4/IPv6 addresses or numeric
+CIDR prefixes. Invalid configuration throws `InvalidArgumentException`. There are
+no automatic private-network or provider exceptions; restrict trust to the proxies
+you operate. IPv4 and IPv6 ranges are separate families, including IPv4-mapped IPv6
+addresses. IPv6 output is canonicalized for consistent session/rate-limit keys.
+
+The proxy must remove untrusted forwarding metadata and generate or correctly
+append `X-Forwarded-For` using the real connection address. The resolver walks the
+list from the trusted right side and stops at the first untrusted address, ignoring
+client-controlled entries farther left. An invalid traversed hop, a header over
+8192 bytes or more than 64 hops falls back to the direct peer.
+
+`X-Forwarded-Proto` has a separate contract: the trusted immediate proxy must
+**overwrite** it with a single `http` or `https` value representing the original
+client connection. Configure every trusted hop to preserve that meaning only from
+its own trusted upstreams. Do not append or blindly copy client-supplied values.
+Comma-separated values are ignored. Without a valid trusted value, secure detection
+uses only the local PHP `HTTPS` value `on` or `1`. A trusted `http` overrides backend
+TLS because the browser's original connection determines the cookie transport.
+
+Session cookies, the locale preference cookie, absolute locale links and API
+refresh-cookie issuance/deletion use this shared detection.
+Their HttpOnly and SameSite policies remain in effect. The explicit API
+`setCookieIsSecured()` override remains available. A change in resolved IP may
+invalidate existing sessions and change rate-limit keys during rollout.
+
+The resolver lives at `Wbengine\Application\Env\RequestContext`.
+`$app->getRequestContext()` lazily owns it in the existing Application tree and its
+`getParent()` returns that Application. `getClientIp()` and `isSecure()` read current
+request metadata. Existing static Http/Utils and standalone API entry points use
+the same implementation without requiring Application bootstrap, database queries
+or starting a session. Only the compiled proxy policy is cached and it refreshes
+when configuration changes.
+
+The trust-chain rules follow the [MDN X-Forwarded-For guidance](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For);
+the single-value scheme contract follows [X-Forwarded-Proto](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-Proto).
+
 ## Routing and the REST API
 
 Routes are registered with static methods and match on the HTTP method and the path. A trailing slash is optional and the query string is ignored:
