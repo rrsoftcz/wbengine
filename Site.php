@@ -541,10 +541,11 @@ Class Site implements ComponentParentInterface
 
     public function getSections()
     {
-        if($this->_sections && is_array($this->_sections)){
+        if(is_array($this->_sections)){
             return $this->_sections;
         }
 
+        $this->_sections = [];
         $sections = $this->getModel()->getSections();
 
         if(is_array($sections)) {
@@ -589,6 +590,10 @@ Class Site implements ComponentParentInterface
 
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
+        if (!$this->isLoaded()) {
+            return $this;
+        }
+
 
         if((int)$this->acl >= 1){
             if((int)$this->getSessionValue('user_is_logged') === 0){

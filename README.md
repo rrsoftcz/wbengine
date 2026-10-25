@@ -127,20 +127,49 @@ Relevant `cms_boxes` columns:
 
 ## Request lifecycle
 
+```text
+new Application()              config, paths, error handler, timezone, early i18n
+configure services / variables
+register Application routes    registration only, callbacks have not run
+$App->run()
+  custom routes                first accepted match; true completes the response
+  pending canonical redirect   only when no custom route accepted the request
+  page-cache gate              after route policies and application configuration
+  Site::initialize()           unless central content was supplied explicitly
+    site lookup / ACL / menu / metadata
+    active sections -> boxes -> collected content
+  404 or explicit 410 / debug
+  Renderer::dispatch()         at most one layout per Application instance
 ```
-index.php
-  new Application()      load Settings.json, install error handler
-  $App->run()
-    Site::initialize()
-      cms_sites row by URL          404 if there is none
-      ACL check                     redirect to /login/ if the site needs a user
-      menu, meta, template vars
-      for each active section:
-        cms_boxes rows for this site and section
-        for each box: new App\Box\<Section>\<Module>, call <Method>(), collect HTML
-    Renderer::dispatch()            render site.tpl with all variables
-    Debug bar (if enabled)
-```
+
+In 4.0 the constructor performs no CMS queries or box execution, does not serve a
+page-cache HIT, and does not exit for a canonical-language redirect. I18n still
+normalizes the request early so route patterns see the path without a locale prefix.
+Redirects are emitted by `run()` after custom routes have had a chance to respond.
+A site getter may create an empty Site object; its database resource is loaded later.
+
+`run()` and `display()` share one lifecycle and repeated calls do not render another
+layout. `display($content)` also accepts an empty string or `"0"` as explicit central
+content. A route may call `display()` directly; ordinary CMS boxes should return their
+content through the existing Section/Box tree. Register routes before either entry
+point starts handling the request.
+
+Pre-run central content avoids CMS initialization. Changes to application Vars
+(including direct `getClassVars()->addValue()` calls) are compared with the bootstrap
+snapshot and conservatively bypass page cache. Accessing the renderer before the
+cache gate also bypasses it, so direct renderer assignments cannot be skipped by an
+old HIT. Custom accepted routes, prior response output or a non-200 status likewise
+bypass shared page cache. The existing bypass flag also skips public native
+fragments. This can reduce cache HITs for customized requests; use
+ordinary CMS boxes for cacheable visitor-independent page generation.
+
+**Migration from 3.x:** construct the Application, configure it and register its
+routes, then call `run()` or `display()`. Application route callbacks no longer run
+at registration, CMS variables/box side effects are no longer available immediately
+after construction, and debug output is prepared during handling. Move code that
+requires loaded CMS data into the CMS handling phase or make its model access
+explicit. Use one Application instance per request. Clear existing page caches on
+deployment so old entries cannot retain policies from the previous lifecycle.
 
 A typical anonymous page costs roughly eight to ten queries: the site, the sections, the menu, one box query per section, and the session. See the performance notes for how to cut that.
 
@@ -636,7 +665,35 @@ the single-value scheme contract follows [X-Forwarded-Proto](https://developer.m
 
 ## Routing and the REST API
 
-Routes are registered with static methods and match on the HTTP method and the path. A trailing slash is optional and the query string is ignored:
+Application routes are deferred until `run()` and execute before shared cache or
+CMS handling. `get($path, $callable)` is a GET shortcut;
+`route($method, $path, $callable)` supports GET, POST, PUT, PATCH, DELETE, HEAD and
+OPTIONS. Both return the Application for chaining and validate registration input.
+The callback receives the existing `Router\Route` and Application objects:
+
+```php
+$App->get('/health/{id}', function ($route, $app) {
+    header('Content-Type: application/json');
+    echo json_encode(['id' => $route->getParams('id'), 'ok' => true]);
+    return true;
+});
+$App->get('/custom', function ($route, $app) {
+    $app->setValue('central', '<p>Trusted page content</p>');
+});
+$App->run();
+```
+
+Return boolean `true` after emitting a complete response, or terminate as before.
+Boolean `false` declines the route and tries the next one, then the CMS fallback.
+Other return values select the HTML callback model: prepare application variables
+and the normal layout is rendered. Return values are not automatically sent as
+response bodies. The first accepted route wins. Merely echoing JSON without
+returning true does not complete the request. Authorization and cookie CSRF guards
+remain the controller's responsibility.
+
+The existing static Router methods retain immediate matching/execution for API
+modules and boxes. A trailing slash is optional and the query string is ignored:
+
 
 ```php
 use Wbengine\Router;
@@ -649,7 +706,24 @@ Router::post('/api/things', fn () => /* ... */ null);
 
 `{name}` matches letters, digits, underscore and dash.
 
-The REST API lives under `/api/`. It is started from a box that belongs to an API section:
+The REST API lives under `/api/`. Existing API boxes still work and now run during
+CMS handling rather than construction. To avoid the CMS lookup for API requests,
+move the existing API bootstrap into application setup before `run()` (after the
+constructor has normalized i18n), for example:
+
+```php
+$path = (string) parse_url(\Wbengine\Application\Env\Http::Uri(), PHP_URL_PATH);
+if ($path === '/api' || str_starts_with($path, '/api/')) {
+    $api = new \Wbengine\Api();
+    $api->Initialize();
+    $api->end();
+}
+$App->run();
+```
+
+The API keeps its existing controllers, namespaces, authentication and terminating
+responses. A project may also invoke it from a suitable deferred Application route.
+The compatible box-based form remains:
 
 ```php
 class Restapi extends WbengineBoxAbstract

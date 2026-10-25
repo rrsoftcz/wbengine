@@ -12,6 +12,9 @@ the remaining template, Markdown, API and central administration work.
 
 ### Added
 
+- Deferred `Application::route()` registration for common HTTP methods; `get()`
+  delegates to it. Explicit true/false callback results complete or decline a route.
+
 - Batched `SiteModel::getSiteIdsByUrls()` resolves exact URLs using database collation,
   preserves input order and chooses the lowest site ID for duplicate links.
 
@@ -30,6 +33,12 @@ the remaining template, Markdown, API and central administration work.
   Forwarded headers are disabled by default; invalid configuration fails closed.
 
 ### Changed
+
+- Application construction prepares services and normalizes i18n without CMS queries,
+  box execution, cache HITs or redirect exits. `run()` handles custom routes before
+  cache and CMS; `display()` shares the lifecycle. Update bootstrap ordering in 4.0.
+- Custom Vars/renderer setup and response policies are evaluated before page cache.
+  Accepted routes bypass shared cache; debug is built during request handling.
 
 - Core HTML dispatch always uses the renderer adapter's `display()` path and keeps
   rendered whitespace intact. `minimizeHtml` is ignored; its getter remains as a
@@ -67,6 +76,12 @@ the remaining template, Markdown, API and central administration work.
   applied to input. See the request-data migration notes before updating older apps.
 
 ### Fixed
+
+- `run()` / `display()` no longer dispatch duplicate layouts; display handles explicit
+  empty/zero content. Missing CMS pages do not run shared boxes, empty sections work,
+  and explicit 410 responses cannot be replaced by cached 200 output or a 404.
+- Locale-prefix normalization also applies to a pending canonical redirect, letting
+  application routes respond first. Existing static Router/API box dispatch remains.
 
 - Removed whole-document whitespace collapsing that damaged preformatted text,
   textarea values, inline JavaScript/CSS, attributes and JSON script strings.

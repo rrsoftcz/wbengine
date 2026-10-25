@@ -17,6 +17,7 @@
 namespace Wbengine\Application;
 
 use Wbengine\Application\Env\Stac\Utils;
+use Wbengine\Application\Env\Http;
 use Wbengine\Application\Mobile\Detector;
 use Wbengine\Application\Path\File;
 use Wbengine\Application\Path\Path;
@@ -142,6 +143,16 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     private $_routes = array();
 
+    private array $_registeredRoutes = [];
+    private bool $_handlingRequest = false;
+    private bool $_requestFinished = false;
+    private bool $_evaluatingRoute = false;
+    private bool $_cacheGateReached = false;
+    private bool $_cmsInitialized = false;
+    private array $_bootstrapVars = [];
+    private ?string $_localeRedirect = null;
+
+
     /**
      * Users application namespace
      * @var null | string
@@ -209,11 +220,7 @@ class Application implements ComponentParentInterface, ResponseInterface
              * Internationalisation (opt-in): choose the locale and remove a language prefix
              * ("/cs/blog/") from the URL before anything else reads it.
              */
-            $redirect = I18n::boot($appBaseDir);
-            if (null !== $redirect) {
-                header('Location: ' . $redirect, true, 301);
-                exit;
-            }
+            $this->_localeRedirect = I18n::boot($appBaseDir);
             if (I18n::isEnabled()) {
                 $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
                 $this->getClassVars()->addValue('locale', I18n::locale());
@@ -222,28 +229,13 @@ class Application implements ComponentParentInterface, ResponseInterface
                 $this->getClassVars()->addValue('hreflangs', I18n::hreflangs($path));
             }
 
-            /**
-             * Anonymous visitors may get the whole page from the page cache (opt-in).
-             * A hit exits here, before any box runs.
-             */
-            PageCache::handle($this);
-
-            /**
-             * INITIALIZE OBJECT SITE...
-             */
-            if(empty($this->getClassVars()->getValue('central'))) {
-                $this->getSite()->initialize($this);
-            }
 
 
         } catch (RuntimeException $e) {
             $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
         }
 
-        if(Config::isDebugEnabled()) {
-            $this->setEndtime(microtime(true));
-            $this->setValue('debug', new Debug($this));
-        }
+        $this->_bootstrapVars = $this->_classVars instanceof Vars ? $this->_classVars->getValues() : [];
 
 
     }
@@ -599,6 +591,10 @@ class Application implements ComponentParentInterface, ResponseInterface
      * @return \Wbengine\Renderer
      */
     public function getRenderer(){
+        // Direct renderer setup before the cache gate must not be skipped by a HIT.
+        if (!$this->_cacheGateReached) {
+            PageCache::bypass();
+        }
         If (NULL === $this->_renderer) {
             $this->_setRenderer();
         }
@@ -788,73 +784,165 @@ class Application implements ComponentParentInterface, ResponseInterface
     }
 
 
+    /** Register a deferred GET handler. Call run() after configuration is complete. */
     public function get($path, $callable)
     {
+        return $this->route('GET', $path, $callable);
+    }
+
+    public function route($method, $path, $callable): self
+    {
+        if ($this->_handlingRequest || $this->_requestFinished) {
+            throw new ApplicationException('Register application routes before running the request.');
+        }
+        if (!is_string($method) || !in_array(strtoupper($method), ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'], true)) {
+            throw new ApplicationException('Unsupported application route method.');
+        }
         if (!is_string($path)) {
             throw new ApplicationException('Route pattern must be a string.');
         }
-
-        try {
-            $req = Router::get($path, function ($route) {
-                return $route;
-            });
-
-            if($req) {
-                $callable($req, $this);
-                $this->addRoute($path);
-            }else{
-                return;
-            }
-
-        }catch (ApplicationException $e){
-            $this->addException($e->getMessage(), $e->getCode());
-            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+        if (!is_callable($callable)) {
+            throw new ApplicationException('Route handler must be callable.');
         }
+        $this->_registeredRoutes[] = ['method' => strtoupper($method), 'path' => $path, 'handler' => $callable];
+        return $this;
     }
 
-
-    public function display($content = null){
-
-        //@TODO Try to avoid multipple calls of init() function...
-        $this->init();
-
-        try {
-            if ($content) {
-                $this->setValue(HTML_CENTRAL_SECTION, $content);
-            }
-            $this->getRenderer()->dispatch($this);
-        }catch (ApplicationException $e){
-            $this->addException($e->getMessage(), $e->getCode());
-            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
-        }
-    }
-
-
-
-    /**
-     * Run the application ...
-     * @param null $errorHandler
-     */
-    public function run($errorHandler = null)
+    /** Return true when a custom route completed the response. */
+    private function _dispatchRoutes(): bool
     {
-        try {
-
-            if ($errorHandler === HTML_ERROR_410) {
-                $this->addException('Gone.', HTML_ERROR_410);
-                $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
+        foreach ($this->_registeredRoutes as $entry) {
+            if (!Http::getRequestMethod($entry['method'])) {
+                continue;
             }
+            $route = Router::match($entry['path']);
+            if (!$route->isRouteMatch()) {
+                continue;
+            }
+            $this->_evaluatingRoute = true;
+            try {
+                $result = ($entry['handler'])($route, $this);
+            } catch (ApplicationException $e) {
+                $this->addException($e->getMessage(), $e->getCode());
+                $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+                $result = null;
+            } finally {
+                $this->_evaluatingRoute = false;
+            }
+            if ($this->_requestFinished) {
+                return true;
+            }
+            if (false === $result) {
+                continue;
+            }
+            $this->addRoute($entry['path']);
+            PageCache::bypass();
+            if (true === $result) {
+                $this->_requestFinished = true;
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
 
-            if ((!$this->getSite() instanceof Site || $this->getSite()->isLoaded() === false) && sizeof($this->_routes) === 0) {
+    /** Explicit display shares run's lifecycle; a route may use it to render once. */
+    public function display($content = null)
+    {
+        if ($this->_requestFinished) {
+            return;
+        }
+        if (null !== $content) {
+            $this->setValue(HTML_CENTRAL_SECTION, $content);
+        }
+        if ($this->_handlingRequest) {
+            PageCache::bypass();
+            $this->_renderPage();
+            return;
+        }
+        $this->run();
+    }
+
+    private function _renderPage($errorHandler = null): void
+    {
+        if ($this->_requestFinished) {
+            return;
+        }
+        if ($errorHandler === HTML_ERROR_410) {
+            PageCache::bypass();
+            http_response_code(410);
+            $this->addException('Gone.', HTML_ERROR_410);
+            $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
+        } elseif (null === $this->getClassVars()->getValue(HTML_CENTRAL_SECTION)) {
+            $failed = false;
+            try {
+                if (!$this->_cmsInitialized) {
+                    $this->_cmsInitialized = true;
+                    $this->getSite()->initialize($this);
+                }
+            } catch (RuntimeException $e) {
+                $failed = true;
+                $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
+            }
+            if (!$failed && !$this->getSite()->isLoaded() && [] === $this->_routes && !$this->_evaluatingRoute) {
                 $this->addException('Site not found.', HTML_ERROR_404);
                 $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($this->getException()));
             }
-
-            $this->getRenderer()->dispatch($this);
-
-        }catch (ApplicationException $e){
-            $e->Show();
         }
+        // A CMS box may explicitly display while initialization is still on the stack.
+        if ($this->_requestFinished) {
+            return;
+        }
+        if (Config::isDebugEnabled()) {
+            $this->setEndtime(microtime(true));
+            $this->setValue('debug', new Debug($this));
+        }
+        $this->_requestFinished = true;
+        $this->getRenderer()->dispatch($this);
+    }
 
+    private function _hasResponseOutput(): bool
+    {
+        if (headers_sent()) {
+            return true;
+        }
+        foreach (ob_get_status(true) as $buffer) {
+            if ($buffer['buffer_used'] > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Handle registered routes before shared cache, CMS initialization and rendering. */
+    public function run($errorHandler = null)
+    {
+        if ($this->_requestFinished || $this->_handlingRequest) {
+            return;
+        }
+        $this->_handlingRequest = true;
+        try {
+            if ($this->_dispatchRoutes()) {
+                return;
+            }
+            if (null !== $this->_localeRedirect && [] === $this->_routes) {
+                $this->_requestFinished = true;
+                header('Location: ' . $this->_localeRedirect, true, 301);
+                exit;
+            }
+            if ($this->getVars() !== $this->_bootstrapVars || [] !== $this->_routes || null !== $errorHandler
+                || $this->_hasResponseOutput()
+                || !in_array(http_response_code(), [false, 200], true)) {
+                PageCache::bypass();
+            }
+            $this->_cacheGateReached = true;
+            PageCache::handle($this);
+            $this->_renderPage($errorHandler);
+        } catch (ApplicationException $e) {
+            $e->Show();
+        } finally {
+            $this->_handlingRequest = false;
+        }
     }
 
 }

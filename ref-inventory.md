@@ -10,7 +10,7 @@ PHP 8.4, minimum 8.3 (`composer.json`: `^8.3`). PHP has no long term support: 8.
 
 ## Architecture in one page
 
-Application (lazy service container) -> Site (cms_sites row by URL, ACL, menu) -> Section (cms_sections) -> Box (cms_boxes: module and method, instantiated as `<AppNamespace>\Box\<Section>\<Module>`) -> content: a static template, or a Model with data from MySQL passed to a template. Utilities: Db, Config, Router, Url, Session, User, Auth (JWT), Renderer (Smarty 5), Vars, Registry, Path, Env, Debug, Error handler. REST API modules under `Api/`.
+Application (prepare in constructor, deferred routes/cache/CMS in run) -> Site (cms_sites row by URL, ACL, menu) -> Section (cms_sections) -> Box (cms_boxes: module and method, instantiated as `<AppNamespace>\Box\<Section>\<Module>`) -> content: a static template, or a Model with data from MySQL passed to a template. Utilities: Db, Config, Router, Url, Session, User, Auth (JWT), Renderer (Smarty 5), Vars, Registry, Path, Env, Debug, Error handler. REST API modules under `Api/`.
 
 ## Findings
 

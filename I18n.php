@@ -69,14 +69,11 @@ class I18n
         if ($result['remember']) {
             self::_remember($result['locale'], $server);
         }
-        if (null !== $result['redirect']) {
-            return $result['redirect'];
-        }
         if ($result['prefixed']) {
             self::_rewriteRequest($result['path'], $result['query']);
         }
         self::_sendHeaders($result['locale'], self::$_settings);
-        return null;
+        return $result['redirect'];
     }
 
     /**
