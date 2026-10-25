@@ -532,7 +532,53 @@ Still open, in the order I recommend:
 * Put TLS in front of the application. The session cookie is marked `Secure` only when the request arrives over HTTPS.
 * Report problems privately to the maintainers.
 
+### Page cache controls in 4.0
+
+Use exact canonical paths to restrict shared page caching:
+
+```json
+"cache": {
+  "enabled": true,
+  "driver": "apcu",
+  "pages": {
+    "enabled": true,
+    "ttl": 60,
+    "allowPaths": ["/", "/blog/"],
+    "denyPaths": ["/account/"]
+  }
+}
+```
+
+`denyPaths` wins. An omitted allowlist permits other eligible paths; an empty
+allowlist disables page caching. Invalid path policies fail closed. Paths are
+compared ignoring case and a trailing slash, as for the existing page cache.
+
+For application-specific personal state, call `Wbengine\PageCache::bypass()`
+**before constructing Application** to prevent both a cache hit and storage. A box
+can call it to prevent storage of the current response, but a box is never executed
+on a hit, so a box-only call cannot protect an existing cached page.
+
+Private/no-store/no-cache responses, `Set-Cookie`, unsupported `Vary` and CSP nonces
+are not stored. Custom request cookies and anonymous sessions containing personal
+data bypass the shared cache. The locale cookie is supported when i18n is enabled.
+Security headers are retained on hits and 304 responses; headers already supplied
+by the current request take precedence. Cache entries from older versions are
+ignored. Clear all cache drivers during deployment when changing content or policy.
+Fragment caches include the locale automatically. Other fragment variants, including
+user-specific content, still require distinct explicit keys; do not share personal
+HTML under a public fragment name.
+
+Before deploying 4.0, widen `cms_users.password` to `varchar(255)`. Creating or
+changing a password now fails when a secure hash cannot fit. Existing legacy MD5
+passwords can still log in and are upgraded once the schema supports it.
+
 ## Development and tests
+
+The next major version is **4.0.0**, currently in development. The
+[modernization plan](plan-framework-improvements.md) records completed work, active
+tasks, dependencies, migration procedures and the remaining release gates. New PHP
+features must follow the existing Application/Site/Section/Box object tree,
+namespaces, lazy services, model and renderer adapter conventions.
 
 The test environment is Docker only: PHP 8.4 CLI and MySQL 8.4.
 

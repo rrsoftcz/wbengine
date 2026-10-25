@@ -30,6 +30,7 @@ class PageCacheStoreTest extends DbTestCase
     {
         Cache::setDriver(null);
         PageCache::setHeaderProvider(null);
+        (new \ReflectionProperty(PageCache::class, '_bypassed'))->setValue(null, false);
         foreach (glob($this->dir . '/*') ?: [] as $f) {
             @unlink($f);
         }
@@ -187,6 +188,52 @@ class PageCacheStoreTest extends DbTestCase
     private function withHeaders(array $headers): void
     {
         PageCache::setHeaderProvider(fn () => $headers);
+    }
+
+    public function testExplicitBypassPreventsStoringTheResponse(): void
+    {
+        $this->arm('/blog/');
+        PageCache::bypass();
+        PageCache::capture('<p>personal</p>');
+        $this->assertFalse($this->stored('/blog/'));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('privateHeaders')]
+    public function testPrivateResponsesAreNeverStored(array $headers): void
+    {
+        $this->arm('/blog/');
+        $this->withHeaders($headers);
+        PageCache::capture('<p>personal</p>');
+        $this->assertFalse($this->stored('/blog/'));
+    }
+
+    public static function privateHeaders(): array
+    {
+        return [
+            'no-store' => [['Cache-Control: no-store']],
+            'private' => [['Cache-Control: private']],
+            'qualified private' => [['Cache-Control: private="X-Account"']],
+            'no-cache' => [['Cache-Control: public, no-cache']],
+            'case insensitive' => [['cAcHe-CoNtRoL: PUBLIC, NO-STORE']],
+            'multiple headers' => [['Cache-Control: public', 'Cache-Control: private']],
+            'cookie' => [['Set-Cookie: audience=vip; HttpOnly']],
+            'vary all' => [['Vary: *']],
+            'unknown variant' => [['Vary: User-Agent']],
+            'nonce' => [["Content-Security-Policy: script-src 'nonce-random'"]],
+        ];
+    }
+
+    public function testCachedPageKeepsSecurityHeadersWithoutCookies(): void
+    {
+        $this->arm('/blog/');
+        $this->withHeaders(['Content-Type: text/html; charset=UTF-8', 'X-Frame-Options: DENY',
+            "Content-Security-Policy: default-src 'self'", 'Referrer-Policy: same-origin']);
+        PageCache::capture('<p>ok</p>');
+        $page = Cache::fetch('page:/blog/', $found);
+        $this->assertTrue($found);
+        $this->assertSame(['Content-Type: text/html; charset=UTF-8', 'X-Frame-Options: DENY',
+            "Content-Security-Policy: default-src 'self'", 'Referrer-Policy: same-origin'], $page['headers'] ?? null);
+        $this->assertSame(2, $page['format'] ?? null);
     }
 
     public function testARedirectHeaderIsNotStoredEvenWithA200Status(): void

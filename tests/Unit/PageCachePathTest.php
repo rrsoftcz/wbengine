@@ -8,6 +8,29 @@ use Wbengine\PageCache;
 
 class PageCachePathTest extends TestCase
 {
+    #[DataProvider('pathPolicies')]
+    public function testPathPolicy(array $policy, bool $allowed): void
+    {
+        $this->assertSame($allowed, PageCache::isPathAllowed('/blog/', $policy));
+    }
+
+    public static function pathPolicies(): array
+    {
+        return [
+            'unrestricted' => [[], true],
+            'explicit allow' => [['allowPaths' => ['/Blog']], true],
+            'other path' => [['allowPaths' => ['/news/']], false],
+            'empty allowlist' => [['allowPaths' => []], false],
+            'denied' => [['denyPaths' => ['/blog/']], false],
+            'deny wins' => [['allowPaths' => ['/blog/'], 'denyPaths' => ['/blog/']], false],
+            'other deny' => [['denyPaths' => ['/news/']], true],
+            'invalid allowlist' => [['allowPaths' => '/blog/'], false],
+            'invalid denylist' => [['denyPaths' => '/blog/'], false],
+            'invalid path' => [['denyPaths' => ['/bad?query']], false],
+            'invalid path type' => [['allowPaths' => [17]], false],
+        ];
+    }
+
     #[DataProvider('cacheable')]
     public function testNormalizedPath(string $uri, string $expected): void
     {

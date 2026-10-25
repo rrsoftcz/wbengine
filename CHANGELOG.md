@@ -7,6 +7,29 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+Target: **4.0.0**. The major-version modernization is in progress; the roadmap tracks
+the remaining template, Markdown, API and central administration work.
+
+### Fixed
+
+- `Auth::setIssuedTime()` updates `iat` without overwriting the JWT issuer.
+- New passwords are refused when the database column cannot hold a modern hash,
+  instead of silently falling back to MD5. Legacy password verification is retained.
+- Native template fragments are separated by locale. Existing fragment entries are
+  not reused across the change.
+- Shared page cache rejects private/no-store/no-cache responses, cookies, unsupported
+  `Vary` headers and nonce-based CSP. Requests with custom cookies or personalized
+  anonymous sessions bypass it. Cached security headers are restored on hits and 304
+  responses; policy supplied by the current deployment takes precedence. Records
+  created before the stricter storage format are ignored.
+
+### Added
+
+- Exact `cache.pages.allowPaths` and `denyPaths` policies, plus request-wide
+  `PageCache::bypass()`; deny rules take precedence.
+- A persistent modernization tracker with task IDs, dependencies, verification
+  requirements and the agreed WBengine OOP architecture constraints.
+
 ## [3.5.0] - 2026-10-24
 
 ### Added

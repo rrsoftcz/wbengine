@@ -7,6 +7,20 @@ use Wbengine\User\Password;
 
 class PasswordTest extends TestCase
 {
+    public function testANarrowColumnCannotProduceNewMd5Passwords(): void
+    {
+        $column = new \ReflectionProperty(Password::class, '_canStoreModernHash');
+        $previous = $column->getValue();
+        $column->setValue(null, false);
+        try {
+            $this->expectException(\Wbengine\User\UserException::class);
+            $this->expectExceptionMessage('varchar(255)');
+            Password::hash('new password');
+        } finally {
+            $column->setValue(null, $previous);
+        }
+    }
+
     public function testLegacyMd5Verifies(): void
     {
         $this->assertTrue(Password::isLegacy(md5('secret')));

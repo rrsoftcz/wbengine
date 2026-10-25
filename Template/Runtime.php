@@ -213,6 +213,7 @@ class Runtime
      */
     public static function cache($key, $ttl, callable $render)
     {
-        return (string) Cache::remember('tpl:' . self::s($key), $render, $ttl);
+        $locale = I18n::isEnabled() ? I18n::locale() : '';
+        return (string) Cache::remember('tpl:v2:' . $locale . ':' . self::s($key), $render, $ttl);
     }
 }

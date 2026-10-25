@@ -524,6 +524,22 @@ class TemplateEngineTest extends TestCase
         $this->assertSame(1, $o->calls);
     }
 
+    public function testFragmentsAreSeparatedByLocale(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $settings = ['enabled' => true, 'default' => 'en', 'locales' => ['en', 'cs']];
+        try {
+            \Wbengine\I18n::configure((new \Wbengine\I18n\Translator([], 'en'))->setLocale('cs'), $settings);
+            $this->assertSame('Cesky', $this->render("{cache 'sidebar'}{\$text}{/cache}", ['text' => 'Cesky']));
+            \Wbengine\I18n::configure((new \Wbengine\I18n\Translator([], 'en'))->setLocale('en'), $settings);
+            $this->assertSame('English', $this->render("{cache 'sidebar'}{\$text}{/cache}", ['text' => 'English']));
+            \Wbengine\I18n::configure((new \Wbengine\I18n\Translator([], 'en'))->setLocale('cs'), $settings);
+            $this->assertSame('Cesky', $this->render("{cache 'sidebar'}{\$text}{/cache}", ['text' => 'changed']));
+        } finally {
+            \Wbengine\I18n::configure(null, null);
+        }
+    }
+
     public function testFragmentCacheKeyCanDependOnVariables(): void
     {
         Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
