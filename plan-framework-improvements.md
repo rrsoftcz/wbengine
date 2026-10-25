@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01 a PERF-02 dokončeny, následuje PERF-06. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02 a PERF-06 dokončeny, následuje PERF-07. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -49,7 +49,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [ ] PERF-03: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-04: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] PERF-05: čeká. Postup a akceptace jsou v odpovídající části níže.
-- [ ] PERF-06: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] PERF-06: hotovo (Codex, 2026-10-25), jeden průchod parserem na volání Json, raw/decoded kontrakt a nativní chyby zachovány včetně NUL-leading klíčů.
 - [ ] PERF-07: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] ARCH-01: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] DX-01: čeká. Postup a akceptace jsou v odpovídající části níže.
@@ -530,3 +530,24 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1036 testů / 2356 assertions**, 11.198 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. OOP strom Site -> model -> Db zachován; bez nového runtime subsystému a závislosti.
 - README, CHANGELOG a ref-inventory popisují chování i cenu jednoho dotazu s cache. Tento checkpoint zahrnuje kód, testy a plán; přesný hash je v git historii. Push a shoda upstreamu se ověřují před další etapou.
 - Další konkrétní krok podle pořadí etapy 3: PERF-06, jedno dekódování JSON. Nejprve popsat dosavadní Json(true/false) pro validní null, skaláry, objekty/pole, prázdné a neplatné tělo, UTF-8 a hloubku; pak odstranit duplicitní json_decode bez nechtěné změny controller kontraktu. Následuje PERF-07 a ARCH-01, ostatní položky zůstávají v registru otevřené.
+
+### PERF-06: Postup a smlouva JSON vstupu
+
+- Výchozí checkpoint dbda94e, větev codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization; HEAD a upstream shodné. Http::Json čte php://input, validuje přes isJson (json_decode) a při decode === true znovu dekóduje asociativně. API auth/user/section/translation routes očekávají tuto smlouvu.
+- Rozhodnutí: jeden json_decode na volání Json, chybu vyhodnotit ihned z téhož parsování; běžný decoded vstup přímo asociativně, kompatibilní NUL/object cesta je popsána níže. Žádná změna signatury ani controllerů, žádná výjimka, payload cache nebo nový runtime objekt. isJson zůstává samostatně volatelný validátor s původním chováním.
+- Zachovat strict decode === true: pouze boolean true vrací dekódované PHP pole/skalár/null; false a další dosud podporované ne-true hodnoty vracejí původní platný text včetně whitespace. Neplatný JSON vrací null v obou režimech. Platné null má JSON_ERROR_NONE, chyba jiný json_last_error; kód musí přečíst stav ihned před dalším JSON voláním. Zachovat výchozí hloubku512, UTF-8 validaci i číselnou politiku PHP.
+- Testy přes skutečný HTTP POST a php://input. Fixture počítá namespaced json_decode, který vždy deleguje native PHP parseru; count se vynuluje pro každý požadavek. Není to produkční injekční rozhraní ani časový benchmark. Nejdříve RED pro validní decoded payload, který původně parsuje2x; ostatní scénáře charakterizují kompatibilitu. raw a isJson nadále validují jedním parsováním.
+- Scénáře: null/bool/čísla/řetězce/pole/objekty, whitespace a prázdné tělo, vadná syntaxe/UTF-8/hloubka, opakovaná volání nad stejným tělem a strict režim. Po minimální změně plná sada, lint, nezávislé review, aktualizace plánu, commit a push.
+
+- Review P2 reprodukovalo rozdíl mezi object a associative decode pro klíč začínající escaped NUL: původní validace vracela JSON_ERROR_INVALID_PROPERTY_NAME, prostý assoc decode jej přijal. Regresní testy nejprve potvrdily dvě chyby; výstupní kontrakt proto zachovat, ne rozšířit v lokální optimalizaci.
+- Ruling: raw režim parsuje jako původní object validace. Decoded režim pro běžný text používá přímo asociativní decode; pouze při možné sekvenci \u0000 použije jeden object decode a rekurzivní převod výsledku na asociativní pole. Chyba NUL-leading klíče tak zůstává nativní error9. Cena: rychlý substring scan běžného raw textu, u vzácných NUL hodnot navíc PHP převod objektů/polí. Počet průchodů JSON parserem stále přesně1; žádné nové výjimky a žádná dodatečná runtime závislost.
+
+### 2026-10-25: PERF-06 dokončen
+
+- Http::Json provede právě jeden json_decode a vyhodnotí chybu téhož parsování. Jen boolean true vrací decoded pole/skalár/null; raw a legacy ne-true režim vrací původní validní text. isJson zůstává samostatný validátor. Nezměněna rozhraní API controllerů, výchozí hloubka512, UTF-8/číselná pravidla ani json_last_error kontrakt.
+- Review P2 opraveno: JSON s NUL-leading klíčem se nadále odmítá s nativním JSON_ERROR_INVALID_PROPERTY_NAME. Pro běžné decoded tělo přímé assoc parsování; konzervativně detekovaný NUL escape vede k jednomu object parsování a následnému převodu. NUL hodnoty, numerické klíče, escaped backslash text a platná hloubka510 mají regresní pokrytí. Cena kompatibility je substring scan a vzácný PHP převod, nikoli druhý průchod parserem.
+- TDD: původních23 HTTP scénářů ukázalo15 failures, vždy2parsy místo1 u validního decoded těla a4místo2 při dvou voláních. Po minimální změně23/188 assertions prošlo. Review reprodukce přidala dvě RED selhání NUL klíčů; po opravě rozšířených28/228 assertions prošlo, následně přidán i hluboký platný NUL případ. Finální HTTP corpus má29 scénářů a měří skutečný php://input přes namespaced wrapper nativního parseru pouze v oddělené fixture.
+- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1065 testů / 2592 assertions**, 12.173 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review nalezlo výše uvedenou kompatibilitní chybu, reprodukovanou a opravenou RED/GREEN testy; žádné další nálezy. Reviewer sám HTTP testy nespustil kvůli svému socket sandboxu, finální ověření provedeno zde v Dockeru.
+- README a CHANGELOG popisují návratové hodnoty, okamžité čtení error state, validní null a legacy NUL klíče. Jde o lokální snížení počtu parserových průchodů, nikoli benchmark latence/memory celého webu. Stávající Http facade a namespaces zachovány, žádný nový runtime subsystém či balíček.
+- Kód, testy a plán patří do stejného checkpointu; hash je v git historii. Push a shoda upstreamu se ověřují před pokračováním.
+- Další konkrétní krok: PERF-07, Renderer::dispatch a globální slučování whitespace. Nejprve regresní corpus pre/textarea/inline JS/CSS a významových textových mezer, potom bezpečný výchozí výstup a migrační pravidla pro dosavadní minimizeHtml. Přenosovou kompresi ponechat webserveru. Po této etapě ARCH-01 odložený lifecycle podle schválených závislostí.

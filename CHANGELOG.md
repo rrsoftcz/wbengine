@@ -31,6 +31,10 @@ the remaining template, Markdown, API and central administration work.
 
 ### Changed
 
+- `Http::Json(true)` parses the request body once instead of validating and decoding
+  separately. Raw mode, associative/scalar results, parser errors and the distinction
+  between valid JSON null and an error through `json_last_error()` are preserved.
+
 - Site menu-parent selection shares one request-local batch lookup across menu items,
   with or without data cache. Hidden/strict parent and collation rules are preserved;
   warm cache still incurs at most one lookup statement for parent selection.

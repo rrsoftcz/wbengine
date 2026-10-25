@@ -187,13 +187,34 @@ abstract class Http
         return (is_string($name) || is_int($name)) ? ($values[$name] ?? null) : null;
     }
 
+    /** Decode once, preserving the parser error state and the legacy raw-text mode. */
     public static function Json($decode = true){
         $raw = file_get_contents('php://input');
-        if(self::isJson($raw)){
-            return ($decode === true) ? json_decode($raw, true) : $raw;
-        }else{
+        // Preserve legacy rejection of NUL-leading object keys. Ordinary decoded
+        // bodies use arrays directly; potential NUL escapes need object validation.
+        $asArray = $decode === true && !str_contains((string) $raw, '\\u0000');
+        $value = json_decode($raw, $asArray);
+        if (JSON_ERROR_NONE !== json_last_error()) {
             return null;
         }
+        if ($decode !== true) {
+            return $raw;
+        }
+        return $asArray ? $value : self::_jsonArrays($value);
+    }
+
+    /** Match associative decoding after the rare object-validation path. */
+    private static function _jsonArrays($value)
+    {
+        if (is_object($value)) {
+            $value = (array) $value;
+        }
+        if (is_array($value)) {
+            foreach ($value as $key => $item) {
+                $value[$key] = self::_jsonArrays($item);
+            }
+        }
+        return $value;
     }
 
 

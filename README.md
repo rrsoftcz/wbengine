@@ -464,6 +464,37 @@ output context. Audit direct `echo` calls, custom renderers and templates using
 backslashes or HTML entities are not automatically undone: blanket `stripslashes`
 or entity decoding would also corrupt legitimate historical content.
 
+### JSON request bodies
+
+`Http::Json()` (or `Http::Json(true)`) reads `php://input` and decodes it once.
+JSON objects become associative arrays; arrays and scalar values retain PHP's
+normal JSON conversion. `Http::Json(false)` validates the body and returns its
+original text, including whitespace. Only boolean `true` selects decoded output;
+the legacy behavior of other arguments is preserved.
+
+Invalid JSON, an empty body, invalid UTF-8 or excessive nesting return null without
+throwing. A valid JSON `null` also returns null in decoded mode, but leaves
+`json_last_error()` as `JSON_ERROR_NONE`. Capture/check that status immediately,
+before another JSON operation overwrites it:
+
+```php
+$body = Http::Json();
+$error = json_last_error();
+if ($error !== JSON_ERROR_NONE || !is_array($body)) {
+    http_response_code(400);
+    return;
+}
+// Validate allowed fields and permissions before passing data to the model.
+```
+
+`Http::isJson($text)` remains a standalone validator, including true for the text
+`null`. Default PHP depth (512), number conversion and error codes are unchanged. The
+legacy rejection of object keys starting with a NUL character is also preserved,
+including `JSON_ERROR_INVALID_PROPERTY_NAME` in both decoded and raw modes.
+The helper does not enforce a media type; controller-specific requirements, including
+the cookie API JSON/custom-header contract below, still apply. Repeated calls read
+and parse the body independently; no request body is retained in a static cache.
+
 ### CSRF protection in 4.0
 
 The session owns a lazy `Wbengine\Session\Csrf` service, available as
