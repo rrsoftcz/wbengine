@@ -36,7 +36,7 @@ class Api
         "OPTIONS"
     );
     private $_allow_headers = array(
-        "Content-Type"
+        "Content-Type", "X-WBengine-CSRF"
     );
     private $_content_security_policy = array(
         "default-src" => "self"

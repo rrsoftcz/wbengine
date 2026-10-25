@@ -5,6 +5,7 @@
  * Keys start with "wb." so they never collide with an application's keys.
  */
 return array(
+    'wb.logout.submit' => 'Log out',
     'wb.login.title' => 'Login form',
     'wb.login.username' => 'Username',
     'wb.login.password' => 'Password',

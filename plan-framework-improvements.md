@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01 a SEC-03 až SEC-05 dokončeny, následuje SEC-06. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01 a SEC-02 až SEC-06 dokončeny, následuje PERF-01. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -41,7 +41,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] SEC-03: hotovo (Codex, 2026-10-25). Oba adaptéry escapují defaultně, native metadata a fallbacky opraveny, režimy cache odděleny, migrační a kontextová pravidla zdokumentována.
 - [x] SEC-04: hotovo (Codex, 2026-10-25), nezměněné vstupy, řetězcové helpery, validace autentizačních polí a migrační dokumentace.
 - [x] SEC-05: hotovo (Codex, 2026-10-25), explicitní důvěryhodné proxy IPv4/IPv6, společná detekce IP/HTTPS a cookie flags včetně I18n.
-- [ ] SEC-06: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] SEC-06: hotovo (Codex, 2026-10-25), session CSRF služba, účely formulářů, POST logout, ochrana cache a stateless cookie API hranice.
 - [x] FIX-01: hotovo (Codex, 2026-10-25). iat setter zachovává iss, regresní test RED a GREEN.
 - [x] CACHE-01: hotovo (Codex, 2026-10-25). Veřejný/osobní scope, lazy identita, locale, anonymní bypass a ochrana public obalů ověřeny včetně HTTP. Jiné obsahové varianty vyžadují explicitní klíče.
 - [ ] PERF-01: čeká. Postup a akceptace jsou v odpovídající části níže.
@@ -466,3 +466,28 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Dokumentace obsahuje nasazovací konfiguraci, požadavek na přepsání XFP a správné sestavení XFF na proxy, oddělení adresních rodin a dopad změny IP na sessions/rate limit. Při nasazení vyčistit page cache; absolutní locale odkazy nově respektují důvěryhodné původní schéma. Žádné změny skutečných produkčních proxy ani deploymentu nebyly provedeny.
 - Kontrolní bod zahrnuje kód, testy, dokumentaci i stav plánu. Přesný hash je v git historii; commit a push před dalším větším krokem.
 - Další konkrétní krok: SEC-06, inventarizace formulářů a operací autentizovaných cookies; lazy CSRF služba navázaná na session ve stromu Application, ochrana formulářů/AJAX a odstranění odhlašování přes GET. Zachovat veřejné GET bez session zápisu a zabránit sdílení tokenů přes cache.
+
+### SEC-06: Postup a smlouva ochrany
+
+- Výchozí checkpoint 4025119, větev codex/wbengine-4.0, izolovaný worktree /private/tmp/wbengine-modernization. Jediný dodávaný POST formulář je Box\Auth. Dosavadní token se přepisuje při každém renderu, AJAX větev nebývá omezena metodou a GET a=logout mění stav. Vlastní projektové formuláře musí ochranu použít explicitně.
+- Session\Csrf bude lazy potomkem Session (getParent); Application::getCsrf pouze deleguje přes existující session. Bez explicitního použití CSRF služby se veřejný GET nemění. Token je HMAC-SHA256 účelu z náhodného 32bajtového session secretu; účel má 1 až 128 bajtů, token je 64 hex znaků. Jediný secret místo neomezené mapy formulářů. Tokeny stejného účelu jsou stabilní pro více panelů, cizí session/účel se odmítají. Ověření nikdy nevytváří secret. Při regeneraci session ID po přihlášení secret invalidovat.
+- Služba token/verify/validateRequest podporuje pole token nebo hlavičku X-CSRF-Token. validateRequest přijímá jen POST/PUT/PATCH/DELETE, nikdy query token. Přítomná neplatná hlavička nesmí spadnout na platný POST. Neplatné tvary tokenů se necastují.
+- Tokenové odpovědi explicitně private,no-store a PageCache bypass. Nový request-wide bypass fragmentů musí zastavit HIT i ukládání veřejných i user fragmentů, včetně obalů, které token vydají během renderu. Token získat před vstupem do cachovaného renderu; vlastní Smarty output cache nepatří do podporovaného cache mechanismu.
+- Box\Auth přejde na účel auth.login; stávající name=token zůstává pro template/AJAX kompatibilitu. GET logout odmítnout 405 bez změny session. POST a=logout vyžaduje auth.logout token, chyba 403; přidat veřejný getLogoutBox s dodávanou POST šablonou. CSRF ověřit před CAPTCHA a autentizací, AJAX jen POST.
+- Rozhodnutí pro cookie API login/refresh/logout: povinné POST, application/json a X-WBengine-CSRF: 1. Nejde o synchronizer token, ale o vynucení nesimple požadavku a preflight/CORS hranice. Povolit tuto hlavičku v existující CORS konfiguraci; operátor smí povolit jen důvěryhodné originy pro credentialed požadavky. Refresh zůstává bez PHP session. Ostatní API mutace s explicitním ověřeným bearer tokenem nepřebírají session CSRF. Zdroj: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html.
+- Akceptace: RED/GREEN účely, cizí session, typy, metody, více panelů, opakované vydání bez zápisu, odmítnutý GET logout bez změny identity, platné POST logout, login/AJAX před autentizací, tokeny mimo oba cache scope a skutečné HTTP no-store; API odmítne simple požadavek před změnou DB/cookie. Kompletní testy, lint, nezávislé review; pak commit a push kódu i plánu.
+
+- SEC-06 TDD průběh: 25 nových unit scénářů nejprve selhalo na chybějící službě; po implementaci 25/70 assertions prošlo. HTTP RED prokázal změnu tokenu mezi panely a GET logout s 302 místo 405. Po propojení služby 3 HTTP scénáře prošly. API RED prokázal chybějící preflight hranici; nová kontrola ověřuje odmítnutí všech tří cookie operací bez DB/cookie/session vedlejších efektů.
+- Lifecycle RED prokázal zachování tokenu po regeneraci ID; reset doplněn do Session::regenerateId. Další RED prokázal, že po destroy zůstával secret v interních datech Session v témže požadavku; discardPendingWrites jej nyní odstraňuje přímo, aniž by obnovil dirty stav nebo zápis zničené session.
+- Nezávislé review bez konkrétních bezpečnostních/regresních nálezů, cílené unit ověření reviewerem 57/122 assertions. Doplňující HTTP scénáře pokrývají AJAX GET 405, platný AJAX login s X-CSRF-Token a cizí session. CORS politika je provozní důvěryhodnost originů; tato fáze nezavádí browserovou end-to-end automatizaci.
+
+### 2026-10-25: SEC-06 dokončen
+
+- Session\Csrf je lazy potomek Session s getParent; Application deleguje na stejnou instanci. Stabilní purpose tokeny, ověření bez vytvoření secretu, pole token i X-CSRF-Token, pouze unsafe metody pro validateRequest. Root secret se invaliduje při regeneraci ID i zničení session včetně aktuálního požadavku.
+- Dodávaný login a AJAX používají auth.login, logout auth.logout. GET logout a AJAX GET vracejí 405, neplatné tokeny 403 před CAPTCHA/login. Přidán getLogoutBox a escapovaná POST šablona s českým/anglickým popiskem. Legacy template name=token zůstává, historický session token se již nepřijímá.
+- Private,no-store a request-wide bypass page cache i obou native fragment scope; obaly, které vydaly token během renderu, se neukládají. Helper volat před cachovaným renderem. Vlastní aplikace musí chránit své cookie formuláře explicitně a v bootstrapu vyloučit personalizované form routes z dřívější page cache.
+- Cookie API login/refresh/logout vyžadují POST, application/json (charset povolen) a X-WBengine-CSRF: 1. HTTP 405/415/403 před DB, rotací tokenu nebo změnou cookies. Header povolen v dosavadní CORS konfiguraci, credentialed originy jsou explicitní provozní hranice důvěry. Refresh dál bez PHP session. Bearer-authorized mutace nadále používají role/token, bez session CSRF.
+- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1025 testů / 2164 assertions**, 11.005 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review celé fáze i doplňující lifecycle změny bez nálezů.
+- HTTP testy: více panelů, cizí session, invalidní/platný AJAX, GET a POST logout s různými účely, no-store i při opakovaném tokenu, veřejný GET jako cache HIT bez session cookie a DB zápisu. Integrační test ověřuje invalidaci/přetrvání po rotaci ID i nemožnost obnovit zničenou session přes flush. Unit test dokládá odmítnutí tvarů a vyloučení již cachovaných user/public fragmentů i nového tokenového obalu.
+- README a CHANGELOG obsahují rozhraní, použití v šabloně/AJAX, cache a upgrade API klientů. Tato major změna není nasazena ani releasována. Kontrolní bod obsahuje kód i plán; hash je v historii a push se ověřuje před další fází.
+- Další konkrétní krok: PERF-01, diagnostické dbinfo ve Site::initialize/getDBVersion pouze v debug nebo na explicitní žádost. Nejprve změřit SQL dotazy a otevření DB spojení pro zahřátou stránku s datovou cache, poté odstranit pouze zbytečný diagnostický přístup. Následují PERF-02 menu N+1 a PERF-06 jediné dekódování JSON podle závislostí plánu.

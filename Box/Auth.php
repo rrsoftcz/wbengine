@@ -30,20 +30,34 @@ class Auth extends WbengineStaticBox
     public function getLoginBox()
     {
         try {
-            // Ajax handling...
+            if (Http::getParam('a') === 'logout' || Http::PostString('a') === 'logout') {
+                if (!Http::getRequestMethod(Http::TYPE_POST)) {
+                    header('Allow: POST');
+                    http_response_code(405);
+                    return 'Method Not Allowed';
+                }
+                if (!$this->getSession()->getCsrf()->validateRequest('auth.logout')) {
+                    http_response_code(403);
+                    return I18n::t('wb.login.invalid_token');
+                }
+                (new User($this))->logout();
+                header('Location: ' . I18n::url('/login/'));
+                exit();
+            }
             if (Http::isAjaxCall() === true) {
+                if (!Http::getRequestMethod(Http::TYPE_POST)) {
+                    header('Allow: POST');
+                    http_response_code(405);
+                    return 'Method Not Allowed';
+                }
                 $this->_ajaxLogin();
             }
 
             $usr = new User($this);
-            // checking for logout requets...
-            if (Http::getParam('a') === "logout") {
-                $usr->logout();
-                header('Location: /login/');
-                exit();
-            }
-
-            if (Http::getRequestMethod(Http::TYPE_POST) === true) {
+            if (Http::getRequestMethod(Http::TYPE_POST) && !$this->_checkToken()) {
+                http_response_code(403);
+                $this->getRenderer()->assign('error', I18n::t('wb.login.invalid_token'));
+            } elseif (Http::getRequestMethod(Http::TYPE_POST) === true) {
                 // ...grab failed logins from session...
                 $failed_logins = (int)$this->getSession()->getValue(self::FAILED_LOGINS);
                 // ... success captcha if need...?
@@ -56,7 +70,6 @@ class Auth extends WbengineStaticBox
                             // ...success login...?
                             if ($loginResponse === true) {
                                 $this->getSession()->unsetKey(self::FAILED_LOGINS);
-                                $this->getSession()->unsetKey(self::SECRET_TOKEN);
 
                                 if (Http::isAjaxCall() === true) {
                                     die('OK');
@@ -88,12 +101,7 @@ class Auth extends WbengineStaticBox
                 'password' => I18n::t('wb.login.password'),
                 'submit' => I18n::t('wb.login.submit'),
             ));
-            // Generate token for lates check...
-            $token = $this->_generateToken();
-            // Store generated token to session (db)...
-            $this->getSession()->setValue('token', $token);
-            // Set token to form template...
-            $this->getRenderer()->assign('token', $token, true);
+            $this->getRenderer()->assign('token', $this->getSession()->getCsrf()->token('auth.login'), true);
             // Tell to template whatever we need to show captcha...
             $this->getRenderer()->assign('captcha', $this->_showCaptcha(), true);
 
@@ -107,10 +115,24 @@ class Auth extends WbengineStaticBox
         }
     }
 
+    /** Render this before entering a shared template cache block. */
+    public function getLogoutBox()
+    {
+        $this->getRenderer()->assign('logoutAction', I18n::url('/login/'));
+        $this->getRenderer()->assign('logoutLabel', I18n::t('wb.logout.submit'));
+        $this->getRenderer()->assign('token', $this->getSession()->getCsrf()->token('auth.logout'), true);
+        return $this->getRenderer()->render('Login/View/Logout', null, true);
+    }
+
     private function _ajaxLogin()
     {
         $response = array();
         try {
+            if (!$this->_checkToken()) {
+                http_response_code(403);
+                header('Content-type: application/json');
+                die(json_encode(['error' => I18n::t('wb.login.invalid_token')]));
+            }
             $usr = new User($this);
             // ...grab failed logins from session...
             $failed_logins = (int)$this->getSession()->getValue(self::FAILED_LOGINS);
@@ -121,7 +143,6 @@ class Auth extends WbengineStaticBox
                     $res = $usr->login((string)Http::PostRaw('userName'), (string)Http::PostRaw('userPassword'));
                     if ($res === true) {
                         $this->getSession()->unsetKey(self::FAILED_LOGINS);
-                        $this->getSession()->unsetKey(self::SECRET_TOKEN);
                         die('OK');
                     } else {
                         $this->getSession()->setValue(self::FAILED_LOGINS, ++$failed_logins);
@@ -190,21 +211,9 @@ class Auth extends WbengineStaticBox
         return is_array($response) && !empty($response['success']);
     }
 
-    private function _generateToken($length = 32)
-    {
-        return bin2hex(random_bytes($length));
-    }
-
     private function _checkToken()
     {
-        $token = $this->getSession()->getValue('token');
-        $tpost = Http::PostString('token');
-        if (!is_string($token) || '' === $token) {
-            return false;
-        } elseif ($tpost === null || $tpost === '') {
-            return false;
-        }
-        return hash_equals($token, $tpost);
+        return $this->getSession()->getCsrf()->validateRequest('auth.login');
     }
 
     private function _showCaptcha()

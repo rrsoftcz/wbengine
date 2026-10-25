@@ -51,6 +51,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
     }
 
     public function login($data) {
+        $this->_requireCookieRequest();
         try {
             $status = $this->User()->login($this->validate($data)->_username, $this->validate($data)->_password);
             if(!$status) {
@@ -81,6 +82,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
      * issued stays valid until it expires.
      */
     public function logout() {
+        $this->_requireCookieRequest();
         $this->_revokeCookieToken();
         $this->_clearRefreshCookie();
 
@@ -140,6 +142,7 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
      * It needs no PHP session, only the cookie.
      */
     public function validateRefreshToken(){
+        $this->_requireCookieRequest();
         $token = $_COOKIE[self::REFRESH_COOKIE] ?? null;
 
         try {
@@ -184,6 +187,22 @@ class Auth extends WbengineRestapiAbstract implements WbengineRestapiInterface {
                 "message" => "The new JWT token has successfuly created."
             ), Http::OK
         );
+    }
+
+    /** Browser cookie operations must cross the JSON/custom-header preflight boundary. */
+    private function _requireCookieRequest(): void
+    {
+        if (!Http::getRequestMethod(Http::TYPE_POST)) {
+            header('Allow: POST');
+            $this->Api()->toJson(['success' => false, 'message' => 'Method Not Allowed.'], 405);
+        }
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? null;
+        if (!is_string($contentType) || strtolower(trim(explode(';', $contentType, 2)[0])) !== 'application/json') {
+            $this->Api()->toJson(['success' => false, 'message' => 'JSON request required.'], 415);
+        }
+        if ('1' !== Http::getHeader('X-WBengine-CSRF')) {
+            $this->Api()->toJson(['success' => false, 'message' => 'Invalid request header.'], Http::FORBIDDEN);
+        }
     }
 
     const REFRESH_COOKIE = 'refresh_token';

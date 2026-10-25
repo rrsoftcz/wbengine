@@ -60,6 +60,13 @@ class Session extends SessionAbstract
      */
     private $_modified = false;
 
+    private ?Session\Csrf $_csrf = null;
+
+    public function getCsrf(): Session\Csrf
+    {
+        return $this->_csrf ??= new Session\Csrf($this);
+    }
+
     public function wasModified(){
         return $this->_modified;
     }
@@ -107,6 +114,7 @@ class Session extends SessionAbstract
         $this->_dirty = false;
         $this->_persisted = false;
         $this->_destroyed = true;
+        unset($this->_data->session_data->{Session\Csrf::SESSION_KEY});
     }
 
     /**
@@ -264,6 +272,7 @@ class Session extends SessionAbstract
         $new = session_id();
         $this->getModel()->renameSession($old, $new);
         $this->_data->session_id = $new;
+        $this->getCsrf()->reset();
     }
 
     public function setUserId($userId){

@@ -353,6 +353,11 @@ class Application implements ComponentParentInterface, ResponseInterface
         return $this->_requestContext ??= new Env\RequestContext($this);
     }
 
+    public function getCsrf(): \Wbengine\Session\Csrf
+    {
+        return $this->getSession()->getCsrf();
+    }
+
     public function getSession(){
         if ($this->_session instanceof Session) {
             return $this->_session;

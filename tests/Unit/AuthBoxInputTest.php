@@ -6,6 +6,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Wbengine\Box\Auth;
 use Wbengine\Session;
+use Wbengine\Session\Csrf;
+use Wbengine\Tests\Support\MemorySession;
 
 class AuthBoxInputTest extends TestCase
 {
@@ -24,6 +26,8 @@ class AuthBoxInputTest extends TestCase
     {
         $_POST = $this->post;
         $_SERVER = $this->server;
+        (new \ReflectionProperty(\Wbengine\PageCache::class, '_bypassed'))->setValue(null, false);
+        (new \ReflectionProperty(\Wbengine\Template\FragmentCache::class, '_bypassed'))->setValue(null, false);
         false === $this->recaptchaSecret ? putenv('WBENGINE_RECAPTCHA_SECRET')
             : putenv('WBENGINE_RECAPTCHA_SECRET=' . $this->recaptchaSecret);
     }
@@ -31,9 +35,11 @@ class AuthBoxInputTest extends TestCase
     #[DataProvider('csrfInputs')]
     public function testCsrfInputIsValidatedWithoutStringCoercion($submitted, bool $expected): void
     {
-        $_POST = ['token' => $submitted];
-        $session = $this->createStub(Session::class);
-        $session->method('getValue')->willReturn('stored-token');
+        $session = new MemorySession();
+        $token = $session->getCsrf()->token('auth.login');
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        unset($_SERVER['HTTP_X_CSRF_TOKEN']);
+        $_POST = ['token' => 'stored-token' === $submitted ? $token : $submitted];
         $box = $this->createStub(Auth::class);
         $box->method('getSession')->willReturn($session);
         $this->assertSame($expected, (new \ReflectionMethod(Auth::class, '_checkToken'))->invoke($box));
@@ -48,9 +54,11 @@ class AuthBoxInputTest extends TestCase
     #[DataProvider('malformedTokens')]
     public function testMalformedStoredTokenIsRejected($stored): void
     {
-        $_POST = ['token' => 'stored-token'];
-        $session = $this->createStub(Session::class);
-        $session->method('getValue')->willReturn($stored);
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        unset($_SERVER['HTTP_X_CSRF_TOKEN']);
+        $_POST = ['token' => str_repeat('a', 64)];
+        $session = new MemorySession();
+        $session->values[Csrf::SESSION_KEY] = $stored;
         $box = $this->createStub(Auth::class);
         $box->method('getSession')->willReturn($session);
         $this->assertFalse((new \ReflectionMethod(Auth::class, '_checkToken'))->invoke($box));

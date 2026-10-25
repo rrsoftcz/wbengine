@@ -10,6 +10,14 @@ use Wbengine\Template\Exception\TemplateException;
 /** Fragment storage owned by the template engine, sharing its lazy user context. */
 class FragmentCache
 {
+    private static bool $_bypassed = false;
+
+    /** Disable all fragment scopes for the remainder of a token-bearing response. */
+    public static function bypass(): void
+    {
+        self::$_bypassed = true;
+    }
+
     private Engine $_parent;
 
     public function __construct(Engine $parent)
@@ -26,6 +34,10 @@ class FragmentCache
     {
         if (!in_array($scope, ['public', 'user'], true)) {
             throw new TemplateException('Fragment cache scope must be public or user.');
+        }
+
+        if (self::$_bypassed) {
+            return $this->_render($render);
         }
 
         $userId = null;
@@ -52,7 +64,7 @@ class FragmentCache
 
         $html = $this->_render($render);
         // A public outer block must not capture a personal inner block or include.
-        if ('' !== $html && ('user' === $scope || !PageCache::isBypassed())) {
+        if (!self::$_bypassed && '' !== $html && ('user' === $scope || !PageCache::isBypassed())) {
             Cache::store($cacheKey, $html, $ttl);
         }
         return $html;

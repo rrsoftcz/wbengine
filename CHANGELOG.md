@@ -12,6 +12,11 @@ the remaining template, Markdown, API and central administration work.
 
 ### Added
 
+- Session-owned CSRF service with purpose-bound tokens, stable multi-tab forms,
+  form/AJAX request validation and private/no-store cache handling. Application
+  exposes the same lazy service; public routes without CSRF usage remain unchanged.
+- Bundled POST logout form through `Box\Auth::getLogoutBox()`.
+
 - Lazy `Application::getRequestContext()` with shared client-IP and HTTPS resolution.
   Explicit `http.trustedProxies` IP/CIDR and `http.forwardedHeaders` settings enable
   trusted IPv4/IPv6 proxy chains and original-scheme detection for session/API/locale
@@ -19,6 +24,12 @@ the remaining template, Markdown, API and central administration work.
   Forwarded headers are disabled by default; invalid configuration fails closed.
 
 ### Changed
+
+- Web login uses shared CSRF tokens. GET logout now returns 405; POST logout requires
+  its own purpose token. Invalid login/logout tokens return 403 before authentication.
+- Cookie API login/refresh/logout require POST, JSON and `X-WBengine-CSRF: 1`.
+  Clients must add this header; trusted credentialed CORS origins must be configured
+  explicitly. Refresh stays stateless; bearer-authorized API actions are unchanged.
 
 - Request helpers return PHP-parsed values unchanged. `Post()` / `Get()` without a
   field name return their complete input map; missing keys return null. `getCookie()`
@@ -34,6 +45,9 @@ the remaining template, Markdown, API and central administration work.
   applied to input. See the request-data migration notes before updating older apps.
 
 ### Fixed
+
+- Token-bearing responses cannot be stored in public or user native fragments or
+  page cache. Session-ID regeneration and session destruction invalidate CSRF tokens.
 
 - Missing or invalid connection addresses no longer fall back to spoofable forwarding
   headers. IPv6 addresses are canonicalized, and both session and API Secure cookies

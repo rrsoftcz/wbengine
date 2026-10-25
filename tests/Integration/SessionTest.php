@@ -46,6 +46,37 @@ class SessionTest extends DbTestCase
         session_write_close();
     }
 
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testPrivilegeRotationInvalidatesCsrfAndPersistsNewTokens(): void
+    {
+        $session = new Session();
+        $old = $session->getCsrf()->token('save');
+        $session->flush();
+        $oldId = $session->getSessionId();
+        $session->regenerateId();
+        $this->assertNotSame($oldId, $session->getSessionId());
+        $this->assertFalse($session->getCsrf()->verify($old, 'save'));
+        $new = $session->getCsrf()->token('save');
+        $next = $this->nextRequest($session);
+        $this->assertFalse($next->getCsrf()->verify($old, 'save'));
+        $this->assertTrue($next->getCsrf()->verify($new, 'save'));
+        session_write_close();
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testDestroyInvalidatesCsrfInTheCurrentRequestToo(): void
+    {
+        $session = new Session();
+        $old = $session->getCsrf()->token('save');
+        $session->flush();
+        $session->destroy();
+        $this->assertFalse($session->getCsrf()->verify($old, 'save'));
+        $session->flush();
+        $this->assertSame(0, $this->rows());
+    }
+
     public static function proxyConnections(): array
     {
         return [

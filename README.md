@@ -464,6 +464,89 @@ output context. Audit direct `echo` calls, custom renderers and templates using
 backslashes or HTML entities are not automatically undone: blanket `stripslashes`
 or entity decoding would also corrupt legitimate historical content.
 
+### CSRF protection in 4.0
+
+The session owns a lazy `Wbengine\Session\Csrf` service, available as
+`$app->getCsrf()` or `$session->getCsrf()`. Use it explicitly in every custom form
+or cookie-authenticated action that changes state. It does not add middleware or
+start a session on ordinary public requests. Calling the Application accessor does
+obtain the PHP session; request tokens only on routes that need them.
+
+Obtain tokens **before** entering any cached rendering code:
+
+```php
+$csrf = $app->getCsrf();
+$renderer->assign('saveToken', $csrf->token('article.save'));
+```
+
+```html
+<form method="post" action="/article/save/">
+    <input type="hidden" name="token" value="{$saveToken|escape}">
+    <button type="submit">Save</button>
+</form>
+```
+
+Validate before performing the write, and keep authorization checks separate:
+
+```php
+if (!$app->getCsrf()->validateRequest('article.save')) {
+    http_response_code(403);
+    return;
+}
+// Check the user's permission, validate fields, then write through the model.
+```
+
+`validateRequest()` accepts only POST, PUT, PATCH or DELETE. It reads the `token`
+form field or `X-CSRF-Token` header for AJAX/JSON; a present invalid header fails
+without falling back to the form. It never reads tokens from URLs. For manually
+parsed input, `verify($token, $purpose)` checks the token only: enforce the HTTP
+method in the controller. Use a non-empty purpose of at most 128 bytes.
+
+Tokens are bound to the session and purpose. They remain stable across forms and
+tabs, and verifying a request does not create a secret. A single random session
+secret derives purpose tokens with HMAC-SHA256. Session expiry, logout and session-ID
+regeneration invalidate them; fetch fresh forms after logging in. `reset()` explicitly
+invalidates all purposes. Existing per-render login tokens are not accepted in 4.0.
+
+Issuing or verifying a token marks the response `Cache-Control: private, no-store`
+and bypasses page cache and all native fragment scopes for the rest of the request.
+An outer fragment that issues a token during rendering is not stored. Acquire the
+token before a cached wrapper can return a HIT. Exclude form routes with
+`cache.pages.denyPaths` or call `PageCache::bypass()` before Application construction
+when a previously cached route becomes personalized. Clear old caches during
+migration. Do not put token-bearing responses in an external cache or Smarty output
+cache; these are outside the framework's storage controls.
+
+The bundled login form now uses purpose `auth.login`, including its AJAX path.
+GET `?a=logout` returns 405 and leaves the session intact. Render
+`Box\Auth::getLogoutBox()` for the bundled POST logout form, or submit `a=logout`
+and a token for `auth.logout` to `/login/`. POST `?a=logout` is also supported. Missing,
+wrong-purpose or foreign-session tokens return 403. Both renderers use the existing
+escaped `token` field.
+
+Cookie API operations (`login`, refresh and device logout) use a separate stateless
+boundary: send **POST**, `Content-Type: application/json` and `X-WBengine-CSRF: 1`.
+This constant header is not a secret; it forces a browser CORS preflight for
+cross-origin requests. Simple form/text requests are rejected before authentication,
+refresh rotation, cookie changes or session creation. Wrong methods return 405,
+wrong content types 415, and a missing/invalid header 403. The default CORS allowed
+headers include this marker. Allow credentialed CORS only for origins you trust;
+never reflect arbitrary origins. SameSite remains an additional protection.
+
+```javascript
+fetch('/api/auth/jwt/revalidate', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {'Content-Type': 'application/json', 'X-WBengine-CSRF': '1'},
+    body: '{}'
+});
+```
+
+Bearer-authorized API mutations retain their token/role checks and do not start a
+session for CSRF. The refresh endpoint remains independent of PHP sessions. Existing
+API clients must add the JSON/custom-header contract when upgrading to 4.0.
+The approach follows the [OWASP CSRF guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
+
 ### Trusted reverse proxies in 4.0
 
 Forwarded metadata is disabled by default. `Utils::getUserIp()` and
