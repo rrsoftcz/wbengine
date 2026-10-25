@@ -208,7 +208,7 @@ class Config
     }
 
     /**
-     * Whether the native renderer HTML-escapes output by default. Defaults to true.
+     * Whether the renderer HTML-escapes output by default. Defaults to true for both adapters.
      * Set "renderer.autoEscape": false for old templates that print raw HTML as {$value}.
      * @return bool
      */

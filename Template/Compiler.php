@@ -20,15 +20,14 @@ use Wbengine\Template\Exception\TemplateException;
  * A "{" that does not start one of these is plain text, so inline CSS and
  * JavaScript need no {literal}.
  *
- * Output is HTML-escaped unless the expression has |raw (or |nofilter), or already
- * ends in a modifier that produces safe output (escape, nl2br, json, url). Escaping
- * can be switched off for a whole engine, for old templates that rely on Smarty's
- * default of not escaping.
+ * Output is HTML-escaped unless the whole expression ends in |raw / |nofilter or
+ * a modifier that produces safe output (escape, nl2br, json, url). Inner expressions
+ * do not confer safety on the result. Escaping can be disabled for legacy templates.
  */
 class Compiler
 {
     /** Bump when the generated code changes, so old compiled files are not reused. */
-    const VERSION = 2;
+    const VERSION = 3;
 
     /** Tags that swallow one line break directly after them. */
     const TRIM_AFTER = array('if', 'elseif', 'else', 'foreach', 'foreachelse', 'close', 'set', 'cache', 'comment');
@@ -112,7 +111,7 @@ class Compiler
         }
 
         return "<?php\n/* WBengine template: " . str_replace('*/', '* /', $this->_name) . " */\n"
-            . "// source-signature: " . preg_replace('/[^0-9:]/', '', (string) $signature) . "\n"
+            . "// source-signature: " . preg_replace('/[^a-f0-9:]/', '', (string) $signature) . "\n"
             . "use Wbengine\\Template\\Runtime;\n"
             . "return static function (array &\$_v, \\Wbengine\\Template\\Engine \$_engine): void {\n?>"
             . $this->_out
@@ -235,7 +234,8 @@ class Compiler
 
             case 'output':
                 $expression = $this->_parser->parse($body, $this->_line);
-                $explicit = array_intersect($this->_parser->topModifiers(), self::SAFE_MODIFIERS);
+                $modifiers = $this->_parser->topModifiers();
+                $explicit = in_array(end($modifiers), self::SAFE_MODIFIERS, true);
                 $this->_echo(($this->_autoEscape && !$explicit)
                     ? 'Runtime::e(' . $expression . ')'
                     : 'Runtime::s(' . $expression . ')');

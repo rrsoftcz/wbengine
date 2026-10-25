@@ -66,6 +66,7 @@ class TemplateEquivalenceTest extends TestCase
     {
         file_put_contents($this->dir . '/tpl/t.tpl', $template);
         $r = new SmartyRenderer();
+        $r->setAutoEscape(false);
         $r->setTemplateDir($this->dir . '/tpl');
         $r->setCompileDir($this->dir . '/smarty');
         foreach (self::vars() as $k => $v) {

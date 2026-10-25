@@ -183,7 +183,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     }
 
     /**
-     * Only the native renderer escapes output automatically, for Smarty this is a no-op.
+     * Both bundled renderers escape output by default; false is a legacy migration option.
      */
     public function setAutoEscape($value)
     {

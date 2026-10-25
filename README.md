@@ -225,14 +225,45 @@ Operators: `== != === !== < <= > >= && || ! and or not + - * / % ~` (`~` joins t
 
 ### Security model
 
-* **Escaping is on by default.** `{$x}` is HTML-escaped. `|raw` (or `|nofilter`) prints as is, and `|escape`, `|nl2br`, `|json` and `|url` already produce safe output, so they are not escaped a second time. `|json` is safe inside a `<script>` element.
+* **Escaping is on by default in both WBengine renderer adapters.** `{$x}` is HTML-escaped. In the native engine the final modifier of the whole expression determines whether output is already escaped or explicitly trusted: `|escape`, `|nl2br`, `|json`, `|url`, `|raw` or `|nofilter`. An earlier safe modifier does not make a later fallback, concatenation operand, method result or array value safe. Put `raw` last only for trusted HTML. `|json` is suitable for a script element, not a quoted HTML attribute.
 * **A template cannot run PHP.** Expressions use a fixed grammar: no function calls (only the modifiers above), no assignment, no constants, no `new`. PHP tags written in a template are plain text, and template syntax inside data is never interpreted.
 * **A template cannot read arbitrary files.** Names resolve inside the template directory and the framework's own bundled template directories only; `..`, absolute paths elsewhere and symlinks out of the root are refused.
 * **Missing things are empty.** An undefined variable, key or property, a method on `null`, or an array printed as text gives an empty string, never a warning (which this framework's error handler would turn into an exception).
 
+### Output contexts and template trust
+
+Template files are trusted application code. The native grammar rejects free PHP
+and restricts file includes, but objects passed to templates can expose callable
+public methods. Do not let untrusted editors upload templates or pass privileged
+application objects to templates intended for them. Database text is data and must
+never be parsed again as a template.
+
+Automatic HTML escaping protects ordinary text and values inside quoted HTML
+attributes. It does not validate URL schemes: validate full `href`/`src` URLs in the
+application, and use `|url` for individual URL components. Do not insert ordinary
+variables into inline JavaScript, CSS, event handlers or unquoted attributes.
+In the native engine use `|json` for a complete JavaScript value; inside a quoted
+HTML attribute use `|json|escape`. The JSON modifier is native-only. For the temporary
+Smarty adapter, generate script-safe JSON in application code and mark only that
+trusted serialized value as raw. Explicit `raw` is never suitable for user HTML
+unless it has been handled by a dedicated safe content renderer.
+
+Place escaping after transformations: `{$value|default:$fallback|escape}`. Escaping
+only one operand before concatenating additional data is insufficient; final automatic
+escaping may also encode an already escaped operand again. Normalize data first and
+escape the final output once. Clear data/page caches and compiled templates when
+deploying changed templates or escaping policy. With `compileCheck: true`, native
+freshness includes a source checksum and detects same-size edits with unchanged file
+timestamps. Production `compileCheck: false` skips this per-render checksum.
+
 ### Moving from Smarty
 
-1. Switch `adapterName` to `NativeRenderer` and set `"autoEscape": false`. The pages render the same: the skeleton's pages are identical, and a 43 template corpus matches Smarty byte for byte.
+In 4.0 the temporary Smarty adapter also escapes by default. Legacy layouts must
+mark trusted section HTML, such as `{$header|raw}`, `{$central|raw}` and
+`{$debug|raw}`, explicitly. Ordinary database values remain escaped. A temporary
+`autoEscape: false` setting is available while migrating those templates.
+
+1. For legacy unescaped templates, switch `adapterName` to `NativeRenderer` and temporarily set `"autoEscape": false`. The legacy pages render the same: the skeleton's pages are identical, and a 43 template corpus matches Smarty byte for byte.
 2. Mark trusted HTML with `|raw` (the section variables `{$header}`, `{$central}`, the debug bar, formatted article text) and data with `|escape`. This is valid Smarty 5 too, so you can do it while still on Smarty.
 3. Remove `"autoEscape": false`. From now on every plain `{$x}` is escaped.
 
@@ -482,7 +513,7 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 | `counters` | `views`: `enabled` (default `false`), `hits` (50) and `seconds` (60) per batch, `dir` for the counter files. Batches the article view counter |
 | `i18n` | `enabled` (default `false`), `default`, `locales`, `detect`, `urlPrefix`, `prefixDefault`, `cookie`, `cookieDays`, `dir`. See Internationalisation |
 | `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `{ "enabled": false, "ttl": 60 }` for the whole page cache. See the performance notes |
-| `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (native engine, default `true`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
+| `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (both adapters, default `true`; `false` is a legacy migration option), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |
 | `jwt` | `accessKey` and `refreshKey`, at least 32 characters each |
 | `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed |
@@ -528,7 +559,7 @@ Still open, in the order I recommend:
 * Use bound parameters for every value (see the database layer).
 * Keep `debug` off in production and `Settings.json` out of git.
 * The API authorizes by role (`user`, `editor`, `admin`) checked against the database. Give every new API action an explicit role: `isAuthenticated()` without one only checks that the token is valid.
-* Smarty does not escape output by default. Use the native engine (automatic escaping), or write `{$value|escape}` and `{$html|raw}` explicitly, which works in both.
+* Both WBengine renderer adapters escape output by default in 4.0. Use `{$value|escape}` and `{$html|raw}` explicitly during migration. Set `renderer.autoEscape: false` only as a temporary legacy compatibility setting, then migrate trusted HTML and re-enable escaping.
 * Put TLS in front of the application. The session cookie is marked `Secure` only when the request arrives over HTTPS.
 * Report problems privately to the maintainers.
 
@@ -590,8 +621,9 @@ return a positive integer ID from trusted authentication state or null for a gue
 The resolver must not use request parameters as identity. Other variants, such as
 device or permissions-dependent output, still require explicit keys and suitable TTL
 or invalidation. Personal scope separates identity, not every possible role or state.
-Existing compiled templates are recompiled into a new compiler version and old
-fragment entries are not reused. Clear compiled templates during deployment when
+Fragment keys include compiler version and escaping mode, so safe rendering never
+reuses raw HTML cached during legacy migration. Existing compiled templates are
+recompiled into a new compiler version and old fragment entries are not reused. Clear compiled templates during deployment when
 `compileCheck` is disabled. The legacy `Runtime::cache()` helper remains public-only.
 
 Before deploying 4.0, widen `cms_users.password` to `varchar(255)`. Creating or

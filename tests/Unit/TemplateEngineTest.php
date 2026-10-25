@@ -106,6 +106,50 @@ class TemplateEngineTest extends TestCase
         $this->assertSame('&lt;A&gt;', $this->render('{$x|upper}', ['x' => '<a>']));
     }
 
+    #[DataProvider('modifiersBeforeFallback')]
+    public function testFallbackAfterSafeModifierStillEscapesTheFinalValue(string $modifier): void
+    {
+        $source = '{$value|' . $modifier . '|default:$fallback}';
+        $this->assertSame('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;',
+            $this->render($source, ['value' => '', 'fallback' => '<img src=x onerror="alert(1)">']));
+    }
+
+    public static function modifiersBeforeFallback(): array
+    {
+        return [['escape'], ['nl2br'], ['url'], ['raw'], ['nofilter']];
+    }
+
+    public function testEscapingOneConcatenationOperandDoesNotTrustTheWholeExpression(): void
+    {
+        $this->assertSame('&lt;img src=x&gt;', $this->render('{$prefix|escape ~ $suffix}',
+            ['prefix' => '', 'suffix' => '<img src=x>']));
+        $this->assertSame('&lt;img src=x&gt;', $this->render('{$prefix ~ $suffix|escape}',
+            ['prefix' => '<img src=x>', 'suffix' => '']));
+        $this->assertSame('&lt;img src=x&gt;', $this->render('{$prefix ~ ($suffix|escape)}',
+            ['prefix' => '<img src=x>', 'suffix' => '']));
+    }
+
+    public function testEscapingAMethodArgumentDoesNotTrustItsReturnValue(): void
+    {
+        $object = new class { public function html($arg) { return '<img src=x>'; } };
+        $this->assertSame('&lt;img src=x&gt;',
+            $this->render('{$o->html($arg|escape)}', ['o' => $object, 'arg' => 'x']));
+    }
+
+    public function testEscapingAnArrayKeyDoesNotTrustItsValue(): void
+    {
+        $this->assertSame('&lt;img src=x&gt;',
+            $this->render('{$items[($key|escape)]}', ['items' => ['x' => '<img src=x>'], 'key' => 'x']));
+    }
+
+    public function testWholeExpressionEscapeAndRawRemainExplicit(): void
+    {
+        $vars = ['empty' => '', 'a' => '<b>', 'b' => 'A&B</b>'];
+        $this->assertSame('&lt;b&gt;A&amp;B&lt;/b&gt;', $this->render('{$empty|default:($a ~ $b)|escape}', $vars));
+        $this->assertSame('<b>A&B</b>', $this->render('{$empty|default:($a ~ $b)|raw}', $vars));
+        $this->assertSame('&lt;b&gt;', $this->render('{$empty|default:($a|escape)|raw}', $vars));
+    }
+
     #[DataProvider('oddValues')]
     public function testOddValuesNeverWarn($value, string $expected): void
     {
@@ -481,6 +525,18 @@ class TemplateEngineTest extends TestCase
         $this->assertSame('two', $engine->fetch('t.tpl'));
     }
 
+    public function testCompileCheckDetectsSameSizeEditsWithTheSameTimestamp(): void
+    {
+        $this->write('t.tpl', '{$a}');
+        $source = $this->dir . '/tpl/t.tpl';
+        $timestamp = filemtime($source);
+        $engine = $this->engine()->assign(['a' => 'A', 'b' => 'B']);
+        $this->assertSame('A', $engine->fetch('t.tpl'));
+        $this->write('t.tpl', '{$b}');
+        touch($source, $timestamp);
+        $this->assertSame('B', $engine->fetch('t.tpl'));
+    }
+
     public function testEscapingModeIsPartOfTheCompiledFileIdentity(): void
     {
         $this->write('t.tpl', '{$x}');
@@ -681,6 +737,25 @@ class TemplateEngineTest extends TestCase
         } finally {
             \Wbengine\I18n::configure(null, null);
         }
+    }
+
+    #[DataProvider('fragmentEscapeScopes')]
+    public function testFragmentsDoNotReuseUnescapedHtmlAfterEscapePolicyChanges(string $scope): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'), 60);
+        $this->write('t.tpl', "{cache 'policy' scope='" . $scope . "'}{\$value}{/cache}");
+        $engine = $this->engine(false)->setCacheUserResolver(fn () => 7)
+            ->assign('value', '<img src=x onerror="alert(1)">');
+        $this->assertSame('<img src=x onerror="alert(1)">', $engine->fetch('t.tpl'));
+        $engine->setAutoEscape(true);
+        $this->assertSame('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;', $engine->fetch('t.tpl'));
+        $engine->setAutoEscape(false)->assign('value', 'changed');
+        $this->assertSame('<img src=x onerror="alert(1)">', $engine->fetch('t.tpl'));
+    }
+
+    public static function fragmentEscapeScopes(): array
+    {
+        return [['public'], ['user']];
     }
 
     public function testFragmentCacheKeyCanDependOnVariables(): void

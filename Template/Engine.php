@@ -66,6 +66,11 @@ class Engine
         return $this;
     }
 
+    public function getAutoEscape(): bool
+    {
+        return $this->_autoEscape;
+    }
+
     public function setCompileCheck($value)
     {
         $this->_compileCheck = (bool) $value;
@@ -211,7 +216,8 @@ class Engine
         }
 
         unset($this->_loaded[$file]); // about to be replaced
-        $code = (new Compiler($this->_autoEscape))->compile((string) file_get_contents($source), $name, $this->_signature($source));
+        $sourceText = (string) file_get_contents($source);
+        $code = (new Compiler($this->_autoEscape))->compile($sourceText, $name, $this->_signature($source, $sourceText));
 
         $tmp = tempnam($this->_compileDir, 'tpl');
         if (false === $tmp || false === file_put_contents($tmp, $code) || !@rename($tmp, $file)) {
@@ -225,14 +231,14 @@ class Engine
     }
 
     /**
-     * Modification time and size of a source file. Comparing them with the ones stored
-     * in the compiled file notices an edit even within the same second, which comparing
-     * modification times of the two files would not.
+     * Development freshness check, including same-size edits within one second.
+     * With compileCheck off this checksum is not computed on a cache hit.
      */
-    private function _signature($source)
+    private function _signature($source, ?string $contents = null)
     {
         clearstatcache(true, $source);
-        return filemtime($source) . ':' . filesize($source);
+        $hash = null === $contents ? hash_file('sha256', $source) : hash('sha256', $contents);
+        return filemtime($source) . ':' . filesize($source) . ':' . $hash;
     }
 
     private function _isFresh($source, $compiled)

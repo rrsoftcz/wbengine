@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: dokončen CACHE-01, přechod k SEC-03. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01 a SEC-03 dokončeny, následuje SEC-04. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -38,7 +38,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 
 - [ ] SEC-01: rozpracováno (Codex, 2026-10-25). Pravidla odpovědí, personalizace, hlavičky HIT/304 a řízení cest/bypass hotové; zbývá sjednotit invalidaci všech obsahových zápisů a nové API publish.
 - [x] SEC-02: hotovo (Codex, 2026-10-25). Žádný nový MD5 fallback, kontrola skutečné délky hashe, ověřeno i na reálném varchar(32) se zachovaným legacy přihlášením.
-- [ ] SEC-03: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] SEC-03: hotovo (Codex, 2026-10-25). Oba adaptéry escapují defaultně, native metadata a fallbacky opraveny, režimy cache odděleny, migrační a kontextová pravidla zdokumentována.
 - [ ] SEC-04: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] SEC-05: čeká. Postup a akceptace jsou v odpovídající části níže.
 - [ ] SEC-06: čeká. Postup a akceptace jsou v odpovídající části níže.
@@ -391,3 +391,28 @@ Stav: rozpracováno, Codex. Výchozí kontrolní bod `b3a7116`, lokální a vzd�
 - Rozhodnutí: zachován public-only Runtime helper, vnitřně deleguje stejnému OOP cache mechanismu. Compiler VERSION=2 a prefix tpl:v3 brání použití starých sdílených obalů.
 - Před implementací 17 scénářů chybělo (neexistující resolver/syntaxe); další regresní test zachytil stale User ID. Po opravě celá sada: **862 testů, 1676 assertions**, 10.126 s, PHP 8.4.27 / MySQL 8.4. Lint a git diff --check prošly. Nezávislé review bez konkrétních nálezů.
 - Další krok po push: SEC-03, sjednotit automatické escapování obou rendererů a dokumentovat bezpečné výstupní kontexty; změny vstupních helperů ponechat na následující samostatný balík SEC-04.
+
+### SEC-03: Navazující implementační postup
+
+- Nastavit automatické HTML escapování také ve Smarty adaptéru a přidat setAutoEscape do stejného adapterového rozhraní jako NativeRenderer. Explicitní false zachovat jako dočasnou migrační volbu.
+- Zachovat explicitní raw a escape v bundlovaných šablonách. Historický ekvivalenční corpus porovnává explicitně legacy režim obou rendererů, nikoli nové bezpečné defaulty.
+- Opravit native pipeline: bezpečnost výstupu určuje poslední modifier, nikoli libovolný dřívější safe modifier. Například escape|default:$fallback musí escapovat nový fallback. Změnit compiler version a navázat fragmentové klíče na tuto verzi.
+- Dokumentovat důvěryhodnost šablon a rozdíly HTML textu, atributů, URL a script/JSON kontextu. Zatím neměnit vstupní helpery (SEC-04).
+- Testy: XSS payload výchozím Smarty výpisem, true/false přes adaptéry, žádné dvojí escapování u explicitního escape, raw jen explicitně, unsafe fallback po safe modifieru v native.
+
+- SEC-03, upřesnění z regresních testů: parser musí sledovat pouze modifikátory výsledného výrazu. Escapovaný operand, argument metody ani index pole nesmí označit jiný obsah za bezpečný. Příslušné XSS scénáře před opravou selhaly.
+- SEC-03, rozhodnutí: Smarty compile ID obsahuje režim autoEscape, protože jinak jeho paměťová cache po přepnutí true/false může znovu použít starý template objekt. Původní uživatelské compile ID zůstává součástí výsledného ID.
+- SEC-03, rozhodnutí: testy zachytily starý problém compileCheck, kdy stejná velikost a timestamp neodhalily změnu zdroje. Doplněn SHA-256 podpis při zapnutém compileCheck; produkční zásah s compileCheck=false checksum nepočítá. Cena je další čtení zdroje ve vývojovém režimu, přínosem spolehlivá obnova šablon a bezpečnostních úprav.
+
+- SEC-03, review: žádné nové nálezy v dosavadním diffu. Reviewer navíc reprodukoval starší kolizi fragmentů mezi autoEscape=false a true. Zahrnuta do tohoto bezpečnostního balíku: oba scope ji potvrdily RED testem, klíč nově obsahuje také režim escapování. Ruční vyčištění cache tak není jedinou ochranou proti převzetí raw HTML z migračního režimu.
+
+### 2026-10-25: SEC-03 dokončen
+
+- Hotovo: automatické escapování obou rendererů, explicitní migrační autoEscape=false, oprava modifikátorů finálního výrazu v native parseru a zachování raw/escape pro explicitně určené kontexty.
+- Výchozí 8 scénářů XSS/defaultů před opravou selhalo; další 3 scénáře potvrdily přenos nesprávné důvěry z operandu, argumentu metody a indexu pole. Opraveno bez rozšiřování gramatiky template tagů.
+- Samostatný RED test potvrdil zastaralou kompilaci při stejném timestampu a délce. SHA-256 freshness se nyní počítá jen při compileCheck=true; podpis při kompilaci vychází ze stejného zdrojového snapshotu.
+- Review dosavadního diffu bez nových nálezů. Starší kolize mezi raw a escaped fragmenty navíc opravena podle 2 RED testů; režim escapování a compiler version jsou součástí klíče veřejných i osobních fragmentů.
+- Finální ověření: **878 testů / 1703 assertions**, 9.859 s, PHP 8.4.27 / MySQL 8.4; composer lint a git diff --check prošly.
+- Dokumentace popisuje bezpečný HTML text, quoted atributy, validaci URL schémat, script-safe JSON a důvěryhodnost šablon. Smarty je stále dočasný adaptér; odstranění z runtime závislostí patří do TPL-03.
+- CACHE-01 je uložen a pushnut jako `f998303`. Tento následující kontrolní bod zahrnuje kód SEC-03 i stav plánu; přesný hash je v git log pracovní větve.
+- Další konkrétní krok: SEC-04, inventarizace volání Http::Post/Get/getCookie/secureClean, zavedení nezměněných vstupů a explicitní validace, regresní testy apostrofů, lomítek, polí a chybějících hodnot. Neměnit současně autentizační model nebo routování. SEC-01 obsahová invalidace navazuje na nové write API v pozdější etapě.

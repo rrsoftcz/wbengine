@@ -199,6 +199,7 @@ class ExpressionParser
         while ($this->_isOp('||') || $this->_isWord('or')) {
             $this->_pos++;
             $left = '(' . $left . ' || ' . $this->_parseAnd() . ')';
+            $this->_topModifiers = [];
         }
         return $left;
     }
@@ -209,6 +210,7 @@ class ExpressionParser
         while ($this->_isOp('&&') || $this->_isWord('and')) {
             $this->_pos++;
             $left = '(' . $left . ' && ' . $this->_parseEquality() . ')';
+            $this->_topModifiers = [];
         }
         return $left;
     }
@@ -219,6 +221,7 @@ class ExpressionParser
         while (($t = $this->_peek()) && 'op' === $t[0] && in_array($t[1], array('===', '!==', '==', '!='), true)) {
             $this->_pos++;
             $left = '(' . $left . ' ' . $t[1] . ' ' . $this->_parseRelational() . ')';
+            $this->_topModifiers = [];
         }
         return $left;
     }
@@ -229,6 +232,7 @@ class ExpressionParser
         while (($t = $this->_peek()) && 'op' === $t[0] && in_array($t[1], array('<', '<=', '>', '>='), true)) {
             $this->_pos++;
             $left = '(' . $left . ' ' . $t[1] . ' ' . $this->_parseAdditive() . ')';
+            $this->_topModifiers = [];
         }
         return $left;
     }
@@ -242,6 +246,7 @@ class ExpressionParser
             $left = ('~' === $t[1])
                 ? '(Runtime::s(' . $left . ') . Runtime::s(' . $right . '))'
                 : '(Runtime::n(' . $left . ') ' . $t[1] . ' Runtime::n(' . $right . '))';
+            $this->_topModifiers = [];
         }
         return $left;
     }
@@ -255,6 +260,7 @@ class ExpressionParser
             $left = ('*' === $t[1])
                 ? '(Runtime::n(' . $left . ') * Runtime::n(' . $right . '))'
                 : 'Runtime::arith(' . var_export($t[1], true) . ', ' . $left . ', ' . $right . ')';
+            $this->_topModifiers = [];
         }
         return $left;
     }
@@ -263,11 +269,15 @@ class ExpressionParser
     {
         if ($this->_isOp('!') || $this->_isWord('not')) {
             $this->_pos++;
-            return '!' . $this->_parseUnary();
+            $code = '!' . $this->_parseUnary();
+            $this->_topModifiers = [];
+            return $code;
         }
         if ($this->_isOp('-')) {
             $this->_pos++;
-            return '(-Runtime::n(' . $this->_parseUnary() . '))';
+            $code = '(-Runtime::n(' . $this->_parseUnary() . '))';
+            $this->_topModifiers = [];
+            return $code;
         }
         return $this->_parsePostfix();
     }
@@ -294,6 +304,7 @@ class ExpressionParser
                 } else {
                     $code = 'Runtime::prop(' . $code . ', ' . var_export($name[1], true) . ')';
                 }
+                $this->_topModifiers = [];
             } elseif ('.' === $t[1] && $t[3]) {
                 // $a.b is an array key, but only when written without spaces.
                 $this->_pos++;
@@ -303,11 +314,13 @@ class ExpressionParser
                 }
                 $this->_pos++;
                 $code = 'Runtime::item(' . $code . ', ' . ('num' === $key[0] ? $key[1] : var_export($key[1], true)) . ')';
+                $this->_topModifiers = [];
             } elseif ('[' === $t[1] && $t[3]) {
                 $this->_pos++;
                 $inner = $this->_parseExpression();
                 $this->_expectOp(']');
                 $code = 'Runtime::item(' . $code . ', ' . $inner . ')';
+                $this->_topModifiers = [];
             } elseif ('|' === $t[1]) {
                 $code = $this->_parseModifier($code);
             } else {
@@ -330,12 +343,13 @@ class ExpressionParser
             $this->_fail('unknown modifier "' . $name[1] . '"');
         }
 
+        $outerModifiers = $this->_topModifiers;
         $args = array();
         while ($this->_isOp(':')) {
             $this->_pos++;
             $args[] = $this->_parseOperand();
         }
-        $this->_topModifiers[] = $modifier;
+        $this->_topModifiers = array_merge($outerModifiers, [$modifier]);
 
         if (null === self::MODIFIERS[$modifier]) {
             return $value; // raw and nofilter only switch the automatic escaping off
@@ -376,6 +390,7 @@ class ExpressionParser
 
     private function _parsePrimary()
     {
+        $this->_topModifiers = [];
         $t = $this->_peek();
         if (null === $t) {
             $this->_fail('the expression ends too early');

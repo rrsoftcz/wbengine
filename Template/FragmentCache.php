@@ -42,7 +42,9 @@ class FragmentCache
         }
 
         $locale = I18n::isEnabled() ? I18n::locale() : '';
-        $cacheKey = 'tpl:v3:' . hash('sha256', serialize([$scope, $userId, $locale, Runtime::s($key)]));
+        $cacheKey = 'tpl:v3:' . hash('sha256', serialize([
+            Compiler::VERSION, $this->getParent()->getAutoEscape(), $scope, $userId, $locale, Runtime::s($key),
+        ]));
         $html = Cache::fetch($cacheKey, $found);
         if ($found) {
             return (string) $html;

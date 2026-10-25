@@ -10,8 +10,20 @@ documented here, see the git tags.
 Target: **4.0.0**. The major-version modernization is in progress; the roadmap tracks
 the remaining template, Markdown, API and central administration work.
 
+### Changed
+
+- Both renderer adapters now HTML-escape by default. Set `renderer.autoEscape` to
+  false only for a temporary legacy migration, and mark trusted HTML explicitly.
+
 ### Fixed
 
+- Native output escaping now follows the final modifier of the complete expression;
+  modifiers inside method arguments, array keys or concatenation operands no longer
+  suppress escaping of unrelated output. Earlier escaping does not trust a later fallback.
+- Native compile checks detect same-size source edits with unchanged timestamps.
+  Disabled production compile checks skip the checksum.
+- Smarty template identity includes escape mode so switching that setting cannot
+  reuse an incompatible in-memory template. Native fragment identity includes compiler version and escaping mode.
 - `Auth::setIssuedTime()` updates `iat` without overwriting the JWT issuer.
 - New passwords are refused when the database column cannot hold a modern hash,
   instead of silently falling back to MD5. Legacy password verification is retained.
