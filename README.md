@@ -292,11 +292,17 @@ mark trusted section HTML, such as `{$header|raw}`, `{$central|raw}` and
 `{$debug|raw}`, explicitly. Ordinary database values remain escaped. A temporary
 `autoEscape: false` setting is available while migrating those templates.
 
-1. For legacy unescaped templates, switch `adapterName` to `NativeRenderer` and temporarily set `"autoEscape": false`. The legacy pages render the same: the skeleton's pages are identical, and a 43 template corpus matches Smarty byte for byte.
-2. Mark trusted HTML with `|raw` (the section variables `{$header}`, `{$central}`, the debug bar, formatted article text) and data with `|escape`. This is valid Smarty 5 too, so you can do it while still on Smarty.
-3. Remove `"autoEscape": false`. From now on every plain `{$x}` is escaped.
+1. Inventory each application's templates, direct Smarty calls, plugins and configuration. Run the read-only `tests/tools/template-inventory.php` aid and review its hints. Successful native compilation alone is not proof of compatibility: unknown Smarty tags can remain literal text.
+2. Convert unsupported constructs explicitly. Native include uses a path expression without `file=`, and set replaces Smarty assign. The 43-scenario legacy common-subset corpus remains covered, but the current skeleton also uses native-only set/t tags. Default with zero, truncate limits and nl2br output differ between adapters; use the new migration corpus to review expected output.
+3. Keep automatic escaping enabled, mark only trusted section/formatted HTML with `|raw`, and verify ordinary data in its output context. `autoEscape: false` is a temporary option for controlled legacy migration, not a compatibility guarantee.
+4. After comparing real page output and login/CSRF/logout, locale and cache behavior, select `NativeRenderer` and clear compiled, fragment, page and external HTML caches. Keep matching source/configuration backups for rollback; native-only templates cannot simply be switched back to Smarty.
 
-Not supported: Smarty plugins, `{capture}`, `{section}`, config files, custom delimiters, `{$smarty...}`, template inheritance (`{extends}`/`{block}`). Use Smarty for templates that need them.
+See [the versioned template inventory and migration contract](ref-template-migration.md)
+for source identities, adapter API differences, exact expected outputs and the
+TPL-02/TPL-03 gates. The temporary Smarty adapter remains installed in this phase.
+Smarty plugins, capture/section, config files, custom delimiters, smarty metadata
+and inheritance are outside the supported native language; migrate them before
+removing the compatibility dependency.
 
 ### Performance
 

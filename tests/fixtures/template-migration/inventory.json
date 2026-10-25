@@ -1,0 +1,289 @@
+{
+    "framework": [
+        {
+            "path": "Application\/error.tpl",
+            "sha256": "f7b3b94bf9522ee3baf56dd7e4fba60072ff398722647d498792bdf8c718163a",
+            "consumer": "renderer",
+            "tags": [],
+            "modifiers": {
+                "escape": 5
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Application\/exception.tpl",
+            "sha256": "8a93c035a27fadcd8768fc678aff361ffaa412ab4c6b599938abe6e05cc26f2f",
+            "consumer": "sprintf",
+            "compile": "not-applicable",
+            "status": "outside-renderer"
+        },
+        {
+            "path": "Box\/Article\/View\/Article.tpl",
+            "sha256": "e8726bafb07892a58939760b189731784ef4defab729996c593c925a945c2698",
+            "consumer": "renderer",
+            "tags": {
+                "if": 4
+            },
+            "modifiers": {
+                "escape": 6,
+                "raw": 2
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Box\/Login\/View\/Login.tpl",
+            "sha256": "a6b031e82d820eae74466a9eab69d62b1433f1a4528b54ec49abcae6595bc60f",
+            "consumer": "renderer",
+            "tags": {
+                "if": 4,
+                "else": 1
+            },
+            "modifiers": {
+                "escape": 8,
+                "default": 1
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Box\/Login\/View\/Logout.tpl",
+            "sha256": "3542ad0ccfb9c5d0a14f84ab1807e16697b43909d2a33c5d4d229522b4c532b1",
+            "consumer": "renderer",
+            "tags": [],
+            "modifiers": {
+                "escape": 3
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Box\/exception.tpl",
+            "sha256": "8a93c035a27fadcd8768fc678aff361ffaa412ab4c6b599938abe6e05cc26f2f",
+            "consumer": "sprintf",
+            "compile": "not-applicable",
+            "status": "outside-renderer"
+        },
+        {
+            "path": "Exception\/exception.tpl",
+            "sha256": "a50616717207a4cd4acf63598f0927ba14dbf68edb8d364443cdb5644e0c25e9",
+            "consumer": "sprintf",
+            "compile": "not-applicable",
+            "status": "outside-renderer"
+        }
+    ],
+    "application": [
+        {
+            "path": "404.tpl",
+            "sha256": "881e0eec87d88bc72c44903c82c270d5f3713b72ef28af88b8093b34003b2878",
+            "consumer": "renderer",
+            "tags": {
+                "t": 7
+            },
+            "modifiers": {
+                "lurl": 1
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/About.tpl",
+            "sha256": "c886be4b46d964aec5f42dfb02f5926211c795e54f78b0018e72172400051bf1",
+            "consumer": "renderer",
+            "tags": {
+                "t": 12
+            },
+            "modifiers": {
+                "lurl": 1
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/Api.tpl",
+            "sha256": "6f85d82bf099a08624da46759d850387fc491c3f37952eea8558514fe9206e31",
+            "consumer": "renderer",
+            "tags": {
+                "t": 5
+            },
+            "modifiers": [],
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/Caching.tpl",
+            "sha256": "9ba97154769ba4cc8849f4482e8c2e6443ef557fe76ba579fd2cf52451c0b843",
+            "consumer": "renderer",
+            "tags": {
+                "t": 13,
+                "if": 4,
+                "else": 2
+            },
+            "modifiers": [],
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/Features.tpl",
+            "sha256": "9476dce3ca35c0e3d08bf38f8354be36488bf09664aa8035f9c4c2406c313f8a",
+            "consumer": "renderer",
+            "tags": {
+                "t": 34
+            },
+            "modifiers": {
+                "lurl": 9
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/Languages.tpl",
+            "sha256": "2770b87602626fd6225e1d86a090c717a56fea5a758698a8f9e6753e3e76da66",
+            "consumer": "renderer",
+            "tags": {
+                "t": 10,
+                "foreach": 4
+            },
+            "modifiers": {
+                "default": 2,
+                "upper": 1,
+                "number": 1,
+                "ldate": 2,
+                "lurl": 1
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/LocalStoryBox.tpl",
+            "sha256": "b05e3d39695068da92e96260394be7e63bfc946b713d7e18893bfbe1352e00f1",
+            "consumer": "renderer",
+            "tags": {
+                "if": 2
+            },
+            "modifiers": {
+                "raw": 2
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/Page.tpl",
+            "sha256": "4b37147347a596cf850da5ae372755983128ecf9a0c1487e72c592e17ed7e8a1",
+            "consumer": "renderer",
+            "tags": {
+                "t": 5,
+                "foreach": 2,
+                "if": 12,
+                "else": 3
+            },
+            "modifiers": {
+                "lurl": 3,
+                "t": 3,
+                "raw": 2
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/Profile.tpl",
+            "sha256": "78a90ef343f8e4be094736eb7041b2760ac61d11d4e1d0fd7f2b74e3ca058e24",
+            "consumer": "renderer",
+            "tags": {
+                "t": 5,
+                "if": 2,
+                "else": 1
+            },
+            "modifiers": [],
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/Structure.tpl",
+            "sha256": "1d13c6de5b9957c4677c0be5ecc0ffffa91e8eaf3a05cf7f5c944d76abbb6b05",
+            "consumer": "renderer",
+            "tags": {
+                "t": 10,
+                "foreach": 2,
+                "if": 2,
+                "else": 1
+            },
+            "modifiers": [],
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Central\/Templates.tpl",
+            "sha256": "5f721a2006a3d85a39ec5133a2c9230c338ce0bc93da2a6e8da5bb62f5576255",
+            "consumer": "renderer",
+            "tags": {
+                "t": 7,
+                "foreach": 2,
+                "if": 2,
+                "else": 1
+            },
+            "modifiers": {
+                "raw": 1,
+                "default": 1,
+                "upper": 1,
+                "truncate": 1,
+                "join": 1,
+                "number": 1,
+                "ldate": 1
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "Header\/Jumbotron.tpl",
+            "sha256": "c4d3d4c3433aa190e693104b01a5a42621ca6b9bfe086ddb805601a1cfc56279",
+            "consumer": "renderer",
+            "tags": {
+                "t": 10
+            },
+            "modifiers": {
+                "lurl": 2
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        },
+        {
+            "path": "site.tpl",
+            "sha256": "4c61b20de569e874254977cb03e153edbb09d56866c7078d01e85fa4aa155fa8",
+            "consumer": "renderer",
+            "tags": {
+                "set": 1,
+                "if": 8,
+                "foreach": 8,
+                "t": 16,
+                "else": 2
+            },
+            "modifiers": {
+                "lurl": 9,
+                "default": 2,
+                "upper": 1,
+                "raw": 3
+            },
+            "reviewHints": [],
+            "compile": "compiled",
+            "status": "compiled-only"
+        }
+    ]
+}

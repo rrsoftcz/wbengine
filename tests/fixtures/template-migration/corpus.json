@@ -1,0 +1,180 @@
+{
+  "escaped title": {
+    "source": "<h1>{$title}</h1>",
+    "vars": {
+      "title": "<b>A & B</b>"
+    },
+    "expected": {
+      "native": "<h1>&lt;b&gt;A &amp; B&lt;/b&gt;</h1>",
+      "smarty": "<h1>&lt;b&gt;A &amp; B&lt;/b&gt;</h1>"
+    }
+  },
+  "trusted section": {
+    "source": "{$html|raw}",
+    "vars": {
+      "html": "<section>Content</section>"
+    },
+    "expected": {
+      "native": "<section>Content</section>",
+      "smarty": "<section>Content</section>"
+    }
+  },
+  "explicit escape": {
+    "source": "{$html|escape}",
+    "vars": {
+      "html": "&amp;<p>"
+    },
+    "expected": {
+      "native": "&amp;amp;&lt;p&gt;",
+      "smarty": "&amp;amp;&lt;p&gt;"
+    }
+  },
+  "legacy escape optout": {
+    "source": "{$html}",
+    "vars": {
+      "html": "<p>Legacy</p>"
+    },
+    "expected": {
+      "native": "<p>Legacy</p>",
+      "smarty": "<p>Legacy</p>"
+    },
+    "autoEscape": false
+  },
+  "fallback missing": {
+    "source": "{$missing|default:'anonymous'}",
+    "vars": {},
+    "expected": {
+      "native": "anonymous",
+      "smarty": "anonymous"
+    }
+  },
+  "array and condition": {
+    "source": "{if $page.active}{$page.title}{else}inactive{/if}",
+    "vars": {
+      "page": {
+        "active": true,
+        "title": "A & B"
+      }
+    },
+    "expected": {
+      "native": "A &amp; B",
+      "smarty": "A &amp; B"
+    }
+  },
+  "menu method": {
+    "source": "{foreach $menu as $m}<a class=\"{$m->active()}\" href=\"{$m->link}\">{$m->name}</a>{/foreach}",
+    "vars": {},
+    "expected": {
+      "native": "<a class=\"selected\" href=\"/a/\">A &amp; B</a>",
+      "smarty": "<a class=\"selected\" href=\"/a/\">A &amp; B</a>"
+    }
+  },
+  "empty menu branch": {
+    "source": "{foreach $items as $i}{$i}{foreachelse}empty{/foreach}",
+    "vars": {
+      "items": []
+    },
+    "expected": {
+      "native": "empty",
+      "smarty": "empty"
+    }
+  },
+  "literal and comment": {
+    "source": "{literal}{$example}{/literal}{* hidden *}",
+    "vars": {},
+    "expected": {
+      "native": "{$example}",
+      "smarty": "{$example}"
+    }
+  },
+  "assignment rewrite": {
+    "source": {
+      "native": "{set $name = $title}{$name}",
+      "smarty": "{assign var=\"name\" value=$title}{$name}"
+    },
+    "vars": {
+      "title": "A & B"
+    },
+    "expected": {
+      "native": "A &amp; B",
+      "smarty": "A &amp; B"
+    },
+    "migration": "Rewrite assign to set; do not copy Smarty attribute syntax."
+  },
+  "include rewrite": {
+    "source": {
+      "native": "{include 'partial.tpl'}",
+      "smarty": "{include file=\"partial.tpl\"}"
+    },
+    "vars": {
+      "title": "A & B"
+    },
+    "expected": {
+      "native": "<p>A &amp; B</p>",
+      "smarty": "<p>A &amp; B</p>"
+    },
+    "partials": {
+      "partial.tpl": "<p>{$title}</p>"
+    },
+    "migration": "Use a path expression without file=; resolve only inside allowed roots."
+  },
+  "zero default difference": {
+    "source": "{$value|default:'fallback'}",
+    "vars": {
+      "value": 0
+    },
+    "expected": {
+      "native": "fallback",
+      "smarty": "0"
+    },
+    "migration": "Native default uses empty(), including 0 and false; explicitly prepare presentation data."
+  },
+  "truncate length difference": {
+    "source": "{$value|truncate:5}",
+    "vars": {
+      "value": "abcdefgh"
+    },
+    "expected": {
+      "native": "abcde...",
+      "smarty": "ab..."
+    },
+    "migration": "Native length limits the retained text, Smarty length includes suffix."
+  },
+  "newline markup difference": {
+    "source": "{$value|nl2br}",
+    "vars": {
+      "value": "a\nb"
+    },
+    "expected": {
+      "native": "a<br>\nb",
+      "smarty": "a&lt;br /&gt;\nb"
+    },
+    "migration": "Native nl2br escapes input and emits HTML; Smarty automatic escaping encodes the generated break. Review pipelines instead of assuming markup equivalence."
+  },
+  "native translation tag": {
+    "source": "{t 'migration.unknown'}",
+    "vars": {},
+    "expected": {
+      "native": "migration.unknown"
+    },
+    "migration": "t tag is native; Smarty adapter registers modifiers only."
+  },
+  "native fragment": {
+    "source": "{cache 'migration' ttl=60}Hi {$title}{/cache}",
+    "vars": {
+      "title": "A & B"
+    },
+    "expected": {
+      "native": "Hi A &amp; B"
+    },
+    "migration": "Native cache uses WBengine Cache; no driver means render every time."
+  },
+  "unknown tag stays text": {
+    "source": "{assign var=\"x\" value=\"y\"}END",
+    "vars": {},
+    "expected": {
+      "native": "{assign var=\"x\" value=\"y\"}END"
+    },
+    "migration": "Current behavior only, never a compatibility certificate; migrate before switching."
+  }
+}

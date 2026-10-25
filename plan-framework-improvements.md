@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01, PERF-03 a PERF-05 dokončeny. PERF-04 změřen, implementace URL mapy odložena; zjištěná neshoda collation vedena jako FIX-02 před release. Následuje TPL-01. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01, PERF-03 a PERF-05 dokončeny. PERF-04 změřen, implementace URL mapy odložena; zjištěná neshoda collation vedena jako FIX-02 před release. TPL-01 dokončen, následuje TPL-02. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -59,7 +59,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 
 - [x] PLAN-01: hotovo, schválená rozhodnutí a etapový plán zapsány, 2026-10-25.
 - [x] BASE-01: hotovo, výchozí sada 802 testů / 1534 assertions v odděleném Docker prostředí, 2026-10-25.
-- [ ] TPL-01: čeká, inventura Smarty konstrukcí a kontrola kompatibility.
+- [x] TPL-01: hotovo (Codex, 2026-10-26), inventura 7 frameworkových a 13 vzorových zdrojů, read-only compile report, corpus očekávaných výstupů a rozdílů a ref-template-migration.md.
 - [ ] TPL-02: čeká, dokončení NativeRendereru a migrace šablon; závisí na TPL-01 a SEC-03.
 - [ ] TPL-03: čeká, volitelná kompatibilní vrstva, odstranění Smarty z jádra; závisí na TPL-02.
 - [ ] MD-01: čeká, vlastní CommonMark parser a bezpečný HTML renderer.
@@ -631,3 +631,17 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Finální ověření: kompletní MySQL sada `composer test`, **1133 testů / 2771 assertions**, 14.188 s, 34 MB. MariaDB 11.4 BoxIndexTest/BoxLookupTest **7 testů / 16 assertions**. Oba benchmarky prošly. `composer lint` a `git diff --check` prošly. Následuje společný commit/push a CI draft PR #2.
 - Opakování MySQL: `docker compose -p wbengine-modernization run --rm php php tests/benchmarks/content-lookup.php`. MariaDB spustit v samostatném Compose projektu s DB_IMAGE=mariadb:11.4 a stejným PHP image, po měření zastavit pouze jeho DB. Nevyměňovat image běžícího projektu s cizími daty.
 - Další konkrétní krok: TPL-01, inventura Smarty konstrukcí v jádře i vzorové aplikaci, identifikace kompatibilních nativních konstrukcí, testovací corpus a migrační smlouva. FIX-02 musí být vyřešen před návratem k URL mapě a před release. SEC-01 obsahová invalidace navazuje na write API; žádný merge/tag/deployment se neprovádí.
+
+
+### 2026-10-26: TPL-01 dokončen
+
+- Odpovědnost: Codex. Referenční inventura a migrační smlouva uložena v `ref-template-migration.md` podle prefixového systému; zdrojové identity v `tests/fixtures/template-migration/inventory.json`. Framework vychází z b7cf3d4. Vzorová aplikace src/View pouze čtena, čistý commit d22281fc86e9efd63a333ac6668b9261f22777e9; žádné změny tohoto druhého repozitáře.
+- Inventura knihovny: 7 `.tpl`, z toho 4 rendererové zdroje (Application/error, Article, Login, Logout) a 3 sprintf šablony výjimek. Vzorová aplikace: 13 zdrojů, již nastaven NativeRenderer. Všechny rendererové zdroje se nativně kompilují; nejde o důkaz vykreslení celého webu. Příklady používají navíc nativní set/t, foreach, objektové metody a i18n/formátovací modifikátory.
+- Read-only nástroj `tests/tools/template-inventory.php [application-template-dir]` vypisuje JSON se SHA-256, consumer, compile stavem a heuristickými reviewHints. Pouze volá stávající Compiler::compile, nikdy nevykonává zdroj ani nevytváří kompiláty, nespouští DB/session. Ignoruje symlinky a vendor/node_modules/.git/Compiled/tests. Úspěšná kompilace je jen compiled-only; neznámé Smarty tagy mohou být textem. Hints nejsou lexer, runtime validace ani záruka kompatibility.
+- Nový verzovaný corpus: 17 pojmenovaných scénářů / 31 konkrétních výstupů native/Smarty, explicitní očekávané výstupy místo pouhé rovnosti adaptérů. Dalších 5 scénářů vykresluje přímo skutečné frameworkové šablony s automatickým escapováním, obě větve CAPTCHA a zachování důvěryhodného HTML článku. Integrační souběh s API/session/cache dosavadní sady zachován.
+- Potvrzené rozdíly: native default nahrazuje i nulu, Smarty ji zachová; truncate native počítá délku před suffixem, Smarty včetně suffixu; native nl2br vydává escapovaný vstup a HTML break, Smarty se zapnutým autoescape escapuje i vložený break. Include a přiřazení vyžadují převod syntaxe. Tag t/set je native-only, přímé Smarty API a pluginy vyžadují aplikační migraci. Změny runtime modifikátorů nejsou součástí TPL-01.
+- Rozhodnutí: neopakovat slib úplné Smarty kompatibility, zachovat malý kompilovaný jazyk a stávající Application/Renderer/Adapter/Template strom. README již netvrdí, že libovolné legacy stránky nebo aktuální skeleton jsou automaticky shodné po pouhém přepnutí adaptéru. Šablony jsou důvěryhodný kód vývojáře, protože mohou volat metody přiřazených objektů; Markdown bude samostatný obsah bez této logiky.
+- Migrační smlouva zachycuje také no-op config/cache API a ignorované cache_id/compile_id/nocache v NativeRenderer, odmítnutí delimiterů, vyčištění všech cache při nasazení a rollback kompatibilních zdrojů/config. Návrat na Smarty nestačí změnou adaptéru u native-only set/t. Composer a produkční renderery beze změny.
+- TDD: RED chybějící inventurní nástroj a RED chybějící corpus; GREEN po dodání implementace/fixtures. Kalibrace očekávaných výstupů odhalila Smarty autoescape u nl2br, zaznamenáno jako vědomý rozdíl, nikoli skrytá úprava produkčního renderu. Izolovaná sada **37 testů / 87 assertions**. Celá MySQL sada **1170 testů / 2858 assertions**, 14.367 s, 34 MB, PHP 8.4.27 / MySQL 8.4. Smarty lokálně 5.8.5. `composer lint` a `git diff --check` prošly.
+- Nezávislé read-only review bez důležitých nálezů nebo blokací; ověřena read-only povaha nástroje, nezávislost CI na externím checkoutu a shoda dokumentace s adaptéry. Následuje společný commit/push této etapy včetně plánu a CI draft PR #2. Referenční dokument obsahuje přesné příkazy opakování inventury a corpus testů; CI nepotřebuje sousední checkout.
+- Další konkrétní krok: TPL-02, nejprve diagnostika známých nepodporovaných Smarty řídicích tagů v existujícím Compileru (včetně uzavíracích tagů, cesta/řádek), zachovat CSS/JS/literal. Současný assign-as-text charakterizační test změnit na očekávanou výjimku. Potom migrační corpus include/set/modifikátorů a HTTP smoke vzorového webu (login/POST logout, locale, 404, články, fragmenty/page cache); zohlednit jeho starý GET logout odkaz a debug-only diagnostické proměnné. Balíček Smarty odstranit až v TPL-03 po těchto branách. FIX-02 a SEC-01 zůstávají otevřené release podmínky.
