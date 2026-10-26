@@ -119,6 +119,7 @@ class Api
 
         try {
 
+            $this->Register(new \Wbengine\Api\V2($this));
             $this->setHeaderOptions();
             $this->registerRootApi();
             $this->Register(new Section($this));

@@ -821,6 +821,13 @@ Deployment notes for cookie based refresh (unchanged from earlier versions):
 
 To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action in `$this->isAuthenticated(fn () => ...)`, and add a `Routes` class next to it. Look at `Api/Section.php` and `Api/Section/Routes.php` as the smallest example.
 
+The versioned server-to-server API foundation is available at `/api/v2` and
+`/api/v2/capabilities`, with HTTPS scoped integration identity at `/api/v2/identity`.
+Keys are hashed on the website and provisioned/revoked only through trusted local
+model APIs in this phase. Discovery accurately reports unavailable content CRUD.
+See [API v2 contracts, schema upgrade and audit/transaction rules](ref-api-v2.md).
+V1 remains supported; V2 intentionally has no browser CORS and rejects OPTIONS.
+
 ## Authentication, sessions and users
 
 * **Passwords** are stored with `password_hash()`. Legacy unsalted MD5 hashes still work and are upgraded to a modern hash on the user's next successful login, provided `cms_users.password` is at least 60 characters wide (`varchar(255)` is recommended). If the column is still narrow the legacy hash is kept and a notice is written to the error log, so a narrow column can never lock a user out.

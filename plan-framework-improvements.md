@@ -66,10 +66,10 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] MD-02: hotovo (Codex, 2026-10-26), lazy App Markdown, bezpečné .md zdroje/layout, explicitní legacy_html/markdown v DB, mixed překlady a souběhový format guard.
 - [ ] MD-03: čeká, převod Texy včetně překladů a záloh; závisí na MD-02.
 - [ ] MD-04: čeká, odstranění Texy po migrační bráně; závisí na MD-03.
-- [ ] API-01: čeká, kontrakt a capability discovery API v2; závisí na ARCH-01.
-- [ ] API-02: čeká, CRUD obsahu a registrované typy boxů; závisí na API-01 a MD-02.
+- [x] API-01: hotovo (Codex, 2026-10-26), Api/V2 tree, veřejné minimální discovery a skutečné capability flags, jednotný JSON/error/pagination kontrakt.
+- [ ] API-02: připraveno, CRUD obsahu/registrované typy boxů; API-01 a MD-02 již hotové.
 - [ ] API-03: čeká, koncepty, revize, publikování a náhled; závisí na API-02.
-- [ ] API-04: čeká, integrační klíče, scopes, audit a invalidace; závisí na API-01.
+- [ ] API-04: rozpracováno (Codex, 2026-10-26), hashed keys/scopes/revoke/audit a transakční hranice hotové; navazuje rate limiting, retence a invalidace obsahových zápisů.
 - [ ] ADM-01: čeká, samostatný SvelteKit projekt a MySQL schéma.
 - [ ] ADM-02: čeká, účty na pozvánku, MFA, oprávnění po webech; závisí na ADM-01.
 - [ ] ADM-03: čeká, registr webů, šifrované klíče, bezpečný API klient; závisí na ADM-02 a API-04.
@@ -701,3 +701,12 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Nezávislé review našlo souběhovou chybu čtení/validace formátu před UPDATE. Deterministický fork/two-connection RED ji prokázal pod FOR UPDATE zámkem; conditional UPDATE hlídá původní formát, stale změna a initial-INSERT kolize odmítnuty, legitimní no-op povolen. Nemění transakční hranice volajícího. Změna existujícího formátu vyžaduje oba textové fieldy (nahradit/nebo null fallback).
 - Izolované první770testové ověření zdrojů/parseru/obsahu/regresí **770/2064**; finální zaměřená DB regrese po souběhovém fixu **65testů/221assertions**. Společná sada dosud verzovaných testů + MD02 + dokončené API foundation a UrlRequest **1966testů/5178assertions**,14.825s,46MB,PHP8.4.27/MySQL8.4. composer lint a git diff --check prošly. API/URL soubory budou mít následující samostatné checkpointy, nejsou přimíchány do MD02commitu. MD01 má všech5CIzelených.
 - Nová ref-markdown.md sekce popisuje formáty, null/empty, limity a migrační postup. Žádné nové závislosti, runtimeDDL ani přepsání aplikačních dat. Migraceobsahu MD03 již vzniká ve zvlášť vlastněných nových souborech, se zálohami/dryrun/rollback a explicitním HTML čiTexy zdrojem. Následuje MD02 commit/push a CI; Root dál pokračuje appTPL02C a API foundation.
+
+
+### 2026-10-26: API-01 a základ API-04 dokončen
+
+- Současný Api controller registruje Wbengine\Api\V2 a jeho lazy Routes/Model/Contract/Problem, Model dědí ModelAbstract. Minimální veřejné GET discovery bez DB, HTTPS identity s discovery:read scope. Jednotné JSON chyby/stránkovací a object-body helpery. Capability flags CRUD/preview/publish jsou false, nepředstírají hotové funkce. V1 zachováno; V2 server-to-server bez CORS, OPTIONS405.
+- Lokální důvěryhodný Model provision/revoke kontroluje aktuální DB ADMIN roli, vrací raw náhodný klíč jen jednou, DB hashSHA256 a konečný scope whitelist. Každý request čte active/revoked stav; audit rozlišuje integrationID, lokální adminID a omezený nedůvěryhodný actor popisek bez vlivu na autorizaci. Optional002 SQL bez runtimeDDL, bez veřejného provisioning endpointu.
+- Nezávislé review bez auth bypassu našlo vlastnictví transakcí. RED pro provision/revoke x BEGIN/autocommit(false) prokázal nechtěný commit caller dat; SET TRANSACTION READ WRITE guard odmítne active txn před begin a jeho rollback zůstane volajícímu. MySQL errno1568 mapováno na409nested_transaction, jiné chyby se nepolykají. Regrese revocation auditfailure potvrzuje rollback revokace a dále platný klíč.
+- API focused Docker **22testů/126assertions**, PHP8.4.27/MySQL8.4, nové integrační fixture pouzeTEMP tabulky. Společná ověřená sada včetně MD02 a UrlRequest **1966/5178**,14.825s46MB; tyto další změny mají vlastní commity. composer lint a git diff --check prošly, po drobném doplnění dědičnosti ModelAbstract znovu všech22/126green. HTTP smoke vzorové aplikace potvrzuje v2discovery a v1unauth401. Ref-api-v2.md dokumentuje instalaci/kontrakty/omezení.
+- API-04 zůstává rozpracován pro rate limiting, retenci auditu a obsahovou invalidaci. Následuje API-02/03 obsahová tree API, ETag, revize/publish, bezpečné obrázky a připojení centrální administrace. Nejsou implementované ani vzdáleně spouštěné libovolné PHPmetody/template editory. Další samostatný checkpoint je UrlRequest/TPL02C a app repo HTTP migrace.
