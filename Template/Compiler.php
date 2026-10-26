@@ -27,7 +27,7 @@ use Wbengine\Template\Exception\TemplateException;
 class Compiler
 {
     /** Bump when the generated code changes, so old compiled files are not reused. */
-    const VERSION = 4;
+    const VERSION = 5;
 
     /** Tags that swallow one line break directly after them. */
     const TRIM_AFTER = array('if', 'elseif', 'else', 'foreach', 'foreachelse', 'close', 'set', 'cache', 'comment');
@@ -455,7 +455,7 @@ class Compiler
 
         $this->_stack[] = array('type' => 'cache', 'line' => $this->_line, 'else' => false, 'scope' => $scope);
         // The echo and the closure stay open until the matching {/cache} closes them.
-        $this->_out .= '<?= $_engine->cache(' . $key . ', ' . $ttl . ', function () use (&$_v, $_engine) { ob_start(); ?>';
+        $this->_out .= '<?= $_engine->cache(' . $key . ', ' . $ttl . ', function () use (&$_v, $_engine) { return $_engine->capture(function () use (&$_v, $_engine) { ?>';
         $this->_afterPhp = true;
     }
 
@@ -475,7 +475,7 @@ class Compiler
                 $this->_php($top['else'] ? 'endif;' : 'endforeach;');
                 break;
             case 'cache':
-                $this->_php('return ob_get_clean(); }, ' . var_export($top['scope'], true) . ')');
+                $this->_php('}); }, ' . var_export($top['scope'], true) . ')');
                 break;
         }
     }

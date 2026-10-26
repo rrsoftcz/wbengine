@@ -102,3 +102,14 @@ Přesné kolize syntaxe jsou vyhrazené šablonovému jazyku: například JS obj
 Verze kompilátů se mění z 3 na 4. Starý soubor s verze-3 identitou se nepoužije ani s `compileCheck: false`; test to ověřuje se skutečně předpřipraveným starým kompilátem. Při nasazení nadále vyčistit page/fragment/kompilované a externí HTML cache podle migračního postupu, aby stará uložená odpověď nezakryla novou diagnostiku.
 
 TPL-02 zůstává rozpracován: následuje dokončení smlouvy include/set/modifikátorů a HTTP smoke test vzorového webu s jeho aplikačními daty a autentizací. Tento checkpoint nedeklaruje odstranění Smarty ani kompletní migraci externí aplikace.
+
+
+## TPL-02B: include/set a vlastnictví výstupu
+
+Ověřená smlouva: relativní include se vyhodnocuje od templatesDir, nikoli od adresáře právě vykreslované partial. Dynamická cesta zůstává pod kontrolou povolených kořenů. Partial dědí aktuální hodnoty včetně set; její lokální set nezmění volající šablonu ani přiřazené hodnoty příštího fetch. Pole jsou lokální kopie, reference objektů zůstávají sdílené a jejich metody jsou důvěryhodný aplikační kód. Existující testy odmítají neplatnou syntaxi, chybějící soubory, traversal, symlink mimo root a příliš hluboké include.
+
+Nové regrese prokázaly ztrátu prefixu a únik bufferu, pokud metoda služby otevřela vlastní buffer. Engine nyní používá společné `capture()` pro celý render, partials i callbacky cache bloků. Na úspěchu se vnořené odstranitelné buffery sesbírají ve správném pořadí, při výjimce se zahodí až k původní hranici. Hloubka include se obnoví i po chybě. Regrese cache ověřuje celý cold i warm fragment a jedinou invokaci služby. Výjimka nepersistuje částečný fragment.
+
+Generované cache callbacky se změnily, proto Compiler verze 5 odděluje jejich identitu od verzí 3/4. Po nasazení stále platí čištění všech výstupních cache. Metody služeb nesmějí rušit buffery rendereru nebo otevírat neodstranitelné buffery: PHP tyto vedlejší účinky plně napravit neumí; ochranné smyčky v takovém případě alespoň neuvíznou. Nejde o sandbox nedůvěryhodného kódu.
+
+TPL-02C ještě musí ověřit celý vzorový web a upravit jeho odkazy a konfiguraci. Smarty zůstává do dokončení těchto kontrol nainstalovaný.

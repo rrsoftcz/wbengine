@@ -77,7 +77,7 @@ class FragmentCache
             return (string) $render();
         } finally {
             while (ob_get_level() > $level) {
-                ob_end_clean();
+                if (!@ob_end_clean()) { break; }
             }
         }
     }

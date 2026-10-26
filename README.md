@@ -304,13 +304,20 @@ Smarty plugins, capture/section, config files, custom delimiters, smarty metadat
 and inheritance are outside the supported native language; migrate them before
 removing the compatibility dependency.
 
-Compiler version 4 prevents reuse of version-3 compiled files even when
+Compiler version 5 prevents reuse of older compiled files even when
 `compileCheck` is disabled. Reserved Smarty syntax (such as assign, extends,
 block/capture and their closing tags) now reports an explicit error. Ordinary
 CSS/JS object keys and loop/declaration forms remain covered by regression tests;
 exact syntax collisions, such as JS shorthand `{capture}`, need a literal block.
 See the reference for the finite detection rules and remaining ambiguities.
 Clear all HTML and compiled caches during deployment. TPL-02 is still in progress.
+
+Native partial paths resolve from templatesDir, including inside nested partials.
+Partials inherit current values but local set assignments do not overwrite their
+caller or the next fetch. Object references remain shared developer-owned objects.
+Renderer and native cache blocks collect ordinary nested output buffers on success
+and discard owned buffers on exceptions. Services must not close renderer buffers
+or create non-removable buffers; those PHP side effects cannot be fully recovered.
 
 ### Performance
 

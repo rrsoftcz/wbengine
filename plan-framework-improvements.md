@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01, PERF-03 a PERF-05 dokončeny. PERF-04 změřen, implementace URL mapy odložena; zjištěná neshoda collation vedena jako FIX-02 před release. TPL-01 dokončen, TPL-02 rozpracován: diagnostika známých nepodporovaných tagů hotová, pokračuje migrační smlouva a HTTP ověření aplikace. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01, PERF-03 a PERF-05 dokončeny. PERF-04 změřen, implementace URL mapy odložena; zjištěná neshoda collation vedena jako FIX-02 před release. TPL-01 dokončen, TPL-02 rozpracován: diagnostika a smlouva include/set s opravou bufferů hotové, pokračuje HTTP ověření aplikace. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -60,7 +60,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] PLAN-01: hotovo, schválená rozhodnutí a etapový plán zapsány, 2026-10-25.
 - [x] BASE-01: hotovo, výchozí sada 802 testů / 1534 assertions v odděleném Docker prostředí, 2026-10-25.
 - [x] TPL-01: hotovo (Codex, 2026-10-26), inventura 7 frameworkových a 13 vzorových zdrojů, read-only compile report, corpus očekávaných výstupů a rozdílů a ref-template-migration.md.
-- [ ] TPL-02: rozpracováno (Codex, 2026-10-26), první kontrolní bod TPL-02A diagnostika dokončen; zbývá include/set/modifikátory, aplikační migrace a HTTP smoke. Závisí na TPL-01 a SEC-03.
+- [ ] TPL-02: rozpracováno (Codex, 2026-10-26), TPL-02A diagnostika a TPL-02B include/set/buffery dokončeny; zbývá aplikační migrace a HTTP smoke. Závisí na TPL-01 a SEC-03.
 - [ ] TPL-03: čeká, volitelná kompatibilní vrstva, odstranění Smarty z jádra; závisí na TPL-02.
 - [ ] MD-01: čeká, vlastní CommonMark parser a bezpečný HTML renderer.
 - [ ] MD-02: čeká, přímé .md zdroje v layoutu a databázové Markdown texty; závisí na MD-01.
@@ -659,3 +659,14 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Review našlo kolizi validního JS function run() {while ($ready) ...}. Vlastní RED regresní test ji potvrdil, detekce while byla zúžena a běžný JS zachován. Ruling: parentetické while hlavičky nezakazovat, protože stejné bajty mohou být platný JavaScript; cena rozhodnutí je, že odpovídající Smarty while(...) může zůstat textem a vyžaduje inventuru/ruční převod. Přesná kolize {capture} zůstává rezervovanou syntaxí s explicitním literal řešením. Druhé review se neopakovalo, fix kryje regrese a finální sada.
 - Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1215 testů / 2975 assertions**, 14.580 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly; opakovaná inventura se shoduje s původním snapshotem. TPL-02A je připraven jako samostatný verzovaný checkpoint; následuje commit/push s tímto stavem a ověření CI draft PR #2.
 - Další konkrétní krok: TPL-02B, uzavřít testovanou smlouvu include/set a modifikátorů pro aplikační migraci, včetně neplatných/chybějících partials, předávání a izolace dat, cest a obnovy bufferů. Potom TPL-02C: samostatný izolovaný checkout vzorové aplikace, převod starého GET logout odkazu a diagnostických proměnných, HTTP smoke menu/login/CSRF/POST logout/404/článků/locale/fragmentů/page HIT/BYPASS. Smarty odstranit až po těchto branách v TPL-03. FIX-02/SEC-01 a ostatní release úkoly zůstávají otevřené.
+
+
+### 2026-10-26: TPL-02B dokončen, průběžná samostatná etapa
+
+- Ověřena smlouva kořenových/dynamických include cest, dědění lokálních set hodnot, izolace partials i příštího fetch. Stávající sada pokrývá syntaktické chyby, neexistující soubory, traversal/symlink, rekurzi a modifikátory. Významy modifikátorů z migračního corpusu se nemění, nepřidává se úplná Smarty emulace.
+- RED testy prokázaly dva skutečné problémy běžných metod otevírajících vlastní buffer: úspěšný render ztratil prefix a nested partial výjimka nechala otevřený buffer. Opraveno společným Engine::capture v původním Template stromu; postup se používá i uvnitř cache callbacků. Hloubka renderu a výstupní buffery se obnovují bez úniku částečného HTML.
+- Nezávislé review zachytilo stejný problém v generovaném cache callbacku, kde zůstalo původní ob_get_clean. Vlastní RED cold/warm test prokázal chybějící prefix a následně GREEN ověřuje celý fragment, jedinou invokaci služby a původní úroveň bufferů. Compiler::VERSION 5 invaliduje staré callbacky. FragmentCache cleanup má ochranu proti nekonečné smyčce při neodstranitelném bufferu.
+- Omezení: služba je důvěryhodný kód; nemá rušit buffery rendereru ani vytvářet neodstranitelné buffery. Takové vedlejší účinky PHP nedokáže plně obnovit. Změny se drží stávajících Engine/Compiler/FragmentCache namespaces a bez balíčků.
+- Ověření: explicitní TemplateEngineTest **170 testů / 265 assertions**. Integrační pracovní sada se souběžně dokončeným FIX-02 **1222 testů / 3142 assertions**, 14.385 s, 36 MB. Použita úplná množina dosud verzovaných testů plus nový SiteLookupCollationTest, aby se nenačítaly rozpracované testy nezávislých Markdown/API workerů. Následuje oddělený commit/push TPL-02B a FIX-02, poté CI přesného vzdáleného stavu.
+- Kontinuální práce podle nového pokynu uživatele: mezi fázemi se již nečeká na další souhlas. Pro nezávislé MD-01 a API-01/04 se používají odděleně vlastněné moduly a subagent-driven-development. Root zajišťuje review, společný plán a verzování; pracovní soubory dalších etap se nepřimíchají do tohoto commitu.
+- Další krok: TPL-02C, izolovaný checkout vzorové aplikace, úprava lifecycle a POST logout/layout diagnostik, HTTP smoke v samostatném Docker projektu. FIX-02 se samostatně zapisuje hned následujícím kontrolním bodem. Smarty se odstraňuje až po ověření TPL-02C.

@@ -161,15 +161,34 @@ class Engine
         $fn = $this->_loaded[$compiled] ?? ($this->_loaded[$compiled] = include $compiled);
 
         ++$this->_depth;
-        ob_start();
         try {
-            $fn($vars, $this);
-            return ob_get_clean();
-        } catch (\Throwable $e) {
-            ob_end_clean();
-            throw $e;
+            return $this->capture(function () use (&$vars, $fn): void { $fn($vars, $this); });
         } finally {
             --$this->_depth;
+        }
+    }
+
+    /** Capture a template/fragment and every removable buffer it creates. */
+    public function capture(callable $render): string
+    {
+        $bufferLevel = ob_get_level();
+        ob_start();
+        try {
+            $render();
+            while (ob_get_level() > $bufferLevel + 1) {
+                if (!ob_end_flush()) {
+                    throw new TemplateException("A template service left a non-flushable output buffer.");
+                }
+            }
+            if (ob_get_level() !== $bufferLevel + 1) {
+                throw new TemplateException("A template service closed its render output buffer.");
+            }
+            return ob_get_clean();
+        } catch (\Throwable $e) {
+            while (ob_get_level() > $bufferLevel) {
+                if (!@ob_end_clean()) { break; }
+            }
+            throw $e;
         }
     }
 

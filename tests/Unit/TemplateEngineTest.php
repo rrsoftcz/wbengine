@@ -340,6 +340,89 @@ class TemplateEngineTest extends TestCase
         $this->assertSame('X', $this->render("{include 'part.tpl'}{\$name}", ['name' => 'X']));
     }
 
+    public function testNestedPartialsInheritLocalSetWithoutMutatingTheCallerOrNextFetch(): void
+    {
+        $this->write('part.tpl', '{set $name = "part"}{include "nested.tpl"}');
+        $this->write('nested.tpl', '[{$name}]');
+        $this->write('main.tpl', '{set $name = "main"}{include "part.tpl"}:{$name}');
+        $this->write('read.tpl', '{$name}');
+        $engine = $this->engine()->assign('name', 'assigned');
+        $this->assertSame('[part]:main', $engine->fetch('main.tpl'));
+        $this->assertSame('assigned', $engine->fetch('read.tpl'));
+    }
+
+    public function testIncludePathsAreRootRelativeAndDynamicValuesRemainEscaped(): void
+    {
+        $this->write('nested/main.tpl', '{include $partial}');
+        $this->write('part.tpl', '{$title}');
+        $this->assertSame('&lt;title&gt;', $this->engine()->assign([
+            'partial' => 'part.tpl', 'title' => '<title>',
+        ])->fetch('nested/main.tpl'));
+    }
+
+    public function testNestedPartialExceptionRestoresAllOwnedOutputBuffers(): void
+    {
+        $this->write('main.tpl', 'before{include "part.tpl"}after');
+        $this->write('part.tpl', 'partial{$service->fail()}');
+        $service = new class {
+            public function fail() {
+                ob_start();
+                echo 'must not escape';
+                throw new \RuntimeException('partial failed');
+            }
+        };
+        $engine = $this->engine()->assign('service', $service);
+        $level = ob_get_level();
+        try {
+            try {
+                $engine->fetch('main.tpl');
+                $this->fail('Expected partial exception');
+            } catch (\RuntimeException $e) {
+                $this->assertSame('partial failed', $e->getMessage());
+            }
+            $this->assertSame($level, ob_get_level());
+        } finally {
+            while (ob_get_level() > $level) { ob_end_clean(); }
+        }
+        $this->write('ok.tpl', 'recovered');
+        $this->assertSame('recovered', $engine->fetch('ok.tpl'));
+    }
+
+    public function testUnclosedServiceBufferIsCollectedWithoutLosingTemplateOutput(): void
+    {
+        $service = new class {
+            public function content() { ob_start(); echo 'nested'; return 'value'; }
+        };
+        $level = ob_get_level();
+        try {
+            $actual = $this->render('before{$service->content()}after', ['service' => $service]);
+            $this->assertSame('beforenestedvalueafter', $actual);
+            $this->assertSame($level, ob_get_level());
+        } finally {
+            while (ob_get_level() > $level) { ob_end_clean(); }
+        }
+    }
+
+    public function testUnclosedServiceBufferInsideCachePreservesColdAndWarmFragments(): void
+    {
+        Cache::setDriver(new FileCache($this->dir . '/cache'));
+        $service = new class {
+            public int $calls = 0;
+            public function content() { $this->calls++; ob_start(); echo 'nested'; return 'value'; }
+        };
+        $this->write('main.tpl', 'outside{cache "buffer-contract"}before{$service->content()}after{/cache}end');
+        $engine = $this->engine()->assign('service', $service);
+        $level = ob_get_level();
+        try {
+            $this->assertSame('outsidebeforenestedvalueafterend', $engine->fetch('main.tpl'));
+            $this->assertSame('outsidebeforenestedvalueafterend', $engine->fetch('main.tpl'));
+            $this->assertSame(1, $service->calls);
+            $this->assertSame($level, ob_get_level());
+        } finally {
+            while (ob_get_level() > $level) { ob_end_clean(); }
+        }
+    }
+
     public function testRecursiveIncludeStops(): void
     {
         $this->write('loop.tpl', "{include 'loop.tpl'}");
