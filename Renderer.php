@@ -57,14 +57,14 @@ class Renderer extends Renderer\Adapter
      * Default formater class name
      * @var string
      */
-    private $_formaterName          = 'texy';
+    private $_formaterName          = 'markdown';
 
 
     /**
      * Default html text formater is implemented...
      * @var string
      */
-    private $_formaterPath = 'vendor/Texy/';
+    private $_formaterPath = null;
 
     private $_rendererTemplatesDir  = null;
     private $_rendererCompiledDir   = null;

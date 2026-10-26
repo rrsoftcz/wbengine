@@ -1,5 +1,5 @@
 <?php
-namespace Wbengine\Tests\Unit;
+namespace Wbengine\Compat\TexyMigration\Tests;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +13,6 @@ class ContentMigrationTexyTest extends TestCase
     public function testOptionalBridgeConvertsThroughTheSameSafeHtmlGate(): void
     {
         if (!class_exists(\Texy\Texy::class)) { $this->markTestSkipped('Optional Texy bridge dependency is not installed'); }
-        require dirname(__DIR__, 2) . '/compat/texy-migration/src/TexyConverter.php';
         $converter = new \Wbengine\Compat\TexyMigration\TexyConverter();
         self::assertInstanceOf(Converter::class, $converter);
         self::assertSame('texy', $converter->format());

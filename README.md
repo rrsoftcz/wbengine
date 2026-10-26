@@ -39,7 +39,7 @@ A ready to run example application lives in the companion project `wbengine-skel
 * Extensions: `mysqli`, `json`, `mbstring`
 * MySQL 8 or MariaDB 10.6+ (box selection uses `JSON_SEARCH`). Tested on MySQL 8.4, MariaDB 10.11 and MariaDB 11.4.
 * A web server that sends every request that is not a file to `index.php`: Apache with `mod_rewrite` or Nginx with PHP-FPM (both tested, the skeleton has the configuration for each)
-* Composer packages: `texy/texy` 3, `firebase/php-jwt` 7. Smarty is available only through the optional `wbengine/smarty-compat` package
+* Runtime Composer package: `firebase/php-jwt` 7. Templates and Markdown use built-in engines; Smarty compatibility and offline Texy migration are optional separate packages.
 
 PHP has no long term support releases. 8.4 receives security fixes until the end of 2028 and 8.3 until the end of 2027, which is why 8.3 is the minimum.
 
@@ -108,7 +108,7 @@ Relevant `cms_boxes` columns:
 
 * a static box renders a template only (`StaticBoxes::About` in the skeleton);
 * a dynamic box asks a Model for data and passes it to a template (`Blog::LocalStoryBox`);
-* framework bundled boxes ship their own template and logic: `Wbengine\Box\Article` (an article from `cms_articles`, with Texy formatting) and `Wbengine\Box\Auth` (the login form with CSRF token and optional reCAPTCHA).
+* framework bundled boxes ship their own template and logic: `Wbengine\Box\Article` (an article from `cms_articles`, with explicit Markdown or preserved legacy HTML) and `Wbengine\Box\Auth` (the login form with CSRF token and optional reCAPTCHA).
 
 **Supporting classes**
 
@@ -348,7 +348,7 @@ retain their previous trusted HTML bytes. New Markdown fields render through the
 safe parser. Partial translations inherit each omitted field's original format;
 changing an existing translation format requires both text fields to be replaced
 or cleared and rejects stale concurrent format changes. Normal content writes must
-still invalidate caches. Texy conversion/removal follows in MD-03/MD-04.
+still invalidate caches. Texy is removed from the core. The reviewed reversible offline converter is documented in `ref-markdown.md` and `compat/texy-migration/README.md`. The legacy `Renderer::getFormater()->process($source)` entry now processes Markdown. Migrate actual Texy sources explicitly before using it; Texy runtime selection fails with migration instructions.
 
 ## Internationalisation
 

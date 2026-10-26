@@ -29,4 +29,23 @@ class CoreDependencyProfileTest extends TestCase
         $this->assertInstanceOf(\Exception::class, new \Wbengine\Config\Exception\RuntimeException('test'));
     }
 
+    public function testCoreDoesNotRequireTexy(): void
+    {
+        $manifest = json_decode(file_get_contents(dirname(__DIR__, 2) . '/composer.json'), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertArrayNotHasKey('texy/texy', $manifest['require']);
+    }
+
+    public function testLegacyFormatterEntryCanExplicitlySelectSafeMarkdown(): void
+    {
+        $formatter = (new \Wbengine\Formater())->getFormater('markdown', null);
+        $this->assertSame("<p><strong>Hello</strong> &lt;script&gt;bad&lt;/script&gt;</p>\n", $formatter->process('**Hello** <script>bad</script>'));
+    }
+
+    public function testTexyRuntimeSelectionExplainsOfflineMigration(): void
+    {
+        $this->expectException(\Wbengine\Exception\RuntimeException::class);
+        $this->expectExceptionMessage('wbengine/texy-migration');
+        (new \Wbengine\Formater())->getFormater('texy', null);
+    }
+
 }

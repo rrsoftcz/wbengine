@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+COMPAT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+COMPAT_VENDOR=$(mktemp -d "${TMPDIR:-/tmp}/wbengine-texy-vendor.XXXXXX")
+trap 'rm -rf "$COMPAT_VENDOR"' EXIT INT TERM
+export COMPOSER_VENDOR_DIR="$COMPAT_VENDOR"
+cd "$COMPAT_ROOT"
+composer update --no-interaction --prefer-dist
+"$COMPOSER_VENDOR_DIR/bin/phpunit" --bootstrap tests/bootstrap.php tests

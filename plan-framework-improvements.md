@@ -65,7 +65,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] MD-01: hotovo (Codex, 2026-10-26), vlastní AST parser a bezpečný renderer, všechny oficiální CommonMark/GFM příklady a explicitní bezpečnostní odchylky, limity práce/vstupu/výstupu.
 - [x] MD-02: hotovo (Codex, 2026-10-26), lazy App Markdown, bezpečné .md zdroje/layout, explicitní legacy_html/markdown v DB, mixed překlady a souběhový format guard.
 - [x] MD-03: hotovo (Codex,2026-10-26), explicitní HTML/Texy dry-run, ručně schválený hash, atomické přesné zálohy/překlady a konfliktní rollback,38testů/138assertions.
-- [ ] MD-04: čeká, odstranění Texy po migrační bráně; závisí na MD-03.
+- [x] MD-04: hotovo (Codex,2026-10-26), Texy mimo jádro, lazy Markdown formatter, offline bridge se samostatným testem/CI; čistá vzorová instalace a20HTTPgreen.
 - [x] API-01: hotovo (Codex, 2026-10-26), Api/V2 tree, veřejné minimální discovery a skutečné capability flags, jednotný JSON/error/pagination kontrakt.
 - [ ] API-02: připraveno, CRUD obsahu/registrované typy boxů; API-01 a MD-02 již hotové.
 - [ ] API-03: čeká, koncepty, revize, publikování a náhled; závisí na API-02.
@@ -737,3 +737,12 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Review nálezy ověřeny RED/GREEN: permissive MySQL truncation zjištěna skutečným postwrite hashem obsahu i zálohy a celá transakce rollbackne; vícenásobné code children nepoškodí význam; report má limity8MiBagregace/16MiBCLI/256locales.
 - Rodič znovu ověřil **38testů/138assertions**,PHP8.4.27/MySQL8.4, pouzeTEMP tabulky. Lint předchozí společné pracovní sady prošel; migrační/rollback příkazy a ochrana citlivých reportů jsou v ref-markdown.md. TPL03 už samostatně pushnut80208da, vlastní kompatibilita86/123green.
 - Další krok MD-04: odstranit povinný Texy balíček a Formatter závislost, volitelně zachovat explicitní kompatibilní adaptér; nové formáty Markdown a staré legacy_html zachovat bez reinterpretace. API a administrace navazují samostatně.
+
+
+### 2026-10-26: MD-04 dokončen
+
+- Composer jádra nově vyžaduje jen JWT balíček. Vlastní templates a Markdown nemají externí parser. Odstraněn nefunkční starý Texy adapter odkazující na APP_DIR/Vendor. Formater zachovává factory/adapter strom a procesní vstup, nový výchozí Markdown adapter lazy volá bezpečnou Markdown službu. Explicitní texy runtime končí konkrétním migračním doporučením, nikoli automatickou reinterpretací zdroje.
+- Major migrační dopad: externí přímí uživatelé getFormater()->process musí Texy zdroje nejdříve převést. Getter Article/legacy_html ani původní DB bajty se touto etapou nemění. Nová dokumentace a optional balíček uvádějí skutečný Composer path postup před publikováním balíčku.
+- RED prokázal povinnou Texy závislost, chybějící Markdown adapter a starý APP_DIR error. GREEN po opravě. Core Markdown/zdroje/profile **714testů/1866assertions**,0.186s28MB. Optional offline bridge **1test/5assertions** v izolovaném vendor s Texy. Žádný skipped Texy test v základním profilu, přesunut do balíčku s vlastní CI. Nezávislé code review bez blokací, zjištěné zastaralé README opraveno.
+- Čerstvý skeleton vendor má jen JWT+WBengine, bez Smarty i Texy, po vyčištění cache **20HTTPkontrolGREEN**. Změny či konverze produkčních dat neproběhly. Následuje samostatný commit/push této fáze a finální společná sada, jakmile API lifecycle vrátí výhradní DB okno.
+- Další krok API02/03/04 checkpoint po early-v2 dispatch testu a DX01/02 checkpoint včetně opravených instalovaných CLI. ADM04/05 pokračují v samostatném privátním repozitáři, foundation533f0e7 a CIgreen.
