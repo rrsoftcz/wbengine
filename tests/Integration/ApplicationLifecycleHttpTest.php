@@ -70,7 +70,10 @@ class ApplicationLifecycleHttpTest extends DbTestCase
     {
         $context = stream_context_create(['http' => ['timeout' => 3, 'ignore_errors' => true, 'follow_location' => 0, 'method' => $method,
             'header' => implode("\r\n", $headers)]]);
-        $stream = fopen($this->origin . $path, 'r', false, $context);
+        $stream = @fopen($this->origin . $path, 'r', false, $context);
+        if (!is_resource($stream)) {
+            $this->fail('HTTP fixture request failed: ' . $path . "\n" . (error_get_last()['message'] ?? 'unknown') . "\nServer log:\n" . file_get_contents($this->dir . '/server.log'));
+        }
         $body = stream_get_contents($stream);
         $metadata = stream_get_meta_data($stream);
         fclose($stream);

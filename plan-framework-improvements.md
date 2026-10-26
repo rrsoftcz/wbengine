@@ -55,7 +55,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] ARCH-01: hotovo (Codex, 2026-10-25), constructor bez CMS, deferred Application routy před cache/CMS, jediné vykreslení a migrační smlouva.
 - [x] DX-01: hotovo (Codex,2026-10-26), explicitní class/template/SQL scaffold preview, bezpečné atomické --write a skutečný parent tree test.
 - [x] DX-02: hotovo (Codex,2026-10-26), instalované Composer CLI, read-only doctor/config/schema a produkční profil/secret redakce.
-- [ ] DX-03: rozpracováno (Codex,2026-10-26), matice klient i syntetických300requestů hotovy, skutečný CMS benchmark úspěšně běžel, dokončuje se opakovatelné čištění a záznam výsledků.
+- [x] DX-03: hotovo (Codex,2026-10-26), skutečná CMS matice15kohort/300requestů bezchyb, CSRF login/DBsessions, měřené SQL/spojení/paměť, výsledek a runner ve skeleton d0b1e79.
 
 - [x] PLAN-01: hotovo, schválená rozhodnutí a etapový plán zapsány, 2026-10-25.
 - [x] BASE-01: hotovo, výchozí sada 802 testů / 1534 assertions v odděleném Docker prostředí, 2026-10-25.
@@ -765,3 +765,12 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Review RED/GREEN opravy: CLI původně fungovalo jen v checkoutu, nyní podporuje skutečné Composer proxy i přímou installedpackage cestu, nikdynevyhledáváautoloadvCWD. Opraven i MD03 CLI stejnýmBootstrap. Composer nyní registruje oba bin vstupy. Doctor defaultfilecachepath+drivercase odpovídáCache runtime, zdravý default nehlásí fail.
 - Worker focused19/57GREEN, rodič před opravami12/34 a poté celá společná sada1981/5596green vDockerPHP8.4.27. Lint/diffcheckprošly. Review oprav bez zbývajících codeblokací, bin manifest přidán rodičem. Následuje samostatný commit/push DX s aktuálnímplánem.
 - DX03 RequestMatrix zatím samostatná rozpracovaná položka, reálný CMS benchmark dokončuje izolovaný skeleton checkout. Syntetických300/0errors není tvrzení CMSauthvýkonu. ADM04/05 UI a serverové testy hotové, společný skutečný HTTPSPHPpilot se připravuje.
+
+
+### 2026-10-26: DX-03 dokončen, release CI blokace se řeší
+
+- Skutečný CMS benchmark ve skeleton repo d0b1e79:15kohort x20requestů,konkurence4,300/0errors, všechnyHTTP200. Reálné CSRF přihlášení/DBsessions a souběžný stejný přihlášený cookie. Kořenový config ani běžný server změněny nebyly, runner čistí pouze vlastní náhodné cache kořeny.
+- Rodič nezávisle zopakoval stejných300/0errors. Pagewarm veřejný má20/20HIT,0SQL/0connections,p50/p95=1.527/1.746ms,1733req/s. Původní uložený worker běh1.475/1.787ms,1753req/s. Veřejný off6SQL/datawarm1SQL,obojí1connection. Privátní/custom/samecookie nikdysharedHIT. Serverpeak2MiB,OPcacheCLI0,maláfixture14sites9articles20boxes2users,PHP8.4.27/MySQL8.4.13. Nejde o produkční garanci,throughput zahrnuje fork/sběr klienta.
+- Obě skutečně nainstalované Composer bin proxy v aplikaci prošly help. Composer správně nastavuje executable bit, uložen i v jádru.
+- Nové CI nalezlo dvě release blokace: MariaDB rollback translation test vrací chybějící řádek a CIcanonicalredirectHTTPfixture neotevře stream (lokálně green). MariaDB nález lokálně reprodukován, worker prověřuje skutečnou atomicitu i persistentní InnoDB. HTTP test nyní vypisuje serverlog při selhání, aby bylo možné určit příčinu. Nejsou označeny jako opravené, release zůstává otevřený.
+- Společný izolovaný HTTPS/PHP/admin pilot mezitím prochází login/MFA, obsah/draft/publish/conflict/recovery a permissiondeny; probíhá rodičovské review a ověření.
