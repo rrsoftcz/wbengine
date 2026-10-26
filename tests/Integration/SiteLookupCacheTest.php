@@ -11,7 +11,7 @@ use Wbengine\Site;
 use Wbengine\Site\SiteModel;
 
 /**
- * The cached lookup must return exactly what the SQL lookup returns.
+ * Enabling the content cache must preserve database URL selection.
  */
 class SiteLookupCacheTest extends DbTestCase
 {
@@ -88,20 +88,24 @@ class SiteLookupCacheTest extends DbTestCase
             $this->lookup('/' . bin2hex(random_bytes(4)) . '/', false);
         }
 
-        $this->assertCount(1, glob($this->dir . '/*.cache.php'));
+        $this->assertCount(0, glob($this->dir . '/*.cache.php') ?: []);
     }
 
-    public function testCacheServesDataWithoutQueriesUntilFlushed(): void
+    public function testUrlSelectionUsesOneQueryAndSeesUpdatesWithoutFlushing(): void
     {
         Cache::setDriver(new FileCache($this->dir), 60);
         $this->lookup('/blog/', false);
 
         $before = Db::getQueriesCount();
         $this->lookup('/blog/', false);
-        $this->assertSame($before, Db::getQueriesCount(), 'a hit must not query the database');
+        $this->assertSame(1, Db::getQueriesCount() - $before, 'URL selection uses the database collation on every lookup');
 
         Db::update('cms_sites', array('title' => 'Changed'), array('link' => '/blog/'));
-        $this->assertNotSame('Changed', $this->lookup('/blog/', false)['title'], 'stale until flushed');
+        $this->assertSame('Changed', $this->lookup('/blog/', false)['title'], 'URL selection returns current row data');
+
+        Db::update('cms_sites', array('visible' => 0), array('link' => '/blog/'));
+        $this->assertNull($this->lookup('/blog/', false), 'visibility changes apply immediately');
+        Db::update('cms_sites', array('visible' => 1), array('link' => '/blog/'));
 
         Cache::flush();
         $this->assertSame('Changed', $this->lookup('/blog/', false)['title']);

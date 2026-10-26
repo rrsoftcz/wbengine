@@ -9,7 +9,7 @@ use Wbengine\Cache\FileCache;
 use Wbengine\Cache\NullCache;
 
 /**
- * Cache for data that changes rarely: the site table, the menu, the sections and
+ * Cache for data that changes rarely: the menu, the sections, translations and
  * the box lists. It is off by default and switched on in the settings:
  *
  *   "cache": { "enabled": true, "driver": "apcu", "ttl": 300 }

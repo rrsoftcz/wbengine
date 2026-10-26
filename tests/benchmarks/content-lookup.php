@@ -60,27 +60,26 @@ try {
         $site->url = '/item-' . ($count - 1) . '/extra/';
         Cache::setDriver(new NullCache());
         $expected = $model->loadSiteData($site);
-        $entry = ['rows' => $count, 'sqlMs' => $measure(static fn () => $model->loadSiteData($site))];
+        $entry = ['rows' => $count, 'scenario' => 'SQL URL selection with each cache driver; no site-table cache', 'sqlMs' => $measure(static fn () => $model->loadSiteData($site))];
         foreach (['memory' => $memory, 'file' => new FileCache($directory)] as $name => $driver) {
             $driver->flush();
             Cache::setDriver($driver, 300);
             $start = hrtime(true);
             $actual = $model->loadSiteData($site);
-            $entry[$name . 'ColdMs'] = round((hrtime(true) - $start) / 1e6, 4);
+            $entry['lookupWith' . ucfirst($name) . 'DriverFirstMs'] = round((hrtime(true) - $start) / 1e6, 4);
             if ($actual !== $expected) { throw new RuntimeException('Site benchmark result differs'); }
-            $entry[$name . 'WarmMs'] = $measure(static fn () => $model->loadSiteData($site));
+            $entry['lookupWith' . ucfirst($name) . 'DriverRepeatedMs'] = $measure(static fn () => $model->loadSiteData($site));
         }
-        Cache::setDriver($memory, 300);
-        $memory->flush();
-        $model->loadSiteData($site);
-        $rows = $memory->values['sites:visible'];
+        // Synthetic prototype only: table fetch/transfer is excluded from map timing.
+        // The runtime resolver intentionally does not populate a site-table cache.
+        $rows = Db::fetchAllAssoc('SELECT * FROM cms_sites WHERE visible = 1');
         $entry['prototypeMapBuildMs'] = $measure(static function () use ($rows) {
             $map = [];
             foreach ($rows as $row) { $map[mb_strtolower($row['link'])][] = $row; }
         });
         $result['sites'][] = $entry;
     }
-    // Characterization only: a faster lowercase map must not hide existing parity gaps.
+    // Confirm that enabling a cache driver preserves database collation selection.
     Db::query('TRUNCATE TABLE cms_sites');
     foreach (['utf8mb4_unicode_ci', 'utf8mb4_bin'] as $collation) {
         Db::query("ALTER TABLE cms_sites MODIFY link varchar(100) COLLATE $collation NOT NULL");

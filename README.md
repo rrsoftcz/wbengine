@@ -884,8 +884,9 @@ call `$app->getSite()->assignDiagnostics()` after site initialization; it assign
 the same template keys and returns that Site instance.
 
 Reading `dbinfo` may open a database connection even though no SQL query is counted.
-Production initialization with a warm site-data cache avoids that diagnostic-only
-connection. Content, navigation and custom boxes can still require database access.
+Production initialization avoids diagnostic-only work. Site selection now uses
+one bound SQL lookup for exact database collation, so it can itself open the
+connection; diagnostics add no SQL beyond that necessary lookup. Content, navigation and custom boxes can still require database access.
 Keep diagnostic output restricted to trusted users and escape the values normally.
 
 ### HTML whitespace and transfer compression in 4.0
@@ -952,17 +953,24 @@ is outside the timed insertion samples. Remeasure for a different section count,
 shared ratio or write-heavy workload. A relational membership table is deferred
 until measured JSON filtering cost warrants its migration and API complexity.
 
-The URL-map optimization is deferred. At 10,000 visible sites, measured MySQL
-lookup times were 0.1468 ms via the existing link index, 0.9076 ms for a warm
-in-memory full-table scan, and 20.0181 ms for a warm file-cache read/scan. Building
-a lowercase map alone cost 0.7137 ms, excluding storage/decoding and lookup. The
-memory driver in this benchmark is a reference-array control, not APCu.
-Also, the current site cache uses lowercase comparison: `/cafe/` fails to match
-stored `/café/` under `utf8mb4_unicode_ci`, while `/CAFÉ/` incorrectly matches
-under `utf8mb4_bin`. The benchmark reports these existing mismatches explicitly.
-A new URL index must first establish a comparison contract consistent with the
-actual database collation. The current lookup behavior is unchanged in this phase;
-this parity issue remains tracked as FIX-02 before release.
+The URL-map optimization is deferred. Before FIX-02, 10,000 visible sites took
+0.1468 ms through the link index, 0.9076 ms for the old warm in-memory scan and
+20.0181 ms for the old file-cache read/scan. Those full-table cache paths have now
+been removed. Current selection always executes one bound SQL query, whether a
+memory/file cache driver is enabled or disabled; random URLs create no lookup
+cache entries. This preserves the actual column collation, accent/case/padding,
+strict values, visibility and highest-site-ID selection. Site row edits become
+visible immediately on an uncached page; whole-page caches still need normal
+invalidation/TTL. Translations retain their separate existing data-cache policy.
+
+FIX-02 regressions cover stored `/café/` matching `/cafe/` under unicode_ci and
+rejecting `/CAFÉ/` under bin, plus decomposed Unicode, padding, invalid strict values,
+hidden rows, duplicates, prefixes and injection-shaped inputs on MySQL/MariaDB.
+Production initialization now includes that one necessary site query. Anonymous
+whole-page HITs and terminal custom routes still bypass CMS selection as before.
+The benchmark labels the selected cache-driver cases as SQL lookups and measures
+any hypothetical full-table map build separately; it does not claim zero-SQL site
+selection or a current full-table scan.
 
 What the engine does well today: a single connection opened only when needed, no model hydration, compiled Smarty templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
 
@@ -1002,7 +1010,7 @@ What changed:
 
 * **Session:** the row is read once per request, created only when something is stored, written once at the end of the request, expired rows are purged on about 1 in 100 loads, and a request without a session cookie skips the lookup.
 * **View counter** (opt-in): `"counters": {"views": {"enabled": true, "hits": 50, "seconds": 60}}` turns the `UPDATE` on every article view into one `UPDATE` per 50 views or per minute. The counts are kept in small locked files, so concurrent requests lose nothing (tested with parallel processes); only increments still pending when the server crashes are lost. The displayed count lags by at most one batch.
-* **Cache** (opt-in): the site table, menu, sections and box lists. Enable with `"cache": {"enabled": true, "driver": "apcu", "ttl": 300}` (or `"driver": "file"`). APCu is the fastest and is shared by all PHP workers of a server; the file driver works everywhere and benefits from opcache. The API flushes the cache when sections change. After editing `cms_sites`, `cms_menu`, `cms_sections` or `cms_boxes` directly in the database, call `Wbengine\Cache::flush()` or wait for the TTL. When the cache is on, the site is looked up in PHP on the cached table of visible sites (links are compared case-insensitively, as the database collation does). That table is cached once, so random URLs cannot grow the cache. Very large site tables (tens of thousands of rows) are better served without the cache.
+* **Cache** (opt-in): menu, sections, box lists and translation data. Enable with `"cache": {"enabled": true, "driver": "apcu", "ttl": 300}` (or `"driver": "file"`). APCu shares data across PHP workers; the file driver works without APCu. The API flushes affected caches on supported writes. Direct database edits still require cache/page invalidation or TTL expiry. URL selection uses one parameterized database query even with a cache driver, to preserve real collation and row freshness; it never caches arbitrary URL lookups or the full visible-site table.
 
 * **Page cache** (opt-in, needs the cache enabled): `"cache": {"enabled": true, "driver": "apcu", "pages": {"enabled": true, "ttl": 60}}`. Anonymous visitors get a stored copy of the page, served before any box runs. A hit costs no database query for a visitor without a session cookie and one session lookup for a returning visitor (to be sure they are not logged in). A page is stored only when it is the same for everybody: a plain `GET` without a query string or `Authorization` header, for a visitor who is not logged in, a `200` HTML response, no write to the session (so the login page with its CSRF token is never stored), the site does not require a login, and the URL is exactly the site's own link (a deeper path that falls back to it is not stored, which also keeps the number of entries bounded by the number of sites). Responses carry `X-WBengine-Cache: HIT`, `MISS-STORED` or `BYPASS`, plus an `ETag` and `304` support. The TTL (60 seconds by default) bounds staleness; the API flushes the pages when sections change; after editing `cms_sites`, `cms_menu`, `cms_sections`, `cms_boxes` or articles directly in the database, call `POST /api/cache/flush` (admin token), which also reaches an APCu cache, or wait for the TTL. If a page depends on anything besides the URL and the login state (device type, a language cookie, the time), do not enable the page cache for that site. Indicative throughput of the skeleton home page in the same Docker VM: about 570 requests per second without any cache, about 725 with the data cache, about 1,175 with the page cache (a single completed run, treat it as a direction).
 

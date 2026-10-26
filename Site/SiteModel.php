@@ -96,10 +96,9 @@ class SiteModel extends ModelAbstract
     {
         $candidates = $this->getUrlCandidates($site->getUrl(), $site->isUrlStrict());
 
-        if (Cache::isEnabled()) {
-            return ContentTranslations::overlayRow('site', $this->_findVisibleSite($candidates, (string)$site->getUrl()));
-        }
-
+        // Resolve in SQL even when caching is enabled: only the database can
+        // preserve the link column's collation, padding and strict-value rules.
+        // One bounded query avoids loading all sites or caching arbitrary URLs.
         $sql = sprintf("SELECT * FROM %s AS site
                         WHERE (
                         (link IN (%s) AND strict = 0)
@@ -110,43 +109,6 @@ class SiteModel extends ModelAbstract
             , implode(',', array_fill(0, count($candidates), '?'))
         );
         return ContentTranslations::overlayRow('site', Db::fetchAssoc($sql, array_merge($candidates, array((string)$site->getUrl()))));
-    }
-
-
-    /**
-     * Same lookup as loadSiteData(), done in PHP on the cached table of visible sites.
-     * The whole table is cached once (not one entry per URL), so requests for random
-     * URLs cannot grow the cache. Links are compared case-insensitively, as the
-     * database collation does.
-     *
-     * @param array $candidates
-     * @param string $url
-     * @return array|null
-     */
-    private function _findVisibleSite(array $candidates, $url)
-    {
-        $sites = Cache::remember('sites:visible', function () {
-            return Db::fetchAllAssoc(sprintf('SELECT * FROM %s WHERE visible = 1;', S_TABLE_SITES));
-        });
-
-        $wanted = array_map('mb_strtolower', $candidates);
-        $url = mb_strtolower($url);
-        $found = null;
-
-        foreach ((array)$sites as $row) {
-            if (null === $row['strict']) {
-                continue;
-            }
-            $link = mb_strtolower((string)$row['link']);
-            $matches = (0 === (int)$row['strict'])
-                ? in_array($link, $wanted, true)
-                : $link === $url;
-
-            if ($matches && (null === $found || $row['site_id'] > $found['site_id'])) {
-                $found = $row;
-            }
-        }
-        return $found;
     }
 
 

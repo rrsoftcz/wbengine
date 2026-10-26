@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01, PERF-03 a PERF-05 dokončeny. PERF-04 změřen, implementace URL mapy odložena; zjištěná neshoda collation vedena jako FIX-02 před release. TPL-01 dokončen, TPL-02 rozpracován: diagnostika a smlouva include/set s opravou bufferů hotové, pokračuje HTTP ověření aplikace. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01, PERF-03 a PERF-05 dokončeny. PERF-04 změřen, implementace URL mapy odložena; neshoda collation FIX-02 opravena jednotným SQL výběrem. TPL-01 dokončen, TPL-02 rozpracován: diagnostika a smlouva include/set s opravou bufferů hotové, pokračuje HTTP ověření aplikace. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -43,7 +43,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] SEC-05: hotovo (Codex, 2026-10-25), explicitní důvěryhodné proxy IPv4/IPv6, společná detekce IP/HTTPS a cookie flags včetně I18n.
 - [x] SEC-06: hotovo (Codex, 2026-10-25), session CSRF služba, účely formulářů, POST logout, ochrana cache a stateless cookie API hranice.
 - [x] FIX-01: hotovo (Codex, 2026-10-25). iat setter zachovává iss, regresní test RED a GREEN.
-- [ ] FIX-02: čeká (Codex, 2026-10-25), sjednotit porovnávání URL cache a skutečné DB collation, nutné před případnou URL mapou a vydáním 4.0.
+- [x] FIX-02: hotovo (Codex, 2026-10-26), jednotný parametrizovaný SQL výběr i při cache, ověřena skutečná collation/padding/strict/visible/duplicity na MySQL a MariaDB.
 - [x] CACHE-01: hotovo (Codex, 2026-10-25). Veřejný/osobní scope, lazy identita, locale, anonymní bypass a ochrana public obalů ověřeny včetně HTTP. Jiné obsahové varianty vyžadují explicitní klíče.
 - [x] PERF-01: hotovo (Codex, 2026-10-25), diagnostika pouze v debug nebo přes Site::assignDiagnostics; ověřeno odstranění jednoho zbytečného spojení při cache HIT.
 - [x] PERF-02: hotovo (Codex, 2026-10-25), requestová množina aktivních ID a jeden dávkový SQL statement pro prefixy, zachované hidden/strict/collation a opravené koncové lomítko rodičů.
@@ -670,3 +670,14 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Ověření: explicitní TemplateEngineTest **170 testů / 265 assertions**. Integrační pracovní sada se souběžně dokončeným FIX-02 **1222 testů / 3142 assertions**, 14.385 s, 36 MB. Použita úplná množina dosud verzovaných testů plus nový SiteLookupCollationTest, aby se nenačítaly rozpracované testy nezávislých Markdown/API workerů. Následuje oddělený commit/push TPL-02B a FIX-02, poté CI přesného vzdáleného stavu.
 - Kontinuální práce podle nového pokynu uživatele: mezi fázemi se již nečeká na další souhlas. Pro nezávislé MD-01 a API-01/04 se používají odděleně vlastněné moduly a subagent-driven-development. Root zajišťuje review, společný plán a verzování; pracovní soubory dalších etap se nepřimíchají do tohoto commitu.
 - Další krok: TPL-02C, izolovaný checkout vzorové aplikace, úprava lifecycle a POST logout/layout diagnostik, HTTP smoke v samostatném Docker projektu. FIX-02 se samostatně zapisuje hned následujícím kontrolním bodem. Smarty se odstraňuje až po ověření TPL-02C.
+
+
+### 2026-10-26: FIX-02 dokončen
+
+- Odpovědnost Codex + samostatný worker, nezávislé read-only review bez blokujících nálezů. Odstraněno PHP mb_strtolower porovnávání celé tabulky sites:visible. SiteModel používá původní parametrizovaný indexovaný SQL resolver bez závislosti na cache driveru. Nevzniká cache pro náhodná URL ani paměťový přenos celé tabulky.
+- Ruling: správnost přesného DB porovnávání má přednost před dřívějším slibem 0 SQL na zahřáté datové cache. Výběr stránky nyní stojí jeden dotaz/spojení, vrací čerstvé řádky a respektuje konkrétní collation včetně padding a hodnot strict=0/1; úspěšný whole-page HIT a terminal route dál mohou CMS přeskočit. Cena změny je jeden skutečný SQL lookup i při zahřáté datové cache. Překladové/menu/box cache zůstávají a potřebují svou invalidaci.
+- TDD RED na MySQL prokázal chybějící unicode_ci accent shodu a chybnou bin case shodu; GREEN pokrývá unicode_ci/bin, složený/dekomponovaný Unicode, trailing spaces, strict/prefix/null/-1/2, hidden, nejvyšší ID duplicity, quote/injection a missing. MySQL 8.4 i MariaDB 11.4 **14 testů / 179 assertions**, vždy právě jeden SQL lookup pro každou variantu driveru. Cache test již nevyžaduje falešnou nulu, ověřuje okamžitou změnu title/visibility a nulové URL cache soubory.
+- Diagnostický test upraven věcně: nutný výběr stránky má 1 SQL/1 spojení, debug či explicitní server-version přístup nepřidá další SQL. Diagnostické proměnné nadále chybějí v běžném produkčním renderu. Aktualizován benchmark a README; historické časy staré full-table cache zůstávají výslovně historické.
+- Aktuální benchmark MySQL 8.4.13: SQL mediány pro 100/1000/10000 stránek 0.2309/0.1297/0.0873 ms. Zapnutý memory či file driver nyní také měří SQL, nikoli starou cache cestu. Syntetické sestavení mapy mimo fetch tabulky 0.0089/0.0696/0.7497 ms. Žádný slib produkční latence a žádná nová URL mapa.
+- Společná ověřená sada dosud verzovaných testů a nového SiteLookupCollationTest: **1222 testů / 3142 assertions**, 14.385 s, 36 MB, PHP 8.4.27/MySQL 8.4; TPL-02B již samostatně commitnut a pushnut jako 06818d7. Lint a git diff --check prošly. Práce dalších workerů Markdown/API není součástí tohoto checkpointu. Následuje samostatný commit/push FIX-02 s tímto plánem a CI přesného commitu.
+- Další krok: pokračuje TPL-02C a paralelně MD-01/API-01/04 podle přidělených souborů. SEC-01 obsahová invalidace zůstává otevřená, budoucí URL mapa PERF-04 odložena bez potřeby. Mezi kontrolními body se již nečeká na zprávu uživatele.

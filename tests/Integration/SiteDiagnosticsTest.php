@@ -45,12 +45,12 @@ class SiteDiagnosticsTest extends DbTestCase
         return json_decode($output, true, 512, JSON_THROW_ON_ERROR);
     }
 
-    public function testWarmProductionInitializationNeedsNeitherSqlNorAConnectionForDiagnostics(): void
+    public function testProductionInitializationOnlyQueriesSiteSelection(): void
     {
         $result = $this->runFresh('production');
-        $this->assertSame(0, $result['queries']);
-        $this->assertSame(0, $result['connections']);
-        $this->assertFalse($result['adapterCreated']);
+        $this->assertSame(1, $result['queries'], 'one bound query selects the site using its database collation');
+        $this->assertSame(1, $result['connections']);
+        $this->assertTrue($result['adapterCreated']);
         $this->assertTrue($result['loaded']);
         $this->assertSame('Cached title', $result['vars']['meta']['title']);
         foreach (['dbinfo', 'phpversion', 'server'] as $key) {
@@ -63,12 +63,12 @@ class SiteDiagnosticsTest extends DbTestCase
     {
         $result = $this->runFresh($mode);
         if ('debug' !== $mode) {
-            $this->assertSame(0, $result['initialized']['connections']);
-            $this->assertFalse($result['initialized']['adapterCreated']);
+            $this->assertSame(1, $result['initialized']['connections']);
+            $this->assertTrue($result['initialized']['adapterCreated']);
             $this->assertTrue($result['explicitReturnsSite']);
         }
         $this->assertSame(1, $result['connections']);
-        $this->assertSame(0, $result['queries'], 'server version access opens a socket without executing a SQL query');
+        $this->assertSame(1, $result['queries'], 'diagnostics add no SQL beyond site selection');
         $this->assertTrue($result['adapterCreated']);
         $this->assertMatchesRegularExpression('/^\d+\.\d+\.\d+$/D', $result['vars']['dbinfo']);
         $this->assertSame(PHP_VERSION, $result['vars']['phpversion']);
