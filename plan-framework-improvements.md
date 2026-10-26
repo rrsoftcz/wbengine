@@ -774,3 +774,10 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Obě skutečně nainstalované Composer bin proxy v aplikaci prošly help. Composer správně nastavuje executable bit, uložen i v jádru.
 - Nové CI nalezlo dvě release blokace: MariaDB rollback translation test vrací chybějící řádek a CIcanonicalredirectHTTPfixture neotevře stream (lokálně green). MariaDB nález lokálně reprodukován, worker prověřuje skutečnou atomicitu i persistentní InnoDB. HTTP test nyní vypisuje serverlog při selhání, aby bylo možné určit příčinu. Nejsou označeny jako opravené, release zůstává otevřený.
 - Společný izolovaný HTTPS/PHP/admin pilot mezitím prochází login/MFA, obsah/draft/publish/conflict/recovery a permissiondeny; probíhá rodičovské review a ověření.
+
+
+### 2026-10-26: opraveny dvě CI fixture blokace
+
+- CI serverlog určil příčinu redirect selhání: header callback se při bodyless redirect mohl spustit po zrušení Composer autoloadu a snažil se poprvé načíst Db. Testovací instrumentace nyní počítá nulu, pokud Db vůbec nebylo načtené, bez autoloadu v shutdown. Přidaný deterministický deferred-header/no-autoload test nejprve RED, po opravě celá lifecycle sada24/178GREEN. Produkční lifecycle se nemění.
+- MariaDB11.4TEMPORARY InnoDB minimal reprodukce ztrácí původní řádek při DELETE+INSERT stejného PK a následném rollbacku; persistentní InnoDB stejný scénář korektně vrací. Publikační rollback test nyní ověřuje skutečné persistentní publikační tabulky, se zachováním originálních testovacích tabulek pod unikátními zálohami a finally obnovou, guardDATABASE=wbengine_test. Všechny původní assertions zesíleny o celý článek, původní dvě locale, draft a neměnný počet revizí/událostí a nulový flush. Produkční SQL nezměněno. Worker ověřil celou ApiV2ContentTest23/129GREEN naMySQL8.4 iMariaDB11.4.13.
+- Finální whole-branch review našlo dvě integrační mezery: API api_settings nedocházely do vykonávanéhoBox a CLI generátor používal DBsectionkey s neslučitelným uppercase. Probíhá jediná společná fixwave s regresními unit i skutečnými Section/API integračními testy. Release stále rozpracovaný, nikoli hotový tag.

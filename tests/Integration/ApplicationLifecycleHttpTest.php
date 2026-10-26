@@ -34,7 +34,7 @@ class ApplicationLifecycleHttpTest extends DbTestCase
         $address = stream_socket_get_name($socket, false);
         fclose($socket);
         $this->origin = 'http://' . $address;
-        $this->server = proc_open([PHP_BINARY, '-S', $address, dirname(__DIR__) . '/fixtures/application-lifecycle.php'],
+        $this->server = proc_open([PHP_BINARY, '-d', 'output_buffering=4096', '-S', $address, dirname(__DIR__) . '/fixtures/application-lifecycle.php'],
             [0 => ['file', '/dev/null', 'r'], 1 => ['file', $this->dir . '/server.log', 'a'],
                 2 => ['file', $this->dir . '/server.log', 'a']], $pipes, null,
             array_merge(getenv(), ['WB_LIFECYCLE_DIR' => $this->dir]));
@@ -261,6 +261,15 @@ class ApplicationLifecycleHttpTest extends DbTestCase
     public static function renderModes(): array
     {
         return [['once', 'layout[box:default]|none'], ['zero', 'layout[0]|none'], ['empty', 'layout[]|none'], ['display-route', 'layout[route-display]|none'], ['display-box', 'layout[box-display]|none']];
+    }
+
+    public function testRedirectMetricsDoNotAutoloadDuringDeferredHeaderShutdown(): void
+    {
+        $response = $this->request('/en/page/?x=1', ['X-Lifecycle-Mode: shutdown-no-autoload']);
+        $this->assertStringContainsString('301', $response['status']);
+        $this->assertSame('0', $response['x-lifecycle-queries']);
+        $this->assertSame('0', $response['x-lifecycle-connections']);
+        $this->assertSame('none', $response['x-lifecycle-session']);
     }
 
     public function testCanonicalRedirectAndErrorsDoNotExecuteBoxes(): void

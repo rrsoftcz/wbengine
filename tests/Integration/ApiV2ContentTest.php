@@ -158,20 +158,77 @@ class ApiV2ContentTest extends TestCase
 
     public function testPublishAuditFailurePreservesDraftAndAllPublishedTranslations(): void
     {
-        $site = Db::insert('cms_sites', ['link' => '/translation-publish/']);
-        $id = Db::insert('cms_articles', ['site_id' => $site, 'title' => 'Published', 'introtext' => '', 'bodytext' => 'Old', 'content_format' => 'markdown']);
-        Db::insert('cms_article_translations', ['article_id' => $id, 'locale' => 'cs', 'title' => 'Puvodni', 'content_format' => 'markdown']);
-        $original = $this->content->read('articles', $id);
-        $draft = $this->content->writeTranslation('article', $id, 'cs', ['title' => 'Novy'], $original['etag'], $this->actor);
-        Db::query('DROP TEMPORARY TABLE cms_api_audit');
-        Db::query('CREATE TEMPORARY TABLE cms_api_audit (unrelated INT) ENGINE=InnoDB');
-        $oldLog = ini_set('error_log', '/dev/null');
+        // MariaDB temporary InnoDB tables lose the original row when DELETE and
+        // INSERT reuse its primary key before ROLLBACK. Exercise the production
+        // storage kind instead, preserving all pre-existing shared test tables.
+        $this->withPersistentPublicationTables(function (): void {
+            $site = Db::insert('cms_sites', ['link' => '/translation-publish/']);
+            $id = Db::insert('cms_articles', ['site_id' => $site, 'title' => 'Published', 'introtext' => '', 'bodytext' => 'Old', 'content_format' => 'markdown', 'published' => 100]);
+            Db::insert('cms_article_translations', ['article_id' => $id, 'locale' => 'cs', 'title' => 'Puvodni', 'content_format' => 'markdown']);
+            Db::insert('cms_article_translations', ['article_id' => $id, 'locale' => 'de', 'title' => 'Unchanged before publication', 'content_format' => 'markdown']);
+            $beforeArticle = Db::fetchAssoc('SELECT * FROM cms_articles WHERE id = ?', [$id]);
+            $beforeTranslations = Db::fetchAllAssoc('SELECT * FROM cms_article_translations WHERE article_id = ? ORDER BY locale', [$id]);
+            $original = $this->content->read('articles', $id);
+            $draft = $this->content->writeTranslation('article', $id, 'cs', ['title' => 'Novy'], $original['etag'], $this->actor);
+            $draft = $this->content->writeTranslation('article', $id, 'de', null, $draft['etag'], $this->actor);
+            $draft = $this->content->writeTranslation('article', $id, 'en', ['title' => 'New translation'], $draft['etag'], $this->actor);
+            $beforeDraft = Db::fetchAssoc('SELECT * FROM cms_api_drafts WHERE article_id = ?', [$id]);
+            self::assertSame(3, Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_revisions')['n']);
+            self::assertSame(3, Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_changes')['n']);
+            // Fail after published row/translation/revision/draft writes by
+            // shadowing the real audit table with an incompatible temporary one.
+            Db::query('CREATE TEMPORARY TABLE cms_api_audit (unrelated INT) ENGINE=InnoDB');
+            $oldLog = ini_set('error_log', '/dev/null');
+            $failed = false;
+            try {
+                $this->content->publish($id, $draft['etag'], $this->actor);
+            } catch (\Wbengine\Db\Exception\DbException $e) {
+                $failed = true;
+            } finally { ini_set('error_log', $oldLog); }
+            self::assertTrue($failed, 'Publication must fail when its audit cannot be persisted.');
+            self::assertSame($beforeArticle, Db::fetchAssoc('SELECT * FROM cms_articles WHERE id = ?', [$id]));
+            self::assertSame($beforeTranslations, Db::fetchAllAssoc('SELECT * FROM cms_article_translations WHERE article_id = ? ORDER BY locale', [$id]));
+            self::assertSame($beforeDraft, Db::fetchAssoc('SELECT * FROM cms_api_drafts WHERE article_id = ?', [$id]));
+            self::assertSame(3, Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_revisions')['n']);
+            self::assertSame(3, Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_changes')['n']);
+            self::assertSame([], $this->flushCounts);
+        });
+    }
+
+    /** Use isolated persistent tables and restore originals even after partial setup. */
+    private function withPersistentPublicationTables(callable $check): void
+    {
+        self::assertSame('wbengine_test', Db::fetchAssoc('SELECT DATABASE() AS name')['name'], 'Persistent fixtures are restricted to the test database.');
+        $tables = ['cms_articles', 'cms_article_translations', 'cms_api_drafts', 'cms_api_revisions', 'cms_api_changes', 'cms_api_audit'];
+        $definitions = [];
+        foreach ($tables as $table) {
+            $create = Db::fetchAssoc('SHOW CREATE TABLE ' . Db::identifier($table))['Create Table'];
+            $definitions[$table] = preg_replace('/^CREATE TEMPORARY TABLE /', 'CREATE TABLE ', $create);
+        }
+        $owned = [];
         try {
-            try { $this->content->publish($id, $draft['etag'], $this->actor); self::fail('Unaudited publication succeeded'); }
-            catch (\Wbengine\Db\Exception\DbException $e) { self::assertSame('Puvodni', Db::fetchAssoc('SELECT title FROM cms_article_translations')['title']); }
-        } finally { ini_set('error_log', $oldLog); }
-        self::assertSame(1, Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_drafts')['n']);
-        self::assertSame([], $this->flushCounts);
+            foreach ($definitions as $table => $create) {
+                Db::query('DROP TEMPORARY TABLE ' . Db::identifier($table));
+                $original = Db::fetchAssoc('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table]);
+                $backup = null;
+                if ($original) {
+                    $backup = 'api_publication_backup_' . bin2hex(random_bytes(12));
+                    Db::query('RENAME TABLE ' . Db::identifier($table) . ' TO ' . Db::identifier($backup));
+                }
+                // Record ownership before CREATE so a creation failure still
+                // restores any original table already moved out of the way.
+                $owned[$table] = $backup;
+                Db::query($create);
+            }
+            $check();
+        } finally {
+            Db::getConnection()->rollback();
+            foreach (array_reverse($owned, true) as $table => $backup) {
+                Db::query('DROP TEMPORARY TABLE IF EXISTS ' . Db::identifier($table));
+                Db::query('DROP TABLE IF EXISTS ' . Db::identifier($table));
+                if (null !== $backup) { Db::query('RENAME TABLE ' . Db::identifier($backup) . ' TO ' . Db::identifier($table)); }
+            }
+        }
     }
 
     public function testImageUploadReadDeleteAuditAndRollbackCleanup(): void

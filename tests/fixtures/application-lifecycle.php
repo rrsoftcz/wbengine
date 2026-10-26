@@ -26,6 +26,12 @@ namespace {
 
     $dir = getenv('WB_LIFECYCLE_DIR');
     $mode = $_SERVER['HTTP_X_LIFECYCLE_MODE'] ?? '';
+    if ($mode === 'shutdown-no-autoload') {
+        ob_start();
+        register_shutdown_function(static function (): void {
+            foreach (spl_autoload_functions() as $loader) { spl_autoload_unregister($loader); }
+        });
+    }
     // Mirror the normal webserver rewrite input before i18n strips a prefix.
     $_REQUEST['link'] = trim((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
     if ('api-auth-fixture' === $mode) {
@@ -37,7 +43,9 @@ namespace {
     $initialConnections = (int) mysqli_get_client_stats()['connect_success'];
     header_register_callback(static function () use ($dir, $initialBoxes, $initialConnections): void {
         $boxes = is_file($dir . '/events.log') ? substr_count(file_get_contents($dir . '/events.log'), "box\n") : 0;
-        header('X-Lifecycle-Queries: ' . Db::getQueriesCount());
+        // Headers may flush after Composer autoload shutdown on a bodyless redirect.
+        // An unloaded DB class cannot have executed a framework query.
+        header('X-Lifecycle-Queries: ' . (class_exists(Db::class, false) ? Db::getQueriesCount() : 0));
         header('X-Lifecycle-Connections: ' . ((int) mysqli_get_client_stats()['connect_success'] - $initialConnections));
         header('X-Lifecycle-Boxes: ' . ($boxes - $initialBoxes));
         header('X-Lifecycle-Session: ' . (session_status() === PHP_SESSION_ACTIVE ? 'active' : 'none'));
