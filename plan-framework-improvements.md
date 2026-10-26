@@ -62,8 +62,8 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] TPL-01: hotovo (Codex, 2026-10-26), inventura 7 frameworkových a 13 vzorových zdrojů, read-only compile report, corpus očekávaných výstupů a rozdílů a ref-template-migration.md.
 - [ ] TPL-02: rozpracováno (Codex, 2026-10-26), TPL-02A diagnostika a TPL-02B include/set/buffery dokončeny; zbývá aplikační migrace a HTTP smoke. Závisí na TPL-01 a SEC-03.
 - [ ] TPL-03: čeká, volitelná kompatibilní vrstva, odstranění Smarty z jádra; závisí na TPL-02.
-- [ ] MD-01: čeká, vlastní CommonMark parser a bezpečný HTML renderer.
-- [ ] MD-02: čeká, přímé .md zdroje v layoutu a databázové Markdown texty; závisí na MD-01.
+- [x] MD-01: hotovo (Codex, 2026-10-26), vlastní AST parser a bezpečný renderer, všechny oficiální CommonMark/GFM příklady a explicitní bezpečnostní odchylky, limity práce/vstupu/výstupu.
+- [ ] MD-02: rozpracováno (Codex, 2026-10-26), přímé .md zdroje a explicitní DB formáty s děděním formátu při překladech; MD-01 dokončen.
 - [ ] MD-03: čeká, převod Texy včetně překladů a záloh; závisí na MD-02.
 - [ ] MD-04: čeká, odstranění Texy po migrační bráně; závisí na MD-03.
 - [ ] API-01: čeká, kontrakt a capability discovery API v2; závisí na ARCH-01.
@@ -681,3 +681,14 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Aktuální benchmark MySQL 8.4.13: SQL mediány pro 100/1000/10000 stránek 0.2309/0.1297/0.0873 ms. Zapnutý memory či file driver nyní také měří SQL, nikoli starou cache cestu. Syntetické sestavení mapy mimo fetch tabulky 0.0089/0.0696/0.7497 ms. Žádný slib produkční latence a žádná nová URL mapa.
 - Společná ověřená sada dosud verzovaných testů a nového SiteLookupCollationTest: **1222 testů / 3142 assertions**, 14.385 s, 36 MB, PHP 8.4.27/MySQL 8.4; TPL-02B již samostatně commitnut a pushnut jako 06818d7. Lint a git diff --check prošly. Práce dalších workerů Markdown/API není součástí tohoto checkpointu. Následuje samostatný commit/push FIX-02 s tímto plánem a CI přesného commitu.
 - Další krok: pokračuje TPL-02C a paralelně MD-01/API-01/04 podle přidělených souborů. SEC-01 obsahová invalidace zůstává otevřená, budoucí URL mapa PERF-04 odložena bez potřeby. Mezi kontrolními body se již nečeká na zprávu uživatele.
+
+
+### 2026-10-26: MD-01 dokončen
+
+- Vlastní Wbengine\Markdown facade skládá oddělené Parser/InlineParser/readonly Node/HtmlRenderer a sdílený Budget, bez dalšího runtime balíčku. Jde o strom obsahu ve stejných namespaces; žádná spuštěná template/PHP logika z Markdownu. Přímé zdroje a App/DB vazba pokračují v MD-02.
+- CommonMark 0.31.2: všech 652 oficiálních příkladů má přesný syntaktický test přes pouze testovou projekci AST i přesný produkční bezpečný výstup. 76 explicitních výsledků v safe-deviations.json: 72 escapované HTML a 4 zakázaná URL schémata. 12 oficiálních příkladů GFM tabulek/task/strikethrough také přesně prochází. zdroje/autoři/licence/SHA jsou v sources.json, veřejná smlouva v ref-markdown.md. Nejde o tvrzení shody pro všechny možné řetězce.
+- Limity: 1MiB vstup, parser64/renderer128 depth, 8M work, 100k alokací uzlů, 8MiB rozbalený HTML výstup. Překročení LengthException. HTML vždy escapováno, URL http/https/mailto/relative, bez nebezpečného přepínače. Čítače se resetují mezi dokumenty.
+- Nezávislé review přineslo konkrétní případy mimo oficiální corpus. RED/GREEN: escaped less-than v angle destination, nepovolená závorka v title, escaped closing label, 999 Unicode znaků versus bajty, invalid UTF8 bez PHP deprecation a amplifikace krátkého referenčního zdroje do obrovského výstupu. Výstupní limit ji zastaví; běžné 1000 odkazy/code spans nezamítá příliš konzervativní suffix-accounting. Další regrese pro hloubku image alt/inline/bloků, počet uzlů a adversariální delimiter reduction.
+- Izolované Docker ověření PHP8.4.27 **695 testů / 1826 assertions**. Doplňkový deterministický malformed-input smoke 1000 vstupů bez PHP warnings. Integrační sada všech dosud verzovaných testů + Markdown souborů **1917 testů / 4968 assertions**, 14.607 s, 46 MB; rozpracované API/MD-02 testy byly záměrně oddělené. composer lint a git diff --check prošly. TPL-02B/FIX-02 předchozí checkpoint má všech 5 CI zelených.
+- Review fixy ověřeny regresními testy a společnou sadou; další review kolo není podmínkou čekání. Následuje samostatný commit/push MD-01 s tímto plánem a CI přesného vzdáleného commitu. Texy/Smarty závislosti se v tomto checkpointu nemění.
+- Další krok: MD-02 worker provádí lazy App službu, .md source dispatch v Engine, explicitní formát článků/překladů. Pozor: skutečný starý Article getter dnes nevolá Texy formatter, může již obsahovat HTML. Zachovat existující bajty jako legacy_html, zdroj pro MD-03 požadovat explicitně (HTML/Texy), neodhadovat syntax. Root pokračuje v samostatném checkoutu vzorové aplikace a API foundation po review opravuje vlastnictví transakcí.

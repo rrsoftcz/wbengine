@@ -1,0 +1,32 @@
+{
+  "commonmark": {
+    "version": "0.31.2",
+    "source": "https://spec.commonmark.org/0.31.2/spec.json",
+    "author": "John MacFarlane and CommonMark contributors",
+    "license": "CC-BY-SA-4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sha256": "d431b29d97b6f73e69d547109cf5081578fac931e72afe95639ebe766c1b2a20",
+    "examples": 652,
+    "changes": "None; complete official JSON corpus"
+  },
+  "gfm": {
+    "version": "0.29-gfm",
+    "source": "https://raw.githubusercontent.com/github/cmark-gfm/master/test/spec.txt",
+    "specification": "https://github.github.com/gfm/",
+    "author": "GitHub and CommonMark contributors",
+    "license": "CC-BY-SA-4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceSha256": "7d8e5814befec287ac116786d81ff14e0adc9b13295b4494649e995408fd871c",
+    "sha256": "bce6ee09da8447b17021d3cce33cec3f71b07b6f73f81010f5307188493e7114",
+    "examples": 12,
+    "changes": "Only Tables, Task list items, Strikethrough extension examples extracted unchanged into JSON"
+  },
+  "safety": {
+    "fixture": "safe-deviations.json",
+    "examples": 76,
+    "rawHtmlEscaping": 72,
+    "urlSchemeAllowlist": 4,
+    "notes": "The safe HTML output is an adaptation. All syntax is independently checked against the official output using test-only raw-node and URL projection. No unsafe renderer exists in production."
+  },
+  "retrieved": "2026-10-26"
+}

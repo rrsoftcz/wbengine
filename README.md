@@ -323,6 +323,22 @@ or create non-removable buffers; those PHP side effects cannot be fully recovere
 
 The compiled template is a PHP file, so opcache keeps it in memory. Measured on the skeleton layout (6 menu items, about 9.7 KB of output): repeated renders in one process take about 11 microseconds with the native engine and 9 with Smarty (the native engine also escapes). On a cold request, the case that matters for PHP-FPM and Apache, the native engine adds about 2.3 ms over a bare PHP process against 4.5 ms for Smarty, because Smarty's classes are not loaded and initialised. The saving is about 2 ms per request, which is real but small next to a database query; the main reasons to switch are the automatic escaping and the fragment cache. Set `"compileCheck": false` in production (and clear the compiled directory on deploy) so the source files are not checked on every request.
 
+## Markdown content
+
+WBengine now includes its own block/inline Markdown parser and immutable content
+tree with a separate safe HTML renderer, without a Markdown package dependency.
+Use `(new \Wbengine\Markdown())->render($source)`. It supports CommonMark 0.31.2
+and GFM tables, strikethrough and task lists. Raw HTML is escaped and URL schemes
+are restricted to http/https/mailto and relative paths. Default limits include
+1 MiB input and 8 MiB expanded HTML output; exceeding work/depth/size budgets
+throws LengthException. There is no unsafe HTML mode.
+
+See [the Markdown contract and conformance evidence](ref-markdown.md) for all
+652 official CommonMark examples, 12 GFM examples, 76 exact safe-output deviations,
+source attribution and regression cases discovered beyond the official corpus.
+Direct .md sources, Application integration and explicit database formats are the
+next MD-02 phase; this checkpoint does not reinterpret legacy articles or remove Texy.
+
 ## Internationalisation
 
 The user interface can be shown in several languages. It is off by default. Switch it on in `Settings.json`:
