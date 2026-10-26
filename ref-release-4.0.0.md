@@ -1,6 +1,6 @@
-# WBengine 4.0.0: připravené vydání
+# WBengine 4.0.0
 
-Stav 2026-10-26: implementace a technická brána dokončeny v pracovních větvích. Tento dokument je podklad k vydání, nikoli tvrzení, že tag nebo release už byly zveřejněné. Produkční data nebyla migrována.
+Vydáno 2026-10-26. Tag v4.0.0 ukazuje na merge commit cf710e5adbc25809868a864e615f8b9fc62a7489. Produkční data nebyla migrována.
 
 ## Změny
 
@@ -30,10 +30,10 @@ Kompatibilní Composer balíčky v compat/ ještě nejsou samostatně publikovan
 
 Přesný postup a návrat: book-wbengine-4-upgrade.md. Aktuální úkoly a historie: plan-framework-improvements.md. API, Markdown a templates mají samostatné ref dokumenty. Provozní správce musí ověřit vlastní zálohu, konkrétní obsah a ruční migrační issues před nasazením.
 
-## Připravené GitHub změny
+## Sloučené změny
 
 - Jádro: https://github.com/rrsoftcz/wbengine/pull/2
 - Vzorová aplikace: https://github.com/rrsoftcz/wbengine-skeleton-app/pull/1
 - Privátní centrála: https://github.com/rrsoftcz/wbengine-admin/pull/1
 
-Závěrečný publikační krok: schválení a merge odpovídajících PR, ověření merge CI, tag a GitHub release v4.0.0. Produkční deploy a konverze provozních dat jsou samostatné řízené operace podle upgrade návodu.
+GitHub release: https://github.com/rrsoftcz/wbengine/releases/tag/v4.0.0. Produkční deploy a konverze provozních dat jsou samostatné řízené operace podle upgrade návodu.
