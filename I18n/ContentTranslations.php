@@ -135,6 +135,11 @@ class ContentTranslations
                         } else {
                             $row[$field] = $value;
                         }
+                        if ($entity === 'article' && in_array($field, ['introtext', 'bodytext'], true)) {
+                            $format = $translations[$id][$locale]['content_format'] ?? 'legacy_html';
+                            if (is_object($row)) { $row->{$field . '_format'} = $format; }
+                            else { $row[$field . '_format'] = $format; }
+                        }
                         break;
                     }
                 }
@@ -155,6 +160,8 @@ class ContentTranslations
         $table = Db::identifier($def['table']);
         $marks = implode(',', array_fill(0, count($chain), '?'));
 
+        // Articles use SELECT * so optional content_format metadata is read when installed,
+        // while old schemas keep working without probing or naming a missing column.
         // Small tables are loaded whole, once per locale, and cached: the number of entries
         // is bounded by the number of locales, never by what a visitor asks for.
         if ($def['cache']) {
@@ -166,7 +173,7 @@ class ContentTranslations
 
         $idMarks = implode(',', array_fill(0, count($ids), '?'));
         $rows = Db::fetchAllAssoc(
-            sprintf('SELECT %s, `locale`, %s FROM %s WHERE %s IN (%s) AND `locale` IN (%s)', $key, $fields, $table, $key, $idMarks, $marks),
+            sprintf('SELECT %s FROM %s WHERE %s IN (%s) AND `locale` IN (%s)', $entity === 'article' ? '*' : $key . ', `locale`, ' . $fields, $table, $key, $idMarks, $marks),
             array_merge($ids, $chain)
         );
         return self::_group($rows, $def['key']);
@@ -195,7 +202,7 @@ class ContentTranslations
 
         $fields = implode(', ', array_map(array(Db::class, 'identifier'), array_keys($def['fields'])));
         $rows = Db::fetchAllAssoc(
-            sprintf('SELECT `locale`, %s FROM %s WHERE %s = ? ORDER BY `locale`', $fields, Db::identifier($def['table']), Db::identifier($def['key'])),
+            sprintf('SELECT %s FROM %s WHERE %s = ? ORDER BY `locale`', $entity === 'article' ? '*' : '`locale`, ' . $fields, Db::identifier($def['table']), Db::identifier($def['key'])),
             array((int) $id)
         );
 
@@ -203,6 +210,7 @@ class ContentTranslations
         foreach ($rows as $row) {
             $locale = $row['locale'];
             unset($row['locale']);
+            if ($entity === 'article') { $row = array_intersect_key($row, $def['fields'] + ['content_format' => true]); }
             $out[$locale] = $row;
         }
         return $out;
@@ -226,6 +234,11 @@ class ContentTranslations
         }
         $values = array();
         foreach ($fields as $name => $value) {
+            if ($entity === 'article' && $name === 'content_format') {
+                if (!in_array($value, ['legacy_html', 'markdown'], true)) { throw new TranslationException('Unknown article content_format; allowed: legacy_html, markdown.'); }
+                $values[$name] = $value;
+                continue;
+            }
             if (!is_string($name) || !isset($def['fields'][$name])) {
                 throw new TranslationException(sprintf('Unknown field "%s" for %s, allowed: %s.', is_string($name) ? $name : '?', $entity, implode(', ', array_keys($def['fields']))));
             }
@@ -238,15 +251,40 @@ class ContentTranslations
             $values[$name] = (null === $value || '' === $value) ? null : $value;
         }
 
+        $existing = $entity === 'article' ? (self::all($entity, $id)[$locale] ?? []) : [];
+        $expectedFormat = $existing['content_format'] ?? null;
+        if ($entity === 'article' && array_key_exists('content_format', $values)) {
+            if ($existing && ($existing['content_format'] ?? 'legacy_html') !== $values['content_format']) {
+                foreach (['introtext', 'bodytext'] as $field) {
+                    if (!array_key_exists($field, $values)) {
+                        throw new TranslationException('Changing content_format requires replacing or clearing both text fields; missing ' . $field . '.');
+                    }
+                }
+            }
+        }
+
         $table = Db::identifier($def['table']);
         $key = Db::identifier($def['key']);
         // Create the row if it is not there, then update. Both steps are safe to repeat and to
         // run at the same time (the key is unique).
         Db::query(sprintf('INSERT IGNORE INTO %s (%s, `locale`) VALUES (?, ?)', $table, $key), array((int) $id, $locale));
+        if ($entity === 'article' && !$existing) {
+            if (Db::getAffected() === 0) { throw new TranslationException('Article translation changed concurrently; reload it before writing.'); }
+            $inserted = self::all($entity, $id)[$locale] ?? [];
+            $expectedFormat = $inserted['content_format'] ?? null;
+        }
         $set = implode(', ', array_map(static function ($f) {
             return Db::identifier($f) . ' = ?';
         }, array_keys($values)));
-        Db::query(sprintf('UPDATE %s SET %s WHERE %s = ? AND `locale` = ?', $table, $set, $key), array_merge(array_values($values), array((int) $id, $locale)));
+        // A separate read is insufficient: another writer may switch the record format
+        // before this UPDATE. Fence the write itself without owning the caller's transaction.
+        $condition = $expectedFormat === null ? '' : ' AND `content_format` = ?';
+        $params = array_merge(array_values($values), array((int) $id, $locale), $expectedFormat === null ? [] : [$expectedFormat]);
+        Db::query(sprintf('UPDATE %s SET %s WHERE %s = ? AND `locale` = ?%s', $table, $set, $key, $condition), $params);
+        if ($expectedFormat !== null && Db::getAffected() === 0) {
+            $current = self::all($entity, $id)[$locale] ?? [];
+            if (($current['content_format'] ?? null) !== $expectedFormat) { throw new TranslationException('Article translation format changed concurrently; reload it before writing.'); }
+        }
 
         Cache::flush();
         return self::all($entity, $id)[$locale] ?? array();

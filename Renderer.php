@@ -111,6 +111,9 @@ class Renderer extends Renderer\Adapter
             $user = $this->_app->getClassUser();
             return $user->getUserIsLogged() ? $this->_app->getSession()->getUserId() : null;
         });
+        if ($this->_app instanceof Application) {
+            $this->setMarkdownResolver(fn() => $this->_app->getMarkdown());
+        }
         $this->disableCache();
     }
 

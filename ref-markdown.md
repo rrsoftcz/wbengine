@@ -1,6 +1,6 @@
 # Vlastní Markdown parser WBengine 4.0
 
-Stav 2026-10-26: MD-01 dokončen, MD-02 integrace zdrojů a DB rozpracována. Parser nemá závislost na dalším Markdown balíčku.
+Stav 2026-10-26: MD-01 a MD-02 dokončeny; konverze obsahu pokračuje v MD-03. Parser nemá závislost na dalším Markdown balíčku.
 
 ## Rozhraní a strom
 
@@ -12,7 +12,7 @@ $tree = (new \Wbengine\Markdown\Parser())->parse($source);
 $html = (new \Wbengine\Markdown\HtmlRenderer())->render($tree);
 ```
 
-Markdown zůstává obsahem: proměnné šablon ani PHP se nevyhodnocují. Přímé `.md` zdroje v layoutu, Application lazy služba a explicitní DB formáty vznikají až v MD-02. Tato etapa nepřepíná staré články a neodstraňuje Texy.
+Markdown zůstává obsahem: proměnné šablon ani PHP se nevyhodnocují. Přímé `.md` zdroje v layoutu, Application lazy služba a explicitní DB formáty jsou zapojeny podle následující části. Tato etapa nepřepíná staré články a neodstraňuje Texy.
 
 ## Podporovaný formát a bezpečný výstup
 
@@ -35,3 +35,16 @@ docker compose -p wbengine-modernization run --rm --no-deps php php vendor/bin/p
 ```
 
 Korpusy jsou převzaté testovací podklady s vlastní atribucí a licencí podle manifestu; implementace je vlastní. Produkční jádro pro Markdown nepřidává Composer závislost.
+
+
+## MD-02: zdroje, layout a uložený formát
+
+Application poskytuje lazy `getMarkdown()`; callback se předává přes současný Renderer/Adapter/NativeRenderer do Engine. Parser nevzniká při běžném ne-Markdown renderu. Samostatný NativeRenderer má bezpečný vlastní lazy fallback. Engine nejprve ověří povolené kořeny a potom vyhodnotí příponu požadované i kanonické cesty, case-insensitive. `.md` nikdy nejde do Compileru, ani jako symlinkový alias. Soubor se načte s pevnou mezí 1MiB plus detekční bajt; nelze tak před kontrolou spolknout obrovský zdroj.
+
+`{include 'content.md'}` vloží bezpečně zformátovaný obsah do HTML layoutu. Text `{$variable}`, `{if ...}` a PHP zůstávají obsahem, i v důvěryhodném souboru. Stejný parser obsluhuje DB hodnoty.
+
+Volitelná migrace `003-markdown-content.sql` přidává `content_format` článkům i překladům. Výchozí `legacy_html` zachová současné důvěryhodné HTML přesně; `markdown` výslovně zapíná nový renderer. Staré schéma je stále čitelné: používá SELECT * a legacy fallback, bez runtime DDL nebo schema-probe dotazů. Před novými formátovanými zápisy migraci aplikovat ručně běžným migračním postupem. Neznámý formát se odmítá.
+
+Článek může kombinovat přeložené Markdown body s původním legacy intro. Overlay proto předává formát samostatně pro každý vybraný field, nikoli slepě jeden formát poslední řádky. Null znamená fallback, prázdný text výslovně prázdný field. Změna formátu existujícího překladu vyžaduje předat oba textové fieldy k nahrazení či fallbacku. Podmíněný UPDATE navíc hlídá formát skutečně načtené verze; jinak souběžný save mohl vrátit starý formát nad novým textem. Stale zápis i kolize prvního INSERT jsou odmítnuty, legitimní no-op zůstává povolen. Metoda nezačíná ani neukončuje cizí transakci.
+
+Deterministický RED/GREEN souběhový test použil dva procesy/spojení a row lock v izolované testovací DB. Druhý writer změnil oba texty i formát, zatímco první čekal; původní implementace data smíchala a nová ji odmítne. Temporary migrační testy pokrývají nový sloupec, legacy zachování i mixed fallback; běžné ContentTranslations/ContentReadPath regrese zůstávají zelené. Souběhová fixture po sobě odstraňuje vlastní řádky a pouze svůj přidaný testovací sloupec.

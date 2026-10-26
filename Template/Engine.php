@@ -22,6 +22,8 @@ class Engine
     private $_depth = 0;
     private $_fragmentCache = null;
     private $_cacheUserResolver = null;
+    private ?\Wbengine\Markdown $_markdown = null;
+    private $_markdownResolver = null;
 
     /** Compiled templates already loaded in this process, so a template rendered again is not included again. */
     private $_loaded = array();
@@ -81,6 +83,14 @@ class Engine
     public function setCacheUserResolver(?callable $resolver)
     {
         $this->_cacheUserResolver = $resolver;
+        return $this;
+    }
+
+    /** Bind the application content service without constructing it for ordinary templates. */
+    public function setMarkdownResolver(?callable $resolver)
+    {
+        $this->_markdownResolver = $resolver;
+        $this->_markdown = null;
         return $this;
     }
 
@@ -157,7 +167,13 @@ class Engine
             throw new TemplateException('Templates are included too deep (a template includes itself?).');
         }
 
-        $compiled = $this->_compiled($this->_resolve($name), $name);
+        $source = $this->_resolve($name);
+        // Either the requested name or canonical target may identify Markdown. A symlink
+        // cannot turn a requested .md content file into executable template source.
+        if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'md' || strtolower(pathinfo($source, PATHINFO_EXTENSION)) === 'md') {
+            return $this->_renderMarkdown($source);
+        }
+        $compiled = $this->_compiled($source, $name);
         $fn = $this->_loaded[$compiled] ?? ($this->_loaded[$compiled] = include $compiled);
 
         ++$this->_depth;
@@ -166,6 +182,24 @@ class Engine
         } finally {
             --$this->_depth;
         }
+    }
+
+    private function _renderMarkdown(string $source): string
+    {
+        $handle = @fopen($source, 'rb');
+        if ($handle === false) { throw new TemplateException('The Markdown content file cannot be read.'); }
+        try {
+            // Bounded read also handles files growing after path resolution. No PHP include.
+            $text = stream_get_contents($handle, 1048577);
+            if ($text === false) { throw new TemplateException('The Markdown content file cannot be read.'); }
+            if (strlen($text) > 1048576) { throw new \LengthException('Markdown input size limit exceeded'); }
+        } finally { fclose($handle); }
+        if ($this->_markdown === null) {
+            $service = $this->_markdownResolver === null ? new \Wbengine\Markdown() : ($this->_markdownResolver)();
+            if (!$service instanceof \Wbengine\Markdown) { throw new TemplateException('The Markdown resolver must return the application Markdown service.'); }
+            $this->_markdown = $service;
+        }
+        return $this->_markdown->render($text);
     }
 
     /** Capture a template/fragment and every removable buffer it creates. */

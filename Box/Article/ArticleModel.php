@@ -51,15 +51,7 @@ class ArticleModel extends ModelAbstract {
      */
     public function getArticleRow($updateView = false)
     {
-        $sql = sprintf("SELECT 
-                          a.introtext, 
-                          a.bodytext, 
-                          a.id, 
-                          a.title, 
-                          a.published, 
-                          a.author, 
-                          a.views, 
-                          a.source  
+        $sql = sprintf("SELECT a.*
                         FROM %s a
                         WHERE  site_id = ? LIMIT 1;"
             ,S_TABLE_ARTICLES

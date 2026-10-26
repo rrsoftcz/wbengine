@@ -80,6 +80,11 @@ class NativeRenderer implements RendererInterface
         $this->_engine->setAutoEscape($value);
     }
 
+    public function setMarkdownResolver(?callable $resolver)
+    {
+        $this->_engine->setMarkdownResolver($resolver);
+    }
+
     public function setCacheUserResolver(?callable $resolver)
     {
         $this->_engine->setCacheUserResolver($resolver);

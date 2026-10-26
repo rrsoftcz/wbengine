@@ -336,8 +336,19 @@ throws LengthException. There is no unsafe HTML mode.
 See [the Markdown contract and conformance evidence](ref-markdown.md) for all
 652 official CommonMark examples, 12 GFM examples, 76 exact safe-output deviations,
 source attribution and regression cases discovered beyond the official corpus.
-Direct .md sources, Application integration and explicit database formats are the
-next MD-02 phase; this checkpoint does not reinterpret legacy articles or remove Texy.
+Use `$app->getMarkdown()` for the lazy shared service. NativeRenderer also accepts
+`.md` sources directly and inside an HTML layout's include: the file is Markdown
+content throughout, so PHP, variables and template loops are never executed.
+Requested or canonical `.md` extensions (case-insensitive) select this path, roots
+are validated first and reads are bounded to the parser input limit.
+
+Optional `migrations/4.0.0/003-markdown-content.sql` adds explicit article/translation
+`content_format` values `legacy_html` and `markdown`. Existing and unmigrated rows
+retain their previous trusted HTML bytes. New Markdown fields render through the
+safe parser. Partial translations inherit each omitted field's original format;
+changing an existing translation format requires both text fields to be replaced
+or cleared and rejects stale concurrent format changes. Normal content writes must
+still invalidate caches. Texy conversion/removal follows in MD-03/MD-04.
 
 ## Internationalisation
 

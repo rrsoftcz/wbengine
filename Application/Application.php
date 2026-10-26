@@ -160,6 +160,7 @@ class Application implements ComponentParentInterface, ResponseInterface
     private $_namespace = null;
 
     private ?Env\RequestContext $_requestContext = null;
+    private ?\Wbengine\Markdown $_markdown = null;
 
 
     const APP_BASE_DIR              = '/App';
@@ -343,6 +344,12 @@ class Application implements ComponentParentInterface, ResponseInterface
     public function getRequestContext(): Env\RequestContext
     {
         return $this->_requestContext ??= new Env\RequestContext($this);
+    }
+
+    /** Content service is allocated only when Markdown is actually requested. */
+    public function getMarkdown(): \Wbengine\Markdown
+    {
+        return $this->_markdown ??= new \Wbengine\Markdown();
     }
 
     public function getCsrf(): \Wbengine\Session\Csrf

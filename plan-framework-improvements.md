@@ -63,7 +63,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [ ] TPL-02: rozpracováno (Codex, 2026-10-26), TPL-02A diagnostika a TPL-02B include/set/buffery dokončeny; zbývá aplikační migrace a HTTP smoke. Závisí na TPL-01 a SEC-03.
 - [ ] TPL-03: čeká, volitelná kompatibilní vrstva, odstranění Smarty z jádra; závisí na TPL-02.
 - [x] MD-01: hotovo (Codex, 2026-10-26), vlastní AST parser a bezpečný renderer, všechny oficiální CommonMark/GFM příklady a explicitní bezpečnostní odchylky, limity práce/vstupu/výstupu.
-- [ ] MD-02: rozpracováno (Codex, 2026-10-26), přímé .md zdroje a explicitní DB formáty s děděním formátu při překladech; MD-01 dokončen.
+- [x] MD-02: hotovo (Codex, 2026-10-26), lazy App Markdown, bezpečné .md zdroje/layout, explicitní legacy_html/markdown v DB, mixed překlady a souběhový format guard.
 - [ ] MD-03: čeká, převod Texy včetně překladů a záloh; závisí na MD-02.
 - [ ] MD-04: čeká, odstranění Texy po migrační bráně; závisí na MD-03.
 - [ ] API-01: čeká, kontrakt a capability discovery API v2; závisí na ARCH-01.
@@ -692,3 +692,12 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Izolované Docker ověření PHP8.4.27 **695 testů / 1826 assertions**. Doplňkový deterministický malformed-input smoke 1000 vstupů bez PHP warnings. Integrační sada všech dosud verzovaných testů + Markdown souborů **1917 testů / 4968 assertions**, 14.607 s, 46 MB; rozpracované API/MD-02 testy byly záměrně oddělené. composer lint a git diff --check prošly. TPL-02B/FIX-02 předchozí checkpoint má všech 5 CI zelených.
 - Review fixy ověřeny regresními testy a společnou sadou; další review kolo není podmínkou čekání. Následuje samostatný commit/push MD-01 s tímto plánem a CI přesného vzdáleného commitu. Texy/Smarty závislosti se v tomto checkpointu nemění.
 - Další krok: MD-02 worker provádí lazy App službu, .md source dispatch v Engine, explicitní formát článků/překladů. Pozor: skutečný starý Article getter dnes nevolá Texy formatter, může již obsahovat HTML. Zachovat existující bajty jako legacy_html, zdroj pro MD-03 požadovat explicitně (HTML/Texy), neodhadovat syntax. Root pokračuje v samostatném checkoutu vzorové aplikace a API foundation po review opravuje vlastnictví transakcí.
+
+
+### 2026-10-26: MD-02 dokončen
+
+- Zapojení lazy App->Renderer->Adapter->NativeRenderer->Engine resolver, bez parseru na běžném HTML renderu. `.md` požadovaná či kanonická přípona, case-insensitive, vždy jako obsah bez PHP/proměnných/template logiky; kořeny kontrolovány před dispatch a čtení omezené na1MiB. Povoleno i uvnitř standardního HTML layoutu. NativeRenderer bez App má vlastní bezpečný lazy fallback.
+- Volitelná003 migrace přidává legacy_html/markdown formát. Article getter skutečně dříve jen předával DB HTML, proto se staré řádky nereinterpretují jako Texy. Zachované bajty/nezměněné staré schéma bez probe dotazů; formát je explicitní. Překlady předávají per-field formát, takže fallback nesmíchá HTML a Markdown. Komentář Article.tpl opraven podle skutečného chování.
+- Nezávislé review našlo souběhovou chybu čtení/validace formátu před UPDATE. Deterministický fork/two-connection RED ji prokázal pod FOR UPDATE zámkem; conditional UPDATE hlídá původní formát, stale změna a initial-INSERT kolize odmítnuty, legitimní no-op povolen. Nemění transakční hranice volajícího. Změna existujícího formátu vyžaduje oba textové fieldy (nahradit/nebo null fallback).
+- Izolované první770testové ověření zdrojů/parseru/obsahu/regresí **770/2064**; finální zaměřená DB regrese po souběhovém fixu **65testů/221assertions**. Společná sada dosud verzovaných testů + MD02 + dokončené API foundation a UrlRequest **1966testů/5178assertions**,14.825s,46MB,PHP8.4.27/MySQL8.4. composer lint a git diff --check prošly. API/URL soubory budou mít následující samostatné checkpointy, nejsou přimíchány do MD02commitu. MD01 má všech5CIzelených.
+- Nová ref-markdown.md sekce popisuje formáty, null/empty, limity a migrační postup. Žádné nové závislosti, runtimeDDL ani přepsání aplikačních dat. Migraceobsahu MD03 již vzniká ve zvlášť vlastněných nových souborech, se zálohami/dryrun/rollback a explicitním HTML čiTexy zdrojem. Následuje MD02 commit/push a CI; Root dál pokračuje appTPL02C a API foundation.

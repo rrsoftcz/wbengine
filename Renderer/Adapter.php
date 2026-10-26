@@ -198,6 +198,12 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
         $this->getAdapter()->setCompileCheck((bool) $value);
     }
 
+    public function setMarkdownResolver(?callable $resolver)
+    {
+        $adapter = $this->getAdapter();
+        if (method_exists($adapter, 'setMarkdownResolver')) { $adapter->setMarkdownResolver($resolver); }
+    }
+
     public function setCacheUserResolver(?callable $resolver)
     {
         $adapter = $this->getAdapter();
