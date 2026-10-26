@@ -39,7 +39,7 @@ A ready to run example application lives in the companion project `wbengine-skel
 * Extensions: `mysqli`, `json`, `mbstring`
 * MySQL 8 or MariaDB 10.6+ (box selection uses `JSON_SEARCH`). Tested on MySQL 8.4, MariaDB 10.11 and MariaDB 11.4.
 * A web server that sends every request that is not a file to `index.php`: Apache with `mod_rewrite` or Nginx with PHP-FPM (both tested, the skeleton has the configuration for each)
-* Composer packages: `smarty/smarty` 5, `texy/texy` 3, `firebase/php-jwt` 7
+* Composer packages: `texy/texy` 3, `firebase/php-jwt` 7. Smarty is available only through the optional `wbengine/smarty-compat` package
 
 PHP has no long term support releases. 8.4 receives security fixes until the end of 2028 and 8.3 until the end of 2027, which is why 8.3 is the minimum.
 
@@ -79,7 +79,7 @@ Config/Settings.json     configuration, see the reference below
 Box/<Section>/<Module>.php   your box classes (namespace App\Box\<Section>)
 View/site.tpl            the page layout
 View/<Section>/<Method>.tpl  one template per box
-View/Compiled/           Smarty cache, must be writable
+View/Compiled/           Compiled template cache, must be writable
 ```
 
 Your web server must send every request that is not a file to `index.php` (the skeleton ships an Apache `.htaccess` for this). The database needs the `cms_*` tables, whose schema is in the skeleton's `schemas/` directory.
@@ -120,7 +120,7 @@ Relevant `cms_boxes` columns:
 | `Url` | the parsed request URL |
 | `Session`, `User`, `User\Password` | database backed session, the current user, password hashing |
 | `Auth`, `Api\*` | JWT creation and the REST API modules |
-| `Renderer` | adapter around Smarty 5 (`SmartyRenderer`) |
+| `Renderer` | native compiled templates (`NativeRenderer`); optional Smarty compatibility |
 | `Vars`, `Registry` | template variable bag, key value store |
 | `Debug`, `Error\Handler` | debug bar, error to exception conversion |
 | `Application\Path`, `Application\Env\*` | path registry, HTTP and environment helpers |
@@ -213,7 +213,7 @@ To add a page: insert a row into `cms_sites` (and `cms_menu` for navigation), wr
 
 ## Template engine
 
-Two renderers are included. **Smarty 5** is the default. The **native engine** is a small compiler that turns a template into plain PHP once and then just includes that file, so with opcache a render is running compiled code. Select it in `Settings.json`:
+**NativeRenderer** is the built-in renderer and the default. The optional `wbengine/smarty-compat` package provides the transitional Smarty adapter. The **native engine** is a small compiler that turns a template into plain PHP once and then just includes that file, so with opcache a render is running compiled code. Select it in `Settings.json`:
 
 ```json
 "renderer": { "adapterName": "NativeRenderer", "autoEscape": true, "compileCheck": false }
@@ -299,7 +299,7 @@ mark trusted section HTML, such as `{$header|raw}`, `{$central|raw}` and
 
 See [the versioned template inventory and migration contract](ref-template-migration.md)
 for source identities, adapter API differences, exact expected outputs and the
-TPL-02/TPL-03 gates. The temporary Smarty adapter remains installed in this phase.
+TPL-02/TPL-03 gates. Smarty is no longer a core dependency. See `compat/smarty/README.md` for the separate compatibility test/install profile.
 Smarty plugins, capture/section, config files, custom delimiters, smarty metadata
 and inheritance are outside the supported native language; migrate them before
 removing the compatibility dependency.
@@ -1006,7 +1006,7 @@ The benchmark labels the selected cache-driver cases as SQL lookups and measures
 any hypothetical full-table map build separately; it does not claim zero-SQL site
 selection or a current full-table scan.
 
-What the engine does well today: a single connection opened only when needed, no model hydration, compiled Smarty templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
+What the engine does well today: a single connection opened only when needed, no model hydration, compiled native templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
 
 `Site::isMenuSelected()` now resolves all parent URL prefixes in one bound SQL
 statement and reuses their IDs for the rest of that Site's current prefix snapshot.
@@ -1051,7 +1051,7 @@ What changed:
 Still open, in the order I recommend:
 
 1. Automatic invalidation of the page cache when content tables change (today the API flushes it, other edits use `Cache::flush()` or the TTL).
-4. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (verified: Smarty then stops checking template files on every request).
+4. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (clear compiled templates when deploying changed sources).
 
 ## Security notes
 

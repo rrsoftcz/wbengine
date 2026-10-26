@@ -78,6 +78,9 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
         $name = 'Wbengine\\Renderer\\Adapter\\' . ucfirst($this->getAdapterName());
 
         if(class_exists($name, true) === false){
+            if (ucfirst($this->getAdapterName()) === 'SmartyRenderer') {
+                throw new RendererException('SmartyRenderer is optional; install wbengine/smarty-compat or migrate to NativeRenderer.');
+            }
             throw new RendererException(
                 sprintf('%s->%s: The renderer adapter "%s" not found.'
                     , __CLASS__

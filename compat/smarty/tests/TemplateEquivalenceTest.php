@@ -1,6 +1,6 @@
 <?php
 
-namespace Wbengine\Tests\Unit;
+namespace Wbengine\SmartyCompat\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

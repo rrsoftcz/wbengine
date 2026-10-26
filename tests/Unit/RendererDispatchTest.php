@@ -66,7 +66,7 @@ class RendererDispatchTest extends TestCase
             'JSON script' => '<script type="application/ld+json">{"name":"two  words"}</script>',
         ];
         $cases = [];
-        foreach (['NativeRenderer', 'SmartyRenderer'] as $adapter) {
+        foreach (['NativeRenderer'] as $adapter) {
             foreach ([false, true] as $minimize) {
                 foreach ($documents as $name => $content) {
                     $cases[$adapter . ' ' . ($minimize ? 'legacy flag on ' : 'flag off ') . $name] = [$adapter, $minimize, $content];
@@ -84,7 +84,7 @@ class RendererDispatchTest extends TestCase
             $this->dispatch($adapter, "<pre>a  b\nc</pre>"));
     }
 
-    public static function adapters(): array { return [['NativeRenderer'], ['SmartyRenderer']]; }
+    public static function adapters(): array { return [['NativeRenderer']]; }
 }
 
 class DispatchFixtureRenderer extends Renderer

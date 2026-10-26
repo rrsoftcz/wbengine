@@ -1,13 +1,4 @@
 <?php
 
-/**
- * @see Class_Exception
- */
-
-namespace Wbengine\Config\Exception;
-
-//require_once dirname(__DIR__).'/SessionException.php';
-
-class RuntimeException extends \Exception {
-
-}
+// Compatibility for legacy direct includes; the public class now follows PSR-4.
+require_once __DIR__ . '/Exception/RuntimeException.php';

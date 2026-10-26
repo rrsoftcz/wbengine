@@ -1,6 +1,6 @@
 # Inventura a migrační smlouva šablon WBengine 4.0
 
-Stav k 2026-10-26: TPL-01 dokončen, TPL-02 rozpracován. Cílem je vlastní kompilovaný renderer ve stávajícím stromu WBengine. TPL-01 zdokumentoval podporu a rozdíly, přidal corpus a inventurní nástroj. První část TPL-02 doplňuje diagnostiku v existujícím Compileru; výchozí adaptér ani Composer závislosti se nemění. TPL-02 dokončí migraci, TPL-03 odstraní Smarty z jádra.
+Stav k 2026-10-26: TPL-01 a TPL-02 dokončeny, TPL-03 ověřuje oddělený kompatibilní balíček. Cílem je vlastní kompilovaný renderer ve stávajícím stromu WBengine. TPL-01 zdokumentoval podporu a rozdíly, přidal corpus a inventurní nástroj. První část TPL-02 doplňuje diagnostiku v existujícím Compileru; výchozí adaptér ani Composer závislosti se nemění. TPL-02 dokončí migraci, TPL-03 odstraní Smarty z jádra.
 
 ## Rozsah a důkazy
 
@@ -112,4 +112,11 @@ Nové regrese prokázaly ztrátu prefixu a únik bufferu, pokud metoda služby o
 
 Generované cache callbacky se změnily, proto Compiler verze 5 odděluje jejich identitu od verzí 3/4. Po nasazení stále platí čištění všech výstupních cache. Metody služeb nesmějí rušit buffery rendereru nebo otevírat neodstranitelné buffery: PHP tyto vedlejší účinky plně napravit neumí; ochranné smyčky v takovém případě alespoň neuvíznou. Nejde o sandbox nedůvěryhodného kódu.
 
-TPL-02C ještě musí ověřit celý vzorový web a upravit jeho odkazy a konfiguraci. Smarty zůstává do dokončení těchto kontrol nainstalovaný.
+TPL-02C: vzorová aplikace převedena v samostatném PR rrsoftcz/wbengine-skeleton-app#1, commit 35d2d54. Všech 20 HTTP kontrol a její CI prošlo. Čistá instalace po odstranění Smarty také prošla všemi 20 kontrolami. Historické záznamy výše zachycují původní stav inventury.
+
+
+## TPL-03: samostatný kompatibilní profil
+
+Jádro neinstaluje Smarty a neobsahuje jeho adaptér. NativeRenderer zůstává ve stávajícím stromu. Historické Smarty očekávané výsledky v JSON slouží jako reference; základní testy vykonávají jen nativní očekávání. Volitelný balíček v `compat/smarty` zachovává původní FQCN adaptéru přes Composer classmap a obsahuje oddělené testy parity. Chybějící balíček při výběru SmartyRenderer vyvolá konkrétní instalační doporučení.
+
+Testovací runner kompatibility instaluje vendor do vlastního dočasného adresáře mimo checkout, aby path repository nevytvořila rekurzivní vendor strom při optimalizaci autoloadu. CI jej spouští samostatně; základní pětice PHP/DB kontrol běží bez Smarty. Před vydáním je nutné balíček zveřejnit v Composer registru nebo připojit důvěryhodný vlastní Composer repository. Samotný adresář v checkoutu jej automaticky neinstaluje.

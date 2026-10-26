@@ -54,6 +54,6 @@ class RequestInputRoundTripTest extends DbTestCase
 
     public static function rendererAdapters(): array
     {
-        return [['NativeRenderer'], ['SmartyRenderer']];
+        return [['NativeRenderer']];
     }
 }

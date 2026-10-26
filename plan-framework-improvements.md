@@ -60,8 +60,8 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] PLAN-01: hotovo, schválená rozhodnutí a etapový plán zapsány, 2026-10-25.
 - [x] BASE-01: hotovo, výchozí sada 802 testů / 1534 assertions v odděleném Docker prostředí, 2026-10-25.
 - [x] TPL-01: hotovo (Codex, 2026-10-26), inventura 7 frameworkových a 13 vzorových zdrojů, read-only compile report, corpus očekávaných výstupů a rozdílů a ref-template-migration.md.
-- [ ] TPL-02: rozpracováno (Codex, 2026-10-26), TPL-02A diagnostika a TPL-02B include/set/buffery dokončeny; zbývá aplikační migrace a HTTP smoke. Závisí na TPL-01 a SEC-03.
-- [ ] TPL-03: čeká, volitelná kompatibilní vrstva, odstranění Smarty z jádra; závisí na TPL-02.
+- [x] TPL-02: hotovo (Codex, 2026-10-26), diagnostika, include/set/buffery a izolovaná aplikační migrace včetně 20 HTTP kontrol a zelené CI skeleton PR #1, commit 35d2d54.
+- [x] TPL-03: hotovo (Codex, 2026-10-26), Smarty mimo jádro ve volitelném compat/smarty, samostatná sada 86/123, čisté jádro 1888/5101 a fresh skeleton HTTP 20 kontrol.
 - [x] MD-01: hotovo (Codex, 2026-10-26), vlastní AST parser a bezpečný renderer, všechny oficiální CommonMark/GFM příklady a explicitní bezpečnostní odchylky, limity práce/vstupu/výstupu.
 - [x] MD-02: hotovo (Codex, 2026-10-26), lazy App Markdown, bezpečné .md zdroje/layout, explicitní legacy_html/markdown v DB, mixed překlady a souběhový format guard.
 - [ ] MD-03: čeká, převod Texy včetně překladů a záloh; závisí na MD-02.
@@ -718,3 +718,13 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - TDD: 3 RED (missing/null/array alias) a 1 zachované legacy chování; po opravě **4testy/8assertions GREEN**. Smokerouter žádnou Apache manipulaci nemusí simulovat; skutečný GET/POST login již prochází. Další HTTP test pak nezávisle prokázal chybějící POST logout v layoutu a opravuje se v app repozitáři.
 - Společná aktuální sada **1966testů/5178assertions**,14.825s,46MB; API+MD02 už mají vlastní kontrolní body fb479e0/a3fff96. Vzorová aplikace v odděleném checkoutu nyní **20 HTTP kontrol GREEN**, včetně v2discovery/v1unauth401. Změny App\Application/Site a layoutu se verzují zvlášť, ne přimícháním do knihovny. Root Url fix se nyní samostatně commituje/pushuje s plánem.
 - Další krok: dokončit app CI/referenční migrační plán, zapsat jeho commit do tohoto trackeru a označit TPL02C. Poté TPL03 přesun Smarty do volitelného kompatibilního balíčku a ověření čistého jádra bez jeho instalace. Práce na MD03 a centrální administraci pokračují samostatnými vlastníky.
+
+
+### 2026-10-26: TPL-02C a TPL-03 dokončeny
+
+- Vzorový web má vlastní větev a draft PR rrsoftcz/wbengine-skeleton-app#1, commit35d2d54, CI green. Native layout, deferred lifecycle, přihlášení/POST logout/CSRF, anonymní a přihlášený uživatel, locale, článek,404,fragmenty/page HIT i API ověřeny 20 HTTP kontrolami. Čerstvá instalace bez Smarty po vyčištění cache prochází stejnými kontrolami.
+- Smarty adaptér přesunut do volitelného Composer balíčku compat/smarty, původní FQCN a escapování zachovány. Jádro ani jeho testy Smarty neinstalují. Chybějící adaptér hlásí instalační doporučení. Historické očekávání v JSON ponecháno jako migrační reference, vykonávaný core corpus ověřuje nativní výsledky.
+- Kompatibilní profil má oddělený vendor mimo checkout a mirror jádra: symlink na lokální jádro kolidoval s jeho classmap exclude a mohl vytvořit rekurzivní cestu. Regrese opravena oddělenou instalací, testy používají skutečné kořeny nainstalovaného jádra. Optional CI job běží odděleně od základní PHP/DB matice. Balíček ještě není publikovaný v Composer registru, lokální path repository je popsáno v README.
+- Optimalizovaný autoload odhalil historicky nesprávnou cestu Config\Exception\RuntimeException. Přesun do PSR4 odpovídajícího souboru, starý soubor ponechán jako require_once shim; test ověřuje veřejný namespace. composer dump-autoload --optimize --strict-psr prošel bez warning.
+- Rodič ověřil základní sadu bez Smarty **1888testů/5101assertions**,14.354s44MB PHP8.4.27/MySQL8.4. Oddělená kompatibilita **86/123**,0.114s20MB. Nezávislé statické review bez blokací, runtime nalezené instalační problémy opraveny a ověřeny celou kompatibilní sadou. Syntaxe a diff-check se ověřují před commitem.
+- Další krok MD-03 kontrolní bod migračního nástroje, následně odstranění Texy z jádra MD-04. API obsah a centrální administrace se verzují samostatně. Bez produkční konverze, merge nebo vydání tagu.
