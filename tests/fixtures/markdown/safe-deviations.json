@@ -1,0 +1,306 @@
+{
+    "21": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;a href=&quot;/bar\\/)&quot;&gt;\n"
+    },
+    "31": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;a href=&quot;&amp;ouml;&amp;ouml;.html&quot;&gt;\n"
+    },
+    "148": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;table&gt;&lt;tr&gt;&lt;td&gt;\n&lt;pre&gt;\n**Hello**,\n<p><em>world</em>.\n&lt;/pre&gt;</p>\n&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;\n"
+    },
+    "149": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;table&gt;\n  &lt;tr&gt;\n    &lt;td&gt;\n           hi\n    &lt;/td&gt;\n  &lt;/tr&gt;\n&lt;/table&gt;\n<p>okay.</p>\n"
+    },
+    "150": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": " &lt;div&gt;\n  *hello*\n         &lt;foo&gt;&lt;a&gt;\n"
+    },
+    "151": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;/div&gt;\n*foo*\n"
+    },
+    "152": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;DIV CLASS=&quot;foo&quot;&gt;\n<p><em>Markdown</em></p>\n&lt;/DIV&gt;\n"
+    },
+    "153": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div id=&quot;foo&quot;\n  class=&quot;bar&quot;&gt;\n&lt;/div&gt;\n"
+    },
+    "154": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div id=&quot;foo&quot; class=&quot;bar\n  baz&quot;&gt;\n&lt;/div&gt;\n"
+    },
+    "155": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div&gt;\n*foo*\n<p><em>bar</em></p>\n"
+    },
+    "156": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div id=&quot;foo&quot;\n*hi*\n"
+    },
+    "157": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div class\nfoo\n"
+    },
+    "158": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div *???-&amp;&amp;&amp;-&lt;---\n*foo*\n"
+    },
+    "159": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div&gt;&lt;a href=&quot;bar&quot;&gt;*foo*&lt;/a&gt;&lt;/div&gt;\n"
+    },
+    "160": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;table&gt;&lt;tr&gt;&lt;td&gt;\nfoo\n&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;\n"
+    },
+    "161": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div&gt;&lt;/div&gt;\n``` c\nint x = 33;\n```\n"
+    },
+    "162": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;a href=&quot;foo&quot;&gt;\n*bar*\n&lt;/a&gt;\n"
+    },
+    "163": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;Warning&gt;\n*bar*\n&lt;/Warning&gt;\n"
+    },
+    "164": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;i class=&quot;foo&quot;&gt;\n*bar*\n&lt;/i&gt;\n"
+    },
+    "165": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;/ins&gt;\n*bar*\n"
+    },
+    "166": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;del&gt;\n*foo*\n&lt;/del&gt;\n"
+    },
+    "167": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;del&gt;\n<p><em>foo</em></p>\n&lt;/del&gt;\n"
+    },
+    "168": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;del&gt;<em>foo</em>&lt;/del&gt;</p>\n"
+    },
+    "169": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;pre language=&quot;haskell&quot;&gt;&lt;code&gt;\nimport Text.HTML.TagSoup\n\nmain :: IO ()\nmain = print $ parseTags tags\n&lt;/code&gt;&lt;/pre&gt;\n<p>okay</p>\n"
+    },
+    "170": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;script type=&quot;text/javascript&quot;&gt;\n// JavaScript example\n\ndocument.getElementById(&quot;demo&quot;).innerHTML = &quot;Hello JavaScript!&quot;;\n&lt;/script&gt;\n<p>okay</p>\n"
+    },
+    "171": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;textarea&gt;\n\n*foo*\n\n_bar_\n\n&lt;/textarea&gt;\n"
+    },
+    "172": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;style\n  type=&quot;text/css&quot;&gt;\nh1 {color:red;}\n\np {color:blue;}\n&lt;/style&gt;\n<p>okay</p>\n"
+    },
+    "173": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;style\n  type=&quot;text/css&quot;&gt;\n\nfoo\n"
+    },
+    "174": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<blockquote>\n&lt;div&gt;\nfoo\n</blockquote>\n<p>bar</p>\n"
+    },
+    "175": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<ul>\n<li>\n&lt;div&gt;\n</li>\n<li>foo</li>\n</ul>\n"
+    },
+    "176": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;style&gt;p{color:red;}&lt;/style&gt;\n<p><em>foo</em></p>\n"
+    },
+    "177": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;!-- foo --&gt;*bar*\n<p><em>baz</em></p>\n"
+    },
+    "178": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;script&gt;\nfoo\n&lt;/script&gt;1. *bar*\n"
+    },
+    "179": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;!-- Foo\n\nbar\n   baz --&gt;\n<p>okay</p>\n"
+    },
+    "180": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;?php\n\n  echo '&gt;';\n\n?&gt;\n<p>okay</p>\n"
+    },
+    "181": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;!DOCTYPE html&gt;\n"
+    },
+    "182": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;![CDATA[\nfunction matchwo(a,b)\n{\n  if (a &lt; b &amp;&amp; a &lt; 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n}\n]]&gt;\n<p>okay</p>\n"
+    },
+    "183": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "  &lt;!-- foo --&gt;\n<pre><code>&lt;!-- foo --&gt;\n</code></pre>\n"
+    },
+    "184": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "  &lt;div&gt;\n<pre><code>&lt;div&gt;\n</code></pre>\n"
+    },
+    "185": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>Foo</p>\n&lt;div&gt;\nbar\n&lt;/div&gt;\n"
+    },
+    "186": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div&gt;\nbar\n&lt;/div&gt;\n*foo*\n"
+    },
+    "187": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>Foo\n&lt;a href=&quot;bar&quot;&gt;\nbaz</p>\n"
+    },
+    "188": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div&gt;\n<p><em>Emphasized</em> text.</p>\n&lt;/div&gt;\n"
+    },
+    "189": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;div&gt;\n*Emphasized* text.\n&lt;/div&gt;\n"
+    },
+    "190": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;table&gt;\n&lt;tr&gt;\n&lt;td&gt;\nHi\n&lt;/td&gt;\n&lt;/tr&gt;\n&lt;/table&gt;\n"
+    },
+    "191": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "&lt;table&gt;\n  &lt;tr&gt;\n<pre><code>&lt;td&gt;\n  Hi\n&lt;/td&gt;\n</code></pre>\n  &lt;/tr&gt;\n&lt;/table&gt;\n"
+    },
+    "201": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>[foo]: &lt;bar&gt;(baz)</p>\n<p>[foo]</p>\n"
+    },
+    "308": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<ul>\n<li>foo</li>\n<li>bar</li>\n</ul>\n&lt;!-- --&gt;\n<ul>\n<li>baz</li>\n<li>bim</li>\n</ul>\n"
+    },
+    "309": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<ul>\n<li>\n<p>foo</p>\n<p>notcode</p>\n</li>\n<li>\n<p>foo</p>\n</li>\n</ul>\n&lt;!-- --&gt;\n<pre><code>code\n</code></pre>\n"
+    },
+    "344": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;a href=&quot;`&quot;&gt;`</p>\n"
+    },
+    "475": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>*&lt;img src=&quot;foo&quot; title=&quot;*&quot;/&gt;</p>\n"
+    },
+    "476": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>**&lt;a href=&quot;**&quot;&gt;</p>\n"
+    },
+    "477": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>__&lt;a href=&quot;__&quot;&gt;</p>\n"
+    },
+    "491": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>[link](&lt;foo\nbar&gt;)</p>\n"
+    },
+    "494": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>[a](&lt;b)c\n[a](&lt;b)c&gt;\n[a](&lt;b&gt;c)</p>\n"
+    },
+    "524": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>[foo &lt;bar attr=&quot;](baz)&quot;&gt;</p>\n"
+    },
+    "536": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>[foo &lt;bar attr=&quot;][ref]&quot;&gt;</p>\n"
+    },
+    "596": {
+        "reason": "URL scheme outside http/https/mailto allowlist is replaced with an empty destination",
+        "html": "<p><a href=\"\">irc://foo.bar:2233/baz</a></p>\n"
+    },
+    "598": {
+        "reason": "URL scheme outside http/https/mailto allowlist is replaced with an empty destination",
+        "html": "<p><a href=\"\">a+b+c:d</a></p>\n"
+    },
+    "599": {
+        "reason": "URL scheme outside http/https/mailto allowlist is replaced with an empty destination",
+        "html": "<p><a href=\"\">made-up-scheme://foo,bar</a></p>\n"
+    },
+    "601": {
+        "reason": "URL scheme outside http/https/mailto allowlist is replaced with an empty destination",
+        "html": "<p><a href=\"\">localhost:5001/foo</a></p>\n"
+    },
+    "613": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;a&gt;&lt;bab&gt;&lt;c2c&gt;</p>\n"
+    },
+    "614": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;a/&gt;&lt;b2/&gt;</p>\n"
+    },
+    "615": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;a  /&gt;&lt;b2\ndata=&quot;foo&quot; &gt;</p>\n"
+    },
+    "616": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;a foo=&quot;bar&quot; bam = 'baz &lt;em&gt;&quot;&lt;/em&gt;'\n_boolean zoop:33=zoop:33 /&gt;</p>\n"
+    },
+    "617": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>Foo &lt;responsive-image src=&quot;foo.jpg&quot; /&gt;</p>\n"
+    },
+    "623": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;/a&gt;&lt;/foo &gt;</p>\n"
+    },
+    "625": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>foo &lt;!-- this is a --\ncomment - with hyphens --&gt;</p>\n"
+    },
+    "626": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>foo &lt;!--&gt; foo --&gt;</p>\n<p>foo &lt;!---&gt; foo --&gt;</p>\n"
+    },
+    "627": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>foo &lt;?php echo $a; ?&gt;</p>\n"
+    },
+    "628": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>foo &lt;!ELEMENT br EMPTY&gt;</p>\n"
+    },
+    "629": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>foo &lt;![CDATA[&gt;&amp;&lt;]]&gt;</p>\n"
+    },
+    "630": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>foo &lt;a href=&quot;&amp;ouml;&quot;&gt;</p>\n"
+    },
+    "631": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>foo &lt;a href=&quot;\\*&quot;&gt;</p>\n"
+    },
+    "642": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;a href=&quot;foo  \nbar&quot;&gt;</p>\n"
+    },
+    "643": {
+        "reason": "Raw HTML is preserved as content and HTML-escaped by the safe renderer",
+        "html": "<p>&lt;a href=&quot;foo\\\nbar&quot;&gt;</p>\n"
+    }
+}

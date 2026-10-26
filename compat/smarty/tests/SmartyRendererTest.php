@@ -1,6 +1,6 @@
 <?php
 
-namespace Wbengine\Tests\Unit;
+namespace Wbengine\SmartyCompat\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Wbengine\Config;
@@ -38,6 +38,47 @@ class SmartyRendererTest extends TestCase
         $r->setCompileDir($this->dir . '/compiled');
         $r->setConfigDir($this->dir . '/config');
         return $r;
+    }
+
+    public function testSmartyEscapesUntrustedOutputByDefault(): void
+    {
+        file_put_contents($this->dir . '/tpl/escape.tpl', '{$value}');
+        $renderer = $this->renderer();
+        $renderer->assign('value', '<img src=x onerror="alert(1)">');
+        $this->assertSame('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;', $renderer->fetch('escape.tpl'));
+    }
+
+    public function testAutoEscapeCanBeExplicitlyDisabledDuringMigration(): void
+    {
+        file_put_contents($this->dir . '/tpl/escape.tpl', '{$value}');
+        $renderer = $this->renderer();
+        $renderer->setAutoEscape(false);
+        $renderer->assign('value', '<b>trusted</b>');
+        $this->assertSame('<b>trusted</b>', $renderer->fetch('escape.tpl'));
+        $renderer->setAutoEscape(true);
+        $this->assertSame('&lt;b&gt;trusted&lt;/b&gt;', $renderer->fetch('escape.tpl'));
+    }
+
+    public function testExplicitEscapeDoesNotDoubleEncodeAndRawRemainsExplicit(): void
+    {
+        file_put_contents($this->dir . '/tpl/escape.tpl', '{$value|escape}|{$value|raw}');
+        $renderer = $this->renderer();
+        $renderer->assign('value', '<b>A&B</b>');
+        $this->assertSame('&lt;b&gt;A&amp;B&lt;/b&gt;|<b>A&B</b>', $renderer->fetch('escape.tpl'));
+    }
+
+    public function testFacadeHonorsTheEscapeSettingForSmarty(): void
+    {
+        file_put_contents($this->dir . '/tpl/escape.tpl', '{$value}');
+        $renderer = new RendererAdapter();
+        $renderer->setAdapterName('SmartyRenderer');
+        $renderer->setTemplateDir($this->dir . '/tpl');
+        $renderer->setCompileDir($this->dir . '/compiled');
+        $renderer->assign('value', '<b>A</b>');
+        $renderer->setAutoEscape(true);
+        $this->assertSame('&lt;b&gt;A&lt;/b&gt;', $renderer->fetch('escape.tpl'));
+        $renderer->setAutoEscape(false);
+        $this->assertSame('<b>A</b>', $renderer->fetch('escape.tpl'));
     }
 
     public function testAssignAndFetch(): void

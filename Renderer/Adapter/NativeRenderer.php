@@ -11,7 +11,7 @@ use Wbengine\Template\Engine;
  *
  * Output is HTML-escaped by default. Mark trusted HTML with {$value|raw} (Smarty 5
  * understands |raw and |escape too, so a template written that way works with both
- * adapters). "autoEscape": false keeps the Smarty behaviour of printing as is.
+ * adapters). "autoEscape": false retains the legacy unescaped behaviour during migration.
  */
 class NativeRenderer implements RendererInterface
 {
@@ -78,6 +78,16 @@ class NativeRenderer implements RendererInterface
     public function setAutoEscape($value)
     {
         $this->_engine->setAutoEscape($value);
+    }
+
+    public function setMarkdownResolver(?callable $resolver)
+    {
+        $this->_engine->setMarkdownResolver($resolver);
+    }
+
+    public function setCacheUserResolver(?callable $resolver)
+    {
+        $this->_engine->setCacheUserResolver($resolver);
     }
 
     public function setLeftDelimiter($value)

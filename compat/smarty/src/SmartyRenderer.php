@@ -15,6 +15,7 @@ class SmartyRenderer implements RendererInterface
 
     public function __construct(){
         $this->smarty = New Smarty();
+        $this->setAutoEscape(true);
 
         // The i18n modifiers of the native engine, so templates can use them with Smarty too.
         $this->smarty->registerPlugin(Smarty::PLUGIN_MODIFIER, 't', fn ($key, $count = null) => \Wbengine\Template\Runtime::tr($key, $count));
@@ -28,11 +29,18 @@ class SmartyRenderer implements RendererInterface
     }
 
     public function fetch($template, $cache_id = NULL, $compile_id = NULL){
-        return $this->getAdapter()->fetch($template, $cache_id, $compile_id);
+        return $this->getAdapter()->fetch($template, $cache_id, $this->_compileId($compile_id));
     }
 
     public function display($template, $cache_id = NULL, $compile_id = NULL){
-        $this->getAdapter()->display($template, $cache_id, $compile_id);
+        $this->getAdapter()->display($template, $cache_id, $this->_compileId($compile_id));
+    }
+
+    private function _compileId($compile_id): string
+    {
+        // Smarty caches template objects by compile ID; escape mode must remain part of that identity.
+        return 'wbengine-escape-' . (int) $this->getAdapter()->escape_html . '-'
+            . (string) ($compile_id ?? $this->getAdapter()->compile_id);
     }
 
     public function assign($varname, $var = NULL, $nocache = false){
@@ -74,6 +82,10 @@ class SmartyRenderer implements RendererInterface
      */
     public function setCompileCheck($value){
         $this->getAdapter()->setCompileCheck($value ? Smarty::COMPILECHECK_ON : Smarty::COMPILECHECK_OFF);
+    }
+
+    public function setAutoEscape($value){
+        $this->getAdapter()->setEscapeHtml((bool) $value);
     }
 
     public function enableCache(){

@@ -213,6 +213,7 @@ class Runtime
      */
     public static function cache($key, $ttl, callable $render)
     {
-        return (string) Cache::remember('tpl:' . self::s($key), $render, $ttl);
+        // Compatibility for callers of the old public-only helper. Compiled templates use their own engine.
+        return (new Engine())->cache($key, $ttl, $render);
     }
 }

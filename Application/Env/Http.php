@@ -11,6 +11,23 @@ namespace Wbengine\Application\Env;
 abstract class Http
 {
 
+    private static ?RequestContext $_requestContext = null;
+
+    private static function _requestContext(): RequestContext
+    {
+        return self::$_requestContext ??= new RequestContext();
+    }
+
+    public static function getClientIp(): string
+    {
+        return self::_requestContext()->getClientIp();
+    }
+
+    public static function isSecure(?array $server = null): bool
+    {
+        return self::_requestContext()->isSecure($server);
+    }
+
     const TYPE_POST                 = 'POST';
     const TYPE_GET                  = 'GET';
     const TYPE_PUT                  = 'PUT';
@@ -127,48 +144,77 @@ abstract class Http
         return null;
     }
 
-    public static function secureClean($value = null){
-        if($value === null) return null;
-
-        $value = stripslashes($value);
-        $value = htmlspecialchars($value, ENT_IGNORE, 'utf-8');
-        $value = strip_tags($value);
-        $value = addslashes($value);
-        return $value;
-    }
-
-
     public static function getRequestMethod($method){
         // Not filter_input(INPUT_SERVER, ...): it returns null under FastCGI (Nginx with PHP-FPM).
         return (($_SERVER['REQUEST_METHOD'] ?? null) === $method);
     }
 
+    /** Return PHP-parsed form data unchanged; validate fields and escape only at output. */
     public static function Post($name = null){
-        if($name === null || !array_key_exists($name, $_POST)) return null;
-        return ($name) ? self::secureClean($_POST[$name]) : $_POST;
+        return self::_inputValue($_POST, $name);
     }
 
+    public static function PostString($name): ?string
+    {
+        $value = self::Post($name);
+        return is_string($value) ? $value : null;
+    }
 
     /**
-     * Return a POST value untouched. Use it for secrets such as passwords: the value
-     * must not be altered by HTML or slash cleaning before it is hashed.
+     * Compatibility alias for the string-only POST accessor (including passwords).
      */
     public static function PostRaw($name){
-        return (isset($_POST[$name]) && is_string($_POST[$name])) ? $_POST[$name] : null;
+        return self::PostString($name);
     }
 
 
+    /** Return PHP-parsed query data unchanged, including arrays. */
     public static function Get($name = null){
-        return ($name) ? self::secureClean($_GET[$name]) : $_GET;
+        return self::_inputValue($_GET, $name);
     }
 
+    public static function GetString($name): ?string
+    {
+        $value = self::Get($name);
+        return is_string($value) ? $value : null;
+    }
+
+    private static function _inputValue(array $values, $name)
+    {
+        if (null === $name) {
+            return $values;
+        }
+        return (is_string($name) || is_int($name)) ? ($values[$name] ?? null) : null;
+    }
+
+    /** Decode once, preserving the parser error state and the legacy raw-text mode. */
     public static function Json($decode = true){
         $raw = file_get_contents('php://input');
-        if(self::isJson($raw)){
-            return ($decode === true) ? json_decode($raw, true) : $raw;
-        }else{
+        // Preserve legacy rejection of NUL-leading object keys. Ordinary decoded
+        // bodies use arrays directly; potential NUL escapes need object validation.
+        $asArray = $decode === true && !str_contains((string) $raw, '\\u0000');
+        $value = json_decode($raw, $asArray);
+        if (JSON_ERROR_NONE !== json_last_error()) {
             return null;
         }
+        if ($decode !== true) {
+            return $raw;
+        }
+        return $asArray ? $value : self::_jsonArrays($value);
+    }
+
+    /** Match associative decoding after the rare object-validation path. */
+    private static function _jsonArrays($value)
+    {
+        if (is_object($value)) {
+            $value = (array) $value;
+        }
+        if (is_array($value)) {
+            foreach ($value as $key => $item) {
+                $value[$key] = self::_jsonArrays($item);
+            }
+        }
+        return $value;
     }
 
 
@@ -216,8 +262,9 @@ abstract class Http
         return null;
     }
 
-    public static function getCookie(string $cookieName){
-        return isset($_COOKIE[$cookieName]) ? htmlspecialchars((string) $_COOKIE[$cookieName]) : null;
+    public static function getCookie(string $cookieName): ?string {
+        $value = $_COOKIE[$cookieName] ?? null;
+        return is_string($value) ? $value : null;
     }
 
     public static function isJson($string) {

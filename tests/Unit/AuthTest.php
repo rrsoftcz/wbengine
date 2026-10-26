@@ -9,6 +9,16 @@ use Wbengine\Auth\Exception\AuthException;
 
 class AuthTest extends TestCase
 {
+    public function testIssuedTimeDoesNotOverwriteIssuer(): void
+    {
+        $issued = time() - 60;
+        $auth = (new Auth())->setIssuer('https://example.test')->setIssuedTime($issued);
+        $decoded = $auth->getDecodedData($auth->getJwtToken());
+
+        $this->assertSame($issued, $decoded['iat']);
+        $this->assertSame('https://example.test', $decoded['iss']);
+    }
+
     protected function tearDown(): void
     {
         putenv('WBENGINE_JWT_KEY');

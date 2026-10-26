@@ -70,3 +70,31 @@ jobs:
 
       - name: Tests
         run: composer test
+
+  smarty-compat:
+    name: Optional Smarty compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, mysqli
+          coverage: none
+          tools: composer:v2
+      - name: Test isolated optional package
+        run: sh compat/smarty/bin/test
+
+  texy-migration:
+    name: Optional Texy migration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, mysqli
+          coverage: none
+          tools: composer:v2
+      - name: Test isolated offline bridge
+        run: sh compat/texy-migration/bin/test

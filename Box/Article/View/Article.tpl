@@ -7,7 +7,7 @@
         <p><i>{$t.author|escape}</i> <b><a href="#">{$Article->author|escape}</a></b>, <i>{$t.source|escape}</i> <a href="{$Article->source|escape}"> {$Article->source|escape}</a></p>
     {/if}
     <!-- story box content start -->
-    {* Trusted HTML: formatted by the framework (Texy) from content written by administrators. *}
+    {* Trusted HTML: safe Markdown renderer output or unchanged trusted legacy HTML from administrators. *}
     {$Article->introtext|raw}
     {$Article->bodytext|raw}
     <!-- story box content end -->

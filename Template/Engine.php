@@ -20,6 +20,10 @@ class Engine
     private $_autoEscape = true;
     private $_compileCheck = true;
     private $_depth = 0;
+    private $_fragmentCache = null;
+    private $_cacheUserResolver = null;
+    private ?\Wbengine\Markdown $_markdown = null;
+    private $_markdownResolver = null;
 
     /** Compiled templates already loaded in this process, so a template rendered again is not included again. */
     private $_loaded = array();
@@ -64,10 +68,56 @@ class Engine
         return $this;
     }
 
+    public function getAutoEscape(): bool
+    {
+        return $this->_autoEscape;
+    }
+
     public function setCompileCheck($value)
     {
         $this->_compileCheck = (bool) $value;
         return $this;
+    }
+
+    /** Called lazily only for a user-scoped fragment, never for public rendering. */
+    public function setCacheUserResolver(?callable $resolver)
+    {
+        $this->_cacheUserResolver = $resolver;
+        return $this;
+    }
+
+    /** Bind the application content service without constructing it for ordinary templates. */
+    public function setMarkdownResolver(?callable $resolver)
+    {
+        $this->_markdownResolver = $resolver;
+        $this->_markdown = null;
+        return $this;
+    }
+
+    public function resolveCacheUserId(): ?int
+    {
+        if (null === $this->_cacheUserResolver) {
+            return null;
+        }
+        try {
+            $id = ($this->_cacheUserResolver)();
+        } catch (\Throwable $e) {
+            error_log(__METHOD__ . ': user context unavailable (' . get_class($e) . ')');
+            return null;
+        }
+        if (!is_int($id) && !is_string($id)) {
+            return null;
+        }
+        $valid = filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        return false === $valid ? null : $valid;
+    }
+
+    public function cache($key, $ttl, callable $render, string $scope = 'public'): string
+    {
+        if (null === $this->_fragmentCache) {
+            $this->_fragmentCache = new FragmentCache($this);
+        }
+        return $this->_fragmentCache->render($key, $ttl, $render, $scope);
     }
 
     public function assign($name, $value = null)
@@ -117,19 +167,62 @@ class Engine
             throw new TemplateException('Templates are included too deep (a template includes itself?).');
         }
 
-        $compiled = $this->_compiled($this->_resolve($name), $name);
+        $source = $this->_resolve($name);
+        // Either the requested name or canonical target may identify Markdown. A symlink
+        // cannot turn a requested .md content file into executable template source.
+        if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'md' || strtolower(pathinfo($source, PATHINFO_EXTENSION)) === 'md') {
+            return $this->_renderMarkdown($source);
+        }
+        $compiled = $this->_compiled($source, $name);
         $fn = $this->_loaded[$compiled] ?? ($this->_loaded[$compiled] = include $compiled);
 
         ++$this->_depth;
-        ob_start();
         try {
-            $fn($vars, $this);
-            return ob_get_clean();
-        } catch (\Throwable $e) {
-            ob_end_clean();
-            throw $e;
+            return $this->capture(function () use (&$vars, $fn): void { $fn($vars, $this); });
         } finally {
             --$this->_depth;
+        }
+    }
+
+    private function _renderMarkdown(string $source): string
+    {
+        $handle = @fopen($source, 'rb');
+        if ($handle === false) { throw new TemplateException('The Markdown content file cannot be read.'); }
+        try {
+            // Bounded read also handles files growing after path resolution. No PHP include.
+            $text = stream_get_contents($handle, 1048577);
+            if ($text === false) { throw new TemplateException('The Markdown content file cannot be read.'); }
+            if (strlen($text) > 1048576) { throw new \LengthException('Markdown input size limit exceeded'); }
+        } finally { fclose($handle); }
+        if ($this->_markdown === null) {
+            $service = $this->_markdownResolver === null ? new \Wbengine\Markdown() : ($this->_markdownResolver)();
+            if (!$service instanceof \Wbengine\Markdown) { throw new TemplateException('The Markdown resolver must return the application Markdown service.'); }
+            $this->_markdown = $service;
+        }
+        return $this->_markdown->render($text);
+    }
+
+    /** Capture a template/fragment and every removable buffer it creates. */
+    public function capture(callable $render): string
+    {
+        $bufferLevel = ob_get_level();
+        ob_start();
+        try {
+            $render();
+            while (ob_get_level() > $bufferLevel + 1) {
+                if (!ob_end_flush()) {
+                    throw new TemplateException("A template service left a non-flushable output buffer.");
+                }
+            }
+            if (ob_get_level() !== $bufferLevel + 1) {
+                throw new TemplateException("A template service closed its render output buffer.");
+            }
+            return ob_get_clean();
+        } catch (\Throwable $e) {
+            while (ob_get_level() > $bufferLevel) {
+                if (!@ob_end_clean()) { break; }
+            }
+            throw $e;
         }
     }
 
@@ -176,7 +269,8 @@ class Engine
         }
 
         unset($this->_loaded[$file]); // about to be replaced
-        $code = (new Compiler($this->_autoEscape))->compile((string) file_get_contents($source), $name, $this->_signature($source));
+        $sourceText = (string) file_get_contents($source);
+        $code = (new Compiler($this->_autoEscape))->compile($sourceText, $name, $this->_signature($source, $sourceText));
 
         $tmp = tempnam($this->_compileDir, 'tpl');
         if (false === $tmp || false === file_put_contents($tmp, $code) || !@rename($tmp, $file)) {
@@ -190,14 +284,14 @@ class Engine
     }
 
     /**
-     * Modification time and size of a source file. Comparing them with the ones stored
-     * in the compiled file notices an edit even within the same second, which comparing
-     * modification times of the two files would not.
+     * Development freshness check, including same-size edits within one second.
+     * With compileCheck off this checksum is not computed on a cache hit.
      */
-    private function _signature($source)
+    private function _signature($source, ?string $contents = null)
     {
         clearstatcache(true, $source);
-        return filemtime($source) . ':' . filesize($source);
+        $hash = null === $contents ? hash_file('sha256', $source) : hash('sha256', $contents);
+        return filemtime($source) . ':' . filesize($source) . ':' . $hash;
     }
 
     private function _isFresh($source, $compiled)

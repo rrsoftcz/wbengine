@@ -6,7 +6,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Wbengine\I18n;
 use Wbengine\I18n\Translator;
-use Wbengine\Renderer\Adapter\SmartyRenderer;
 use Wbengine\Template\Engine;
 use Wbengine\Template\Exception\TemplateException;
 
@@ -221,20 +220,6 @@ class TemplateI18nTest extends TestCase
         $this->assertSame('var t = {t: 1};', $this->render('var t = {t: 1};'));
     }
 
-    // ----------------------------------------------------------------- Smarty
 
-    public function testTheModifiersAlsoWorkInSmarty(): void
-    {
-        $this->use('cs');
-        file_put_contents($this->dir . '/tpl/s.tpl', "{\$k|t} {\$k2|t:2} {\$u|lurl} {\$n|number:1}");
-        $smarty = new SmartyRenderer();
-        $smarty->setTemplateDir($this->dir . '/tpl');
-        $smarty->setCompileDir($this->dir . '/smarty');
-        $smarty->assign('k', 'hello');
-        $smarty->assign('k2', 'files');
-        $smarty->assign('u', '/blog/');
-        $smarty->assign('n', 1234.5);
 
-        $this->assertSame("Ahoj 2 soubory /cs/blog/ 1\u{00A0}234,5", $smarty->fetch('s.tpl'));
-    }
 }

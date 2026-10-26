@@ -76,6 +76,11 @@ Class Site implements ComponentParentInterface
      */
     private $_model;
 
+    private ?array $_menuUrlPairs = null;
+    private ?array $_menuPairsWithIds = null;
+    private array $_menuActiveIds = [];
+
+
 
     /**
      * Class site exception object
@@ -395,18 +400,41 @@ Class Site implements ComponentParentInterface
      */
     public function getUrlPairsWithSiteId()
     {
-        $_tmp = null;
         $pairs = $this->getUrlPairs();
-
-        if (FALSE == is_array($pairs))
+        if (!is_array($pairs) || [] === $pairs) {
+            $this->_menuUrlPairs = $this->_menuPairsWithIds = null;
+            $this->_menuActiveIds = [];
             return null;
-
-        foreach ($pairs as $pair) {
-            $_tmp[] = array(
-                'url' => $pair,
-                'site_id' => $this->getModel()->getSiteIdByUrl($pair));
         }
-        return $_tmp;
+        $pairs = array_values(array_map(static fn ($url) => (string) $url, $pairs));
+        if ($pairs === $this->_menuUrlPairs) {
+            return $this->_menuPairsWithIds;
+        }
+
+        // Url emits bare prefixes; canonical stored links commonly end in '/'.
+        $lookups = $pairs;
+        $fallbacks = [];
+        foreach ($pairs as $position => $url) {
+            if (!str_ends_with($url, '/')) {
+                $fallbacks[$position] = count($lookups);
+                $lookups[] = $url . '/';
+            }
+        }
+        $ids = $this->getModel()->getSiteIdsByUrls($lookups);
+        $resolved = $active = [];
+        foreach ($pairs as $position => $url) {
+            $id = $ids[$position];
+            if (0 === $id && isset($fallbacks[$position])) {
+                $id = $ids[$fallbacks[$position]];
+            }
+            $resolved[] = ['url' => $url, 'site_id' => $id];
+            if ($id > 0) {
+                $active[$id] = true;
+            }
+        }
+        $this->_menuUrlPairs = $pairs;
+        $this->_menuActiveIds = $active;
+        return $this->_menuPairsWithIds = $resolved;
     }
 
 
@@ -419,20 +447,15 @@ Class Site implements ComponentParentInterface
      */
     public function isMenuSelected($siteId = NULL)
     {
-        if (NULL === $siteId)
-            return FALSE;
-
-        if ((int)$siteId == $this->getSiteId())
-            return TRUE;
-
-        $_pairs = $this->getUrlPairsWithSiteId();
-
-        foreach ($_pairs as $pair => $value) {
-            if ($value['site_id'] == $siteId)
-                return TRUE;
+        $siteId = (int) $siteId;
+        if ($siteId < 1) {
+            return false;
         }
-
-        return FALSE;
+        if ($siteId === $this->getSiteId()) {
+            return true;
+        }
+        $this->getUrlPairsWithSiteId();
+        return isset($this->_menuActiveIds[$siteId]);
     }
 
 
@@ -518,10 +541,11 @@ Class Site implements ComponentParentInterface
 
     public function getSections()
     {
-        if($this->_sections && is_array($this->_sections)){
+        if(is_array($this->_sections)){
             return $this->_sections;
         }
 
+        $this->_sections = [];
         $sections = $this->getModel()->getSections();
 
         if(is_array($sections)) {
@@ -541,6 +565,18 @@ Class Site implements ComponentParentInterface
     }
 
     /**
+     * Explicitly expose runtime diagnostics to this site's template variables.
+     * Reading the database version may open a connection even without a SQL query.
+     */
+    public function assignDiagnostics(): self
+    {
+        $this->setVariable('server', $_SERVER['SERVER_SOFTWARE'] ?? '');
+        $this->setVariable('dbinfo', $this->getModel()->getDBVersion());
+        $this->setVariable('phpversion', phpversion());
+        return $this;
+    }
+
+    /**
      * This method load all needed data from model and assign
      * all needed variables to local array.
      * @param Application $app
@@ -548,10 +584,16 @@ Class Site implements ComponentParentInterface
      */
     public function initialize($app)
     {
+        $this->_menuUrlPairs = $this->_menuPairsWithIds = null;
+        $this->_menuActiveIds = [];
         $this->_parent = $app;
 
         // Try to load site properties from db by given url...
         $this->loadSiteResource();
+        if (!$this->isLoaded()) {
+            return $this;
+        }
+
 
         if((int)$this->acl >= 1){
             if((int)$this->getSessionValue('user_is_logged') === 0){
@@ -565,9 +607,9 @@ Class Site implements ComponentParentInterface
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
         $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
-        $this->setVariable('server', $_SERVER['SERVER_SOFTWARE']);
-        $this->setVariable('dbinfo', $this->getModel()->getDBVersion());
-        $this->setVariable('phpversion', phpversion());
+        if ($app->isDebugOn()) {
+            $this->assignDiagnostics();
+        }
 
         $this->_setSections($this->getSections());
 

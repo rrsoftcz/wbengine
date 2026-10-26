@@ -160,10 +160,11 @@
          */
         private function _setLink()
         {
-            if(isset($_REQUEST['link'])){
-                $this->_link = trim($_REQUEST['link'] . $this->_ext, '/');
-                $this->_link = $_REQUEST['link'] . $this->_ext;
-            }
+            // Apache may supply a legacy rewrite alias; direct/FPM routes need none.
+            $extension = is_string($this->_ext) ? $this->_ext : '';
+            $this->_link = is_string($_REQUEST['link'] ?? null)
+                ? $_REQUEST['link'] . $extension
+                : $this->_requestUri;
         }
 
 

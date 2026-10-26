@@ -20,15 +20,14 @@ use Wbengine\Template\Exception\TemplateException;
  * A "{" that does not start one of these is plain text, so inline CSS and
  * JavaScript need no {literal}.
  *
- * Output is HTML-escaped unless the expression has |raw (or |nofilter), or already
- * ends in a modifier that produces safe output (escape, nl2br, json, url). Escaping
- * can be switched off for a whole engine, for old templates that rely on Smarty's
- * default of not escaping.
+ * Output is HTML-escaped unless the whole expression ends in |raw / |nofilter or
+ * a modifier that produces safe output (escape, nl2br, json, url). Inner expressions
+ * do not confer safety on the result. Escaping can be disabled for legacy templates.
  */
 class Compiler
 {
     /** Bump when the generated code changes, so old compiled files are not reused. */
-    const VERSION = 1;
+    const VERSION = 5;
 
     /** Tags that swallow one line break directly after them. */
     const TRIM_AFTER = array('if', 'elseif', 'else', 'foreach', 'foreachelse', 'close', 'set', 'cache', 'comment');
@@ -112,7 +111,7 @@ class Compiler
         }
 
         return "<?php\n/* WBengine template: " . str_replace('*/', '* /', $this->_name) . " */\n"
-            . "// source-signature: " . preg_replace('/[^0-9:]/', '', (string) $signature) . "\n"
+            . "// source-signature: " . preg_replace('/[^a-f0-9:]/', '', (string) $signature) . "\n"
             . "use Wbengine\\Template\\Runtime;\n"
             . "return static function (array &\$_v, \\Wbengine\\Template\\Engine \$_engine): void {\n?>"
             . $this->_out
@@ -158,6 +157,13 @@ class Compiler
             $kind = $m[1];
         }
         if (null === $kind) {
+            // Return a normal token: compile() counts preceding text before reporting
+            // the error, so the diagnostic uses the tag's actual source line.
+            $unsupported = $this->_unsupportedSmartyTag($brace);
+            if (null !== $unsupported) {
+                return array('kind' => 'unsupported', 'body' => $unsupported,
+                    'end' => $brace + strlen($unsupported) + 1);
+            }
             return null;
         }
 
@@ -167,6 +173,24 @@ class Compiler
             $inner = ltrim(substr($inner, strlen($kind)));
         }
         return array('kind' => $kind, 'body' => $inner, 'end' => $end + 1);
+    }
+
+    /**
+     * Reserved Smarty syntax, not a catch-all for words inside CSS/JS braces.
+     * Function and loop headers need Smarty-shaped arguments to avoid rejecting
+     * JavaScript declarations and loops. Exact reserved-tag examples use literal.
+     */
+    private function _unsupportedSmartyTag(int $brace): ?string
+    {
+        $names = 'assign|append|extends|block|capture|section|sectionelse|config_load|eval|fetch|insert|php|include_php|strip|nocache|ldelim|rdelim|call|forelse';
+        if (preg_match('/\G\{(\/?(?:' . $names . '))(?=[\s}])/', $this->_source, $match, 0, $brace)
+            || preg_match('/\G\{(\/(?:function|for|while))(?=[\s}])/', $this->_source, $match, 0, $brace)
+            || preg_match('/\G\{(function)(?=\s*}|\s+[A-Za-z_]\w*\s*=)/', $this->_source, $match, 0, $brace)
+            || preg_match('/\G\{(for)(?=\s*}|\s+\$)/', $this->_source, $match, 0, $brace)
+            || preg_match('/\G\{(while)(?=\s*}|\s++[^\s(])/', $this->_source, $match, 0, $brace)) {
+            return $match[1];
+        }
+        return null;
     }
 
     /**
@@ -226,6 +250,10 @@ class Compiler
     private function _handle($kind, $body)
     {
         switch ($kind) {
+            case 'unsupported':
+                $this->_fail('Unsupported Smarty tag {' . $body . '}; migrate it to WBengine syntax or wrap a literal example in {literal}');
+                return;
+
             case 'comment':
                 return;
 
@@ -235,7 +263,8 @@ class Compiler
 
             case 'output':
                 $expression = $this->_parser->parse($body, $this->_line);
-                $explicit = array_intersect($this->_parser->topModifiers(), self::SAFE_MODIFIERS);
+                $modifiers = $this->_parser->topModifiers();
+                $explicit = in_array(end($modifiers), self::SAFE_MODIFIERS, true);
                 $this->_echo(($this->_autoEscape && !$explicit)
                     ? 'Runtime::e(' . $expression . ')'
                     : 'Runtime::s(' . $expression . ')');
@@ -402,15 +431,31 @@ class Compiler
     private function _cache($body)
     {
         $ttl = 'null';
-        if (preg_match('/^(.*?)\s+ttl\s*=\s*(\d+)\s*$/s', $body, $m)) {
+        $scope = 'public';
+        $seen = [];
+        while (preg_match('/^(.*?)\s+(ttl|scope)\s*=\s*(\d+|\x27[^\x27]*\x27|"[^"]*"|[A-Za-z]+)\s*$/s', $body, $m)) {
             $body = $m[1];
-            $ttl = (string) (int) $m[2];
+            if (isset($seen[$m[2]])) {
+                $this->_fail('duplicate cache option ' . $m[2]);
+            }
+            $seen[$m[2]] = true;
+            if ('ttl' === $m[2]) {
+                if (!ctype_digit($m[3])) {
+                    $this->_fail('cache ttl must be a non-negative integer');
+                }
+                $ttl = (string) (int) $m[3];
+            } else {
+                $scope = trim($m[3], "\x27\"");
+                if (!in_array($scope, ['public', 'user'], true)) {
+                    $this->_fail('cache scope must be public or user');
+                }
+            }
         }
         $key = $this->_parser->parse($body, $this->_line);
 
-        $this->_stack[] = array('type' => 'cache', 'line' => $this->_line, 'else' => false);
+        $this->_stack[] = array('type' => 'cache', 'line' => $this->_line, 'else' => false, 'scope' => $scope);
         // The echo and the closure stay open until the matching {/cache} closes them.
-        $this->_out .= '<?= Runtime::cache(' . $key . ', ' . $ttl . ', function () use (&$_v, $_engine) { ob_start(); ?>';
+        $this->_out .= '<?= $_engine->cache(' . $key . ', ' . $ttl . ', function () use (&$_v, $_engine) { return $_engine->capture(function () use (&$_v, $_engine) { ?>';
         $this->_afterPhp = true;
     }
 
@@ -430,7 +475,7 @@ class Compiler
                 $this->_php($top['else'] ? 'endif;' : 'endforeach;');
                 break;
             case 'cache':
-                $this->_php('return ob_get_clean(); })');
+                $this->_php('}); }, ' . var_export($top['scope'], true) . ')');
                 break;
         }
     }

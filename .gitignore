@@ -8,3 +8,7 @@ composer.lock
 App/Config/*.*
 vendor/
 .phpunit.cache/
+
+# Temporary task documents and optional package test caches
+tmp-*
+compat/*/.phpunit.cache/

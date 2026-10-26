@@ -186,22 +186,5 @@ class NativeRendererTest extends TestCase
         $this->assertStringContainsString('<h2>Body</h2>', $html);
     }
 
-    public function testBundledTemplatesAreIdenticalInSmarty(): void
-    {
-        $article = (object) array('title' => 'T & <U>', 'author' => 'A', 'source' => 'http://x?a=1&b=2', 'introtext' => '<p>i</p>', 'bodytext' => '<p>b</p>');
-        $smarty = new \Wbengine\Renderer\Adapter\SmartyRenderer();
-        $smarty->setTemplateDir($this->framework . '/Box');
-        $smarty->setCompileDir($this->dir . '/compiled');
-        $smarty->assign('Article', $article);
-        $smarty->assign('t', $this->labels(['author', 'source'], 'article'));
 
-        $native = $this->renderer();
-        $native->assign('Article', $article);
-        $native->assign('t', $this->labels(['author', 'source'], 'article'));
-
-        $this->assertSame(
-            $smarty->fetch('Article/View/Article.tpl'),
-            $native->fetch($this->framework . '/Box/Article/View/Article.tpl')
-        );
-    }
 }

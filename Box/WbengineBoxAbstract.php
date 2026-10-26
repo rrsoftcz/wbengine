@@ -99,6 +99,32 @@ Abstract class WbengineBoxAbstract extends WbengineRestapiAbstract implements Co
     }
 
 
+    /** Plain enum configuration from the optional API column. No executable decoding. */
+    public function getSettings(): array
+    {
+        $json = $this->_box['api_settings'] ?? null;
+        if (!is_string($json) || strlen($json) > 65536) { return []; }
+        try {
+            $settings = json_decode($json, false, 4, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            return [];
+        }
+        if (!$settings instanceof \stdClass) { return []; }
+        $result = [];
+        foreach (get_object_vars($settings) as $name => $value) {
+            if (!preg_match('/^[a-z][a-z0-9_]{0,44}$/D', (string) $name) || !is_string($value) || strlen($value) > 128) { return []; }
+            $result[$name] = $value;
+        }
+        return $result;
+    }
+
+    /** Missing or malformed settings return the caller's default. */
+    public function getSetting(string $name, $default = null)
+    {
+        return $this->getSettings()[$name] ?? $default;
+    }
+
+
     /**
      * Create box's own model object
      * @Return \Wbengine\Model\ModelAbstract

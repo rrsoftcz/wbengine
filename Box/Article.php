@@ -42,6 +42,24 @@ class Article extends WbengineStaticBox
     	return ($this->_model && $this->_model instanceof ArticleModel) ? $this->_model : $this->_setModel();
     }
     
+    /** Render a copy while preserving original source and per-field fallback formats. */
+    private function formattedArticle()
+    {
+        $source = $this->getArticle();
+        if (!is_object($source)) { return $source; }
+        $article = clone $source;
+        $format = $article->content_format ?? 'legacy_html';
+        if (!in_array($format, ['legacy_html', 'markdown'], true)) { throw new \UnexpectedValueException('Unknown article content format.'); }
+        foreach (['introtext', 'bodytext'] as $field) {
+            $fieldFormat = $article->{$field . '_format'} ?? $format;
+            if (!in_array($fieldFormat, ['legacy_html', 'markdown'], true)) { throw new \UnexpectedValueException('Unknown article field content format.'); }
+            if ($fieldFormat === 'markdown') {
+                $article->$field = $this->getParent()->getSite()->getParent()->getMarkdown()->render($article->$field ?? '');
+            }
+        }
+        return $article;
+    }
+
     /**
      * Return story content from table article
      *
@@ -57,6 +75,6 @@ class Article extends WbengineStaticBox
             'source' => \Wbengine\I18n::t('wb.article.source'),
         ));
         return $this->getRenderer()->render(
-        	$this->getStaticBoxTemplatePath(self::BOX_ARTICLE), $this->getArticle(), true);
+            $this->getStaticBoxTemplatePath(self::BOX_ARTICLE), $this->formattedArticle(), true);
     }
 }

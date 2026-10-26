@@ -34,16 +34,19 @@ class Model extends ModelAbstract {
         $siteId = (string)(int)$section->getSite()->getSiteId();
         $sectionId = (int)$section->getSectionId();
 
-        $sql = sprintf("SELECT CONCAT(?) AS site_id, %s FROM %s b
-              WHERE (JSON_SEARCH(sites, 'one', ?) IS NOT NULL AND b.section_id = ?)
-                                OR (b.section_id = ? AND b.shared = 1)
+        // Select the box row so optional api_settings survives when migration 005
+        // is present. Naming that column would break older schemas; probing would
+        // add a query on every cold load. This also carries future box columns in
+        // the internal cache, but never changes the public API's explicit fields.
+        $sql = sprintf("SELECT b.*, CONCAT(?) AS site_id FROM %s b
+              WHERE b.section_id = ?
+                AND (JSON_SEARCH(sites, 'one', ?) IS NOT NULL OR b.shared = 1)
                               ORDER BY b.order ASC;"
-            , '`id`, `name`, `module`, `method`, `section_id`, `static`, `shared`, `device_min`, `device_strict`, `order`'
             , S_TABLE_BOXES
         );
 
         return Cache::remember('boxes:' . $siteId . ':' . $sectionId, function () use ($sql, $siteId, $sectionId) {
-            return Db::fetchAllAssoc($sql, array($siteId, $siteId, $sectionId, $sectionId));
+            return Db::fetchAllAssoc($sql, array($siteId, $sectionId, $siteId));
         }, null, true);
     }
 

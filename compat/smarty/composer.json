@@ -1,0 +1,43 @@
+{
+  "name": "wbengine/smarty-compat",
+  "description": "Optional transitional Smarty renderer for WBengine 4.0",
+  "type": "library",
+  "require": {
+    "php": "^8.3",
+    "wbengine/wbengine": "^4.0",
+    "smarty/smarty": "^5.5.2"
+  },
+  "autoload": {
+    "classmap": [
+      "src/SmartyRenderer.php"
+    ]
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^12.0"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Wbengine\\SmartyCompat\\Tests\\": "tests/"
+    }
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../..",
+      "options": {
+        "symlink": false,
+        "versions": {
+          "wbengine/wbengine": "4.0.x-dev"
+        }
+      }
+    }
+  ],
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "scripts": {
+    "test": "sh bin/test"
+  },
+  "license": [
+    "MIT"
+  ]
+}

@@ -39,7 +39,7 @@ A ready to run example application lives in the companion project `wbengine-skel
 * Extensions: `mysqli`, `json`, `mbstring`
 * MySQL 8 or MariaDB 10.6+ (box selection uses `JSON_SEARCH`). Tested on MySQL 8.4, MariaDB 10.11 and MariaDB 11.4.
 * A web server that sends every request that is not a file to `index.php`: Apache with `mod_rewrite` or Nginx with PHP-FPM (both tested, the skeleton has the configuration for each)
-* Composer packages: `smarty/smarty` 5, `texy/texy` 3, `firebase/php-jwt` 7
+* Runtime Composer package: `firebase/php-jwt` 7. Templates and Markdown use built-in engines; Smarty compatibility and offline Texy migration are optional separate packages.
 
 PHP has no long term support releases. 8.4 receives security fixes until the end of 2028 and 8.3 until the end of 2027, which is why 8.3 is the minimum.
 
@@ -79,7 +79,7 @@ Config/Settings.json     configuration, see the reference below
 Box/<Section>/<Module>.php   your box classes (namespace App\Box\<Section>)
 View/site.tpl            the page layout
 View/<Section>/<Method>.tpl  one template per box
-View/Compiled/           Smarty cache, must be writable
+View/Compiled/           Compiled template cache, must be writable
 ```
 
 Your web server must send every request that is not a file to `index.php` (the skeleton ships an Apache `.htaccess` for this). The database needs the `cms_*` tables, whose schema is in the skeleton's `schemas/` directory.
@@ -108,7 +108,7 @@ Relevant `cms_boxes` columns:
 
 * a static box renders a template only (`StaticBoxes::About` in the skeleton);
 * a dynamic box asks a Model for data and passes it to a template (`Blog::LocalStoryBox`);
-* framework bundled boxes ship their own template and logic: `Wbengine\Box\Article` (an article from `cms_articles`, with Texy formatting) and `Wbengine\Box\Auth` (the login form with CSRF token and optional reCAPTCHA).
+* framework bundled boxes ship their own template and logic: `Wbengine\Box\Article` (an article from `cms_articles`, with explicit Markdown or preserved legacy HTML) and `Wbengine\Box\Auth` (the login form with CSRF token and optional reCAPTCHA).
 
 **Supporting classes**
 
@@ -120,27 +120,56 @@ Relevant `cms_boxes` columns:
 | `Url` | the parsed request URL |
 | `Session`, `User`, `User\Password` | database backed session, the current user, password hashing |
 | `Auth`, `Api\*` | JWT creation and the REST API modules |
-| `Renderer` | adapter around Smarty 5 (`SmartyRenderer`) |
+| `Renderer` | native compiled templates (`NativeRenderer`); optional Smarty compatibility |
 | `Vars`, `Registry` | template variable bag, key value store |
 | `Debug`, `Error\Handler` | debug bar, error to exception conversion |
 | `Application\Path`, `Application\Env\*` | path registry, HTTP and environment helpers |
 
 ## Request lifecycle
 
+```text
+new Application()              config, paths, error handler, timezone, early i18n
+configure services / variables
+register Application routes    registration only, callbacks have not run
+$App->run()
+  custom routes                first accepted match; true completes the response
+  pending canonical redirect   only when no custom route accepted the request
+  page-cache gate              after route policies and application configuration
+  Site::initialize()           unless central content was supplied explicitly
+    site lookup / ACL / menu / metadata
+    active sections -> boxes -> collected content
+  404 or explicit 410 / debug
+  Renderer::dispatch()         at most one layout per Application instance
 ```
-index.php
-  new Application()      load Settings.json, install error handler
-  $App->run()
-    Site::initialize()
-      cms_sites row by URL          404 if there is none
-      ACL check                     redirect to /login/ if the site needs a user
-      menu, meta, template vars
-      for each active section:
-        cms_boxes rows for this site and section
-        for each box: new App\Box\<Section>\<Module>, call <Method>(), collect HTML
-    Renderer::dispatch()            render site.tpl with all variables
-    Debug bar (if enabled)
-```
+
+In 4.0 the constructor performs no CMS queries or box execution, does not serve a
+page-cache HIT, and does not exit for a canonical-language redirect. I18n still
+normalizes the request early so route patterns see the path without a locale prefix.
+Redirects are emitted by `run()` after custom routes have had a chance to respond.
+A site getter may create an empty Site object; its database resource is loaded later.
+
+`run()` and `display()` share one lifecycle and repeated calls do not render another
+layout. `display($content)` also accepts an empty string or `"0"` as explicit central
+content. A route may call `display()` directly; ordinary CMS boxes should return their
+content through the existing Section/Box tree. Register routes before either entry
+point starts handling the request.
+
+Pre-run central content avoids CMS initialization. Changes to application Vars
+(including direct `getClassVars()->addValue()` calls) are compared with the bootstrap
+snapshot and conservatively bypass page cache. Accessing the renderer before the
+cache gate also bypasses it, so direct renderer assignments cannot be skipped by an
+old HIT. Custom accepted routes, prior response output or a non-200 status likewise
+bypass shared page cache. The existing bypass flag also skips public native
+fragments. This can reduce cache HITs for customized requests; use
+ordinary CMS boxes for cacheable visitor-independent page generation.
+
+**Migration from 3.x:** construct the Application, configure it and register its
+routes, then call `run()` or `display()`. Application route callbacks no longer run
+at registration, CMS variables/box side effects are no longer available immediately
+after construction, and debug output is prepared during handling. Move code that
+requires loaded CMS data into the CMS handling phase or make its model access
+explicit. Use one Application instance per request. Clear existing page caches on
+deployment so old entries cannot retain policies from the previous lifecycle.
 
 A typical anonymous page costs roughly eight to ten queries: the site, the sections, the menu, one box query per section, and the session. See the performance notes for how to cut that.
 
@@ -184,7 +213,7 @@ To add a page: insert a row into `cms_sites` (and `cms_menu` for navigation), wr
 
 ## Template engine
 
-Two renderers are included. **Smarty 5** is the default. The **native engine** is a small compiler that turns a template into plain PHP once and then just includes that file, so with opcache a render is running compiled code. Select it in `Settings.json`:
+**NativeRenderer** is the built-in renderer and the default. The optional `wbengine/smarty-compat` package provides the transitional Smarty adapter. The **native engine** is a small compiler that turns a template into plain PHP once and then just includes that file, so with opcache a render is running compiled code. Select it in `Settings.json`:
 
 ```json
 "renderer": { "adapterName": "NativeRenderer", "autoEscape": true, "compileCheck": false }
@@ -225,22 +254,101 @@ Operators: `== != === !== < <= > >= && || ! and or not + - * / % ~` (`~` joins t
 
 ### Security model
 
-* **Escaping is on by default.** `{$x}` is HTML-escaped. `|raw` (or `|nofilter`) prints as is, and `|escape`, `|nl2br`, `|json` and `|url` already produce safe output, so they are not escaped a second time. `|json` is safe inside a `<script>` element.
+* **Escaping is on by default in both WBengine renderer adapters.** `{$x}` is HTML-escaped. In the native engine the final modifier of the whole expression determines whether output is already escaped or explicitly trusted: `|escape`, `|nl2br`, `|json`, `|url`, `|raw` or `|nofilter`. An earlier safe modifier does not make a later fallback, concatenation operand, method result or array value safe. Put `raw` last only for trusted HTML. `|json` is suitable for a script element, not a quoted HTML attribute.
 * **A template cannot run PHP.** Expressions use a fixed grammar: no function calls (only the modifiers above), no assignment, no constants, no `new`. PHP tags written in a template are plain text, and template syntax inside data is never interpreted.
 * **A template cannot read arbitrary files.** Names resolve inside the template directory and the framework's own bundled template directories only; `..`, absolute paths elsewhere and symlinks out of the root are refused.
 * **Missing things are empty.** An undefined variable, key or property, a method on `null`, or an array printed as text gives an empty string, never a warning (which this framework's error handler would turn into an exception).
 
+### Output contexts and template trust
+
+Template files are trusted application code. The native grammar rejects free PHP
+and restricts file includes, but objects passed to templates can expose callable
+public methods. Do not let untrusted editors upload templates or pass privileged
+application objects to templates intended for them. Database text is data and must
+never be parsed again as a template.
+
+Automatic HTML escaping protects ordinary text and values inside quoted HTML
+attributes. It does not validate URL schemes: validate full `href`/`src` URLs in the
+application, and use `|url` for individual URL components. Do not insert ordinary
+variables into inline JavaScript, CSS, event handlers or unquoted attributes.
+In the native engine use `|json` for a complete JavaScript value; inside a quoted
+HTML attribute use `|json|escape`. The JSON modifier is native-only. For the temporary
+Smarty adapter, generate script-safe JSON in application code and mark only that
+trusted serialized value as raw. Explicit `raw` is never suitable for user HTML
+unless it has been handled by a dedicated safe content renderer.
+
+Place escaping after transformations: `{$value|default:$fallback|escape}`. Escaping
+only one operand before concatenating additional data is insufficient; final automatic
+escaping may also encode an already escaped operand again. Normalize data first and
+escape the final output once. Clear data/page caches and compiled templates when
+deploying changed templates or escaping policy. With `compileCheck: true`, native
+freshness includes a source checksum and detects same-size edits with unchanged file
+timestamps. Production `compileCheck: false` skips this per-render checksum.
+
 ### Moving from Smarty
 
-1. Switch `adapterName` to `NativeRenderer` and set `"autoEscape": false`. The pages render the same: the skeleton's pages are identical, and a 43 template corpus matches Smarty byte for byte.
-2. Mark trusted HTML with `|raw` (the section variables `{$header}`, `{$central}`, the debug bar, formatted article text) and data with `|escape`. This is valid Smarty 5 too, so you can do it while still on Smarty.
-3. Remove `"autoEscape": false`. From now on every plain `{$x}` is escaped.
+In 4.0 the temporary Smarty adapter also escapes by default. Legacy layouts must
+mark trusted section HTML, such as `{$header|raw}`, `{$central|raw}` and
+`{$debug|raw}`, explicitly. Ordinary database values remain escaped. A temporary
+`autoEscape: false` setting is available while migrating those templates.
 
-Not supported: Smarty plugins, `{capture}`, `{section}`, config files, custom delimiters, `{$smarty...}`, template inheritance (`{extends}`/`{block}`). Use Smarty for templates that need them.
+1. Inventory each application's templates, direct Smarty calls, plugins and configuration. Run the read-only `tests/tools/template-inventory.php` aid and review its hints. Known unsupported Smarty constructs now throw TemplateException with source and line. Successful compilation alone is still not proof of compatibility: other unknown plugin tags can remain literal text.
+2. Convert unsupported constructs explicitly. Native include uses a path expression without `file=`, and set replaces Smarty assign. The 43-scenario legacy common-subset corpus remains covered, but the current skeleton also uses native-only set/t tags. Default with zero, truncate limits and nl2br output differ between adapters; use the new migration corpus to review expected output.
+3. Keep automatic escaping enabled, mark only trusted section/formatted HTML with `|raw`, and verify ordinary data in its output context. `autoEscape: false` is a temporary option for controlled legacy migration, not a compatibility guarantee.
+4. After comparing real page output and login/CSRF/logout, locale and cache behavior, select `NativeRenderer` and clear compiled, fragment, page and external HTML caches. Keep matching source/configuration backups for rollback; native-only templates cannot simply be switched back to Smarty.
+
+See [the versioned template inventory and migration contract](ref-template-migration.md)
+for source identities, adapter API differences, exact expected outputs and the
+TPL-02/TPL-03 gates. Smarty is no longer a core dependency. See `compat/smarty/README.md` for the separate compatibility test/install profile.
+Smarty plugins, capture/section, config files, custom delimiters, smarty metadata
+and inheritance are outside the supported native language; migrate them before
+removing the compatibility dependency.
+
+Compiler version 5 prevents reuse of older compiled files even when
+`compileCheck` is disabled. Reserved Smarty syntax (such as assign, extends,
+block/capture and their closing tags) now reports an explicit error. Ordinary
+CSS/JS object keys and loop/declaration forms remain covered by regression tests;
+exact syntax collisions, such as JS shorthand `{capture}`, need a literal block.
+See the reference for the finite detection rules and remaining ambiguities.
+Clear all HTML and compiled caches during deployment. TPL-02 is still in progress.
+
+Native partial paths resolve from templatesDir, including inside nested partials.
+Partials inherit current values but local set assignments do not overwrite their
+caller or the next fetch. Object references remain shared developer-owned objects.
+Renderer and native cache blocks collect ordinary nested output buffers on success
+and discard owned buffers on exceptions. Services must not close renderer buffers
+or create non-removable buffers; those PHP side effects cannot be fully recovered.
 
 ### Performance
 
 The compiled template is a PHP file, so opcache keeps it in memory. Measured on the skeleton layout (6 menu items, about 9.7 KB of output): repeated renders in one process take about 11 microseconds with the native engine and 9 with Smarty (the native engine also escapes). On a cold request, the case that matters for PHP-FPM and Apache, the native engine adds about 2.3 ms over a bare PHP process against 4.5 ms for Smarty, because Smarty's classes are not loaded and initialised. The saving is about 2 ms per request, which is real but small next to a database query; the main reasons to switch are the automatic escaping and the fragment cache. Set `"compileCheck": false` in production (and clear the compiled directory on deploy) so the source files are not checked on every request.
+
+## Markdown content
+
+WBengine now includes its own block/inline Markdown parser and immutable content
+tree with a separate safe HTML renderer, without a Markdown package dependency.
+Use `(new \Wbengine\Markdown())->render($source)`. It supports CommonMark 0.31.2
+and GFM tables, strikethrough and task lists. Raw HTML is escaped and URL schemes
+are restricted to http/https/mailto and relative paths. Default limits include
+1 MiB input and 8 MiB expanded HTML output; exceeding work/depth/size budgets
+throws LengthException. There is no unsafe HTML mode.
+
+See [the Markdown contract and conformance evidence](ref-markdown.md) for all
+652 official CommonMark examples, 12 GFM examples, 76 exact safe-output deviations,
+source attribution and regression cases discovered beyond the official corpus.
+Use `$app->getMarkdown()` for the lazy shared service. NativeRenderer also accepts
+`.md` sources directly and inside an HTML layout's include: the file is Markdown
+content throughout, so PHP, variables and template loops are never executed.
+Requested or canonical `.md` extensions (case-insensitive) select this path, roots
+are validated first and reads are bounded to the parser input limit.
+
+Optional `migrations/4.0.0/003-markdown-content.sql` adds explicit article/translation
+`content_format` values `legacy_html` and `markdown`. Existing and unmigrated rows
+retain their previous trusted HTML bytes. New Markdown fields render through the
+safe parser. Partial translations inherit each omitted field's original format;
+changing an existing translation format requires both text fields to be replaced
+or cleared and rejects stale concurrent format changes. Normal content writes must
+still invalidate caches. Texy is removed from the core. The reviewed reversible offline converter is documented in `ref-markdown.md` and `compat/texy-migration/README.md`. The legacy `Renderer::getFormater()->process($source)` entry now processes Markdown. Migrate actual Texy sources explicitly before using it; Texy runtime selection fails with migration instructions.
 
 ## Internationalisation
 
@@ -391,9 +499,249 @@ Rules:
 
 Set the connection `charset` in the configuration. Use `utf8mb4` for new databases (`utf8` is the three byte variant and rejects emoji).
 
+### Reading request data in 4.0
+
+`Http::Post($name)` and `Http::Get($name)` return the corresponding PHP-parsed value
+unchanged, including nested arrays. Omit the name to read the whole POST or GET map.
+A missing field returns null without a warning; integer/string keys such as `0` and
+`"0"` work normally. Other key types return null.
+
+Use `Http::PostString($name)` and `Http::GetString($name)` when the field must be a
+string. They return null for arrays and other non-string values, preserving empty
+strings and `"0"`. `Http::PostRaw($name)` remains an alias of `PostString`.
+`Http::getCookie($name)` likewise returns an unchanged string or null, rejecting
+array-shaped cookies. These helpers do not trim, add or remove backslashes, turn
+characters into HTML entities, strip tags or silently repair invalid UTF-8.
+"Unchanged" means after PHP parsed the HTTP input, not the original wire bytes.
+
+Validate each field's type, encoding, length and meaning separately. A string-only
+helper is a shape check, not a sanitizer. For example:
+
+```php
+use Wbengine\Application\Env\Http;
+use Wbengine\Db;
+
+$title = Http::PostString('title');
+if ($title === null || !mb_check_encoding($title, 'UTF-8') || mb_strlen($title, 'UTF-8') > 100) {
+    throw new \InvalidArgumentException('Invalid title.');
+}
+$id = Db::insert('cms_sections', ['title' => $title, 'key' => 'content']);
+```
+
+Pass values as SQL parameters and whitelist writable fields; never pass a whole
+request map directly to a database write. Render ordinary text with `{$title}`
+(automatic escaping) or explicit `|escape`. Do not mark a value as raw just because
+it came through a request helper. Keep password bytes unchanged; apply the intended
+password policy without HTML encoding or slash manipulation.
+
+**Migration:** `Http::secureClean()` has been removed in major version 4.0. Replace
+calls with the appropriate input accessor and field validation, and escape at the
+output context. Audit direct `echo` calls, custom renderers and templates using
+`autoEscape: false`; those no longer receive pre-escaped input. Previously stored
+backslashes or HTML entities are not automatically undone: blanket `stripslashes`
+or entity decoding would also corrupt legitimate historical content.
+
+### JSON request bodies
+
+`Http::Json()` (or `Http::Json(true)`) reads `php://input` and decodes it once.
+JSON objects become associative arrays; arrays and scalar values retain PHP's
+normal JSON conversion. `Http::Json(false)` validates the body and returns its
+original text, including whitespace. Only boolean `true` selects decoded output;
+the legacy behavior of other arguments is preserved.
+
+Invalid JSON, an empty body, invalid UTF-8 or excessive nesting return null without
+throwing. A valid JSON `null` also returns null in decoded mode, but leaves
+`json_last_error()` as `JSON_ERROR_NONE`. Capture/check that status immediately,
+before another JSON operation overwrites it:
+
+```php
+$body = Http::Json();
+$error = json_last_error();
+if ($error !== JSON_ERROR_NONE || !is_array($body)) {
+    http_response_code(400);
+    return;
+}
+// Validate allowed fields and permissions before passing data to the model.
+```
+
+`Http::isJson($text)` remains a standalone validator, including true for the text
+`null`. Default PHP depth (512), number conversion and error codes are unchanged. The
+legacy rejection of object keys starting with a NUL character is also preserved,
+including `JSON_ERROR_INVALID_PROPERTY_NAME` in both decoded and raw modes.
+The helper does not enforce a media type; controller-specific requirements, including
+the cookie API JSON/custom-header contract below, still apply. Repeated calls read
+and parse the body independently; no request body is retained in a static cache.
+
+### CSRF protection in 4.0
+
+The session owns a lazy `Wbengine\Session\Csrf` service, available as
+`$app->getCsrf()` or `$session->getCsrf()`. Use it explicitly in every custom form
+or cookie-authenticated action that changes state. It does not add middleware or
+start a session on ordinary public requests. Calling the Application accessor does
+obtain the PHP session; request tokens only on routes that need them.
+
+Obtain tokens **before** entering any cached rendering code:
+
+```php
+$csrf = $app->getCsrf();
+$renderer->assign('saveToken', $csrf->token('article.save'));
+```
+
+```html
+<form method="post" action="/article/save/">
+    <input type="hidden" name="token" value="{$saveToken|escape}">
+    <button type="submit">Save</button>
+</form>
+```
+
+Validate before performing the write, and keep authorization checks separate:
+
+```php
+if (!$app->getCsrf()->validateRequest('article.save')) {
+    http_response_code(403);
+    return;
+}
+// Check the user's permission, validate fields, then write through the model.
+```
+
+`validateRequest()` accepts only POST, PUT, PATCH or DELETE. It reads the `token`
+form field or `X-CSRF-Token` header for AJAX/JSON; a present invalid header fails
+without falling back to the form. It never reads tokens from URLs. For manually
+parsed input, `verify($token, $purpose)` checks the token only: enforce the HTTP
+method in the controller. Use a non-empty purpose of at most 128 bytes.
+
+Tokens are bound to the session and purpose. They remain stable across forms and
+tabs, and verifying a request does not create a secret. A single random session
+secret derives purpose tokens with HMAC-SHA256. Session expiry, logout and session-ID
+regeneration invalidate them; fetch fresh forms after logging in. `reset()` explicitly
+invalidates all purposes. Existing per-render login tokens are not accepted in 4.0.
+
+Issuing or verifying a token marks the response `Cache-Control: private, no-store`
+and bypasses page cache and all native fragment scopes for the rest of the request.
+An outer fragment that issues a token during rendering is not stored. Acquire the
+token before a cached wrapper can return a HIT. Exclude form routes with
+`cache.pages.denyPaths` or call `PageCache::bypass()` before Application construction
+when a previously cached route becomes personalized. Clear old caches during
+migration. Do not put token-bearing responses in an external cache or Smarty output
+cache; these are outside the framework's storage controls.
+
+The bundled login form now uses purpose `auth.login`, including its AJAX path.
+GET `?a=logout` returns 405 and leaves the session intact. Render
+`Box\Auth::getLogoutBox()` for the bundled POST logout form, or submit `a=logout`
+and a token for `auth.logout` to `/login/`. POST `?a=logout` is also supported. Missing,
+wrong-purpose or foreign-session tokens return 403. Both renderers use the existing
+escaped `token` field.
+
+Cookie API operations (`login`, refresh and device logout) use a separate stateless
+boundary: send **POST**, `Content-Type: application/json` and `X-WBengine-CSRF: 1`.
+This constant header is not a secret; it forces a browser CORS preflight for
+cross-origin requests. Simple form/text requests are rejected before authentication,
+refresh rotation, cookie changes or session creation. Wrong methods return 405,
+wrong content types 415, and a missing/invalid header 403. The default CORS allowed
+headers include this marker. Allow credentialed CORS only for origins you trust;
+never reflect arbitrary origins. SameSite remains an additional protection.
+
+```javascript
+fetch('/api/auth/jwt/revalidate', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {'Content-Type': 'application/json', 'X-WBengine-CSRF': '1'},
+    body: '{}'
+});
+```
+
+Bearer-authorized API mutations retain their token/role checks and do not start a
+session for CSRF. The refresh endpoint remains independent of PHP sessions. Existing
+API clients must add the JSON/custom-header contract when upgrading to 4.0.
+The approach follows the [OWASP CSRF guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
+
+### Trusted reverse proxies in 4.0
+
+Forwarded metadata is disabled by default. `Utils::getUserIp()` and
+`Http::getClientIp()` return the validated connection peer, or an empty string
+when `REMOTE_ADDR` is missing or invalid. `Client-IP`, `Forwarded`, forwarded host,
+port and alternative TLS headers are never used as fallbacks.
+
+For a deployment behind a reverse proxy, configure its actual source addresses
+in `Settings.json`. These documentation addresses must be replaced for deployment:
+
+```json
+{
+  "http": {
+    "trustedProxies": ["192.0.2.10", "2001:db8:100::/64"],
+    "forwardedHeaders": ["x-forwarded-for", "x-forwarded-proto"]
+  }
+}
+```
+
+Each header is opt-in. Proxy entries accept exact IPv4/IPv6 addresses or numeric
+CIDR prefixes. Invalid configuration throws `InvalidArgumentException`. There are
+no automatic private-network or provider exceptions; restrict trust to the proxies
+you operate. IPv4 and IPv6 ranges are separate families, including IPv4-mapped IPv6
+addresses. IPv6 output is canonicalized for consistent session/rate-limit keys.
+
+The proxy must remove untrusted forwarding metadata and generate or correctly
+append `X-Forwarded-For` using the real connection address. The resolver walks the
+list from the trusted right side and stops at the first untrusted address, ignoring
+client-controlled entries farther left. An invalid traversed hop, a header over
+8192 bytes or more than 64 hops falls back to the direct peer.
+
+`X-Forwarded-Proto` has a separate contract: the trusted immediate proxy must
+**overwrite** it with a single `http` or `https` value representing the original
+client connection. Configure every trusted hop to preserve that meaning only from
+its own trusted upstreams. Do not append or blindly copy client-supplied values.
+Comma-separated values are ignored. Without a valid trusted value, secure detection
+uses only the local PHP `HTTPS` value `on` or `1`. A trusted `http` overrides backend
+TLS because the browser's original connection determines the cookie transport.
+
+Session cookies, the locale preference cookie, absolute locale links and API
+refresh-cookie issuance/deletion use this shared detection.
+Their HttpOnly and SameSite policies remain in effect. The explicit API
+`setCookieIsSecured()` override remains available. A change in resolved IP may
+invalidate existing sessions and change rate-limit keys during rollout.
+
+The resolver lives at `Wbengine\Application\Env\RequestContext`.
+`$app->getRequestContext()` lazily owns it in the existing Application tree and its
+`getParent()` returns that Application. `getClientIp()` and `isSecure()` read current
+request metadata. Existing static Http/Utils and standalone API entry points use
+the same implementation without requiring Application bootstrap, database queries
+or starting a session. Only the compiled proxy policy is cached and it refreshes
+when configuration changes.
+
+The trust-chain rules follow the [MDN X-Forwarded-For guidance](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For);
+the single-value scheme contract follows [X-Forwarded-Proto](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-Proto).
+
 ## Routing and the REST API
 
-Routes are registered with static methods and match on the HTTP method and the path. A trailing slash is optional and the query string is ignored:
+Application routes are deferred until `run()` and execute before shared cache or
+CMS handling. `get($path, $callable)` is a GET shortcut;
+`route($method, $path, $callable)` supports GET, POST, PUT, PATCH, DELETE, HEAD and
+OPTIONS. Both return the Application for chaining and validate registration input.
+The callback receives the existing `Router\Route` and Application objects:
+
+```php
+$App->get('/health/{id}', function ($route, $app) {
+    header('Content-Type: application/json');
+    echo json_encode(['id' => $route->getParams('id'), 'ok' => true]);
+    return true;
+});
+$App->get('/custom', function ($route, $app) {
+    $app->setValue('central', '<p>Trusted page content</p>');
+});
+$App->run();
+```
+
+Return boolean `true` after emitting a complete response, or terminate as before.
+Boolean `false` declines the route and tries the next one, then the CMS fallback.
+Other return values select the HTML callback model: prepare application variables
+and the normal layout is rendered. Return values are not automatically sent as
+response bodies. The first accepted route wins. Merely echoing JSON without
+returning true does not complete the request. Authorization and cookie CSRF guards
+remain the controller's responsibility.
+
+The existing static Router methods retain immediate matching/execution for API
+modules and boxes. A trailing slash is optional and the query string is ignored:
+
 
 ```php
 use Wbengine\Router;
@@ -406,7 +754,24 @@ Router::post('/api/things', fn () => /* ... */ null);
 
 `{name}` matches letters, digits, underscore and dash.
 
-The REST API lives under `/api/`. It is started from a box that belongs to an API section:
+The REST API lives under `/api/`. Existing API boxes still work and now run during
+CMS handling rather than construction. To avoid the CMS lookup for API requests,
+move the existing API bootstrap into application setup before `run()` (after the
+constructor has normalized i18n), for example:
+
+```php
+$path = (string) parse_url(\Wbengine\Application\Env\Http::Uri(), PHP_URL_PATH);
+if ($path === '/api' || str_starts_with($path, '/api/')) {
+    $api = new \Wbengine\Api();
+    $api->Initialize();
+    $api->end();
+}
+$App->run();
+```
+
+The API keeps its existing controllers, namespaces, authentication and terminating
+responses. A project may also invoke it from a suitable deferred Application route.
+The compatible box-based form remains:
 
 ```php
 class Restapi extends WbengineBoxAbstract
@@ -456,6 +821,13 @@ Deployment notes for cookie based refresh (unchanged from earlier versions):
 
 To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action in `$this->isAuthenticated(fn () => ...)`, and add a `Routes` class next to it. Look at `Api/Section.php` and `Api/Section/Routes.php` as the smallest example.
 
+The versioned server-to-server API foundation is available at `/api/v2` and
+`/api/v2/capabilities`, with HTTPS scoped integration identity at `/api/v2/identity`.
+Keys are hashed on the website and provisioned/revoked only through trusted local
+model APIs in this phase. Discovery accurately reports unavailable content CRUD.
+See [API v2 contracts, schema upgrade and audit/transaction rules](ref-api-v2.md).
+V1 remains supported; V2 intentionally has no browser CORS and rejects OPTIONS.
+
 ## Authentication, sessions and users
 
 * **Passwords** are stored with `password_hash()`. Legacy unsalted MD5 hashes still work and are upgraded to a modern hash on the user's next successful login, provided `cms_users.password` is at least 60 characters wide (`varchar(255)` is recommended). If the column is still narrow the legacy hash is kept and a notice is written to the error log, so a narrow column can never lock a user out.
@@ -466,6 +838,49 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 * **JWT** uses HS256 with two secrets (access and refresh). The secrets are read from the configuration or the environment and are never stored in the source. Authentication fails closed if a secret is missing or shorter than 32 characters.
 * Access control for pages is the `acl` column of `cms_sites`: a value of `1` or more requires a logged in user.
 
+For long exports or parallel AJAX requests, finish authentication, session writes
+and creation of the CSRF secret first, then call `$app->closeSession()` (or
+`$session->close()`). This explicitly loads the session snapshot, persists pending
+WBengine database changes while holding the PHP session lock, and then calls
+`session_write_close()`. Application does nothing if no session has been created.
+The default lifecycle continues to allow writes until request shutdown.
+
+```php
+$session = $app->getSession();
+$filter = $session->getValue('export_filter');
+$app->closeSession();
+// Perform slow work using $filter without blocking the next same-session request.
+```
+
+After close, the object is sealed against persistence. Reads and CSRF verification
+remain available from the snapshot; an existing CSRF secret can still derive
+purpose tokens without writing. Creating a missing secret, changing values,
+`save()`, `unsetKey()`, ID rotation, logout and reopening through `sessionStart()`
+throw `SessionException`. Close is idempotent and never implicitly reopens a session.
+Object references returned by getters can still change locally, but a closed
+`flush()` never stores them. Treat the snapshot as request-local data: it can be
+stale after another request logs out and must not authorize new privileged work.
+Complete authorization and state changes before closing.
+
+A failed WBengine database write keeps the lock and pending changes, and close
+throws so the caller can handle the failure or retry. Once native closing begins,
+the object stays sealed even if a custom save handler throws. Native handler
+persistence/error semantics remain those of PHP. Use the WBengine close method
+instead of calling native `session_write_close()` directly: the native function
+does not flush WBengine's database or seal its object. Closing without the matching
+active native session is rejected. Handlers must provide session locking for
+cross-request write serialization; custom Redis/database handlers need their own
+locking verification.
+
+Reproduce the file-handler comparison with
+`docker compose -p wbengine-modernization run --rm php php tests/benchmarks/session-lock.php`.
+It uses the test database and independent CLI workers with one cookie, five runs
+per mode and 250 ms of simulated remaining work. On PHP 8.4.27 / MySQL 8.4 the
+second worker waited about 247 ms with the lock held and about 1 ms after early
+close. This measures lock wait in that scenario, not end-to-end website throughput.
+The integration suite also proves serialization, preservation of both writers'
+changes and absence of logout resurrection after an older closed worker exits.
+
 ## Configuration reference
 
 `src/Config/Settings.json`:
@@ -475,14 +890,14 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 | `timeZone` | PHP time zone, for example `Europe/Prague` |
 | `codePage` | HTML charset, `utf8` |
 | `debug` | `true` shows the debug bar and detailed errors. Never in production |
-| `minimizeHtml`, `minimizeCss`, `minimizeJs` | output minification (HTML minification is a whitespace collapse, so avoid it with `<pre>`, `<textarea>` or inline scripts) |
+| `minimizeHtml`, `minimizeCss`, `minimizeJs` | `minimizeHtml` is deprecated and ignored by core dispatch in 4.0; CSS/JS settings retain their existing behavior |
 | `cdnPath` | prefix for static assets |
 | `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
 | `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
 | `counters` | `views`: `enabled` (default `false`), `hits` (50) and `seconds` (60) per batch, `dir` for the counter files. Batches the article view counter |
 | `i18n` | `enabled` (default `false`), `default`, `locales`, `detect`, `urlPrefix`, `prefixDefault`, `cookie`, `cookieDays`, `dir`. See Internationalisation |
 | `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `{ "enabled": false, "ttl": 60 }` for the whole page cache. See the performance notes |
-| `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (native engine, default `true`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
+| `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (both adapters, default `true`; `false` is a legacy migration option), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |
 | `jwt` | `accessKey` and `refreshKey`, at least 32 characters each |
 | `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed |
@@ -496,9 +911,124 @@ With `"debug": true` a bar is appended to the page showing the PHP version, the 
 
 Debug mode also turns on `display_errors`. It exposes SQL and paths, so it must never be enabled on a public server. With debug off, an uncaught exception shows a generic error page and the details go to the error log.
 
+In 4.0, `Site::initialize()` automatically assigns `server`, `dbinfo` and
+`phpversion` only when debug is enabled. Production templates no longer receive
+these diagnostic values by default. If an internal page explicitly needs them,
+call `$app->getSite()->assignDiagnostics()` after site initialization; it assigns
+the same template keys and returns that Site instance.
+
+Reading `dbinfo` may open a database connection even though no SQL query is counted.
+Production initialization avoids diagnostic-only work. Site selection now uses
+one bound SQL lookup for exact database collation, so it can itself open the
+connection; diagnostics add no SQL beyond that necessary lookup. Content, navigation and custom boxes can still require database access.
+Keep diagnostic output restricted to trusted users and escape the values normally.
+
+### HTML whitespace and transfer compression in 4.0
+
+`Renderer::dispatch()` emits the rendered template through the selected adapter's
+`display()` method. It does not rewrite whitespace in the result. Both adapters
+preserve the rendered bytes of trusted HTML, including `pre`, `textarea`, inline
+JavaScript/CSS, attribute values and JSON script text. Ordinary template variables
+still use the renderer's existing output-escaping rules.
+
+The legacy `minimizeHtml` setting is ignored by core dispatch, including when true.
+`Config::minimizeHtml()` remains readable for existing external callers and is
+marked deprecated; remove this setting from new application configurations. The
+old whole-document whitespace regex is no longer available as a runtime option.
+CSS/JS settings and template compilation rules are outside this change.
+
+Enable gzip or Brotli at the webserver or reverse proxy to reduce transfer size
+without changing HTML content. Keep encoding negotiation and `Vary: Accept-Encoding`
+correct at that layer. If a project needs source minification, use a build step
+that understands its HTML and embedded languages. No minifier dependency or PHP
+compression handler is added by the framework.
+
+**Migration:** clear existing page caches and any external HTML caches on deployment.
+They may still contain output damaged by the old whitespace collapse; changing
+renderer behavior cannot repair an already stored response. Render fresh output
+from the original templates/content. Uncompressed bodies can be larger after this
+change, so check transfer compression in the deployment configuration.
+
 ## Performance notes and roadmap
 
-What the engine does well today: a single connection opened only when needed, no model hydration, compiled Smarty templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
+For large box tables, the optional migration
+[`migrations/4.0.0/001-boxes-section-order.sql`](migrations/4.0.0/001-boxes-section-order.sql)
+adds `(section_id, order)`. `Section\Model::getBoxes()` now filters the section
+outside the site-membership/shared alternative, allowing this index to provide
+ordering on the tested MySQL and MariaDB plans. JSON membership, shared boxes,
+returned columns, parameter binding and the existing cache keys are preserved.
+The framework never applies this DDL during a web request.
+
+Before deployment, inspect `SHOW INDEX FROM cms_boxes` for an equivalent index
+whose first two columns are `section_id, order`, adapt the table prefix, and apply
+the SQL file through the installation's normal database migration procedure.
+Schedule the DDL for the size and traffic of that installation. Do not add a
+redundant index if an equivalent one already exists. Verify the actual query with
+`EXPLAIN` and compare result IDs/order before and after. Rollback is
+`ALTER TABLE cms_boxes DROP INDEX wb_boxes_section_order`; roll back only the
+index created by this migration. The PHP query also works without the index.
+Invalidate box/data/page caches after content edits as usual; a schema-only index
+change does not alter cached rows.
+
+The repeatable test benchmark is
+`docker compose -p wbengine-modernization run --rm php php tests/benchmarks/content-lookup.php`.
+It uses connection-local temporary tables, 30,000 boxes over 100 sections, 20 percent
+shared boxes in each section and 140 matching boxes. Median SQL times from 15 runs:
+MySQL 8.4, original/no index 5.3782 ms versus factored/section-order 0.3839 ms;
+MariaDB 11.4, 6.6089 ms versus 0.3637 ms. EXPLAIN estimates fall from about 30,000
+rows to 300. The chosen combination avoids filesort in these datasets; the
+`(section_id, shared, order)` candidate still needs filesort. These are warm DB
+buffer measurements with application cache off, not cold-disk or web throughput
+claims. Warm memory/file box-cache samples execute zero SQL queries.
+
+Indexes add write work: median batches of 1,000 inserts increased from 2.4174 to
+2.9838 ms on MySQL and from 2.1693 to 2.7339 ms on MariaDB in this fixture. Cleanup
+is outside the timed insertion samples. Remeasure for a different section count,
+shared ratio or write-heavy workload. A relational membership table is deferred
+until measured JSON filtering cost warrants its migration and API complexity.
+
+The URL-map optimization is deferred. Before FIX-02, 10,000 visible sites took
+0.1468 ms through the link index, 0.9076 ms for the old warm in-memory scan and
+20.0181 ms for the old file-cache read/scan. Those full-table cache paths have now
+been removed. Current selection always executes one bound SQL query, whether a
+memory/file cache driver is enabled or disabled; random URLs create no lookup
+cache entries. This preserves the actual column collation, accent/case/padding,
+strict values, visibility and highest-site-ID selection. Site row edits become
+visible immediately on an uncached page; whole-page caches still need normal
+invalidation/TTL. Translations retain their separate existing data-cache policy.
+
+FIX-02 regressions cover stored `/café/` matching `/cafe/` under unicode_ci and
+rejecting `/CAFÉ/` under bin, plus decomposed Unicode, padding, invalid strict values,
+hidden rows, duplicates, prefixes and injection-shaped inputs on MySQL/MariaDB.
+Production initialization now includes that one necessary site query. Anonymous
+whole-page HITs and terminal custom routes still bypass CMS selection as before.
+The benchmark labels the selected cache-driver cases as SQL lookups and measures
+any hypothetical full-table map build separately; it does not claim zero-SQL site
+selection or a current full-table scan.
+
+What the engine does well today: a single connection opened only when needed, no model hydration, compiled native templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
+
+`Site::isMenuSelected()` now resolves all parent URL prefixes in one bound SQL
+statement and reuses their IDs for the rest of that Site's current prefix snapshot.
+Checking only the current positive site ID needs no lookup. This avoids a query per
+prefix for every menu item. A changed prefix list or `Site::initialize()` resets the
+snapshot. `Menu::selected()` retains its existing current-page-only behavior.
+
+The parent lookup still includes hidden and strict sites and uses the database's
+actual column collation for case/accent/binary comparisons. Duplicate links now pick
+the lowest `site_id` deterministically. The URL parser's bare prefix `/blog` first
+matches an exact stored link, then falls back to `/blog/` when the exact link is
+missing. Missing prefixes retain ID 0 in `getUrlPairsWithSiteId()`, but zero/negative
+IDs are never active menu entries.
+
+This uses at most one menu-selection SQL statement even with a warm data cache;
+`sites:visible` alone cannot preserve hidden-parent and database collation behavior.
+There is no persistent cache entry per requested URL. The new model method
+`SiteModel::getSiteIdsByUrls(array $urls)` resolves exact URLs in input order,
+including duplicates, and returns integer IDs or zero for misses. SQL work still
+scales with the number of URL prefixes, while statement round trips do not scale
+with the number of menu items. Navigation using this parent helper can therefore
+add one statement to the historical skeleton figures below.
 
 Measured queries per page in the skeleton application (debug bar):
 
@@ -514,25 +1044,98 @@ What changed:
 
 * **Session:** the row is read once per request, created only when something is stored, written once at the end of the request, expired rows are purged on about 1 in 100 loads, and a request without a session cookie skips the lookup.
 * **View counter** (opt-in): `"counters": {"views": {"enabled": true, "hits": 50, "seconds": 60}}` turns the `UPDATE` on every article view into one `UPDATE` per 50 views or per minute. The counts are kept in small locked files, so concurrent requests lose nothing (tested with parallel processes); only increments still pending when the server crashes are lost. The displayed count lags by at most one batch.
-* **Cache** (opt-in): the site table, menu, sections and box lists. Enable with `"cache": {"enabled": true, "driver": "apcu", "ttl": 300}` (or `"driver": "file"`). APCu is the fastest and is shared by all PHP workers of a server; the file driver works everywhere and benefits from opcache. The API flushes the cache when sections change. After editing `cms_sites`, `cms_menu`, `cms_sections` or `cms_boxes` directly in the database, call `Wbengine\Cache::flush()` or wait for the TTL. When the cache is on, the site is looked up in PHP on the cached table of visible sites (links are compared case-insensitively, as the database collation does). That table is cached once, so random URLs cannot grow the cache. Very large site tables (tens of thousands of rows) are better served without the cache.
+* **Cache** (opt-in): menu, sections, box lists and translation data. Enable with `"cache": {"enabled": true, "driver": "apcu", "ttl": 300}` (or `"driver": "file"`). APCu shares data across PHP workers; the file driver works without APCu. The API flushes affected caches on supported writes. Direct database edits still require cache/page invalidation or TTL expiry. URL selection uses one parameterized database query even with a cache driver, to preserve real collation and row freshness; it never caches arbitrary URL lookups or the full visible-site table.
 
 * **Page cache** (opt-in, needs the cache enabled): `"cache": {"enabled": true, "driver": "apcu", "pages": {"enabled": true, "ttl": 60}}`. Anonymous visitors get a stored copy of the page, served before any box runs. A hit costs no database query for a visitor without a session cookie and one session lookup for a returning visitor (to be sure they are not logged in). A page is stored only when it is the same for everybody: a plain `GET` without a query string or `Authorization` header, for a visitor who is not logged in, a `200` HTML response, no write to the session (so the login page with its CSRF token is never stored), the site does not require a login, and the URL is exactly the site's own link (a deeper path that falls back to it is not stored, which also keeps the number of entries bounded by the number of sites). Responses carry `X-WBengine-Cache: HIT`, `MISS-STORED` or `BYPASS`, plus an `ETag` and `304` support. The TTL (60 seconds by default) bounds staleness; the API flushes the pages when sections change; after editing `cms_sites`, `cms_menu`, `cms_sections`, `cms_boxes` or articles directly in the database, call `POST /api/cache/flush` (admin token), which also reaches an APCu cache, or wait for the TTL. If a page depends on anything besides the URL and the login state (device type, a language cookie, the time), do not enable the page cache for that site. Indicative throughput of the skeleton home page in the same Docker VM: about 570 requests per second without any cache, about 725 with the data cache, about 1,175 with the page cache (a single completed run, treat it as a direction).
 
 Still open, in the order I recommend:
 
 1. Automatic invalidation of the page cache when content tables change (today the API flushes it, other edits use `Cache::flush()` or the TTL).
-4. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (verified: Smarty then stops checking template files on every request).
+4. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (clear compiled templates when deploying changed sources).
 
 ## Security notes
 
 * Use bound parameters for every value (see the database layer).
 * Keep `debug` off in production and `Settings.json` out of git.
 * The API authorizes by role (`user`, `editor`, `admin`) checked against the database. Give every new API action an explicit role: `isAuthenticated()` without one only checks that the token is valid.
-* Smarty does not escape output by default. Use the native engine (automatic escaping), or write `{$value|escape}` and `{$html|raw}` explicitly, which works in both.
+* Both WBengine renderer adapters escape output by default in 4.0. Use `{$value|escape}` and `{$html|raw}` explicitly during migration. Set `renderer.autoEscape: false` only as a temporary legacy compatibility setting, then migrate trusted HTML and re-enable escaping.
 * Put TLS in front of the application. The session cookie is marked `Secure` only when the request arrives over HTTPS.
 * Report problems privately to the maintainers.
 
+### Page cache controls in 4.0
+
+Use exact canonical paths to restrict shared page caching:
+
+```json
+"cache": {
+  "enabled": true,
+  "driver": "apcu",
+  "pages": {
+    "enabled": true,
+    "ttl": 60,
+    "allowPaths": ["/", "/blog/"],
+    "denyPaths": ["/account/"]
+  }
+}
+```
+
+`denyPaths` wins. An omitted allowlist permits other eligible paths; an empty
+allowlist disables page caching. Invalid path policies fail closed. Paths are
+compared ignoring case and a trailing slash, as for the existing page cache.
+
+For application-specific personal state, call `Wbengine\PageCache::bypass()`
+**before constructing Application** to prevent both a cache hit and storage. A box
+can call it to prevent storage of the current response, but a box is never executed
+on a hit, so a box-only call cannot protect an existing cached page.
+
+Private/no-store/no-cache responses, `Set-Cookie`, unsupported `Vary` and CSP nonces
+are not stored. Custom request cookies and anonymous sessions containing personal
+data bypass the shared cache. The locale cookie is supported when i18n is enabled.
+Security headers are retained on hits and 304 responses; headers already supplied
+by the current request take precedence. Cache entries from older versions are
+ignored. Clear all cache drivers during deployment when changing content or policy.
+Fragment caches include the locale automatically. Public blocks must contain only
+content that is independent of the visitor. Use the user scope for personal HTML:
+
+```smarty
+{cache 'navigation' ttl=300}...public content...{/cache}
+{cache 'profile' scope='user' ttl=60}...personal content...{/cache}
+```
+
+User-scoped blocks use the current authenticated session identity, supplied lazily
+through Application, Renderer and the native template engine. They are separated
+by user ID and locale. Anonymous visitors, invalid identities or unavailable user
+context render without storing a personal fragment; there is no public fallback.
+Public blocks never load the user just to decide their cache key.
+
+Using a user-scoped block bypasses the whole-page cache, even for anonymous visitors
+or when the fragment cache is disabled. A public outer block that renders a personal
+inner block is not stored. Once personal scope has been used, public fragment storage
+and lookup are conservatively bypassed for the rest of that request. Do not wrap
+conditional personal content in a public block: a public cache hit does not execute
+its body, so public content must be visitor-independent on every rendering path.
+
+Standalone native engines can configure `setCacheUserResolver(fn () => $authenticatedUserId)`;
+return a positive integer ID from trusted authentication state or null for a guest.
+The resolver must not use request parameters as identity. Other variants, such as
+device or permissions-dependent output, still require explicit keys and suitable TTL
+or invalidation. Personal scope separates identity, not every possible role or state.
+Fragment keys include compiler version and escaping mode, so safe rendering never
+reuses raw HTML cached during legacy migration. Existing compiled templates are
+recompiled into a new compiler version and old fragment entries are not reused. Clear compiled templates during deployment when
+`compileCheck` is disabled. The legacy `Runtime::cache()` helper remains public-only.
+
+Before deploying 4.0, widen `cms_users.password` to `varchar(255)`. Creating or
+changing a password now fails when a secure hash cannot fit. Existing legacy MD5
+passwords can still log in and are upgraded once the schema supports it.
+
 ## Development and tests
+
+The next major version is **4.0.0**, currently in development. The
+[modernization plan](plan-framework-improvements.md) records completed work, active
+tasks, dependencies, migration procedures and the remaining release gates. New PHP
+features must follow the existing Application/Site/Section/Box object tree,
+namespaces, lazy services, model and renderer adapter conventions.
 
 The test environment is Docker only: PHP 8.4 CLI and MySQL 8.4.
 
@@ -564,3 +1167,29 @@ The integration tests create their tables from `tests/schema.sql`. They are skip
 ## License
 
 MIT, see [LICENSE.md](LICENSE.md).
+
+
+## Development and deployment CLI (4.0)
+
+Composer installs `vendor/bin/wbengine.php` and `vendor/bin/migrate-content.php` in applications. From a framework checkout use `php bin/wbengine.php`. Both entry points load the host application autoloader through Composer's bin proxy or anchored installed-package paths. They never search the caller's current directory for executable code.
+
+```sh
+vendor/bin/wbengine.php config:check --config=/site/src/Config/Settings.json --root=/site/src
+vendor/bin/wbengine.php doctor --config=/site/src/Config/Settings.json --root=/site/src
+vendor/bin/wbengine.php migration:status --config=/site/src/Config/Settings.json --root=/site/src
+vendor/bin/wbengine.php generate:box --root=/site/src --namespace=App --section=Main --module=Welcome --method=index
+```
+
+`config:check` does not contact the DB. Doctor and migration status inspect schema read-only, never run DDL. Doctor prints fixed actions without secret values and checks production Composer/OPcache, renderer, cache, proxies and optional API schema. CLI permissions and OPcache may differ from the web worker; verify that environment separately. Exit0 is success,1 failed checks,2 invalid input.
+
+The generator defaults to a JSON preview with class, template and reviewable SQL. `--write` atomically creates its files without overwriting existing paths. Inspect SQL placeholders and unpublished page metadata, choose a real page link, then apply it separately after review. Generated classes extend the existing Box tree; no new router or component framework is introduced.
+
+HTTP benchmarking is opt-in: `php tests/benchmarks/request-matrix.php /private/manifest.json 20 4`. Copy the documented fixture manifest and describe the real server, data and OPcache; supply your own isolated URLs and cookies. It measures off/data-warm/page-warm with anonymous, anonymous-session, logged, custom API and parallel same-session requests. Cookies are never printed. p50/p95, throughput and HTTP errors are measured; SQL, connections and server memory are null unless test-only response headers provide them. Client memory is never substituted for server memory. No benchmark code is attached to production requests.
+
+
+The isolated two-website administration acceptance pilot is documented in
+[tests/pilot/ref-pilot.md](tests/pilot/ref-pilot.md). It verifies real central forms
+through certificate-verified PHP APIs, separate keys/databases, outage recovery,
+revocation and a real database dump/restore. See
+[book-wbengine-4-upgrade.md](book-wbengine-4-upgrade.md) for the operator upgrade
+and rollback procedure. Test success does not mean production data were migrated.

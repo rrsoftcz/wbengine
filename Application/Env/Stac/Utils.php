@@ -50,14 +50,7 @@ class Utils
      */
     static function getUserIp()
     {
-        if (isset($_SERVER["REMOTE_ADDR"])) {
-            return $_SERVER["REMOTE_ADDR"];
-        } elseif (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-            return $_SERVER["HTTP_X_FORWARDED_FOR"];
-        } elseif (isset($_SERVER["HTTP_CLIENT_IP"])) {
-            return $_SERVER["HTTP_CLIENT_IP"];
-        }
-        return '';
+        return \Wbengine\Application\Env\Http::getClientIp();
     }
 
 

@@ -55,10 +55,19 @@ class Session extends SessionAbstract
 
     private $_destroyed = false;
 
+    private bool $_closed = false;
+
     /**
      * Something was stored in the session during this request.
      */
     private $_modified = false;
+
+    private ?Session\Csrf $_csrf = null;
+
+    public function getCsrf(): Session\Csrf
+    {
+        return $this->_csrf ??= new Session\Csrf($this);
+    }
 
     public function wasModified(){
         return $this->_modified;
@@ -90,6 +99,7 @@ class Session extends SessionAbstract
      * request (see flush()), no matter how many values were set.
      */
     public function save(){
+        $this->_assertWritable();
         $this->_dirty = true;
         $this->_modified = true;
 
@@ -107,6 +117,7 @@ class Session extends SessionAbstract
         $this->_dirty = false;
         $this->_persisted = false;
         $this->_destroyed = true;
+        unset($this->_data->session_data->{Session\Csrf::SESSION_KEY});
     }
 
     /**
@@ -114,21 +125,78 @@ class Session extends SessionAbstract
      * that never store anything do not cost an INSERT.
      */
     public function flush(){
-        if (false === $this->_dirty || true === $this->_destroyed) {
+        $this->_flushChanges(false);
+    }
+
+    private function _flushChanges(bool $throwOnFailure): void
+    {
+        if (!$this->_dirty || $this->_destroyed || $this->_closed) {
             return;
         }
-        $this->_dirty = false;
 
         try {
-            if ($this->_persisted) {
-                $this->getModel()->updateSession($this);
-            } else {
-                $this->getModel()->insertSessionData($this);
-                $this->_persisted = true;
+            $result = $this->_persisted
+                ? $this->getModel()->updateSession($this)
+                : $this->getModel()->insertSessionData($this);
+            if ($result === false) {
+                throw new SessionException('Session storage rejected the write.');
             }
+            $this->_persisted = true;
+            $this->_dirty = false;
         } catch (\Throwable $e) {
+            if ($throwOnFailure) {
+                throw new SessionException('Cannot close session before its changes are stored.', 0, $e);
+            }
             error_log(__METHOD__ . ': ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Persist under the native lock, then release it for parallel requests.
+     * The readable snapshot cannot be reopened or persisted again.
+     * Complete login, logout and creation of a missing CSRF secret first.
+     */
+    public function close(): void
+    {
+        if ($this->_closed) {
+            return;
+        }
+        if ($this->_destroyed) {
+            $this->_closed = true;
+            return;
+        }
+        if (session_status() !== PHP_SESSION_ACTIVE || session_id() !== $this->getSessionId()) {
+            throw new SessionException('Cannot close session without its active native lock.');
+        }
+        $this->_load();
+        $this->_flushChanges(true);
+        // Seal first: a save handler can throw after already releasing its lock.
+        $this->_closed = true;
+        session_write_close();
+    }
+
+    public function isClosed(): bool
+    {
+        return $this->_closed;
+    }
+
+    private function _assertWritable(): void
+    {
+        if ($this->_closed) {
+            throw new SessionException('Session is closed; complete all session changes before close().');
+        }
+    }
+
+    public function destroy($session_id = null)
+    {
+        $this->_assertWritable();
+        parent::destroy($session_id);
+    }
+
+    public function sessionStart()
+    {
+        $this->_assertWritable();
+        return parent::sessionStart();
     }
 
     public function setAutoClean(bool $state)
@@ -145,8 +213,6 @@ class Session extends SessionAbstract
         if ($this->_loaded) {
             return $this->_data;
         }
-        $this->_loaded = true;
-
         if ($this->isAutoCleanOn() && random_int(1, self::GC_DIVISOR) === 1) {
             $this->getModel()->cleanSessions($this->getExpirationTime());
         }
@@ -163,12 +229,14 @@ class Session extends SessionAbstract
                 $this->getModel()->deleteSession($_data->session_id);
             }
         }
+        $this->_loaded = true;
         return $this->_data;
     }
 
 
     public function __set($name, $value)
     {
+        $this->_assertWritable();
         // Load first: writing to a session that was not read would overwrite the stored data.
         $this->_load();
         $this->getSessionData()->$name = $value;
@@ -213,6 +281,7 @@ class Session extends SessionAbstract
 
     public function setValue($name, $value)
     {
+        $this->_assertWritable();
         if(self::USER_ID === $name){
             $this->_setSelfValue(self::USER_ID, $value);
         }
@@ -255,6 +324,7 @@ class Session extends SessionAbstract
      */
     public function regenerateId()
     {
+        $this->_assertWritable();
         if (session_status() !== PHP_SESSION_ACTIVE || headers_sent()) {
             return;
         }
@@ -264,6 +334,7 @@ class Session extends SessionAbstract
         $new = session_id();
         $this->getModel()->renameSession($old, $new);
         $this->_data->session_id = $new;
+        $this->getCsrf()->reset();
     }
 
     public function setUserId($userId){
@@ -294,6 +365,8 @@ class Session extends SessionAbstract
     }
 
     public function unsetKey($name){
+        $this->_assertWritable();
+        $this->_load();
         unset($this->_data->session_data->$name);
         $this->save();
     }

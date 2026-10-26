@@ -9,7 +9,7 @@ use Wbengine\Cache\FileCache;
 use Wbengine\Cache\NullCache;
 
 /**
- * Cache for data that changes rarely: the site table, the menu, the sections and
+ * Cache for data that changes rarely: the menu, the sections, translations and
  * the box lists. It is off by default and switched on in the settings:
  *
  *   "cache": { "enabled": true, "driver": "apcu", "ttl": 300 }
@@ -91,9 +91,10 @@ class Cache
         return self::_driver()->get((string) $key, $found);
     }
 
-    public static function store($key, $value, $ttl)
+    public static function store($key, $value, $ttl = null)
     {
-        self::_driver()->set((string) $key, $value, (int) $ttl);
+        $driver = self::_driver();
+        $driver->set((string) $key, $value, null === $ttl ? self::$_ttl : (int) $ttl);
     }
 
 

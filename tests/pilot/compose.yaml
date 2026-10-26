@@ -1,0 +1,85 @@
+# Isolated integration pilot. Always use the pilot.sh wrapper and its fixed project name.
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PILOT_DB_ROOT_PASSWORD:?Run pilot.sh start}
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: wbengine_api_pilot
+      MYSQL_USER: pilot_api
+      MYSQL_PASSWORD: ${PILOT_DB_API_PASSWORD:?Run pilot.sh start}
+    volumes:
+      - database:/var/lib/mysql
+    networks: [pilot]
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$${MYSQL_ROOT_PASSWORD}" mysqladmin ping -h127.0.0.1 -uroot --silent']
+      interval: 2s
+      timeout: 3s
+      retries: 60
+  php:
+    image: ${PILOT_PHP_IMAGE:-wbengine-modernization-php:latest}
+    working_dir: /app
+    command: [php, -S, "0.0.0.0:8080", /app/tests/pilot/router.php]
+    volumes:
+      - ../..:/app:ro
+      - ./runtime/app:/state/app:ro
+      - ./runtime/app/View/Compiled:/state/app/View/Compiled
+      - ./runtime/images:/state/images
+      - ./runtime/cache:/state/cache
+    # Hide the source checkout's ignored credentials from the long-running web worker.
+    tmpfs:
+      - /app/tests/pilot/runtime:mode=0700
+    networks: [pilot]
+    depends_on:
+      db:
+        condition: service_healthy
+  php2:
+    image: ${PILOT_PHP_IMAGE:-wbengine-modernization-php:latest}
+    working_dir: /app
+    command: [php, -S, "0.0.0.0:8080", /app/tests/pilot/router.php]
+    volumes:
+      - ../..:/app:ro
+      - ./runtime/app2:/state/app:ro
+      - ./runtime/app2/View/Compiled:/state/app/View/Compiled
+      - ./runtime/images2:/state/images
+      - ./runtime/cache2:/state/cache
+    tmpfs:
+      - /app/tests/pilot/runtime:mode=0700
+    networks: [pilot]
+    depends_on:
+      db:
+        condition: service_healthy
+  api:
+    image: nginx:stable-alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./runtime/tls:/tls:ro
+    networks:
+      pilot:
+        aliases: [api.wbengine.test, api2.wbengine.test]
+    depends_on: [php, php2]
+  seed:
+    profiles: [tools]
+    user: "${PILOT_UID:-0}:${PILOT_GID:-0}"
+    image: ${PILOT_PHP_IMAGE:-wbengine-modernization-php:latest}
+    working_dir: /app
+    command: [php, tests/pilot/seed.php]
+    environment:
+      PILOT_DB_ROOT_PASSWORD: ${PILOT_DB_ROOT_PASSWORD:?Run pilot.sh start}
+      PILOT_DB_API_PASSWORD: ${PILOT_DB_API_PASSWORD:?Run pilot.sh start}
+      PILOT_DB_SECOND_PASSWORD: ${PILOT_DB_SECOND_PASSWORD:?Run pilot.sh start}
+      PILOT_DB_ADMIN_PASSWORD: ${PILOT_DB_ADMIN_PASSWORD:?Run pilot.sh start}
+      PILOT_MASTER_KEY: ${PILOT_MASTER_KEY:?Run pilot.sh start}
+    volumes:
+      - ../..:/app:ro
+      - ./runtime:/state
+    networks: [pilot]
+    depends_on:
+      db:
+        condition: service_healthy
+networks:
+  pilot:
+    name: wbengine-admin-api-pilot
+    internal: true
+volumes:
+  database:

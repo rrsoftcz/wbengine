@@ -7,6 +7,128 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+Target: **4.0.0**. The major-version modernization is in progress; the roadmap tracks
+the remaining template, Markdown, API and central administration work.
+
+### Added
+
+- Deferred `Application::route()` registration for common HTTP methods; `get()`
+  delegates to it. Explicit true/false callback results complete or decline a route.
+
+- Batched `SiteModel::getSiteIdsByUrls()` resolves exact URLs using database collation,
+  preserves input order and chooses the lowest site ID for duplicate links.
+
+- `Site::assignDiagnostics()` explicitly assigns the existing server, DB-version
+  and PHP-version template variables through the site's model and variable tree.
+
+- Session-owned CSRF service with purpose-bound tokens, stable multi-tab forms,
+  form/AJAX request validation and private/no-store cache handling. Application
+  exposes the same lazy service; public routes without CSRF usage remain unchanged.
+- Bundled POST logout form through `Box\Auth::getLogoutBox()`.
+
+- Lazy `Application::getRequestContext()` with shared client-IP and HTTPS resolution.
+  Explicit `http.trustedProxies` IP/CIDR and `http.forwardedHeaders` settings enable
+  trusted IPv4/IPv6 proxy chains and original-scheme detection for session/API/locale
+  cookies and absolute locale links.
+  Forwarded headers are disabled by default; invalid configuration fails closed.
+
+### Changed
+
+- Application construction prepares services and normalizes i18n without CMS queries,
+  box execution, cache HITs or redirect exits. `run()` handles custom routes before
+  cache and CMS; `display()` shares the lifecycle. Update bootstrap ordering in 4.0.
+- Custom Vars/renderer setup and response policies are evaluated before page cache.
+  Accepted routes bypass shared cache; debug is built during request handling.
+
+- Core HTML dispatch always uses the renderer adapter's `display()` path and keeps
+  rendered whitespace intact. `minimizeHtml` is ignored; its getter remains as a
+  deprecated compatibility API. Configure transfer compression at the webserver.
+
+- `Http::Json(true)` parses the request body once instead of validating and decoding
+  separately. Raw mode, associative/scalar results, parser errors and the distinction
+  between valid JSON null and an error through `json_last_error()` are preserved.
+
+- Site menu-parent selection shares one request-local batch lookup across menu items,
+  with or without data cache. Hidden/strict parent and collation rules are preserved;
+  warm cache still incurs at most one lookup statement for parent selection.
+
+- Runtime diagnostic template variables are now assigned automatically only in
+  debug mode. Production site initialization no longer opens a DB connection just
+  to obtain `dbinfo`; templates requiring these values must request them explicitly.
+
+- Web login uses shared CSRF tokens. GET logout now returns 405; POST logout requires
+  its own purpose token. Invalid login/logout tokens return 403 before authentication.
+- Cookie API login/refresh/logout require POST, JSON and `X-WBengine-CSRF: 1`.
+  Clients must add this header; trusted credentialed CORS origins must be configured
+  explicitly. Refresh stays stateless; bearer-authorized API actions are unchanged.
+
+- Request helpers return PHP-parsed values unchanged. `Post()` / `Get()` without a
+  field name return their complete input map; missing keys return null. `getCookie()`
+  returns raw strings and rejects arrays. String-only `PostString()` / `GetString()`
+  accessors provide explicit shape validation; `PostRaw()` remains a compatibility alias.
+  Application code must validate fields and escape at output.
+- Both renderer adapters now HTML-escape by default. Set `renderer.autoEscape` to
+  false only for a temporary legacy migration, and mark trusted HTML explicitly.
+
+### Removed
+
+- `Http::secureClean()`: the legacy slash/tag/HTML transformations are no longer
+  applied to input. See the request-data migration notes before updating older apps.
+
+### Fixed
+
+- `run()` / `display()` no longer dispatch duplicate layouts; display handles explicit
+  empty/zero content. Missing CMS pages do not run shared boxes, empty sections work,
+  and explicit 410 responses cannot be replaced by cached 200 output or a 404.
+- Locale-prefix normalization also applies to a pending canonical redirect, letting
+  application routes respond first. Existing static Router/API box dispatch remains.
+
+- Removed whole-document whitespace collapsing that damaged preformatted text,
+  textarea values, inline JavaScript/CSS, attributes and JSON script strings.
+  Clear old HTML/page caches during upgrade to remove previously damaged responses.
+
+- Parent menu links ending in `/` now match the URL parser's bare prefixes when no
+  exact bare link exists. Empty prefix sets no longer warn; missing or nonpositive
+  site IDs cannot activate an orphan menu entry. Duplicate-link selection is stable.
+
+- Token-bearing responses cannot be stored in public or user native fragments or
+  page cache. Session-ID regeneration and session destruction invalidate CSRF tokens.
+
+- Missing or invalid connection addresses no longer fall back to spoofable forwarding
+  headers. IPv6 addresses are canonicalized, and both session and API Secure cookies
+  follow the same explicit trusted-proxy policy. Review session/rate-limit changes
+  when deploying behind a proxy; see the configuration and migration notes.
+
+- Login CSRF and CAPTCHA fields reject non-string input without PHP type errors;
+  stored CSRF tokens are checked before constant-time comparison.
+- Native output escaping now follows the final modifier of the complete expression;
+  modifiers inside method arguments, array keys or concatenation operands no longer
+  suppress escaping of unrelated output. Earlier escaping does not trust a later fallback.
+- Native compile checks detect same-size source edits with unchanged timestamps.
+  Disabled production compile checks skip the checksum.
+- Smarty template identity includes escape mode so switching that setting cannot
+  reuse an incompatible in-memory template. Native fragment identity includes compiler version and escaping mode.
+- `Auth::setIssuedTime()` updates `iat` without overwriting the JWT issuer.
+- New passwords are refused when the database column cannot hold a modern hash,
+  instead of silently falling back to MD5. Legacy password verification is retained.
+- Native template fragments are separated by locale. Existing fragment entries are
+  not reused across the change.
+- Shared page cache rejects private/no-store/no-cache responses, cookies, unsupported
+  `Vary` headers and nonce-based CSP. Requests with custom cookies or personalized
+  anonymous sessions bypass it. Cached security headers are restored on hits and 304
+  responses; policy supplied by the current deployment takes precedence. Records
+  created before the stricter storage format are ignored.
+
+### Added
+
+- Native fragment cache scopes: `public` (default) and `user`, with a lazy identity
+  resolver integrated through Application and Renderer. Personal fragments separate
+  users and locales, do not cache guests, and prevent shared page/public-wrapper storage.
+- Exact `cache.pages.allowPaths` and `denyPaths` policies, plus request-wide
+  `PageCache::bypass()`; deny rules take precedence.
+- A persistent modernization tracker with task IDs, dependencies, verification
+  requirements and the agreed WBengine OOP architecture constraints.
+
 ## [3.5.0] - 2026-10-24
 
 ### Added

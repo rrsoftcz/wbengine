@@ -5,6 +5,7 @@
  * Keys start with "wb." so they never collide with an application's keys.
  */
 return array(
+    'wb.logout.submit' => 'Odhlásit',
     'wb.login.title' => 'Přihlášení',
     'wb.login.username' => 'Uživatelské jméno',
     'wb.login.password' => 'Heslo',

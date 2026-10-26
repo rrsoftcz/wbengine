@@ -1,64 +1,25 @@
 <?php
-
-/**
- * $Id$ - CLASS
- * --------------------------------------------
- * Formater class try to get default formater
- * used in CMS.
- * We use TEXY! formater (http://texy.info/)
- *
- * @package RRsoft-CMS
- * @version $Rev$ $Date$ $Author$
- * @copyright (c) 2009-2010 RRsoft www.rrsoft.cz
- * @license GNU Public License
- *
- * Minimum Requirement: PHP 5.1.x
- */
-
 namespace Wbengine;
 
-class Formater {
+/** Compatibility entry point. New content uses the built-in Markdown formatter. */
+class Formater
+{
+    private array $formatters = [];
 
-
-    /**
-     * Given formater as object
-     * @var object
-     */
-    private $_formater = null;
-
-
-
-    /**
-     * Return instance of requested formater object
-     * used in CMS
-     *
-     * @param string $formaterName
-     * @return object
-     */
-    public function getFormater($formaterName, $path)
+    public function getFormater($formaterName = 'markdown', $path = null)
     {
-	if (!$this->_formater) {
-
-	    $_className = 'Wbengine\Formater\Adapter\\' . ucfirst($formaterName);
-//	    $_fileName = $path . $formaterName . ".php";
-//	    if ( is_readable($_fileName) ) {
-//		require_once $_fileName;
-
-	    $_formater = new $_className;
-
-	    $this->_formater = $_formater->get();
-//APP_DIR . '/Cache/Renderer/'
-	    $this->_formater->imageModule->root = '/Images/';
-        $this->_formater->headingModule->top = 2;
-	    return $this->_formater;
-//	    } else {
-//		throw new Exception\RuntimeException('File ' . $_fileName . ' does not exist!');
-//	    }
-	} else {
-	    return $this->_formater;
-	}
+        if (!is_string($formaterName) || !preg_match('/^[A-Za-z][A-Za-z0-9_]*$/D', $formaterName)) {
+            throw new Exception\RuntimeException('Invalid content formatter name.');
+        }
+        $name = strtolower($formaterName);
+        if ($name === 'texy') {
+            throw new Exception\RuntimeException('Texy runtime formatting was removed in WBengine 4.0. Convert trusted existing Texy content offline using wbengine/texy-migration, then select Markdown explicitly.');
+        }
+        if (!isset($this->formatters[$name])) {
+            $class = 'Wbengine\\Formater\\Adapter\\' . ucfirst($name);
+            if (!class_exists($class)) { throw new Exception\RuntimeException('Requested content formatter is not installed.'); }
+            $this->formatters[$name] = (new $class())->get();
+        }
+        return $this->formatters[$name];
     }
-
-
-
 }

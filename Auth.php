@@ -70,7 +70,7 @@ class Auth {
     }
 
     public function setIssuedTime(int $time) {
-        $this->_setPaylodValue("iss", $time);
+        $this->_setPaylodValue("iat", $time);
         return $this;
     }
 

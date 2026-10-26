@@ -3,6 +3,8 @@
 namespace Wbengine\Tests\Integration;
 
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Wbengine\Config;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Wbengine\Db;
 use Wbengine\Session;
@@ -20,6 +22,226 @@ class SessionTest extends DbTestCase
         $_SERVER['HTTP_USER_AGENT'] = 'PHPUnit';
         $_SERVER['REMOTE_ADDR'] = '203.0.113.9';
         unset($_COOKIE[session_name()]);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    #[DataProvider('proxyConnections')]
+    public function testSessionCookiesAndStoredIpFollowTrustedConnection(array $server, bool $secure, string $ip): void
+    {
+        Config::$config->http = (object) [
+            'trustedProxies' => ['10.0.0.0/8'],
+            'forwardedHeaders' => ['x-forwarded-for', 'x-forwarded-proto'],
+        ];
+        $_SERVER = $server + ['HTTP_USER_AGENT' => 'PHPUnit'];
+        $session = new Session();
+        $options = session_get_cookie_params();
+        $this->assertSame($secure, $options['secure']);
+        $this->assertTrue($options['httponly']);
+        $this->assertSame('Lax', $options['samesite']);
+        $this->assertSame($ip, $session->getUserIp());
+        $session->setValue('content', 'private');
+        $session->flush();
+        $this->assertSame($ip, Db::fetchAssoc('SELECT user_ip FROM cms_sessions WHERE session_id = ?', [$session->getSessionId()])['user_ip']);
+        session_write_close();
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testPrivilegeRotationInvalidatesCsrfAndPersistsNewTokens(): void
+    {
+        $session = new Session();
+        $old = $session->getCsrf()->token('save');
+        $session->flush();
+        $oldId = $session->getSessionId();
+        $session->regenerateId();
+        $this->assertNotSame($oldId, $session->getSessionId());
+        $this->assertFalse($session->getCsrf()->verify($old, 'save'));
+        $new = $session->getCsrf()->token('save');
+        $next = $this->nextRequest($session);
+        $this->assertFalse($next->getCsrf()->verify($old, 'save'));
+        $this->assertTrue($next->getCsrf()->verify($new, 'save'));
+        session_write_close();
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testDestroyInvalidatesCsrfInTheCurrentRequestToo(): void
+    {
+        $session = new Session();
+        $old = $session->getCsrf()->token('save');
+        $session->flush();
+        $session->destroy();
+        $this->assertFalse($session->getCsrf()->verify($old, 'save'));
+        $session->flush();
+        $this->assertSame(0, $this->rows());
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testClosePersistsAndKeepsAnIdempotentReadableSnapshot(): void
+    {
+        $session = new Session();
+        $session->setValue('a', 1);
+        $token = $session->getCsrf()->token('save');
+        $session->regenerateId();
+        $token = $session->getCsrf()->token('save');
+        $session->close();
+        $session->close();
+        $this->assertTrue($session->isClosed());
+        $this->assertSame(PHP_SESSION_NONE, session_status());
+        $this->assertSame(1, $session->getValue('a'));
+        $this->assertTrue($session->getCsrf()->verify($token, 'save'));
+        $this->assertSame($token, $session->getCsrf()->token('save'));
+        $this->assertTrue($session->getCsrf()->verify($session->getCsrf()->token('other'), 'other'));
+        $next = $this->nextRequest($session);
+        $this->assertSame(1, $next->getValue('a'));
+        $this->assertTrue($next->getCsrf()->verify($token, 'save'));
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    #[DataProvider('closedMutations')]
+    public function testClosedSessionRejectsMutations(string $operation): void
+    {
+        $session = new Session();
+        $session->setValue('a', 1);
+        $session->close();
+        $before = $session->getUserId();
+        try {
+            match ($operation) {
+                'set' => $session->setValue('a', 2),
+                'identity' => $session->setValue(Session::USER_ID, 7),
+                'magic' => $session->a = 2,
+                'unset' => $session->unsetKey('a'),
+                'save' => $session->save(),
+                'rotate' => $session->regenerateId(),
+                'start' => $session->sessionStart(),
+                'destroy' => $session->destroy(),
+                'csrf' => $session->getCsrf()->token('new'),
+            };
+            $this->fail('Closed session accepted ' . $operation);
+        } catch (\Wbengine\Session\Exception\SessionException $e) {
+            $this->assertSame(1, $session->getValue('a'));
+            $this->assertSame($before, $session->getUserId());
+            $this->assertSame(1, $this->rows());
+        }
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testClosingAnUnusedOrDestroyedSessionDoesNotCreateARow(): void
+    {
+        $session = new Session();
+        $session->close();
+        $this->assertSame(0, $this->rows());
+        session_id('');
+        $other = new Session();
+        $other->setValue('a', 1);
+        $other->destroy();
+        $other->close();
+        $other->flush();
+        $this->assertTrue($other->isClosed());
+        $this->assertSame(0, $this->rows());
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testCloseRejectsAnAlreadyReleasedNativeLock(): void
+    {
+        $session = new Session();
+        session_write_close();
+        $this->expectException(\Wbengine\Session\Exception\SessionException::class);
+        $session->close();
+    }
+
+    public static function closedMutations(): array
+    {
+        return array_map(static fn ($op) => [$op], ['set', 'identity', 'magic', 'unset', 'save', 'rotate', 'start', 'destroy', 'csrf']);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testCloseLoadsUntouchedStoredSessionBeforeReleasingTheLock(): void
+    {
+        $first = new Session();
+        $first->setValue('a', 1);
+        $next = $this->nextRequest($first);
+        $next->close();
+        $this->assertSame(1, $next->getValue('a'));
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testApplicationCloseDoesNotCreateAnUnusedSession(): void
+    {
+        $app = (new \ReflectionClass(\Wbengine\Application\Application::class))->newInstanceWithoutConstructor();
+        $app->closeSession();
+        $this->assertSame(PHP_SESSION_NONE, session_status());
+        $this->assertSame(0, $this->rows());
+        $session = $app->getSession();
+        $app->closeSession();
+        $this->assertTrue($session->isClosed());
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    #[DataProvider('storageFailures')]
+    public function testFailedCloseKeepsChangesAndLockForRetry(bool $persisted, string $failure): void
+    {
+        $model = new class extends \Wbengine\Session\Model {
+            public string $failure = '';
+            private function failWrite() {
+                if ($this->failure === 'throw') {
+                    throw new \RuntimeException('Simulated storage failure');
+                }
+                return false;
+            }
+            public function insertSessionData(Session $session) {
+                return $this->failure !== '' ? $this->failWrite() : parent::insertSessionData($session);
+            }
+            public function updateSession(Session $session) {
+                return $this->failure !== '' ? $this->failWrite() : parent::updateSession($session);
+            }
+        };
+        $session = new class($model) extends Session {
+            public function __construct(private $model) { parent::__construct(); }
+            public function getModel() { return $this->model; }
+        };
+        $session->setValue('a', 1);
+        if ($persisted) {
+            $session->flush();
+        }
+        $session->setValue('a', 2);
+        $model->failure = $failure;
+        try {
+            $session->close();
+            $this->fail('Failed persistence must not release the lock');
+        } catch (\Wbengine\Session\Exception\SessionException $e) {
+            $this->assertSame(PHP_SESSION_ACTIVE, session_status());
+            $this->assertFalse($session->isClosed());
+            $this->assertNotNull($e->getPrevious());
+        } finally {
+            $model->failure = '';
+        }
+        $session->close();
+        $this->assertSame(1, $this->rows());
+        $next = $this->nextRequest($session);
+        $this->assertSame(2, $next->getValue('a'));
+    }
+
+    public static function storageFailures(): array
+    {
+        return [[false, 'throw'], [true, 'throw'], [false, 'false'], [true, 'false']];
+    }
+
+    public static function proxyConnections(): array
+    {
+        return [
+            'TLS termination' => [['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9', 'HTTP_X_FORWARDED_PROTO' => 'https'], true, '203.0.113.9'],
+            'untrusted headers' => [['REMOTE_ADDR' => '198.51.100.2', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9', 'HTTP_X_FORWARDED_PROTO' => 'https'], false, '198.51.100.2'],
+            'native HTTPS' => [['REMOTE_ADDR' => '198.51.100.2', 'HTTPS' => 'on'], true, '198.51.100.2'],
+        ];
     }
 
     private function rows(): int
@@ -58,6 +280,8 @@ class SessionTest extends DbTestCase
         $before = Db::getQueriesCount();
 
         $session = new Session();
+        // Measure request lookup cost independently of the probabilistic GC DELETE.
+        $session->setAutoClean(false);
         $session->getValue('anything');
 
         $this->assertSame($before, Db::getQueriesCount(), 'no cookie, so no stored session can exist');

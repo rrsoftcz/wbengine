@@ -78,6 +78,9 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
         $name = 'Wbengine\\Renderer\\Adapter\\' . ucfirst($this->getAdapterName());
 
         if(class_exists($name, true) === false){
+            if (ucfirst($this->getAdapterName()) === 'SmartyRenderer') {
+                throw new RendererException('SmartyRenderer is optional; install wbengine/smarty-compat or migrate to NativeRenderer.');
+            }
             throw new RendererException(
                 sprintf('%s->%s: The renderer adapter "%s" not found.'
                     , __CLASS__
@@ -183,7 +186,7 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     }
 
     /**
-     * Only the native renderer escapes output automatically, for Smarty this is a no-op.
+     * Both bundled renderers escape output by default; false is a legacy migration option.
      */
     public function setAutoEscape($value)
     {
@@ -196,6 +199,20 @@ class Adapter implements \Wbengine\Renderer\RendererInterface
     public function setCompileCheck($value)
     {
         $this->getAdapter()->setCompileCheck((bool) $value);
+    }
+
+    public function setMarkdownResolver(?callable $resolver)
+    {
+        $adapter = $this->getAdapter();
+        if (method_exists($adapter, 'setMarkdownResolver')) { $adapter->setMarkdownResolver($resolver); }
+    }
+
+    public function setCacheUserResolver(?callable $resolver)
+    {
+        $adapter = $this->getAdapter();
+        if (method_exists($adapter, 'setCacheUserResolver')) {
+            $adapter->setCacheUserResolver($resolver);
+        }
     }
 
     public function enableCache(){

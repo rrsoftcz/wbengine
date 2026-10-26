@@ -30,6 +30,14 @@ class PageCacheDecisionTest extends DbTestCase
         $this->assertFalse(PageCache::sessionBelongsToAUser(self::SID));
     }
 
+    public function testAnonymousPersonalSessionMustBypassSharedCache(): void
+    {
+        $this->session(0, time() + 600);
+        Db::query('UPDATE cms_sessions SET session_data = ? WHERE session_id = ?',
+            [serialize((object) ['cart' => 'personal item']), self::SID]);
+        $this->assertTrue(PageCache::sessionBelongsToAUser(self::SID));
+    }
+
     public function testALoggedInSessionMayNot(): void
     {
         $this->session(7, time() + 600);

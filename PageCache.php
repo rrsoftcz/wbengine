@@ -37,6 +37,19 @@ class PageCache
     private static $_path = null;
     private static $_ttl = self::DEFAULT_TTL;
 
+    private static $_bypassed = false;
+
+    /** Disable page cache for the remainder of this request. Call before constructing Application to prevent a hit. */
+    public static function bypass()
+    {
+        self::$_bypassed = true;
+    }
+
+    public static function isBypassed(): bool
+    {
+        return self::$_bypassed;
+    }
+
     /** @var callable|null returns the response headers, headers_list() unless replaced */
     private static $_headerProvider = null;
 
@@ -69,12 +82,13 @@ class PageCache
     {
         $pages = Config::getCacheSettings()['pages'] ?? null;
         $pages = is_object($pages) ? (array) $pages : (is_array($pages) ? $pages : array());
-        if (empty($pages['enabled']) || !Cache::isEnabled() || Config::isDebugEnabled()) {
+        if (self::$_bypassed || empty($pages['enabled']) || !Cache::isEnabled() || Config::isDebugEnabled()) {
             return;
         }
 
         $path = self::cacheablePath($_SERVER['REQUEST_METHOD'] ?? '', (string) ($_SERVER['REQUEST_URI'] ?? ''));
-        if (null === $path || self::_hasPersonalState() || self::_isLoggedIn()) {
+        if (null === $path || !self::isPathAllowed($path, $pages) || self::_hasPersonalState() || self::_isLoggedIn()
+            || null === self::_reusableHeaders()) {
             return;
         }
 
@@ -83,7 +97,8 @@ class PageCache
         self::$_path = $path;
 
         $page = Cache::fetch(self::$_key, $found);
-        if ($found && is_array($page) && isset($page['body'], $page['etag'])) {
+        if ($found && is_array($page) && 2 === ($page['format'] ?? null)
+            && isset($page['body'], $page['etag'], $page['headers']) && is_array($page['headers'])) {
             self::_serve($page);
         }
 
@@ -129,9 +144,40 @@ class PageCache
         return $path;
     }
 
+    /** Exact canonical paths: optional allowPaths limits caching, denyPaths always wins. */
+    public static function isPathAllowed($path, array $pages)
+    {
+        foreach (array('allowPaths', 'denyPaths') as $name) {
+            if (isset($pages[$name]) && !is_array($pages[$name])) {
+                return false;
+            }
+            $paths = array();
+            foreach ($pages[$name] ?? array() as $candidate) {
+                if (!is_string($candidate) || null === ($normalized = self::cacheablePath('GET', $candidate))) {
+                    return false;
+                }
+                $paths[] = $normalized;
+            }
+            if ('allowPaths' === $name && isset($pages[$name]) && !in_array($path, $paths, true)) {
+                return false;
+            }
+            if ('denyPaths' === $name && in_array($path, $paths, true)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 
     private static function _hasPersonalState()
     {
+        $knownCookies = array(session_name());
+        if (I18n::isEnabled()) {
+            $knownCookies[] = Config::getI18nSettings()['cookie'];
+        }
+        if (array_diff(array_keys($_COOKIE), $knownCookies)) {
+            return true;
+        }
         return isset($_SERVER['HTTP_AUTHORIZATION'])
             || isset($_SERVER['HTTP_X_REQUESTED_WITH'])
             || isset($_SERVER['PHP_AUTH_USER']);
@@ -164,15 +210,26 @@ class PageCache
         }
 
         $row = Db::fetchAssoc(
-            sprintf('SELECT user_id FROM %s WHERE session_id = ? AND session_expire > ? LIMIT 1', S_TABLE_SESSIONS),
+            sprintf('SELECT user_id, session_data FROM %s WHERE session_id = ? AND session_expire > ? LIMIT 1', S_TABLE_SESSIONS),
             array($sid, time())
         );
-        return is_array($row) && (int) $row['user_id'] > 0;
+        return is_array($row) && ((int) $row['user_id'] > 0
+            || $row['session_data'] !== serialize(new \stdClass()));
     }
 
 
     private static function _serve(array $page)
     {
+        $current = array();
+        foreach (headers_list() as $header) {
+            $current[strtolower(strtok($header, ':'))] = true;
+        }
+        foreach ($page['headers'] as $header) {
+            // Headers set by this deployment take precedence over cached policy.
+            if (!isset($current[strtolower(strtok($header, ':'))])) {
+                header($header, false);
+            }
+        }
         header('Content-Type: text/html; charset=UTF-8');
         header('X-WBengine-Cache: HIT');
         header('ETag: ' . $page['etag']);
@@ -194,7 +251,8 @@ class PageCache
     {
         try {
             if (self::_mayStore($buffer)) {
-                Cache::store(self::$_key, array('body' => $buffer, 'etag' => '"' . md5($buffer) . '"'), self::$_ttl);
+                Cache::store(self::$_key, array('body' => $buffer, 'etag' => '"' . md5($buffer) . '"',
+                    'headers' => self::_reusableHeaders(), 'format' => 2), self::$_ttl);
                 self::_mark('MISS-STORED');
             } else {
                 self::_mark('BYPASS');
@@ -216,17 +274,12 @@ class PageCache
 
     private static function _mayStore($buffer)
     {
-        if (200 !== http_response_code() || '' === $buffer || strlen($buffer) > self::MAX_BODY) {
+        if (self::$_bypassed || 200 !== http_response_code() || '' === $buffer || strlen($buffer) > self::MAX_BODY) {
             return false;
         }
 
-        foreach ((array) call_user_func(self::$_headerProvider ?? 'headers_list') as $header) {
-            if (0 === stripos($header, 'Location:')) {
-                return false;
-            }
-            if (0 === stripos($header, 'Content-Type:') && false === stripos($header, 'text/html')) {
-                return false;
-            }
+        if (null === self::_reusableHeaders()) {
+            return false;
         }
 
         $app = self::$_app;
@@ -241,5 +294,41 @@ class PageCache
 
         // Exactly the site's own URL, not a deeper path that falls back to it.
         return strtolower(rtrim((string) $site->getLink(), '/')) . '/' === self::$_path;
+    }
+
+    /** Return repeatable end-to-end headers, or null when shared storage is unsafe. */
+    private static function _reusableHeaders()
+    {
+        $headers = array();
+        $allowed = array('content-type', 'content-language', 'cache-control', 'vary',
+            'content-security-policy', 'content-security-policy-report-only', 'x-frame-options',
+            'x-content-type-options', 'referrer-policy', 'permissions-policy', 'strict-transport-security',
+            'cross-origin-opener-policy', 'cross-origin-embedder-policy', 'cross-origin-resource-policy',
+            'origin-agent-cluster');
+        foreach ((array) call_user_func(self::$_headerProvider ?? 'headers_list') as $header) {
+            $parts = explode(':', $header, 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+            $name = strtolower(trim($parts[0]));
+            $value = trim($parts[1]);
+            if (in_array($name, array('location', 'set-cookie'), true)
+                || ('content-type' === $name && !preg_match('#^text/html(?:\s*;|$)#i', $value))
+                || ('cache-control' === $name && preg_match('/(?:^|,)\s*(?:private|no-store|no-cache)(?:\s*(?:=|,|$))/i', $value))
+                || (str_starts_with($name, 'content-security-policy') && stripos($value, "'nonce-") !== false)) {
+                return null;
+            }
+            if ('vary' === $name) {
+                foreach (explode(',', strtolower($value)) as $variant) {
+                    if (!I18n::isEnabled() || !in_array(trim($variant), array('accept-language', 'cookie'), true)) {
+                        return null;
+                    }
+                }
+            }
+            if (in_array($name, $allowed, true)) {
+                $headers[] = $header;
+            }
+        }
+        return $headers;
     }
 }

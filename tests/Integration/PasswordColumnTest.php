@@ -8,6 +8,36 @@ use Wbengine\User\Password;
 
 class PasswordColumnTest extends DbTestCase
 {
+    public function testRealNarrowSchemaRefusesNewPasswordsButRetainsLegacyLogin(): void
+    {
+        $canStore = new \ReflectionProperty(Password::class, '_canStoreModernHash');
+        $length = new \ReflectionProperty(Password::class, '_columnLength');
+        $oldCanStore = $canStore->getValue();
+        $oldLength = $length->getValue();
+        Db::query("ALTER TABLE cms_users MODIFY password varchar(32) NOT NULL DEFAULT '0'");
+        $canStore->setValue(null, null);
+        $length->setValue(null, null);
+        try {
+            $id = Db::insert('cms_users', ['username' => 'legacy', 'email' => 'legacy@example.test',
+                'password' => md5('old password')]);
+            $this->assertFalse(Password::canStoreModernHash());
+            $user = $this->createStub(\Wbengine\User::class);
+            $user->method('_getLoginName')->willReturn('legacy@example.test');
+            $user->method('_getPassword')->willReturn('old password');
+            $identity = (new \Wbengine\User\Model())->authenticate($user);
+            $this->assertSame($id, (int) $identity['user_id']);
+            $this->assertSame(md5('old password'), Db::fetchAssoc('SELECT password FROM cms_users WHERE user_id = ?', [$id])['password']);
+
+            $this->expectException(\Wbengine\User\UserException::class);
+            $this->expectExceptionMessage('varchar(255)');
+            Password::hash('new password');
+        } finally {
+            Db::query("ALTER TABLE cms_users MODIFY password varchar(255) NOT NULL DEFAULT '0'");
+            $canStore->setValue(null, $oldCanStore);
+            $length->setValue(null, $oldLength);
+        }
+    }
+
     public function testWideColumnAllowsModernHashes(): void
     {
         $this->assertTrue(Password::canStoreModernHash());

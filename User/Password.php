@@ -19,16 +19,22 @@ class Password
     const MIN_COLUMN_LENGTH = 60;
 
     private static $_canStoreModernHash = null;
+    private static $_columnLength = null;
 
 
     /**
-     * Hash a new password. Falls back to legacy MD5 only when the column is too narrow.
+     * Hash a new password. A missing schema migration must never weaken new hashes.
      */
     public static function hash($plain)
     {
-        return self::canStoreModernHash()
-            ? password_hash((string)$plain, PASSWORD_DEFAULT)
-            : md5((string)$plain);
+        if (!self::canStoreModernHash()) {
+            throw new UserException('Cannot store a password securely. Migrate cms_users.password to varchar(255).');
+        }
+        $hash = password_hash((string)$plain, PASSWORD_DEFAULT);
+        if (strlen($hash) > self::_columnLength()) {
+            throw new UserException('Cannot store a password securely. Migrate cms_users.password to varchar(255).');
+        }
+        return $hash;
     }
 
 
@@ -78,18 +84,26 @@ class Password
     public static function canStoreModernHash()
     {
         if (null === self::$_canStoreModernHash) {
-            $row = Db::fetchAssoc(
-                'SELECT CHARACTER_MAXIMUM_LENGTH AS len FROM information_schema.COLUMNS
-                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
-                array(S_TABLE_USERS, 'password')
-            );
-            self::$_canStoreModernHash = is_array($row) && (int)$row['len'] >= self::MIN_COLUMN_LENGTH;
+            self::$_canStoreModernHash = self::_columnLength() >= self::MIN_COLUMN_LENGTH;
 
             if (!self::$_canStoreModernHash) {
                 error_log(__CLASS__ . ': cms_users.password is narrower than ' . self::MIN_COLUMN_LENGTH
-                    . ' characters, passwords stay on legacy MD5. Widen the column to varchar(255).');
+                    . ' characters. New password writes are refused. Widen the column to varchar(255).');
             }
         }
         return self::$_canStoreModernHash;
+    }
+
+    private static function _columnLength()
+    {
+        if (null !== self::$_columnLength) {
+            return self::$_columnLength;
+        }
+        $row = Db::fetchAssoc(
+            'SELECT CHARACTER_MAXIMUM_LENGTH AS len FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            array(S_TABLE_USERS, 'password')
+        );
+        return self::$_columnLength = is_array($row) ? (int) $row['len'] : 0;
     }
 }

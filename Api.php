@@ -36,7 +36,7 @@ class Api
         "OPTIONS"
     );
     private $_allow_headers = array(
-        "Content-Type"
+        "Content-Type", "X-WBengine-CSRF"
     );
     private $_content_security_policy = array(
         "default-src" => "self"
@@ -45,6 +45,8 @@ class Api
     private $_allow_credential_header = false;
     private $_found = array();
     private $_terminator = null;
+    private ?\Wbengine\Application\Application $_parent = null;
+    private ?\Wbengine\Api\V2 $_v2 = null;
     private $_cookieWriter = null;
     private $_lastStatus = 200;
     // Short lived access token, long lived refresh token (rotated on every use).
@@ -62,6 +64,28 @@ class Api
     private $_cookie_same_site = "Strict";
 
 
+
+    public function __construct(?\Wbengine\Application\Application $parent = null)
+    {
+        $this->_parent = $parent;
+    }
+
+    public function getParent(): ?\Wbengine\Application\Application
+    {
+        return $this->_parent;
+    }
+
+    public function getV2(): \Wbengine\Api\V2
+    {
+        return $this->_v2 ??= new \Wbengine\Api\V2($this);
+    }
+
+    /** Dispatch only the v2 module, without legacy CORS or CMS registration. */
+    public function dispatchV2(): bool
+    {
+        $controller = $this->getV2();
+        return $controller->getApiRouteModule($controller)->initializeModuleRoutes()->isRouteMatch();
+    }
 
     public function Register(WbengineRestapiAbstract $apiModule){
         $this->_found[] = $apiModule->getApiRouteModule($apiModule)->initializeModuleRoutes()->isRoutematch();
@@ -119,6 +143,7 @@ class Api
 
         try {
 
+            $this->_found[] = $this->dispatchV2();
             $this->setHeaderOptions();
             $this->registerRootApi();
             $this->Register(new Section($this));
@@ -292,7 +317,7 @@ class Api
 
     public function getCookieIsSecured(){
         return (null === $this->_cookie_secured)
-            ? (!empty($_SERVER['HTTPS']) && 'off' !== $_SERVER['HTTPS'])
+            ? \Wbengine\Application\Env\Http::isSecure()
             : (bool) $this->_cookie_secured;
     }
 
