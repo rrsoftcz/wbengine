@@ -964,7 +964,8 @@ class Application implements ComponentParentInterface, ResponseInterface
             }
             if (null !== $this->_localeRedirect && [] === $this->_routes) {
                 $this->_requestFinished = true;
-                header('Location: ' . $this->_localeRedirect, true, 301);
+                header('Cache-Control: no-store, private', true);
+                header('Location: ' . $this->_localeRedirect, true, 302);
                 exit;
             }
             if ($this->getVars() !== $this->_bootstrapVars || [] !== $this->_routes || null !== $errorHandler

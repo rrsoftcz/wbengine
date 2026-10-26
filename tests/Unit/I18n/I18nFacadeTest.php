@@ -56,6 +56,18 @@ class I18nFacadeTest extends TestCase
         $this->assertTrue($r['prefixed']);
     }
 
+    public function testExplicitSwitcherQueryOverridesCookieAndIsRemovedFromRedirect(): void
+    {
+        $r = $this->resolve('/docs/?_wb_locale=en&view=full', ['wb_locale' => 'cs']);
+
+        $this->assertSame('en', $r['locale']);
+        $this->assertSame('/docs/', $r['path']);
+        $this->assertSame('view=full', $r['query']);
+        $this->assertSame('/docs/?view=full', $r['redirect']);
+        $this->assertTrue($r['remember']);
+        $this->assertFalse($r['prefixed']);
+    }
+
     public function testThenTheCookieThenTheHeaderThenTheDefault(): void
     {
         $this->assertSame('cs', $this->resolve('/blog/', ['wb_locale' => 'cs'], 'pt-BR')['locale']);

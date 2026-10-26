@@ -96,6 +96,22 @@ class I18n
         $supported = $settings['locales'];
         $detect = $settings['detect'];
 
+        // The default language uses an unprefixed canonical URL. This explicit selector lets
+        // the language switcher choose it even when an old browser cookie still says "cs".
+        // Removing the selector on redirect also keeps it out of canonical page URLs.
+        $fromQuery = null;
+        if ($settings['urlPrefix'] && in_array('url', $detect, true) && '' !== $query) {
+            $queryParams = array();
+            parse_str($query, $queryParams);
+            if (isset($queryParams['_wb_locale'])) {
+                $fromQuery = LocaleResolver::fromValue($queryParams['_wb_locale'], $supported);
+                if (null !== $fromQuery) {
+                    unset($queryParams['_wb_locale']);
+                    $query = http_build_query($queryParams);
+                }
+            }
+        }
+
         $fromUrl = null;
         if ($settings['urlPrefix'] && in_array('url', $detect, true)) {
             list($fromUrl, $stripped) = LocaleResolver::fromPath($path, $supported);
@@ -104,7 +120,7 @@ class I18n
             }
         }
 
-        $locale = $fromUrl;
+        $locale = $fromUrl ?? $fromQuery;
         foreach ($detect as $source) {
             if (null !== $locale) {
                 break;
@@ -118,13 +134,14 @@ class I18n
         $locale = $locale ?? $settings['default'];
 
         $prefixed = null !== $fromUrl;
-        $remember = $prefixed
+        $explicit = $prefixed || null !== $fromQuery;
+        $remember = $explicit
             && in_array('cookie', $detect, true)
             && (LocaleResolver::fromValue($cookies[$settings['cookie']] ?? null, $supported) !== $locale);
 
         // The default language has one canonical URL: the one without the prefix.
         $redirect = null;
-        if ($prefixed && $locale === $settings['default'] && !$settings['prefixDefault']
+        if ((null !== $fromQuery || ($prefixed && $locale === $settings['default'] && !$settings['prefixDefault']))
             && in_array($server['REQUEST_METHOD'] ?? 'GET', array('GET', 'HEAD'), true)) {
             $redirect = $path . ('' !== $query ? '?' . $query : '');
         }

@@ -266,7 +266,7 @@ class ApplicationLifecycleHttpTest extends DbTestCase
     public function testRedirectMetricsDoNotAutoloadDuringDeferredHeaderShutdown(): void
     {
         $response = $this->request('/en/page/?x=1', ['X-Lifecycle-Mode: shutdown-no-autoload']);
-        $this->assertStringContainsString('301', $response['status']);
+        $this->assertStringContainsString('302', $response['status']);
         $this->assertSame('0', $response['x-lifecycle-queries']);
         $this->assertSame('0', $response['x-lifecycle-connections']);
         $this->assertSame('none', $response['x-lifecycle-session']);
@@ -275,7 +275,8 @@ class ApplicationLifecycleHttpTest extends DbTestCase
     public function testCanonicalRedirectAndErrorsDoNotExecuteBoxes(): void
     {
         $redirect = $this->request('/en/page/?x=1');
-        $this->assertStringContainsString('301', $redirect['status']);
+        $this->assertStringContainsString('302', $redirect['status']);
+        $this->assertSame('no-store, private', $redirect['cache-control']);
         $this->assertSame('/page/?x=1', $redirect['location'] ?? null);
         $this->assertFileDoesNotExist($this->dir . '/events.log');
         $missing = $this->request('/missing/');
@@ -287,6 +288,23 @@ class ApplicationLifecycleHttpTest extends DbTestCase
         $this->assertStringContainsString('410', $gone['status']);
         $this->assertSame('layout[gone]|none', $gone['body']);
         $this->assertSame("box\n", file_get_contents($this->dir . '/events.log'));
+    }
+
+    public function testExplicitLocaleSwitcherBeatsOldCookieAndUsesUncachedRedirect(): void
+    {
+        $path = $this->dir . '/app/Config/Settings.json';
+        $config = json_decode(file_get_contents($path), true);
+        $config['i18n']['detect'] = ['url', 'cookie'];
+        file_put_contents($path, json_encode($config));
+
+        $redirect = $this->request('/page/?_wb_locale=en', ['Cookie: wb_locale=cs']);
+        $this->assertStringContainsString('302', $redirect['status']);
+        $this->assertSame('/page/', $redirect['location']);
+        $this->assertSame('no-store, private', $redirect['cache-control']);
+        $this->assertStringStartsWith('wb_locale=en', $redirect['set-cookie']);
+
+        $english = $this->request('/page/', ['Cookie: wb_locale=en']);
+        $this->assertSame('en', $english['content-language']);
     }
 
     #[DataProvider('declinedResponses')]
