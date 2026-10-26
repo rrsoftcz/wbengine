@@ -47,5 +47,9 @@
   },
   "config": {
     "sort-packages": true
-  }
+  },
+  "bin": [
+    "bin/wbengine.php",
+    "bin/migrate-content.php"
+  ]
 }

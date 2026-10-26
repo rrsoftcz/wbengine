@@ -1,0 +1,71 @@
+{
+  "environment": {
+    "php": "REPLACE with server PHP version",
+    "server": "REPLACE with server/SAPI and worker count",
+    "database": "REPLACE with DB version or explicitly none for synthetic fixture",
+    "opcache": "REPLACE with server OPcache configuration",
+    "data": "REPLACE with fixture size, template, cache and session details"
+  },
+  "matrix": {
+    "off": {
+      "anonymous": {
+        "url": "http://127.0.0.1:9083/off/anonymous/"
+      },
+      "anonymous-session": {
+        "url": "http://127.0.0.1:9083/off/anonymous-session/",
+        "cookie": "BMARK=fixtureanonymoussession"
+      },
+      "logged": {
+        "url": "http://127.0.0.1:9083/off/logged/",
+        "cookie": "BMARK=fixturelogged"
+      },
+      "custom-api": {
+        "url": "http://127.0.0.1:9083/off/custom-api/"
+      },
+      "same-session": {
+        "url": "http://127.0.0.1:9083/off/same-session/",
+        "cookie": "BMARK=fixturesamesession"
+      }
+    },
+    "data-warm": {
+      "anonymous": {
+        "url": "http://127.0.0.1:9083/data-warm/anonymous/"
+      },
+      "anonymous-session": {
+        "url": "http://127.0.0.1:9083/data-warm/anonymous-session/",
+        "cookie": "BMARK=fixtureanonymoussession"
+      },
+      "logged": {
+        "url": "http://127.0.0.1:9083/data-warm/logged/",
+        "cookie": "BMARK=fixturelogged"
+      },
+      "custom-api": {
+        "url": "http://127.0.0.1:9083/data-warm/custom-api/"
+      },
+      "same-session": {
+        "url": "http://127.0.0.1:9083/data-warm/same-session/",
+        "cookie": "BMARK=fixturesamesession"
+      }
+    },
+    "page-warm": {
+      "anonymous": {
+        "url": "http://127.0.0.1:9083/page-warm/anonymous/"
+      },
+      "anonymous-session": {
+        "url": "http://127.0.0.1:9083/page-warm/anonymous-session/",
+        "cookie": "BMARK=fixtureanonymoussession"
+      },
+      "logged": {
+        "url": "http://127.0.0.1:9083/page-warm/logged/",
+        "cookie": "BMARK=fixturelogged"
+      },
+      "custom-api": {
+        "url": "http://127.0.0.1:9083/page-warm/custom-api/"
+      },
+      "same-session": {
+        "url": "http://127.0.0.1:9083/page-warm/same-session/",
+        "cookie": "BMARK=fixturesamesession"
+      }
+    }
+  }
+}

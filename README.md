@@ -1167,3 +1167,21 @@ The integration tests create their tables from `tests/schema.sql`. They are skip
 ## License
 
 MIT, see [LICENSE.md](LICENSE.md).
+
+
+## Development and deployment CLI (4.0)
+
+Composer installs `vendor/bin/wbengine.php` and `vendor/bin/migrate-content.php` in applications. From a framework checkout use `php bin/wbengine.php`. Both entry points load the host application autoloader through Composer's bin proxy or anchored installed-package paths. They never search the caller's current directory for executable code.
+
+```sh
+vendor/bin/wbengine.php config:check --config=/site/src/Config/Settings.json --root=/site/src
+vendor/bin/wbengine.php doctor --config=/site/src/Config/Settings.json --root=/site/src
+vendor/bin/wbengine.php migration:status --config=/site/src/Config/Settings.json --root=/site/src
+vendor/bin/wbengine.php generate:box --root=/site/src --namespace=App --section=Main --module=Welcome --method=index
+```
+
+`config:check` does not contact the DB. Doctor and migration status inspect schema read-only, never run DDL. Doctor prints fixed actions without secret values and checks production Composer/OPcache, renderer, cache, proxies and optional API schema. CLI permissions and OPcache may differ from the web worker; verify that environment separately. Exit0 is success,1 failed checks,2 invalid input.
+
+The generator defaults to a JSON preview with class, template and reviewable SQL. `--write` atomically creates its files without overwriting existing paths. Inspect SQL placeholders and unpublished page metadata, choose a real page link, then apply it separately after review. Generated classes extend the existing Box tree; no new router or component framework is introduced.
+
+HTTP benchmarking is opt-in: `php tests/benchmarks/request-matrix.php /private/manifest.json 20 4`. Copy the documented fixture manifest and describe the real server, data and OPcache; supply your own isolated URLs and cookies. It measures off/data-warm/page-warm with anonymous, anonymous-session, logged, custom API and parallel same-session requests. Cookies are never printed. p50/p95, throughput and HTTP errors are measured; SQL, connections and server memory are null unless test-only response headers provide them. Client memory is never substituted for server memory. No benchmark code is attached to production requests.

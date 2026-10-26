@@ -53,9 +53,9 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] PERF-06: hotovo (Codex, 2026-10-25), jeden průchod parserem na volání Json, raw/decoded kontrakt a nativní chyby zachovány včetně NUL-leading klíčů.
 - [x] PERF-07: hotovo (Codex, 2026-10-25), odstraněn globální whitespace regex, dispatch zachovává výstup obou adaptérů a ignoruje legacy minimizeHtml.
 - [x] ARCH-01: hotovo (Codex, 2026-10-25), constructor bez CMS, deferred Application routy před cache/CMS, jediné vykreslení a migrační smlouva.
-- [ ] DX-01: čeká. Postup a akceptace jsou v odpovídající části níže.
-- [ ] DX-02: čeká. Postup a akceptace jsou v odpovídající části níže.
-- [ ] DX-03: čeká. Postup a akceptace jsou v odpovídající části níže.
+- [x] DX-01: hotovo (Codex,2026-10-26), explicitní class/template/SQL scaffold preview, bezpečné atomické --write a skutečný parent tree test.
+- [x] DX-02: hotovo (Codex,2026-10-26), instalované Composer CLI, read-only doctor/config/schema a produkční profil/secret redakce.
+- [ ] DX-03: rozpracováno (Codex,2026-10-26), matice klient i syntetických300requestů hotovy, skutečný CMS benchmark úspěšně běžel, dokončuje se opakovatelné čištění a záznam výsledků.
 
 - [x] PLAN-01: hotovo, schválená rozhodnutí a etapový plán zapsány, 2026-10-25.
 - [x] BASE-01: hotovo, výchozí sada 802 testů / 1534 assertions v odděleném Docker prostředí, 2026-10-25.
@@ -756,3 +756,12 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Dodatečná lifecycle brána: apiV2.enabled===true zapne Api service aplikace předCMS/cache/localeRedirect po vlastníchroutách. Přesun/smazání API stránky konektor neodpojí. TDD realHTTP5novýchscénářů, discovery0SQL/0connections/0box/bezsession i bezCMS, přesnýprefix/query a optout, HTTPS403/anon401. Focused36/256green.
 - APIfocused58/331green, rodič celá současná sada **1981testů/5596assertions**,15.250s48MB PHP8.4.27/MySQL8.4. Obsahovéfixy zmrazené, přidán ref-api-v2.md s kontraktem a omezeními. Následuje samostatný commit/push API a plán.
 - Další krok DX01/02 checkpoint, skutečná CMS benchmarkmaticeDX03 a ADM04/05pilot. Foundation administrace je privátní rrsoftcz/wbengine-admin PR1,533f0e7,CIgreen. Žádný release/tag/deploy.
+
+
+### 2026-10-26: DX-01 a DX-02 dokončeny
+
+- Console Application/BoxGenerator/Doctor/MigrationStatus/Bootstrap zapojené jen na explicitní CLI, žádná režie běžného requestu. Scaffold výchozí preview, finite identifiers, symlink/nooverwrite kontroly, atomický create/rollback vlastních souborů. SQL pouze review návrh s unpublished page a nevyplněným page_link; nic samo neaplikuje. Test skutečně spouští generovaný Box přes původní parent strom.
+- Doctor config:check bezDB, doctor/migration:status jen read-only schema, explicitní optional API migrace, produkční Composer/autoload/OPcache/cache/proxy/HTTPS/secrets a writepath. Hodnoty tajemství ani DB výjimky se netisknou. Provozní kontrola běží jako CLI uživatel, webSAPI/uživatele je třeba ověřit zvlášť.
+- Review RED/GREEN opravy: CLI původně fungovalo jen v checkoutu, nyní podporuje skutečné Composer proxy i přímou installedpackage cestu, nikdynevyhledáváautoloadvCWD. Opraven i MD03 CLI stejnýmBootstrap. Composer nyní registruje oba bin vstupy. Doctor defaultfilecachepath+drivercase odpovídáCache runtime, zdravý default nehlásí fail.
+- Worker focused19/57GREEN, rodič před opravami12/34 a poté celá společná sada1981/5596green vDockerPHP8.4.27. Lint/diffcheckprošly. Review oprav bez zbývajících codeblokací, bin manifest přidán rodičem. Následuje samostatný commit/push DX s aktuálnímplánem.
+- DX03 RequestMatrix zatím samostatná rozpracovaná položka, reálný CMS benchmark dokončuje izolovaný skeleton checkout. Syntetických300/0errors není tvrzení CMSauthvýkonu. ADM04/05 UI a serverové testy hotové, společný skutečný HTTPSPHPpilot se připravuje.
