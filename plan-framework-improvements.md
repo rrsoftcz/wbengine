@@ -4,7 +4,7 @@ Datum: 2026-10-25
 
 ## Účel a stav
 
-Cílové vydání: **4.0.0**, nová hlavní verze po 3.5.0. Příprava na GitHubu bude probíhat v samostatné větvi a draft PR; tag `v4.0.0` a release až po dokončení release gate.
+Cílové vydání: **4.0.0**, nová hlavní verze po 3.5.0. Vydání `v4.0.0` bylo zveřejněno po dokončení release gate; produkční nasazení zůstává samostatnou řízenou operací.
 
 Trvalý společný seznam návrhů z rozboru frameworku a jejich následného doplnění uživatelem. Uživatel chce návrhy realizovat. Tento dokument zachycuje směr, priority a podmínky ověření; implementace byla zahájena v odděleném worktree `/private/tmp/wbengine-modernization`. Konkrétní návrh rozhraní a migrační postup se dopracují před jednotlivými zásahy.
 
@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: implementace bezpečnosti, výkonu, vlastních šablon/Markdownu, migračních nástrojů, API a CLI dokončena a samostatně verzována. Centrální administrace ADM-01 až ADM-05 dokončena v samostatném privátním repozitáři, kontrolní bod357d410. Finální integrační review nalezlo a regresně ověřilo dvě opravy propojení box nastavení a generátoru. Běžná CI matice všech pěti PHP/DB kombinací a obě volitelné kompatibilní sady znovu zelené. Technická brána REL-01 včetně dvou oddělených webů, obnovy/výpadků a migračního návodu je ověřena. Zbývá závěrečné rozhodnutí o sloučení a publikaci. Tag, release ani produkční nasazení neproběhly. Odpovědnost Codex.
+Aktuální etapa: implementace bezpečnosti, výkonu, vlastních šablon/Markdownu, migračních nástrojů, API a CLI dokončena a samostatně verzována. Centrální administrace ADM-01 až ADM-05 dokončena v samostatném privátním repozitáři, kontrolní bod357d410. Finální integrační review nalezlo a regresně ověřilo dvě opravy propojení box nastavení a generátoru. Běžná CI matice všech pěti PHP/DB kombinací a obě volitelné kompatibilní sady znovu zelené. REL-01 je dokončen. Jádro, skeleton a administrace jsou sloučeny; tag a GitHub release v4.0.0 byly zveřejněny po zelených CI hlavních větví. Produkční nasazení ani převod produkčních dat neproběhly. Merge commity: jádro cf710e5, skeleton 19fde66, administrace a74892a. Odpovědnost Codex.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -75,7 +75,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] ADM-03: hotovo, šifrované klíče, CLI provisioning a pinnedHTTPS/SSRF/deadline.
 - [x] ADM-04: hotovo, editor/struktura/překlady/boxy/obrázky,357d410, skutečnýPHPpilot.
 - [x] ADM-05: hotovo, sandboxpreview/draft/publish/revize/recovery/konflikty a oprava browserrequired,33testůgreen.
-- [ ] REL-01: technická brána hotová, dualweb/revokace/výpadky/DBobnova a migračnínávod i CI ověřeny. Zbývá schválení závěrečného merge/tag/releasev4.0.0; žádné produkční nasazení.
+- [x] REL-01: hotovo 2026-10-26. Dualweb/revokace/výpadky/DBobnova a migračnínávod ověřeny; PR jádra #2, skeletonu #1 a administrace #1 sloučeny, tag i GitHub release v4.0.0 zveřejněny. Merge commity: cf710e5, 19fde66, a74892a. Produkční nasazení není součástí této fáze.
 
 ## Výchozí ověření
 
@@ -364,7 +364,7 @@ Release gate: vzorová aplikace a jeden pilot, funkční záloha a návrat, ově
 - Neimplementováno: vlastní Markdown, odstranění Smarty/Texy, API v2 ani centrální administrace. Jejich úkoly zůstávají otevřené.
 - Další krok: dokončit explicitní scope fragmentů a návrh obsahové invalidace, poté SEC-03 až SEC-06. Pro GitHub připravit draft PR 4.0.0, bez tagu/release a bez merge do master.
 
-- Git commit prvního balíku: `6e799ed`. GitHub: [draft PR #2](https://github.com/rrsoftcz/wbengine/pull/2), větev `codex/wbengine-4.0`, základ `master`. Tag ani release nebyly vytvořeny. Lokální testovací databáze byla po ověření zastavena.
+- Git commit prvního balíku: `6e799ed`. Historický záznam pracovního PR #2, nyní sloučeného jako `cf710e5`. Lokální testovací databáze byla po ověření zastavena.
 
 - GitHub CI pro commit `6e799ed`: všech 5 jobs úspěšných, PHP 8.3/8.4/8.5 s MySQL 8.4 a PHP 8.4 s MariaDB 10.11/11.4. Výsledky jsou dostupné v draft PR #2.
 
@@ -808,13 +808,13 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Acceptance odhalila chybu následného load při výpadku: přebíjel actionfail a ztrácel rozepsané texty. Úzká request-local oprava nejprveactualRED, po opravěGREEN; nezávislé scoped review potvrdilo lokální requireSite před fallbackem, žádné serializované klíče/cause a freshCSRF/role/scope/cap/ETag pro dalšíPOST. Adminfix má vlastní následujícícheckpoint.
 - Rodič provedl skutečný dump/restore: **17tabulek/861řádků**, shodné databázové defaulty, definice tabulek a SHA256 všech řádků. Pomocná restoreDB i privátní dump odstraněny v finally, zdroj bez změny. MD03 původníbajty/konfliktnírollback ověřuje vlastní sada, produkčnímigrace se nesimuluje jako hotová.
 - Opakování v tests/pilot/ref-pilot.md, upgrade/obnova v book-wbengine-4-upgrade.md. AdminCI má připraven samostatný společný pilotjob. Lokální path kompatibilní balíčky výslovně používají symlink=false, aby core /compat/ classmap exclusion nepohltil jejich symlink.
-- Zbývající REL01 kroky: push této testovacíbrány a adminoutagefixu/CI, ověřit skutečnéremotejoby, aktualizovat PR a finální checklist. Merge/tag/vydání4.0.0 a produkčnídeploy dosud neproběhly.
+- Kontrolní bod před vydáním: finální testovací brána, admin outagefix a CI byly pushnuty a ověřeny na remote. Následné sloučení, tag a release jsou zaznamenány v sekci „vydání WBengine 4.0.0“ níže.
 
 
 ### 2026-10-26: společná remote CI brána zelená
 
 - Framework0c15eba: všech7jobůGREEN, PHP8.3/8.4/8.5MySQL iMaria10.11/11.4 aoběoptionalcompatibility. Administrace287274d: běžnýtestjobGREEN a nový Two-sitePHPAPIpilotGREEN2m18s, run40360443062. Tento job opravdu sestavil oba obrazy, ověřilTLS/isolation, actualdualwebformworkflow, revokaci/výpadky, dump/restore a finallyreset. Skeletond0b1e79: smokeCIgreen, rodič navíc posledníoptimizedautoload+20HTTPgreen.
-- Připravené poznámkykvydání v ref-release-4.0.0.md. Technickábrána dokončena, REL01 zbývá publikačnírozhodnutí merge/tag/release. Průběžnépracovnívětve a draftPR uchovávají všechny ověřené změny. Produkčnídata a nasazení neproběhly.
+- Poznámky k vydání jsou v ref-release-4.0.0.md. Po schválení byly PR sloučeny, tag a release zveřejněny. Produkční data a nasazení neproběhly.
 - Ještě ověřujeme existující skeletonobsah suchýmběhem/vratným převodem naTEMPkopiích skutečnýchřádků, aby i jeho vlastní tracker obsahoval konkrétní důkaz původu a zachování staréhoHTML. Nejde o přepsání původních demo dat.
 
 
@@ -822,4 +822,13 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 
 - Skeleton původní SQL obsahuje9HTMLčlánků a9překladů, nikoli prokázanéTexy zdroje. Nový migrační smoke používá TEMPkopie a skutečnýMigrator/konvertor/ledger004. Rodič zopakoval18dryrunplánů,8safeapprovedapply/rollback a10manualreview záznamů bezaplikace (8unsupported element,2semantic mismatch). Původní plné řádky/hash i oběschémata bezezměn; následně20HTTPgreen.
 - Validní původníHTML se zachovává jakolegacy_html, nepřevádí se ztrátově jen kvůli standardizaci nových textů. Ručníissues jsou instrukcí při případné volbě konverze, nikoli důkaz vadnéhoobsahu nebo nefunkčníhoMarkdownparseru. ŽádnýTexyruntime aniSmarty není instalován. Podrobnosti a konkrétníIDs v aplikačnímplánu.
-- Všechny implementační etapy a technické release testy jsou dokončené. PřipravenéPR, poznámky ref-release-4.0.0.md a playbook jsou konkrétní podklady pro poslední publikační krok. Bez schváleného merge/tag/release se neoznačuje celáREL01 jako vydaná. Poslední pracovní změny nyní commit/push a remoteověření.
+- Všechny implementační etapy a technické release testy jsou dokončené. Následující publikační krok byl schválen, PR sloučeny, tag a GitHub release zveřejněny. Produkční nasazení a konverze provozních dat neproběhly.
+
+
+### 2026-10-26: vydání WBengine 4.0.0
+
+- PR #2 jádra sloučen jako cf710e5adbc25809868a864e615f8b9fc62a7489.
+- Tag v4.0.0 zveřejněn na merge commitu jádra. GitHub release: https://github.com/rrsoftcz/wbengine/releases/tag/v4.0.0.
+- PR #1 skeletonu sloučen jako 19fde667530a273e95ce05a118bd438c705520b5; PR #1 administrace jako a74892ab17205a15955264f0a1ca5a669d585ca0. Obě CI integrace používají tag v4.0.0.
+- CI master/main všech tří repozitářů prošlo; administrativní pilot zahrnul TLS, oddělení webů, výpadek/revokaci a obnovu databáze.
+- Produkční nasazení a migrace provozních dat jsou dosud neprovedené a zůstávají samostatným krokem provozovatele.
