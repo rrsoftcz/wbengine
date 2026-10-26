@@ -48,3 +48,25 @@ Volitelná migrace `003-markdown-content.sql` přidává `content_format` člán
 Článek může kombinovat přeložené Markdown body s původním legacy intro. Overlay proto předává formát samostatně pro každý vybraný field, nikoli slepě jeden formát poslední řádky. Null znamená fallback, prázdný text výslovně prázdný field. Změna formátu existujícího překladu vyžaduje předat oba textové fieldy k nahrazení či fallbacku. Podmíněný UPDATE navíc hlídá formát skutečně načtené verze; jinak souběžný save mohl vrátit starý formát nad novým textem. Stale zápis i kolize prvního INSERT jsou odmítnuty, legitimní no-op zůstává povolen. Metoda nezačíná ani neukončuje cizí transakci.
 
 Deterministický RED/GREEN souběhový test použil dva procesy/spojení a row lock v izolované testovací DB. Druhý writer změnil oba texty i formát, zatímco první čekal; původní implementace data smíchala a nová ji odmítne. Temporary migrační testy pokrývají nový sloupec, legacy zachování i mixed fallback; běžné ContentTranslations/ContentReadPath regrese zůstávají zelené. Souběhová fixture po sobě odstraňuje vlastní řádky a pouze svůj přidaný testovací sloupec.
+
+
+## Řízená migrace starého obsahu (MD-03)
+
+Články dříve předávaly již uložené HTML. Zdroj proto vždy určete explicitně: `html` nebo `texy`. Nedochází k automatickému odhadu ani hromadnému přepsání. Konvertor HTML používá DOM bez síťového přístupu, konečný seznam podporovaných uzlů a srovnání významu po bezpečném renderu. Nejednoznačné, nepodporované nebo ztrátové konstrukce mají manual issues a nelze je automaticky schválit. Vstup nejvýše1MiB, agregovaný plán8MiB, report16MiB, nejvýše256 locale. Report obsahuje původní texty a musí se chránit jako databázová záloha.
+
+Nejdříve na kopii databáze aplikujte volitelné SQL003 a004, zálohujte DB, ověřte InnoDB a write oprávnění důvěryhodného provozního CLI. Žádné runtimeDDL. Suchý běh nic nemění:
+
+```sh
+php bin/migrate-content.php --config=/site/Config/Settings.json --article=42 --source-format=html > /secure/report.json
+```
+
+Report zahrnuje článek i překlady; `--locale=cs` vybere jediný překlad. Ručně porovnejte původní a výsledný obsah a render. Každý bezpečný záznam má vlastní approval_hash:
+
+```sh
+php bin/migrate-content.php --config=/site/Config/Settings.json --apply=/secure/report.json --approve=SHA256
+php bin/migrate-content.php --config=/site/Config/Settings.json --rollback=SHA256
+```
+
+Apply schválí pouze jeden konkrétní plán, znovu ověří zdroj, konvertor, scopeDB a aktuální uzamčený řádek. Obsah i původní bajty v ledgeru zapisuje atomicky. Kontroluje skutečné post-write hashe, takže ani permissive MySQL nesmí tiše zkrátit obsah či zálohu. Opakování je idempotentní; změněný zdroj, cizí transakce nebo konfliktní rollback se odmítne. Rollback obnoví přesné původní hodnoty včetně formátu a null fallbacků; po pozdější úpravě nic nepřepíše. Po úspěšném commitu se invaliduje WBengine cache. Externí CDN cache musí provoz vyčistit zvlášť.
+
+Pro `--source-format=texy` je nutný volitelný `compat/texy-migration` se závislostí Texy. `--texy-autoload=/trusted/vendor/autoload.php` smí ukazovat jen na důvěryhodný lokální autoload. Převod jde přes stejnou bezpečnou HTML bránu, nemá nebezpečný automatický fallback. Balíček je v checkoutu, před Composer instalací potřebuje důvěryhodný repository nebo publikování.

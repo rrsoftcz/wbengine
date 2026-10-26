@@ -64,7 +64,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] TPL-03: hotovo (Codex, 2026-10-26), Smarty mimo jádro ve volitelném compat/smarty, samostatná sada 86/123, čisté jádro 1888/5101 a fresh skeleton HTTP 20 kontrol.
 - [x] MD-01: hotovo (Codex, 2026-10-26), vlastní AST parser a bezpečný renderer, všechny oficiální CommonMark/GFM příklady a explicitní bezpečnostní odchylky, limity práce/vstupu/výstupu.
 - [x] MD-02: hotovo (Codex, 2026-10-26), lazy App Markdown, bezpečné .md zdroje/layout, explicitní legacy_html/markdown v DB, mixed překlady a souběhový format guard.
-- [ ] MD-03: čeká, převod Texy včetně překladů a záloh; závisí na MD-02.
+- [x] MD-03: hotovo (Codex,2026-10-26), explicitní HTML/Texy dry-run, ručně schválený hash, atomické přesné zálohy/překlady a konfliktní rollback,38testů/138assertions.
 - [ ] MD-04: čeká, odstranění Texy po migrační bráně; závisí na MD-03.
 - [x] API-01: hotovo (Codex, 2026-10-26), Api/V2 tree, veřejné minimální discovery a skutečné capability flags, jednotný JSON/error/pagination kontrakt.
 - [ ] API-02: připraveno, CRUD obsahu/registrované typy boxů; API-01 a MD-02 již hotové.
@@ -728,3 +728,12 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Optimalizovaný autoload odhalil historicky nesprávnou cestu Config\Exception\RuntimeException. Přesun do PSR4 odpovídajícího souboru, starý soubor ponechán jako require_once shim; test ověřuje veřejný namespace. composer dump-autoload --optimize --strict-psr prošel bez warning.
 - Rodič ověřil základní sadu bez Smarty **1888testů/5101assertions**,14.354s44MB PHP8.4.27/MySQL8.4. Oddělená kompatibilita **86/123**,0.114s20MB. Nezávislé statické review bez blokací, runtime nalezené instalační problémy opraveny a ověřeny celou kompatibilní sadou. Syntaxe a diff-check se ověřují před commitem.
 - Další krok MD-03 kontrolní bod migračního nástroje, následně odstranění Texy z jádra MD-04. API obsah a centrální administrace se verzují samostatně. Bez produkční konverze, merge nebo vydání tagu.
+
+
+### 2026-10-26: MD-03 dokončen
+
+- Content\Migration ve stávajícím OOP namespace odděluje Converter/HtmlConverter/Model/Migrator/Cli. Tenký CLI vstup nevytváří paralelní runtime. Explicitní html/texy, původní HTML bajty se neodhadují. Bezpečný konzervativní DOM konvertor a porovnání renderu označují nepodporované či ztrátové konstrukce pro ruční řešení. Optional Texy bridge zůstává mimo jádro.
+- Výchozí dryrun zahrnuje překlady, přehled obsahuje původní/výsledné hodnoty, source/converter/scope hashe a per-record approval hash. Apply přijme jen přesně schválený bezpečný záznam, zamkne řádek, atomicky uloží ledger004 a nový obsah. Souběh/rollback konflikt odmítne. Žádná produkční data nebyla změněna.
+- Review nálezy ověřeny RED/GREEN: permissive MySQL truncation zjištěna skutečným postwrite hashem obsahu i zálohy a celá transakce rollbackne; vícenásobné code children nepoškodí význam; report má limity8MiBagregace/16MiBCLI/256locales.
+- Rodič znovu ověřil **38testů/138assertions**,PHP8.4.27/MySQL8.4, pouzeTEMP tabulky. Lint předchozí společné pracovní sady prošel; migrační/rollback příkazy a ochrana citlivých reportů jsou v ref-markdown.md. TPL03 už samostatně pushnut80208da, vlastní kompatibilita86/123green.
+- Další krok MD-04: odstranit povinný Texy balíček a Formatter závislost, volitelně zachovat explicitní kompatibilní adaptér; nové formáty Markdown a staré legacy_html zachovat bez reinterpretace. API a administrace navazují samostatně.
