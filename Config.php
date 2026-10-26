@@ -130,7 +130,22 @@ class Config
         {
             case self::CONFIG_TYPE_JASON:
 
-                self::$config = json_decode($filename->getContent());
+                $content = $filename->getContent();
+                $config = json_decode($content);
+                if (JSON_ERROR_NONE !== json_last_error()) {
+                    throw new ConfigException(sprintf(
+                        'Cannot parse configuration file "%s" as JSON: %s.',
+                        $filename->getFile(),
+                        json_last_error_msg()
+                    ));
+                }
+                if (!is_object($config)) {
+                    throw new ConfigException(sprintf(
+                        'Configuration file "%s" must contain a JSON object at its top level.',
+                        $filename->getFile()
+                    ));
+                }
+                self::$config = $config;
 
                 break;
 
@@ -416,7 +431,12 @@ class Config
 
     public static function isDebugEnabled()
     {
-        return self::$config->debug;
+        $environment = getenv('WBENGINE_DEBUG');
+        if ($environment !== false && $environment !== '') {
+            return filter_var($environment, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return is_object(self::$config) && filter_var(self::$config->debug ?? false, FILTER_VALIDATE_BOOLEAN);
     }
 
     public static function getTimeZone()

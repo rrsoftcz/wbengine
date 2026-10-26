@@ -173,6 +173,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     public function __construct($appBaseDir, $nameSpace = null)
     {
+        ApplicationException::RegisterHandler();
         if (!is_string($appBaseDir) || empty($appBaseDir)) {
             throw new ApplicationException(
                 sprintf('%s->%s: Application base dir must be a string.'
@@ -844,10 +845,6 @@ class Application implements ComponentParentInterface, ResponseInterface
             $this->_evaluatingRoute = true;
             try {
                 $result = ($entry['handler'])($route, $this);
-            } catch (ApplicationException $e) {
-                $this->addException($e->getMessage(), $e->getCode());
-                $this->setValue(HTML_CENTRAL_SECTION, $this->getRenderer()->getErrorBox($e));
-                $result = null;
             } finally {
                 $this->_evaluatingRoute = false;
             }
@@ -978,8 +975,8 @@ class Application implements ComponentParentInterface, ResponseInterface
             $this->_cacheGateReached = true;
             PageCache::handle($this);
             $this->_renderPage($errorHandler);
-        } catch (ApplicationException $e) {
-            $e->Show();
+        } catch (\Throwable $e) {
+            (new ApplicationException($e->getMessage(), (int) $e->getCode(), $e))->Show();
         } finally {
             $this->_handlingRequest = false;
         }

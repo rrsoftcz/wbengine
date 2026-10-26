@@ -909,7 +909,7 @@ Environment variables `WBENGINE_JWT_KEY`, `WBENGINE_JWT_REFRESH_KEY` and `WBENGI
 
 With `"debug": true` a bar is appended to the page showing the PHP version, the configuration file, application time, the number of database queries and their total time, and the site, section and box counts. Opening the DB panel lists every query with its duration, HTML escaped. The error handler converts PHP warnings and errors into exceptions so they are not silently ignored; notices and deprecations are logged and do not stop the request.
 
-Debug mode also turns on `display_errors`. It exposes SQL and paths, so it must never be enabled on a public server. With debug off, an uncaught exception shows a generic error page and the details go to the error log.
+Debug mode also turns on `display_errors`. It exposes SQL and paths, so it must never be enabled on a public server. With debug off, an uncaught exception shows a readable, non-sensitive error page with a reference code; the exception class, message, file and line are written to the PHP error log under the same reference code. Configuration failures have a specific checklist for `src/Config/Settings.json` without exposing server paths. During local recovery, `WBENGINE_DEBUG=1` enables the exception detail template even when the configuration file cannot be loaded. Remove that environment variable before exposing the site publicly.
 
 In 4.0, `Site::initialize()` automatically assigns `server`, `dbinfo` and
 `phpversion` only when debug is enabled. Production templates no longer receive
