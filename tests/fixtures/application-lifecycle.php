@@ -28,6 +28,20 @@ namespace {
     $mode = $_SERVER['HTTP_X_LIFECYCLE_MODE'] ?? '';
     // Mirror the normal webserver rewrite input before i18n strips a prefix.
     $_REQUEST['link'] = trim((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+    if ('api-auth-fixture' === $mode) {
+        $sql = file_get_contents(dirname(__DIR__, 2) . '/migrations/4.0.0/002-api-v2-integrations.sql');
+        preg_match('/CREATE TABLE IF NOT EXISTS cms_api_audit \(.*?\) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;/s', $sql, $match);
+        Db::query(str_replace('CREATE TABLE IF NOT EXISTS', 'CREATE TEMPORARY TABLE', $match[0]));
+    }
+    $initialBoxes = is_file($dir . '/events.log') ? substr_count(file_get_contents($dir . '/events.log'), "box\n") : 0;
+    $initialConnections = (int) mysqli_get_client_stats()['connect_success'];
+    header_register_callback(static function () use ($dir, $initialBoxes, $initialConnections): void {
+        $boxes = is_file($dir . '/events.log') ? substr_count(file_get_contents($dir . '/events.log'), "box\n") : 0;
+        header('X-Lifecycle-Queries: ' . Db::getQueriesCount());
+        header('X-Lifecycle-Connections: ' . ((int) mysqli_get_client_stats()['connect_success'] - $initialConnections));
+        header('X-Lifecycle-Boxes: ' . ($boxes - $initialBoxes));
+        header('X-Lifecycle-Session: ' . (session_status() === PHP_SESSION_ACTIVE ? 'active' : 'none'));
+    });
     header('Content-Type: text/html; charset=UTF-8');
     $app = new Application($dir . '/app', 'LifecycleFixture');
     $metrics = static fn () => ['queries' => Db::getQueriesCount(),
@@ -44,7 +58,18 @@ namespace {
         echo json_encode($metrics() + ['registered' => $registered, 'id' => $route->getParams('id'), 'locale' => I18n::locale()]);
         return true;
     });
-    if ('terminal' === $mode) {
+    if ('api-custom' === $mode) {
+        $app->get('/api/v2', function ($route, $app) use ($metrics) {
+            header('Content-Type: application/json');
+            $api = $app->getApi();
+            echo json_encode($metrics() + ['custom' => true, 'lazy_tree' => $api === $app->getApi() && $api->getParent() === $app && $api->getV2() === $api->getV2() && $api->getV2()->Api() === $api]);
+            return true;
+        });
+    } elseif ('api-decline' === $mode) {
+        $app->get('/api/v2', function () use ($dir) { file_put_contents($dir . '/events.log', "declined\n", FILE_APPEND); return false; });
+    } elseif ('api-layout' === $mode) {
+        $app->get('/api/v2', function ($route, $app) { $app->setValue('central', 'custom-api-layout'); });
+    } elseif ('terminal' === $mode) {
         $app->get('/page', function () { header('Content-Type: text/plain'); echo 'terminal'; return true; });
     } elseif ('order' === $mode) {
         $app->get('/page', function () use ($dir) { file_put_contents($dir . '/events.log', "first\n", FILE_APPEND); return false; });

@@ -167,6 +167,32 @@ class ApiV2IntegrationTest extends TestCase
         self::assertNull(Db::fetchAssoc('SELECT revoked_at FROM cms_api_integrations')['revoked_at']);
     }
 
+    public function testBoundedAuditMaintenanceRequiresAdministratorAndPreservesRecentRecords(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            Db::insert('cms_api_audit', ['action' => 'identity.read', 'outcome' => 'unauthorized', 'created_at' => time() - 40 * 86400]);
+        }
+        Db::insert('cms_api_audit', ['action' => 'identity.read', 'outcome' => 'allowed', 'created_at' => time()]);
+        $model = new Model();
+        self::assertSame(2, $model->pruneAudit(11, 30, 2));
+        self::assertSame(3, Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_audit WHERE created_at < ?', [time() - 30 * 86400])['n']);
+        self::assertSame(1, Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_audit WHERE action = ? AND outcome = ?', ['identity.read', 'allowed'])['n']);
+        try { $model->pruneAudit(12, 30, 2); self::fail('Non-admin maintenance accepted'); }
+        catch (Problem $e) { self::assertSame(403, $e->getCode()); }
+    }
+
+    public function testPermissiveStorageCannotTruncateKeyNameOrAuditActor(): void
+    {
+        $oldMode = Db::fetchAssoc('SELECT @@SESSION.sql_mode AS mode')['mode'];
+        Db::query("SET SESSION sql_mode = ''");
+        Db::query('ALTER TABLE cms_api_integrations MODIFY name VARCHAR(3) NOT NULL');
+        try {
+            try { (new Model())->provision(11, 'Long name', ['discovery:read']); self::fail('Truncated key metadata accepted'); }
+            catch (Problem $e) { self::assertSame('storage_mismatch', $e->errorCode); }
+            self::assertSame(0, Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
+        } finally { Db::query('SET SESSION sql_mode = ?', [$oldMode]); }
+    }
+
     public function testAuditFailureRollsBackProvisioning(): void
     {
         Db::query('DROP TEMPORARY TABLE cms_api_audit');

@@ -11,13 +11,26 @@ use Wbengine\Api\V2\Problem;
 
 class ApiV2Test extends TestCase
 {
+    private \Wbengine\RateLimit\Limiter $isolatedLimiter;
+    private string $limiterDirectory;
+    protected function setUp(): void
+    {
+        $this->limiterDirectory = sys_get_temp_dir() . '/api-v2-unit-rate-' . bin2hex(random_bytes(8));
+        $this->isolatedLimiter = new \Wbengine\RateLimit\Limiter($this->limiterDirectory);
+    }
+    protected function tearDown(): void
+    {
+        foreach (glob($this->limiterDirectory . '/*') ?: [] as $file) { unlink($file); }
+        if (is_dir($this->limiterDirectory)) { rmdir($this->limiterDirectory); }
+    }
+
     public function testDiscoveryAdvertisesOnlyImplementedCapabilitiesWithoutDiagnostics(): void
     {
         $controller = new V2(new Api());
         $response = $controller->handle('GET', '/api/v2');
         self::assertSame(200, $response['status']);
         self::assertSame('2.0', $response['body']['data']['api_version']);
-        self::assertFalse($response['body']['data']['capabilities']['articles']['write']);
+        self::assertTrue($response['body']['data']['capabilities']['articles']['write']);
         self::assertFalse($response['body']['data']['capabilities']['templates']['write']);
         self::assertArrayNotHasKey('php_version', $response['body']['data']);
         self::assertArrayNotHasKey('database', $response['body']['data']);
@@ -74,7 +87,7 @@ class ApiV2Test extends TestCase
     public function testIntegrationRequiresHttpsBeforeAnyKeyLookup(): void
     {
         $model = new ApiV2MemoryModel();
-        $controller = new V2(new Api(), $model);
+        $controller = new V2(new Api(), $model, null, $this->isolatedLimiter);
         $response = $controller->handle('GET', '/api/v2/identity', 'Bearer secret', false);
         self::assertSame(403, $response['status']);
         self::assertSame('https_required', $response['body']['error']['code']);
@@ -84,7 +97,7 @@ class ApiV2Test extends TestCase
     public function testMissingOrInvalidKeyIsUnauthorizedAndDoesNotLeakFailureDetails(): void
     {
         $model = new ApiV2MemoryModel();
-        $controller = new V2(new Api(), $model);
+        $controller = new V2(new Api(), $model, null, $this->isolatedLimiter);
         foreach (['', 'Basic secret', 'Bearer wrong'] as $authorization) {
             $response = $controller->handle('GET', '/api/v2/identity', $authorization, true);
             self::assertSame(401, $response['status']);
@@ -96,7 +109,7 @@ class ApiV2Test extends TestCase
     public function testIdentityIgnoresRoleMetadataAndAuditSeparatesCentralActor(): void
     {
         $model = new ApiV2MemoryModel();
-        $controller = new V2(new Api(), $model);
+        $controller = new V2(new Api(), $model, null, $this->isolatedLimiter);
         $response = $controller->handle('GET', '/api/v2/identity', 'Bearer good', true, 'central-user-42');
         self::assertSame(200, $response['status']);
         self::assertSame(['integration_id' => 7, 'name' => 'central', 'scopes' => ['discovery:read']], $response['body']['data']);
@@ -107,10 +120,29 @@ class ApiV2Test extends TestCase
     public function testWrongScopeProduces403AndAuditsKnownIdentity(): void
     {
         $model = new ApiV2MemoryModel();
-        $controller = new V2(new Api(), $model);
+        $controller = new V2(new Api(), $model, null, $this->isolatedLimiter);
         $response = $controller->handle('GET', '/api/v2/identity', 'Bearer no-scope', true, 'actor');
         self::assertSame(403, $response['status']);
         self::assertSame([8, 'actor', 'identity.read', 'forbidden'], $model->events[0]);
+    }
+
+    public function testFailedAuthIsLimitedPerTrustedIpBeforeFurtherAuditWrites(): void
+    {
+        $dir = sys_get_temp_dir() . '/api-v2-limiter-' . bin2hex(random_bytes(8));
+        $model = new ApiV2MemoryModel();
+        $controller = new V2(new Api(), $model, null, new \Wbengine\RateLimit\Limiter($dir));
+        try {
+            for ($i = 0; $i < 10; $i++) {
+                self::assertSame(401, $controller->handle('GET', '/api/v2/identity', 'Bearer random-' . $i, true, null, '', [], null, '192.0.2.17')['status']);
+            }
+            self::assertSame(429, $controller->handle('GET', '/api/v2/identity', 'Bearer another', true, null, '', [], null, '192.0.2.17')['status']);
+            self::assertCount(10, $model->events);
+            self::assertSame(401, $controller->handle('GET', '/api/v2/identity', 'Bearer another', true, null, '', [], null, '192.0.2.18')['status']);
+            self::assertCount(2, glob($dir . '/*.rl'));
+        } finally {
+            foreach (glob($dir . '/*') ?: [] as $file) { unlink($file); }
+            if (is_dir($dir)) { rmdir($dir); }
+        }
     }
 
     public function testProvisionAndRevokeRejectUnsafeInputBeforeDatabaseLookup(): void
@@ -164,7 +196,7 @@ class ApiV2Test extends TestCase
     public function testUnexpectedStorageFailureReturnsGenericUnavailable(): void
     {
         $model = new ApiV2MemoryModel();
-        $controller = new V2(new Api(), $model);
+        $controller = new V2(new Api(), $model, null, $this->isolatedLimiter);
         $log = ini_set('error_log', '/dev/null');
         try {
             $response = $controller->handle('GET', '/api/v2/identity', 'Bearer failure', true);

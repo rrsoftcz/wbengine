@@ -36,7 +36,7 @@ Při přerušení uprostřed změny uložit dosažený stav jako výslovně rozp
 
 Při navázání nejprve přečíst tento plán, ověřit větev, poslední commity, pracovní změny a stav vzdálené větve. Dokončené kroky neopakovat; pokračovat od zaznamenaného dalšího kroku a zachovat cizí změny.
 
-- [ ] SEC-01: rozpracováno (Codex, 2026-10-25). Pravidla odpovědí, personalizace, hlavičky HIT/304 a řízení cest/bypass hotové; zbývá sjednotit invalidaci všech obsahových zápisů a nové API publish.
+- [x] SEC-01: hotovo (Codex,2026-10-26), veřejné/osobní odpovědi a postcommit invalidace všech nových obsahových API/publish/migration cest; externí SQL a CDN vyžadují vlastní purge.
 - [x] SEC-02: hotovo (Codex, 2026-10-25). Žádný nový MD5 fallback, kontrola skutečné délky hashe, ověřeno i na reálném varchar(32) se zachovaným legacy přihlášením.
 - [x] SEC-03: hotovo (Codex, 2026-10-25). Oba adaptéry escapují defaultně, native metadata a fallbacky opraveny, režimy cache odděleny, migrační a kontextová pravidla zdokumentována.
 - [x] SEC-04: hotovo (Codex, 2026-10-25), nezměněné vstupy, řetězcové helpery, validace autentizačních polí a migrační dokumentace.
@@ -67,9 +67,9 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] MD-03: hotovo (Codex,2026-10-26), explicitní HTML/Texy dry-run, ručně schválený hash, atomické přesné zálohy/překlady a konfliktní rollback,38testů/138assertions.
 - [x] MD-04: hotovo (Codex,2026-10-26), Texy mimo jádro, lazy Markdown formatter, offline bridge se samostatným testem/CI; čistá vzorová instalace a20HTTPgreen.
 - [x] API-01: hotovo (Codex, 2026-10-26), Api/V2 tree, veřejné minimální discovery a skutečné capability flags, jednotný JSON/error/pagination kontrakt.
-- [ ] API-02: připraveno, CRUD obsahu/registrované typy boxů; API-01 a MD-02 již hotové.
-- [ ] API-03: čeká, koncepty, revize, publikování a náhled; závisí na API-02.
-- [ ] API-04: rozpracováno (Codex, 2026-10-26), hashed keys/scopes/revoke/audit a transakční hranice hotové; navazuje rate limiting, retence a invalidace obsahových zápisů.
+- [x] API-02: hotovo (Codex,2026-10-26), scoped CRUD, registrované boxy, strukturální obnova/překlady a veřejná bezpečná média.
+- [x] API-03: hotovo (Codex,2026-10-26), privátní draft, neměnné revize, atomický publish/překlady, bezpečný preview a ETag konflikty.
+- [x] API-04: hotovo (Codex,2026-10-26), scopes/revoke, audit, limiter neúspěšné auth, ADMIN bounded retence, vlastnictví transakcí a postcommit invalidace.
 - [ ] ADM-01: čeká, samostatný SvelteKit projekt a MySQL schéma.
 - [ ] ADM-02: čeká, účty na pozvánku, MFA, oprávnění po webech; závisí na ADM-01.
 - [ ] ADM-03: čeká, registr webů, šifrované klíče, bezpečný API klient; závisí na ADM-02 a API-04.
@@ -746,3 +746,13 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - RED prokázal povinnou Texy závislost, chybějící Markdown adapter a starý APP_DIR error. GREEN po opravě. Core Markdown/zdroje/profile **714testů/1866assertions**,0.186s28MB. Optional offline bridge **1test/5assertions** v izolovaném vendor s Texy. Žádný skipped Texy test v základním profilu, přesunut do balíčku s vlastní CI. Nezávislé code review bez blokací, zjištěné zastaralé README opraveno.
 - Čerstvý skeleton vendor má jen JWT+WBengine, bez Smarty i Texy, po vyčištění cache **20HTTPkontrolGREEN**. Změny či konverze produkčních dat neproběhly. Následuje samostatný commit/push této fáze a finální společná sada, jakmile API lifecycle vrátí výhradní DB okno.
 - Další krok API02/03/04 checkpoint po early-v2 dispatch testu a DX01/02 checkpoint včetně opravených instalovaných CLI. ADM04/05 pokračují v samostatném privátním repozitáři, foundation533f0e7 a CIgreen.
+
+
+### 2026-10-26: API-02/03/04 a SEC-01 dokončeny
+
+- Api/V2 ContentModel/Resources/BoxRegistry/ImageModel ve stávajících namespace a modelových vzorech. Scoped CRUD a finite fields, strong If-Match, draft/revize/publish/preview/překlady, strukturální changes/restore i po smazání. Zápisy zamykají/ověřují reference, atomicky auditují a po commitu flushují společnou cache. Optional SQL005 bez runtimeDDL.
+- Média veřejná PNG/JPEG/WebP<=512KiB pod opaque ID mimo documentroot, staging/metadata/hash/MIME/nosniff, capabilityfalse bez explicitního durable úložiště. Registry boxů výchozíprázdné, klient nikdy nepředává PHP metodu. Namespace sekcí validován i při rename/restore.
+- Review blokace reprodukovány RED/GREEN: změna legacyHTML vyžadujeMarkdown aoba texty, views nezneplatní editETag, sectionrename nemůže změnitnamespace mimo registr; recovery token nově kryje rodiče/překlady/posledníudálost a chrání souběh. Lower-priority raster kontrola není plný pixeldecoder, omezení výslovně popsáno.
+- Dodatečná lifecycle brána: apiV2.enabled===true zapne Api service aplikace předCMS/cache/localeRedirect po vlastníchroutách. Přesun/smazání API stránky konektor neodpojí. TDD realHTTP5novýchscénářů, discovery0SQL/0connections/0box/bezsession i bezCMS, přesnýprefix/query a optout, HTTPS403/anon401. Focused36/256green.
+- APIfocused58/331green, rodič celá současná sada **1981testů/5596assertions**,15.250s48MB PHP8.4.27/MySQL8.4. Obsahovéfixy zmrazené, přidán ref-api-v2.md s kontraktem a omezeními. Následuje samostatný commit/push API a plán.
+- Další krok DX01/02 checkpoint, skutečná CMS benchmarkmaticeDX03 a ADM04/05pilot. Foundation administrace je privátní rrsoftcz/wbengine-admin PR1,533f0e7,CIgreen. Žádný release/tag/deploy.

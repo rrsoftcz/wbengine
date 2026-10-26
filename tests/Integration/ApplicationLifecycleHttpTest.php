@@ -84,6 +84,106 @@ class ApplicationLifecycleHttpTest extends DbTestCase
         return $result;
     }
 
+    private function configureApi($enabled): void
+    {
+        $path = $this->dir . '/app/Config/Settings.json';
+        $config = json_decode(file_get_contents($path), true);
+        $config['apiV2'] = ['enabled' => $enabled];
+        $config['http'] = ['trustedProxies' => ['127.0.0.1'], 'forwardedHeaders' => ['x-forwarded-proto']];
+        file_put_contents($path, json_encode($config));
+    }
+
+    private function assertNoCmsWork(array $response): void
+    {
+        foreach (['queries', 'connections', 'boxes'] as $metric) { $this->assertSame('0', $response['x-lifecycle-' . $metric] ?? null, $metric); }
+        $this->assertSame('none', $response['x-lifecycle-session'] ?? null);
+        $this->assertArrayNotHasKey('set-cookie', $response);
+        $this->assertArrayNotHasKey('access-control-allow-origin', $response);
+        $this->assertArrayNotHasKey('x-wbengine-cache', $response);
+    }
+
+    public function testOptInV2DiscoveryDoesNotRequireAnyCmsRowsOrSession(): void
+    {
+        $this->configureApi(true);
+        foreach (['cms_boxes', 'cms_sections', 'cms_sites'] as $table) { Db::query('DELETE FROM ' . $table); }
+        foreach (['/api/v2', '/api/v2/', '/api/v2/capabilities?probe=1', '/en/api/v2?probe=1'] as $path) {
+            $response = $this->request($path);
+            $this->assertStringContainsString('200', $response['status']);
+            $this->assertSame('2.0', json_decode($response['body'], true)['data']['api_version'] ?? null);
+            $this->assertSame('private, no-store', $response['cache-control'] ?? null);
+            $this->assertArrayNotHasKey('location', $response);
+            $this->assertNoCmsWork($response);
+        }
+    }
+
+    public function testV2DispatchRequiresStrictTrueAndExactPathBoundary(): void
+    {
+        foreach ([false, 'true', 1, null] as $enabled) {
+            $this->configureApi($enabled);
+            $response = $this->request('/api/v2');
+            $this->assertStringContainsString('404', $response['status']);
+            $this->assertSame('layout[not-found]|none', $response['body']);
+        }
+        $this->configureApi(true);
+        foreach (['/api/v20', '/api/v2-other', '/api/V2'] as $path) {
+            $response = $this->request($path);
+            $this->assertStringContainsString('404', $response['status']);
+            $this->assertSame('layout[not-found]|none', $response['body']);
+        }
+        $query = $this->request('/page/?next=/api/v2');
+        $this->assertSame('layout[box:default]|none', $query['body']);
+        $missing = $this->request('/api/v2/missing');
+        $this->assertStringContainsString('404', $missing['status']);
+        $this->assertSame('not_found', json_decode($missing['body'], true)['error']['code'] ?? null);
+        $this->assertNoCmsWork($missing);
+    }
+
+    public function testV2PrecedesStoredCmsApiPageAndSurvivesItsRemoval(): void
+    {
+        $apiSite = Db::insert('cms_sites', ['link' => '/api/v2/', 'visible' => 1, 'strict' => 0, 'acl' => 0]);
+        $cached = $this->request('/api/v2/');
+        $this->assertSame('MISS-STORED', $cached['x-wbengine-cache'] ?? null);
+        $this->assertSame('layout[box:default]|none', $cached['body']);
+        $this->configureApi(true);
+        $response = $this->request('/api/v2/');
+        $this->assertSame('2.0', json_decode($response['body'], true)['data']['api_version'] ?? null);
+        $this->assertNoCmsWork($response);
+        Db::query('DELETE FROM cms_sites WHERE site_id = ?', [$apiSite]);
+        $afterDelete = $this->request('/api/v2/');
+        $this->assertSame('2.0', json_decode($afterDelete['body'], true)['data']['api_version'] ?? null);
+        $this->assertNoCmsWork($afterDelete);
+        $this->assertSame("box\n", file_get_contents($this->dir . '/events.log'));
+    }
+
+    public function testV2KeepsDeferredCustomRoutePriorityAndLazyApiTree(): void
+    {
+        $this->configureApi(true);
+        $custom = $this->request('/en/api/v2', ['X-Lifecycle-Mode: api-custom']);
+        $this->assertSame(['queries' => 0, 'connections' => 0, 'boxes' => 0, 'custom' => true, 'lazy_tree' => true], json_decode($custom['body'], true));
+        $this->assertNoCmsWork($custom);
+        $layout = $this->request('/api/v2', ['X-Lifecycle-Mode: api-layout']);
+        $this->assertSame('layout[custom-api-layout]|none', $layout['body']);
+        $declined = $this->request('/api/v2', ['X-Lifecycle-Mode: api-decline']);
+        $this->assertSame('2.0', json_decode($declined['body'], true)['data']['api_version'] ?? null);
+        $this->assertNoCmsWork($declined);
+        $this->assertSame("declined\n", file_get_contents($this->dir . '/events.log'));
+    }
+
+    public function testV2ProtectedRoutesRejectHttpAndAnonymousHttpsWithoutCms(): void
+    {
+        $this->configureApi(true);
+        $http = $this->request('/api/v2/identity');
+        $this->assertStringContainsString('403', $http['status']);
+        $this->assertSame('https_required', json_decode($http['body'], true)['error']['code'] ?? null);
+        $this->assertNoCmsWork($http);
+        $https = $this->request('/api/v2/identity', ['X-Lifecycle-Mode: api-auth-fixture', 'X-Forwarded-Proto: https']);
+        $this->assertStringContainsString('401', $https['status']);
+        $this->assertSame('unauthorized', json_decode($https['body'], true)['error']['code'] ?? null);
+        $this->assertSame('0', $https['x-lifecycle-boxes'] ?? null);
+        $this->assertSame('none', $https['x-lifecycle-session'] ?? null);
+        $this->assertArrayNotHasKey('access-control-allow-origin', $https);
+    }
+
     public function testConstructorDoesNoDatabaseOrBoxWork(): void
     {
         $response = $this->request('/page/', ['X-Lifecycle-Mode: constructor']);

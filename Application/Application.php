@@ -161,6 +161,7 @@ class Application implements ComponentParentInterface, ResponseInterface
 
     private ?Env\RequestContext $_requestContext = null;
     private ?\Wbengine\Markdown $_markdown = null;
+    private ?\Wbengine\Api $_api = null;
 
 
     const APP_BASE_DIR              = '/App';
@@ -350,6 +351,12 @@ class Application implements ComponentParentInterface, ResponseInterface
     public function getMarkdown(): \Wbengine\Markdown
     {
         return $this->_markdown ??= new \Wbengine\Markdown();
+    }
+
+    /** API services stay in the application tree without initializing CMS or session. */
+    public function getApi(): \Wbengine\Api
+    {
+        return $this->_api ??= new \Wbengine\Api($this);
     }
 
     public function getCsrf(): \Wbengine\Session\Csrf
@@ -861,6 +868,21 @@ class Application implements ComponentParentInterface, ResponseInterface
         return false;
     }
 
+    /** Opt-in independent API surface, after custom routes and before CMS work. */
+    private function _dispatchApiV2(): bool
+    {
+        $settings = is_object(Config::$config) ? (Config::$config->apiV2 ?? null) : null;
+        if (!is_object($settings) || true !== ($settings->enabled ?? false)) { return false; }
+        $path = (string) parse_url(Http::Uri(), PHP_URL_PATH);
+        if ('/api/v2' !== $path && !str_starts_with($path, '/api/v2/')) { return false; }
+        PageCache::bypass();
+        if ($this->getApi()->dispatchV2()) {
+            $this->_requestFinished = true;
+            return true;
+        }
+        return false;
+    }
+
     /** Explicit display shares run's lifecycle; a route may use it to render once. */
     public function display($content = null)
     {
@@ -938,6 +960,9 @@ class Application implements ComponentParentInterface, ResponseInterface
         $this->_handlingRequest = true;
         try {
             if ($this->_dispatchRoutes()) {
+                return;
+            }
+            if ([] === $this->_routes && $this->_dispatchApiV2()) {
                 return;
             }
             if (null !== $this->_localeRedirect && [] === $this->_routes) {
