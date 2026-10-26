@@ -790,3 +790,10 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Focused45testů/247assertionsMySQL iMariaDBgreen. Rodič celáaktuálnísada **1988testů/5663assertions**,16.289s48MB PHP8.4.27/MySQL8.4. Lint/diffcheckgreen. Jediné scoped re-review potvrdilo obě původní mezery odstraněné, bez další blokace v tomto rozsahu.
 - CI předchozího6fc3de8 má všech7jobůgreen, včetněPHP8.3/8.4/8.5MySQL aMaria10.11/11.4, optionalSmarty/Texy. Následuje samostatný fixwavecommit/push a ověření jehoCI. ADM04/05 checkpoint357d410 a rodič33testů/check/build/Docker+actualHTTPSPHPworkflow1/1green.
 - Další krok REL01, dvě samostatnéAPIinstalace, omezenýuživatel, revokace/výpadek, migrační/rollbackplaybook a finálníreference. Žádné produkční databáze ani checkoutmaster nebyly upraveny.
+
+
+### 2026-10-26: finální provozní kontrola CLI layoutu
+
+- Rodič při přípravě upgrade návodu provedl config:check na skutečné aplikaci s base=/app/src a Composer vendor=/app/vendor. To odhalilo falešný composer.production fail: kontrola hledala vendor pouze podsrc, ačkoli skutečné metadata měla dev=false.
+- Nová RED regrese používá stejný projekt/src layout a skutečné PHP Composer metadata. Doctor nyní respektuje vlastní vendor explicitní aplikačníbase, jinak jediný přímý rodič s composer.json+vendor metadata. Nehledá libovolné nadřazené adresáře aniCWD. GREEN17/59focused, skutečný appCLIproductioncheck nyníok. Development compileCheck/HTTP/OPcache/nevytvořenýoptimizedautoload zůstávají správněfail, nejsou maskovány.
+- Připraven book-wbengine-4-upgrade.md: staging/inventura, zálohy a ověření obnovy, optionalSQL001–005, explicitníHTML/Texymigrace, CSRF/deferredlifecycle, klíče/MFA, cache, brána a konfliktní rollback. Obsahuje postup, nikoli tvrzení produkčního provedení. Následuje společný kontrolní bod této malé provozní opravy a návodu.

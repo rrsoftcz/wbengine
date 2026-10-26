@@ -27,10 +27,17 @@ final class Doctor
             return isset($parts[1]) && (!ctype_digit($parts[1]) || (int) $parts[1] < 1 || (int) $parts[1] > $bits);
         }) && !array_diff($headers, ['x-forwarded-for','x-forwarded-proto']) && (!$headers || $proxies), 'Configure explicit http.trustedProxies and supported forwardedHeaders only behind your trusted proxy.');
         $add('http.https', str_starts_with((string) ($config['i18n']['baseUrl'] ?? ''), 'https://'), 'Set i18n.baseUrl to the public HTTPS origin and verify TLS/proxy forwarding in the web SAPI.');
-        $composer = $root . '/vendor/composer/autoload_classmap.php';
+        // Application base may be project/src, with Composer installed at project/vendor.
+        $composerRoot = $root;
+        $project = dirname($root);
+        if (!is_file($root . '/vendor/composer/installed.php') && is_file($project . '/composer.json')
+            && is_file($project . '/vendor/composer/installed.php')) {
+            $composerRoot = $project;
+        }
+        $composer = $composerRoot . '/vendor/composer/autoload_classmap.php';
         $map = is_file($composer) ? require $composer : [];
         $add('composer.optimized', is_array($map) && count($map) > 1, 'Run composer install --no-dev --optimize-autoloader in the application during deploy.');
-        $installedFile = $root . '/vendor/composer/installed.php';
+        $installedFile = $composerRoot . '/vendor/composer/installed.php';
         $installed = is_file($installedFile) ? require $installedFile : [];
         $add('composer.production', isset($installed['root']['dev']) && $installed['root']['dev'] === false, 'Install the application with composer install --no-dev --optimize-autoloader during deploy.');
         $templates = $root . '/' . trim((string) ($config['renderer']['templatesDir'] ?? 'View'), '/');

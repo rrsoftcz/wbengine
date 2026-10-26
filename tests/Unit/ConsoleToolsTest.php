@@ -96,6 +96,20 @@ final class ConsoleToolsTest extends TestCase
         try { self::assertSame('ok', (new Doctor())->check($config, $this->root, false)['cache.driver']['status']); }
         finally { rmdir($directory); }
     }
+    public function testDoctorFindsProjectVendorBesideApplicationSourceRoot(): void {
+        mkdir($this->root . '/src');
+        mkdir($this->root . '/vendor/composer', 0700, true);
+        file_put_contents($this->root . '/composer.json', '{}');
+        file_put_contents($this->root . '/vendor/composer/installed.php', "<?php return ['root'=>['dev'=>false]];");
+        file_put_contents($this->root . '/vendor/composer/autoload_classmap.php', "<?php return ['One'=>'a','Two'=>'b'];");
+        $report = (new Doctor())->check([], $this->root . '/src', false);
+        self::assertSame('ok', $report['composer.production']['status']);
+        self::assertSame('ok', $report['composer.optimized']['status']);
+        // A real vendor attached to the explicit application root takes precedence.
+        mkdir($this->root . '/src/vendor/composer', 0700, true);
+        file_put_contents($this->root . '/src/vendor/composer/installed.php', "<?php return ['root'=>['dev'=>true]];");
+        self::assertSame('fail', (new Doctor())->check([], $this->root . '/src', false)['composer.production']['status']);
+    }
     public function testBenchmarkQuantilesAndMissingInstrumentationAreHonest(): void {
         $report = RequestMatrix::summarize([['ms'=>10,'status'=>200], ['ms'=>20,'status'=>503], ['ms'=>30,'status'=>200]], 0.1);
         self::assertSame(20.0, $report['p50_ms']); self::assertSame(30.0, $report['p95_ms']);
