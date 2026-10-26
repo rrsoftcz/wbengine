@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: implementace bezpečnosti, výkonu, vlastních šablon/Markdownu, migračních nástrojů, API a CLI dokončena a samostatně verzována. Centrální administrace ADM-01 až ADM-05 dokončena v samostatném privátním repozitáři, kontrolní bod357d410. Finální integrační review nalezlo a regresně ověřilo dvě opravy propojení box nastavení a generátoru. Běžná CI matice všech pěti PHP/DB kombinací a obě volitelné kompatibilní sady znovu zelené. REL-01 dokončuje pilot dvou skutečně oddělených webů, obnovu/výpadky a závěrečný migrační návod. Tag, release ani produkční nasazení neproběhly. Odpovědnost Codex.
+Aktuální etapa: implementace bezpečnosti, výkonu, vlastních šablon/Markdownu, migračních nástrojů, API a CLI dokončena a samostatně verzována. Centrální administrace ADM-01 až ADM-05 dokončena v samostatném privátním repozitáři, kontrolní bod357d410. Finální integrační review nalezlo a regresně ověřilo dvě opravy propojení box nastavení a generátoru. Běžná CI matice všech pěti PHP/DB kombinací a obě volitelné kompatibilní sady znovu zelené. Technická brána REL-01 včetně dvou oddělených webů, obnovy/výpadků a migračního návodu je ověřena. Zbývá závěrečné rozhodnutí o sloučení a publikaci. Tag, release ani produkční nasazení neproběhly. Odpovědnost Codex.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -75,7 +75,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] ADM-03: hotovo, šifrované klíče, CLI provisioning a pinnedHTTPS/SSRF/deadline.
 - [x] ADM-04: hotovo, editor/struktura/překlady/boxy/obrázky,357d410, skutečnýPHPpilot.
 - [x] ADM-05: hotovo, sandboxpreview/draft/publish/revize/recovery/konflikty a oprava browserrequired,33testůgreen.
-- [ ] REL-01: rozpracováno, singlewebHTTPSpilot a vzorový webgreen, připravuje se dualweb/revokace/výpadky a vydávací postup; GitHub PR existují, tag/release dosud nevydány.
+- [ ] REL-01: technická brána hotová, dualweb/revokace/výpadky/DBobnova a migračnínávod i CI ověřeny. Zbývá schválení závěrečného merge/tag/releasev4.0.0; žádné produkční nasazení.
 
 ## Výchozí ověření
 
@@ -809,3 +809,17 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Rodič provedl skutečný dump/restore: **17tabulek/861řádků**, shodné databázové defaulty, definice tabulek a SHA256 všech řádků. Pomocná restoreDB i privátní dump odstraněny v finally, zdroj bez změny. MD03 původníbajty/konfliktnírollback ověřuje vlastní sada, produkčnímigrace se nesimuluje jako hotová.
 - Opakování v tests/pilot/ref-pilot.md, upgrade/obnova v book-wbengine-4-upgrade.md. AdminCI má připraven samostatný společný pilotjob. Lokální path kompatibilní balíčky výslovně používají symlink=false, aby core /compat/ classmap exclusion nepohltil jejich symlink.
 - Zbývající REL01 kroky: push této testovacíbrány a adminoutagefixu/CI, ověřit skutečnéremotejoby, aktualizovat PR a finální checklist. Merge/tag/vydání4.0.0 a produkčnídeploy dosud neproběhly.
+
+
+### 2026-10-26: společná remote CI brána zelená
+
+- Framework0c15eba: všech7jobůGREEN, PHP8.3/8.4/8.5MySQL iMaria10.11/11.4 aoběoptionalcompatibility. Administrace287274d: běžnýtestjobGREEN a nový Two-sitePHPAPIpilotGREEN2m18s, run40360443062. Tento job opravdu sestavil oba obrazy, ověřilTLS/isolation, actualdualwebformworkflow, revokaci/výpadky, dump/restore a finallyreset. Skeletond0b1e79: smokeCIgreen, rodič navíc posledníoptimizedautoload+20HTTPgreen.
+- Připravené poznámkykvydání v ref-release-4.0.0.md. Technickábrána dokončena, REL01 zbývá publikačnírozhodnutí merge/tag/release. Průběžnépracovnívětve a draftPR uchovávají všechny ověřené změny. Produkčnídata a nasazení neproběhly.
+- Ještě ověřujeme existující skeletonobsah suchýmběhem/vratným převodem naTEMPkopiích skutečnýchřádků, aby i jeho vlastní tracker obsahoval konkrétní důkaz původu a zachování staréhoHTML. Nejde o přepsání původních demo dat.
+
+
+### 2026-10-26: ověřeny také skutečné originály vzorového obsahu
+
+- Skeleton původní SQL obsahuje9HTMLčlánků a9překladů, nikoli prokázanéTexy zdroje. Nový migrační smoke používá TEMPkopie a skutečnýMigrator/konvertor/ledger004. Rodič zopakoval18dryrunplánů,8safeapprovedapply/rollback a10manualreview záznamů bezaplikace (8unsupported element,2semantic mismatch). Původní plné řádky/hash i oběschémata bezezměn; následně20HTTPgreen.
+- Validní původníHTML se zachovává jakolegacy_html, nepřevádí se ztrátově jen kvůli standardizaci nových textů. Ručníissues jsou instrukcí při případné volbě konverze, nikoli důkaz vadnéhoobsahu nebo nefunkčníhoMarkdownparseru. ŽádnýTexyruntime aniSmarty není instalován. Podrobnosti a konkrétníIDs v aplikačnímplánu.
+- Všechny implementační etapy a technické release testy jsou dokončené. PřipravenéPR, poznámky ref-release-4.0.0.md a playbook jsou konkrétní podklady pro poslední publikační krok. Bez schváleného merge/tag/release se neoznačuje celáREL01 jako vydaná. Poslední pracovní změny nyní commit/push a remoteověření.

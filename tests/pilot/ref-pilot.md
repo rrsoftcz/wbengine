@@ -4,7 +4,7 @@ Testovací poskytovatel dvou nezávislých WBengine instalací a MySQL databáze
 
 ## Příprava
 
-Potřebujete Docker Compose, openssl, důvěryhodný checkout administrace a připravený vendor jádra. Příkazy z kořene frameworku:
+Potřebujete Docker Compose, openssl, python3, důvěryhodný checkout administrace a připravený vendor jádra. Příkazy z kořene frameworku:
 
 ```sh
 docker build -t wbengine-modernization-php:latest docker
