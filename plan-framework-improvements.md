@@ -48,7 +48,7 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] PERF-01: hotovo (Codex, 2026-10-25), diagnostika pouze v debug nebo přes Site::assignDiagnostics; ověřeno odstranění jednoho zbytečného spojení při cache HIT.
 - [x] PERF-02: hotovo (Codex, 2026-10-25), requestová množina aktivních ID a jeden dávkový SQL statement pro prefixy, zachované hidden/strict/collation a opravené koncové lomítko rodičů.
 - [x] PERF-03: hotovo (Codex, 2026-10-25), explicitní Session::close/Application::closeSession, zápis pod zámkem a následný snapshot bez dalších persistentních změn, měření a testy nezávislých procesů.
-- [ ] PERF-04: odloženo po měření (Codex, 2026-10-25). Mapa nenabízí doložený přínos pro jediný lookup bez dalších nákladů a musí nejprve vyřešit FIX-02; data a postup níže.
+- [x] PERF-04: uzavřeno rozhodnutím po měření (Codex,2026-10-26). URL mapa se v4.0 nezavádí: bez doloženého přínosu pro jediný lookup a s rizikem odlišné collation. FIX-02 má přesný jeden SQL lookup, údaje a důvody níže.
 - [x] PERF-05: hotovo (Codex, 2026-10-25), měření MySQL/MariaDB, společná section podmínka a volitelná migrace indexu (section_id, order), zachování výsledků a rollback ověřeny. Relační redesign odložen bez doložené potřeby.
 - [x] PERF-06: hotovo (Codex, 2026-10-25), jeden průchod parserem na volání Json, raw/decoded kontrakt a nativní chyby zachovány včetně NUL-leading klíčů.
 - [x] PERF-07: hotovo (Codex, 2026-10-25), odstraněn globální whitespace regex, dispatch zachovává výstup obou adaptérů a ignoruje legacy minimizeHtml.
@@ -797,3 +797,15 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - Rodič při přípravě upgrade návodu provedl config:check na skutečné aplikaci s base=/app/src a Composer vendor=/app/vendor. To odhalilo falešný composer.production fail: kontrola hledala vendor pouze podsrc, ačkoli skutečné metadata měla dev=false.
 - Nová RED regrese používá stejný projekt/src layout a skutečné PHP Composer metadata. Doctor nyní respektuje vlastní vendor explicitní aplikačníbase, jinak jediný přímý rodič s composer.json+vendor metadata. Nehledá libovolné nadřazené adresáře aniCWD. GREEN17/59focused, skutečný appCLIproductioncheck nyníok. Development compileCheck/HTTP/OPcache/nevytvořenýoptimizedautoload zůstávají správněfail, nejsou maskovány.
 - Připraven book-wbengine-4-upgrade.md: staging/inventura, zálohy a ověření obnovy, optionalSQL001–005, explicitníHTML/Texymigrace, CSRF/deferredlifecycle, klíče/MFA, cache, brána a konfliktní rollback. Obsahuje postup, nikoli tvrzení produkčního provedení. Následuje společný kontrolní bod této malé provozní opravy a návodu.
+
+
+### 2026-10-26: REL-01 technická brána ověřena
+
+- Všechny implementační etapy hotové. PERF04 uzavřen vědomým rozhodnutím nezavádět neprokázanou URLmapu; nejde o tvrzení implementace mapy. Originální frameworkmaster a produkčnídata bezezměn, pracovní větve a PR jsou kontrolními body.
+- Rodič celáposlednísada **1989testů/5666assertions**,16.079s48MB PHP8.4.27/MySQL8.4, Composer audit bez advisories a lintgreen. Poslední remote produkčnícheckpoint c56f9a3 má všech7CIjobůgreen. Skeleton skutečný no-dev optimized strictPSR autoload177classes bezwarning +20HTTPgreen, bezSmarty/Texy.
+- Dvě skutečně oddělené API instalace a centrála v tests/pilot, pevný testprojekt bezhostports, privátnígenerovanéCA/klíče ignorované. Provider3/3GREEN: ověřenéTLS/render, crosskey401, oddělené změny/ETag a odmítnutí bezCA.
+- Rodič zopakoval productionNode24build a **34admin testů**,check0/0; finální skutečný dualwebHTMLpilot1/1GREEN (~14.05s): MFA/obsah/konflikty/obnova, editor omezený naweb1, web2výpadek při běžícímweb1, zachovanýdirtytext+ETag, výslovnýretry bezautowrite, revokace401bezvlivu naweb1 a obaveřejnéweby200 poSIGKILLcentrály.
+- Acceptance odhalila chybu následného load při výpadku: přebíjel actionfail a ztrácel rozepsané texty. Úzká request-local oprava nejprveactualRED, po opravěGREEN; nezávislé scoped review potvrdilo lokální requireSite před fallbackem, žádné serializované klíče/cause a freshCSRF/role/scope/cap/ETag pro dalšíPOST. Adminfix má vlastní následujícícheckpoint.
+- Rodič provedl skutečný dump/restore: **17tabulek/861řádků**, shodné databázové defaulty, definice tabulek a SHA256 všech řádků. Pomocná restoreDB i privátní dump odstraněny v finally, zdroj bez změny. MD03 původníbajty/konfliktnírollback ověřuje vlastní sada, produkčnímigrace se nesimuluje jako hotová.
+- Opakování v tests/pilot/ref-pilot.md, upgrade/obnova v book-wbengine-4-upgrade.md. AdminCI má připraven samostatný společný pilotjob. Lokální path kompatibilní balíčky výslovně používají symlink=false, aby core /compat/ classmap exclusion nepohltil jejich symlink.
+- Zbývající REL01 kroky: push této testovacíbrány a adminoutagefixu/CI, ověřit skutečnéremotejoby, aktualizovat PR a finální checklist. Merge/tag/vydání4.0.0 a produkčnídeploy dosud neproběhly.

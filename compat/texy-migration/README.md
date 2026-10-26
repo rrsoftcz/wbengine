@@ -9,8 +9,8 @@ Dokud balíček není publikovaný v Composer registru, použijte důvěryhodný
 ```json
 {
   "repositories": [
-    {"type":"path","url":"/trusted/wbengine/compat/texy-migration","options":{"versions":{"wbengine/texy-migration":"4.0.x-dev"}}},
-    {"type":"path","url":"/trusted/wbengine","options":{"versions":{"wbengine/wbengine":"4.0.x-dev"}}}
+    {"type":"path","url":"/trusted/wbengine/compat/texy-migration","options":{"symlink":false,"versions":{"wbengine/texy-migration":"4.0.x-dev"}}},
+    {"type":"path","url":"/trusted/wbengine","options":{"symlink":false,"versions":{"wbengine/wbengine":"4.0.x-dev"}}}
   ],
   "require":{"wbengine/texy-migration":"4.0.x-dev"},
   "minimum-stability":"dev",

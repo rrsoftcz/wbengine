@@ -1185,3 +1185,11 @@ vendor/bin/wbengine.php generate:box --root=/site/src --namespace=App --section=
 The generator defaults to a JSON preview with class, template and reviewable SQL. `--write` atomically creates its files without overwriting existing paths. Inspect SQL placeholders and unpublished page metadata, choose a real page link, then apply it separately after review. Generated classes extend the existing Box tree; no new router or component framework is introduced.
 
 HTTP benchmarking is opt-in: `php tests/benchmarks/request-matrix.php /private/manifest.json 20 4`. Copy the documented fixture manifest and describe the real server, data and OPcache; supply your own isolated URLs and cookies. It measures off/data-warm/page-warm with anonymous, anonymous-session, logged, custom API and parallel same-session requests. Cookies are never printed. p50/p95, throughput and HTTP errors are measured; SQL, connections and server memory are null unless test-only response headers provide them. Client memory is never substituted for server memory. No benchmark code is attached to production requests.
+
+
+The isolated two-website administration acceptance pilot is documented in
+[tests/pilot/ref-pilot.md](tests/pilot/ref-pilot.md). It verifies real central forms
+through certificate-verified PHP APIs, separate keys/databases, outage recovery,
+revocation and a real database dump/restore. See
+[book-wbengine-4-upgrade.md](book-wbengine-4-upgrade.md) for the operator upgrade
+and rollback procedure. Test success does not mean production data were migrated.
