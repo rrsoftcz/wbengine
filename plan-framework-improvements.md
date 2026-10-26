@@ -16,7 +16,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: CACHE-01, SEC-02 až SEC-06, PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01, PERF-03 a PERF-05 dokončeny. PERF-04 změřen, implementace URL mapy odložena; neshoda collation FIX-02 opravena jednotným SQL výběrem. TPL-01 dokončen, TPL-02 rozpracován: diagnostika a smlouva include/set s opravou bufferů hotové, pokračuje HTTP ověření aplikace. SEC-01 zůstává otevřený pro invalidaci budoucích obsahových zápisů a API publish. Odpovědnost rozpracovaných úkolů: Codex. Další etapy navazují podle závislostí. Žádný z nových subsystémů není označen jako hotový bez implementace a testů.
+Aktuální etapa: implementace bezpečnosti, výkonu, vlastních šablon/Markdownu, migračních nástrojů, API a CLI dokončena a samostatně verzována. Centrální administrace ADM-01 až ADM-05 dokončena v samostatném privátním repozitáři, kontrolní bod357d410. Finální integrační review nalezlo a regresně ověřilo dvě opravy propojení box nastavení a generátoru. Běžná CI matice všech pěti PHP/DB kombinací a obě volitelné kompatibilní sady znovu zelené. REL-01 dokončuje pilot dvou skutečně oddělených webů, obnovu/výpadky a závěrečný migrační návod. Tag, release ani produkční nasazení neproběhly. Odpovědnost Codex.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -70,12 +70,12 @@ Při navázání nejprve přečíst tento plán, ověřit větev, poslední comm
 - [x] API-02: hotovo (Codex,2026-10-26), scoped CRUD, registrované boxy, strukturální obnova/překlady a veřejná bezpečná média.
 - [x] API-03: hotovo (Codex,2026-10-26), privátní draft, neměnné revize, atomický publish/překlady, bezpečný preview a ETag konflikty.
 - [x] API-04: hotovo (Codex,2026-10-26), scopes/revoke, audit, limiter neúspěšné auth, ADMIN bounded retence, vlastnictví transakcí a postcommit invalidace.
-- [ ] ADM-01: čeká, samostatný SvelteKit projekt a MySQL schéma.
-- [ ] ADM-02: čeká, účty na pozvánku, MFA, oprávnění po webech; závisí na ADM-01.
-- [ ] ADM-03: čeká, registr webů, šifrované klíče, bezpečný API klient; závisí na ADM-02 a API-04.
-- [ ] ADM-04: čeká, obsahový editor a správa struktury; závisí na ADM-03 a API-02.
-- [ ] ADM-05: čeká, náhledy, publikování, revize a konflikty; závisí na ADM-04 a API-03.
-- [ ] REL-01: čeká, pilot, migrace a návrat, GitHub PR/tag/release v4.0.0; závisí na všech vydávaných funkcích.
+- [x] ADM-01: hotovo, samostatný privátní rrsoftcz/wbengine-admin, MySQL/Docker, základ533f0e7.
+- [x] ADM-02: hotovo, pozvánky/MFA/sessions/role po webech a souběhové regrese, CIgreen.
+- [x] ADM-03: hotovo, šifrované klíče, CLI provisioning a pinnedHTTPS/SSRF/deadline.
+- [x] ADM-04: hotovo, editor/struktura/překlady/boxy/obrázky,357d410, skutečnýPHPpilot.
+- [x] ADM-05: hotovo, sandboxpreview/draft/publish/revize/recovery/konflikty a oprava browserrequired,33testůgreen.
+- [ ] REL-01: rozpracováno, singlewebHTTPSpilot a vzorový webgreen, připravuje se dualweb/revokace/výpadky a vydávací postup; GitHub PR existují, tag/release dosud nevydány.
 
 ## Výchozí ověření
 
@@ -781,3 +781,12 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - CI serverlog určil příčinu redirect selhání: header callback se při bodyless redirect mohl spustit po zrušení Composer autoloadu a snažil se poprvé načíst Db. Testovací instrumentace nyní počítá nulu, pokud Db vůbec nebylo načtené, bez autoloadu v shutdown. Přidaný deterministický deferred-header/no-autoload test nejprve RED, po opravě celá lifecycle sada24/178GREEN. Produkční lifecycle se nemění.
 - MariaDB11.4TEMPORARY InnoDB minimal reprodukce ztrácí původní řádek při DELETE+INSERT stejného PK a následném rollbacku; persistentní InnoDB stejný scénář korektně vrací. Publikační rollback test nyní ověřuje skutečné persistentní publikační tabulky, se zachováním originálních testovacích tabulek pod unikátními zálohami a finally obnovou, guardDATABASE=wbengine_test. Všechny původní assertions zesíleny o celý článek, původní dvě locale, draft a neměnný počet revizí/událostí a nulový flush. Produkční SQL nezměněno. Worker ověřil celou ApiV2ContentTest23/129GREEN naMySQL8.4 iMariaDB11.4.13.
 - Finální whole-branch review našlo dvě integrační mezery: API api_settings nedocházely do vykonávanéhoBox a CLI generátor používal DBsectionkey s neslučitelným uppercase. Probíhá jediná společná fixwave s regresními unit i skutečnými Section/API integračními testy. Release stále rozpracovaný, nikoli hotový tag.
+
+
+### 2026-10-26: finální integrační fixwave dokončena
+
+- Nezávislé whole-branch review našloP1 runtime nastavení boxu aP2 generátor DBkey; jediný společný fixer opravil obě. Section načítá b.* v původním jediném dotazu a řádkové cache; volitelný api_settings je dostupný bez schema probe/DDL a bez rozbití unmigrated schématu. Box má getSettings/getSetting, omezený JSON objekt string enumů, neplatný vstup failclosed na default. Cena je širší interní řádková projekce budoucích columns.
+- CLI odděluje lowercase DBsectionkey od capitalized PHP namespace/path a přijímá jen registry kompatibilní délku. TDD4unitRED a skutečný APIPOST->SectionBox missing-settingRED, následně PATCHfull->compact ověří skutečný vykonaný box, postcommitcacheflush a lazy1SQL/oldschema.
+- Focused45testů/247assertionsMySQL iMariaDBgreen. Rodič celáaktuálnísada **1988testů/5663assertions**,16.289s48MB PHP8.4.27/MySQL8.4. Lint/diffcheckgreen. Jediné scoped re-review potvrdilo obě původní mezery odstraněné, bez další blokace v tomto rozsahu.
+- CI předchozího6fc3de8 má všech7jobůgreen, včetněPHP8.3/8.4/8.5MySQL aMaria10.11/11.4, optionalSmarty/Texy. Následuje samostatný fixwavecommit/push a ověření jehoCI. ADM04/05 checkpoint357d410 a rodič33testů/check/build/Docker+actualHTTPSPHPworkflow1/1green.
+- Další krok REL01, dvě samostatnéAPIinstalace, omezenýuživatel, revokace/výpadek, migrační/rollbackplaybook a finálníreference. Žádné produkční databáze ani checkoutmaster nebyly upraveny.

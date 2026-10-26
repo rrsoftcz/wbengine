@@ -13,13 +13,15 @@ final class BoxGenerator
             }
         }
         if (method_exists(\Wbengine\Box\WbengineBoxAbstract::class, $method)) { throw new \InvalidArgumentException('Choose an action that does not override inherited box methods.'); }
+        $sectionKey = strtolower($section);
+        if (!preg_match('/^[a-z][a-z0-9_]{0,44}$/D', $sectionKey)) { throw new \InvalidArgumentException('Use a section key of at most 45 characters.'); }
         $base = realpath($root);
         if ($base === false || !is_dir($base) || is_link($root)) { throw new \RuntimeException('Choose an existing application root directory.'); }
-        $section = ucfirst($section); $module = ucfirst($module); $action = ucfirst($method);
+        $section = ucfirst($sectionKey); $module = ucfirst($module); $action = ucfirst($method);
         $files = [
             "Box/$section/$module.php" => "<?php\nnamespace $namespace\\Box\\$section;\n\nuse Wbengine\\Box\\WbengineBoxAbstract;\n\nclass $module extends WbengineBoxAbstract\n{\n    public function $action()\n    {\n        return \$this->getRenderer()->render('$section/$module/$action');\n    }\n}\n",
             "View/$section/$module/$action.tpl" => "<section>\n    <h1>$module</h1>\n</section>\n",
-            "migrations/box-$section-$module-$action.sql" => "-- REVIEW ONLY: bind :page_link and review existing site/section records and tree positions.\n-- The supplied namespace must map to this root in Composer PSR-4.\n-- Standard cms_ prefix assumed. The page starts unpublished (visible=0).\n-- No SQL is executed by the generator. Back up before manual application.\nSTART TRANSACTION;\nINSERT INTO cms_sites (link, title, visible) VALUES (:page_link, '$module', 0);\nSET @wb_scaffold_site_id = LAST_INSERT_ID();\nINSERT INTO cms_sections (title, `key`, active) VALUES ('$section', '$section', 1);\nSET @wb_scaffold_section_id = LAST_INSERT_ID();\nINSERT INTO cms_boxes (section_id, module, method, sites, `order`)\nVALUES (@wb_scaffold_section_id, '$module', '$method', JSON_ARRAY(CAST(@wb_scaffold_site_id AS CHAR)), 0);\nCOMMIT;\n",
+            "migrations/box-$section-$module-$action.sql" => "-- REVIEW ONLY: bind :page_link and review existing site/section records and tree positions.\n-- The supplied namespace must map to this root in Composer PSR-4.\n-- Standard cms_ prefix assumed. The page starts unpublished (visible=0).\n-- No SQL is executed by the generator. Back up before manual application.\nSTART TRANSACTION;\nINSERT INTO cms_sites (link, title, visible) VALUES (:page_link, '$module', 0);\nSET @wb_scaffold_site_id = LAST_INSERT_ID();\nINSERT INTO cms_sections (title, `key`, active) VALUES ('$section', '$sectionKey', 1);\nSET @wb_scaffold_section_id = LAST_INSERT_ID();\nINSERT INTO cms_boxes (section_id, module, method, sites, `order`)\nVALUES (@wb_scaffold_section_id, '$module', '$method', JSON_ARRAY(CAST(@wb_scaffold_site_id AS CHAR)), 0);\nCOMMIT;\n",
         ];
         foreach (array_keys($files) as $relative) { $this->validatePath($base, $relative); }
         if (!$write) { return $files; }

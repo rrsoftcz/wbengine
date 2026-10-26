@@ -23,6 +23,23 @@ final class ConsoleToolsTest extends TestCase
         self::assertArrayHasKey('View/Main/Welcome/Index.tpl', $files);
         self::assertSame([], glob($this->root . '/*'));
     }
+    public function testGeneratedSectionKeyMatchesRegistryAndRuntimeNamespace(): void {
+        foreach (['central', 'Central', 'CENTRAL'] as $section) {
+            $files = (new BoxGenerator())->generate($this->root, 'App', $section, 'Blog', 'story');
+            self::assertArrayHasKey('Box/Central/Blog.php', $files);
+            $sql = $files['migrations/box-Central-Blog-Story.sql'];
+            preg_match("/INSERT INTO cms_sections .*VALUES \('Central', '([^']+)', 1\)/", $sql, $match);
+            self::assertSame('central', $match[1] ?? null);
+            $registry = new \Wbengine\Api\V2\BoxRegistry();
+            $registry->register('story', 'Blog', 'story', [], [$match[1]]);
+            $registry->assertSection('story', $match[1]);
+            self::assertSame(['module' => 'Blog', 'method' => 'story'], $registry->resolve('story', []));
+        }
+    }
+    public function testSectionKeyCannotExceedRegistryLimit(): void {
+        $this->expectException(\InvalidArgumentException::class);
+        (new BoxGenerator())->generate($this->root, 'App', str_repeat('a', 46), 'Blog', 'story');
+    }
     public function testWriteNeverOverwritesAnyExistingFile(): void {
         $g = new BoxGenerator(); $g->generate($this->root, 'App', 'Main', 'Welcome', 'index', true);
         $path = $this->root . '/Box/Main/Welcome.php'; $before = file_get_contents($path);
