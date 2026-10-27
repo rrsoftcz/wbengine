@@ -323,6 +323,21 @@ class Config
         return $settings;
     }
 
+    /** First-party, identity-free site analytics settings. Disabled unless explicitly enabled. */
+    public static function getAnalyticsSettings(): array
+    {
+        $value = self::$config->analytics ?? null;
+        $settings = is_object($value) ? get_object_vars($value) : (is_array($value) ? $value : []);
+        $timezone = $settings['timezone'] ?? 'UTC';
+        try { new \DateTimeZone(is_string($timezone) ? $timezone : ''); }
+        catch (\Throwable) { throw new \InvalidArgumentException('analytics.timezone must be a valid IANA timezone.'); }
+        $retention = filter_var($settings['retentionDays'] ?? 62, FILTER_VALIDATE_INT);
+        if (false === $retention || $retention < 31 || $retention > 365) {
+            throw new \InvalidArgumentException('analytics.retentionDays must be an integer from 31 to 365.');
+        }
+        return ['enabled' => true === ($settings['enabled'] ?? false), 'timezone' => $timezone, 'retentionDays' => $retention];
+    }
+
     /**
      * Login rate limit settings with their defaults:
      *   enabled (true),

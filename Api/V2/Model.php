@@ -11,7 +11,7 @@ class Model extends \Wbengine\Model\ModelAbstract
 {
     public const KEYS_TABLE = 'cms_api_integrations';
     public const AUDIT_TABLE = 'cms_api_audit';
-    public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write'];
+    public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write', 'analytics:read'];
 
     /**
      * Trusted local provisioning API. The administrator's current role is read from DB.

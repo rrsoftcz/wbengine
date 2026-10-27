@@ -19,7 +19,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 Aktuální stav k 2026-10-27: původní implementační rozsah je dokončen a WBengine 4 běží na `www.wbengine.org`. Live opravy jazykového přepínače a výchozí angličtiny uživatel potvrdil jako funkční. Framework `v4.0.2` je zveřejněn v `main` i `master`; skeleton je aktualizován v `main`. Bezpečnost, výkon, nativní šablony a Markdown, migrační nástroje, API, CLI a samostatná administrace ADM-01 až ADM-05 jsou implementované. Zelená release CI a benchmarky jsou doložené níže. Produkční nasazení proběhlo; ruční převod deseti historických HTML položek zůstává nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo. Odpovědnost Codex.
 
-Nejbližší plánovaná fáze: implementační pilot vzdálené administrace proti dvěma izolovaným API webům je hotový a CI jej ověřila. Administrace zůstává samostatným SvelteKit repozitářem mimo PHP/Composer balíček; lokální checkout je v `Sites/svelte/wbengine-admin`. Dalším krokem je dokončit kontrolu jejího PR a připravit oddělené vydání po rozhodnutí o viditelnosti repozitáře a publikaci kontejneru. Produkční obsahové operace administrace nebyly provedeny. Historické HTML se nepřevádí bez výslovného výběru a schválení konkrétních záznamů.
+Nejbližší navazující krok: uživatel schválil technický směr vlastní analytiky v `plan-analytics.md`. Připravený `plan-analytics-administration.md` rozepisuje integraci soukromé SvelteKit administrace, její testy a dvouwebovou API release bránu. Další postup je zkontrolovat tento plán a nejprve implementovat frameworkové API a pilotní fixture, pak administraci. Kód ani GA4 vypnutí zatím nejsou součástí této fáze. Návrh nástroje pro výmaz zůstává před implementací; rozhodnutí CLI nejdřív zůstává platné.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -343,6 +343,18 @@ Před každým úkolem: ověřit stav, dopsat konkrétní rozhraní a migrační
 Release gate: vzorová aplikace a jeden pilot, funkční záloha a návrat, ověřené originály obsahu, dokončené ruční migrační opravy, žádná povinná Smarty/Texy závislost, koncové testy dvou webů a omezeného uživatele, souběžné editace, odvolaný klíč, výpadky webu/centrály, bezpečné preview, SSRF a obnovy. Tag a GitHub release až po splnění brány; průběžný draft PR není hotový release.
 
 ## Záznam postupu
+
+### 2026-10-27: rozhodnutí o vlastní analytice
+
+- Schválený produktový směr: WBengine bude směřovat k vlastní souhrnné analytice dostupné přes samostatnou administraci. Metriky mají odpovídat počtu zobrazení a trendům, nikoli identitě konkrétních návštěvníků.
+- Celoživotní počty zobrazení stránek/článků se zachovávají i při žádosti o výmaz uživatelského účtu, pokud nejsou spojitelné s konkrétní osobou. Žádost o výmaz se nesmí stát důvodem ke smazání globálních agregátů.
+- Navržené hranice ukládání: žádná IP adresa, analytické cookie, uživatelský identifikátor ani individuální návštěvní profil v analytickém úložišti. Případné dočasné technické údaje dostanou samostatnou nezbytnou retenční dobu. Přesný právní režim a anonymizační vlastnosti je nutné posoudit podle konkrétní implementace.
+- Počet zobrazení se nesmí označovat za počet unikátních lidí. Přesná deduplikace unikátních návštěvníků bez identifikátoru není možná. Počítání výskytu boxu znamená výskyt ve vykreslené stránce, nikoli důkaz, že jej návštěvník viděl na obrazovce.
+- Technické požadavky k návrhu: zahrnout požadavky obsloužené full-page cache HIT, aby měření nepodhodnocovalo návštěvy; vyhodnotit existující `Wbengine\\Counter\\BatchCounter`; omezit práci na požadavek a nemít synchronní databázový zápis pro každé zobrazení; zpřístupnit agregáty přes úzce oprávněné API administraci.
+- Přechod: dokud vlastní metriky nebudou implementovány a ověřeny, stávající GA4 zůstává provozní záležitostí. Její případné vypnutí bude samostatný krok; vypnutí měření samo nevymaže historické reporty Google Analytics.
+- Stav: uživatel schválil technický návrh analytiky. Implementace čeká. Schválená výchozí hranice je 62denní retence denních součtů, trvalé celoživotní součty a započítávání známých i neznámých robotických požadavků.
+- Podrobné metriky, období, API kontrakt, retence a migrace jsou v `plan-analytics.md`. Strategie cache HIT, dávkové vyprázdnění a výkonu je podmínkou implementace.
+- 2026-10-27: uživatel schválil návrh analytiky. Admin integration/test implementation plan je v `plan-analytics-administration.md`; jde zatím o plán, žádná část analytiky ani administrace se v této fázi nemění.
 
 ### 2026-10-25: Zahájení 4.0.0
 
