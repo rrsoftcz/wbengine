@@ -19,7 +19,7 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 Aktuální stav k 2026-10-27: původní implementační rozsah je dokončen a WBengine 4 běží na `www.wbengine.org`. Live opravy jazykového přepínače a výchozí angličtiny uživatel potvrdil jako funkční. Framework `v4.0.2` je zveřejněn v `main` i `master`; skeleton je aktualizován v `main`. Bezpečnost, výkon, nativní šablony a Markdown, migrační nástroje, API, CLI a samostatná administrace ADM-01 až ADM-05 jsou implementované. Zelená release CI a benchmarky jsou doložené níže. Produkční nasazení proběhlo; ruční převod deseti historických HTML položek zůstává nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo. Odpovědnost Codex.
 
-Nejbližší plánovaná fáze: žádná nová implementační fáze není schválena. Doporučený další krok je pilot vzdálené administrace proti oddělenému testovacímu webu, následně rozhodnutí o jejím připojení k live. Historické HTML se nepřevádí bez výslovného výběru a schválení konkrétních záznamů.
+Nejbližší plánovaná fáze: implementační pilot vzdálené administrace proti dvěma izolovaným API webům je hotový a CI jej ověřila. Administrace zůstává samostatným SvelteKit repozitářem mimo PHP/Composer balíček; lokální checkout je v `Sites/svelte/wbengine-admin`. Dalším krokem je dokončit kontrolu jejího PR a připravit oddělené vydání po rozhodnutí o viditelnosti repozitáře a publikaci kontejneru. Produkční obsahové operace administrace nebyly provedeny. Historické HTML se nepřevádí bez výslovného výběru a schválení konkrétních záznamů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
