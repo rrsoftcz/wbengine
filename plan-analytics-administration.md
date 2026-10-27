@@ -207,7 +207,9 @@ Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystav
 
   Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build` a `npm run test:mysql` prošly. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat. Po nové tabulce `cms_analytics_meta` ověřil `backup-check` 20 tabulek a 158 řádků se shodnými hashi schématu a dat; `reset` odstranil pouze pilotní kontejnery, síť a volume. GitHub CI nebylo spuštěno, protože místní `gh` token je neplatný.
 
-  Po následné revizi se CI pilot připíná na framework analytics commit, ne na starý tag `v4.0.0`. Aktuální přesný SHA se doplní po lokálním checkpoint commitu; po vydání frameworku se pin aktualizuje na stabilní release tag.
+  Po následné revizi se CI pilot připíná na framework commit `351a5e79b0061d69a1e714552ccdd4c07b675db0`, ne na starý tag `v4.0.0`. Tento commit obsahuje nové API, migration metadata, start měření i veřejný event guard. Po vydání frameworku se pin aktualizuje na stabilní release tag.
+
+  Lokální checkpoint administrační změny je `34c9f6871c00358c96f04c8eda30055c4cf4bf4e` (`fix: align analytics CI with framework API`).
 
   Read-only review 2026-10-27 našel a následně byly opraveny: article/box události před veřejným HTML renderem a nepřesné `period.complete` před začátkem měření. Výchozí admin období také končí předchozím UTC dnem, aby nebylo budoucím datem na webu v západním časovém pásmu.
 
