@@ -15,10 +15,11 @@ final class Application
                 if (isset($options[$match[1]])) { throw new \InvalidArgumentException('Duplicate option.'); }
                 $options[$match[1]] = $match[2] ?? true;
             }
-            $allowed = $command === 'generate:box' ? ['root','namespace','section','module','method','write'] : ['config','root'];
+            $allowed = $command === 'generate:box' ? ['root','namespace','section','module','method','write']
+                : (in_array($command, ['privacy:inspect','privacy:erase'], true) ? ['config','user-id','confirm'] : ['config','root']);
             if (array_diff(array_keys($options), $allowed)) { throw new \InvalidArgumentException('Unknown option.'); }
             if ($command === 'help') {
-                echo "doctor|config:check|migration:status|analytics:prune --config=/path/Settings.json [--root=/application]\ngenerate:box --root=/application --namespace=App --section=Main --module=Welcome --method=index [--write]\nExit codes: 0 healthy/success, 1 failed checks, 2 invalid input. Generator defaults to preview; SQL requires manual review.\nProduction deploy: composer install --no-dev --optimize-autoloader; disable debug and renderer.compileCheck; clear the configured compiled template directory during deploy, then warm caches. Verify web-SAPI OPcache, web-user permissions, trusted proxies and HTTPS separately.\n";
+                echo "doctor|config:check|migration:status|analytics:prune --config=/path/Settings.json [--root=/application]\nprivacy:inspect --config=/path/Settings.json --user-id=101\nprivacy:erase --config=/path/Settings.json --user-id=101 --confirm=HASH_FROM_INSPECTION\ngenerate:box --root=/application --namespace=App --section=Main --module=Welcome --method=index [--write]\nExit codes: 0 healthy/success, 1 failed checks or rejected erasure, 2 invalid input. Generator defaults to preview; SQL requires manual review.\nProduction deploy: composer install --no-dev --optimize-autoloader; disable debug and renderer.compileCheck; clear the configured compiled template directory during deploy, then warm caches. Verify web-SAPI OPcache, web-user permissions, trusted proxies and HTTPS separately.\n";
                 return 0;
             }
             if ($command === 'generate:box') {
@@ -28,12 +29,48 @@ final class Application
                 echo json_encode(['written'=>isset($options['write']), 'files'=>$files], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
                 return 0;
             }
-            if (!in_array($command, ['doctor','config:check','migration:status','analytics:prune'], true)) { throw new \InvalidArgumentException('Unknown command; run help.'); }
+            if (!in_array($command, ['doctor','config:check','migration:status','analytics:prune','privacy:inspect','privacy:erase'], true)) { throw new \InvalidArgumentException('Unknown command; run help.'); }
             if (!isset($options['config']) || !is_string($options['config']) || !is_file($options['config']) || !is_readable($options['config'])) { throw new \InvalidArgumentException('Supply a readable --config=/path/Settings.json.'); }
             if (strtolower(pathinfo($options['config'], PATHINFO_EXTENSION)) !== 'json') { throw new \InvalidArgumentException('The existing Config loader requires a JSON configuration.'); }
             $raw = json_decode(file_get_contents($options['config']), true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($raw) || array_is_list($raw)) { throw new \InvalidArgumentException('Configuration must be a JSON object.'); }
             Config::load(new File($options['config']));
+            if (in_array($command, ['privacy:inspect','privacy:erase'], true)) {
+                if (!isset($options['user-id']) || !is_string($options['user-id']) || !ctype_digit($options['user-id']) || (int) $options['user-id'] < 1) {
+                    throw new \InvalidArgumentException('Supply a positive --user-id.');
+                }
+                if ($command === 'privacy:erase' && (!isset($options['confirm']) || !is_string($options['confirm']))) {
+                    throw new \InvalidArgumentException('Supply the confirmation hash shown by privacy:inspect.');
+                }
+                if ($command === 'privacy:inspect' && isset($options['confirm'])) {
+                    throw new \InvalidArgumentException('--confirm is valid only for privacy:erase.');
+                }
+                try {
+                    $erasure = new \Wbengine\Privacy\Erasure();
+                    if ($command === 'privacy:inspect') {
+                        echo json_encode($erasure->inspect((int) $options['user-id']), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
+                        return 0;
+                    }
+                    $status = $erasure->erase((int) $options['user-id'], $options['confirm']);
+                    echo json_encode(['status'=>$status], JSON_THROW_ON_ERROR) . "\n";
+                    return 0;
+                } catch (\Throwable $exception) {
+                    $safeMessages = [
+                        'A valid 64-character confirmation hash is required.',
+                        'The inspection has changed. Run privacy:inspect again.',
+                        'The last administrator cannot be erased.',
+                        'Unable to remove all login rate-limit records.',
+                        'Privacy erasure requires all affected tables to use InnoDB.',
+                        'Privacy erasure requires an idle database connection.',
+                        'Privacy erasure failed and all database changes were rolled back.',
+                    ];
+                    $message = in_array($exception->getMessage(), $safeMessages, true)
+                        ? $exception->getMessage()
+                        : 'Privacy command failed. Verify the database and configuration; sensitive values were not printed.';
+                    fwrite(STDERR, $message . "\n");
+                    return 1;
+                }
+            }
             if ($command === 'analytics:prune') {
                 $deleted = (new \Wbengine\Analytics\Maintenance())->prune();
                 echo json_encode(['deleted_daily_rows' => $deleted, 'retention_days' => Config::getAnalyticsSettings()['retentionDays']], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";

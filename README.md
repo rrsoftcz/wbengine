@@ -33,6 +33,28 @@ A ready to run example application lives in the companion project `wbengine-skel
 14. [Security notes](#security-notes)
 15. [Upgrading from 3.0](#upgrading-from-30)
 
+## Documentation
+
+All project plans, references, guides, release notes and the license text are under `docs/`.
+
+| Document | Purpose |
+| --- | --- |
+| [Upgrade guide](docs/book-wbengine-4-upgrade.md) | Staging, backup, upgrade and rollback procedure |
+| [Framework improvement plan](docs/plan-framework-improvements.md) | Completed work, remaining tasks and release gates |
+| [Analytics plan](docs/plan-analytics.md) | First party analytics design, implementation and release |
+| [Analytics administration plan](docs/plan-analytics-administration.md) | Admin analytics integration status and test procedure |
+| [Privacy erasure plan](docs/plan-gdpr-erasure-tool.md) | CLI design, implementation status and safe operating procedure |
+| [API v2 reference](docs/ref-api-v2.md) | API contract, schema and transaction rules |
+| [Changelog](docs/ref-changelog.md) | Release history |
+| [Framework inventory](docs/ref-inventory.md) | Current technical inventory and findings |
+| [License](docs/ref-license.md) | MIT license text |
+| [Markdown reference](docs/ref-markdown.md) | Parser contract, conformance and database format |
+| [Administration pilot](docs/ref-pilot.md) | Isolated two site API acceptance pilot |
+| [Version 4 release notes](docs/ref-release-4.0.0.md) | Version 4 changes and rollout notes |
+| [Smarty compatibility](docs/ref-smarty-compatibility.md) | Optional compatibility package profile |
+| [Template migration](docs/ref-template-migration.md) | Native template syntax, source inventory and migration checks |
+| [Texy migration](docs/ref-texy-migration.md) | Optional offline Texy to Markdown migration |
+
 ## Requirements
 
 * PHP 8.3 or newer. PHP 8.4 is the development target. 8.3, 8.4 and 8.5 are tested in CI.
@@ -297,9 +319,9 @@ mark trusted section HTML, such as `{$header|raw}`, `{$central|raw}` and
 3. Keep automatic escaping enabled, mark only trusted section/formatted HTML with `|raw`, and verify ordinary data in its output context. `autoEscape: false` is a temporary option for controlled legacy migration, not a compatibility guarantee.
 4. After comparing real page output and login/CSRF/logout, locale and cache behavior, select `NativeRenderer` and clear compiled, fragment, page and external HTML caches. Keep matching source/configuration backups for rollback; native-only templates cannot simply be switched back to Smarty.
 
-See [the versioned template inventory and migration contract](ref-template-migration.md)
+See [the versioned template inventory and migration contract](docs/ref-template-migration.md)
 for source identities, adapter API differences, exact expected outputs and the
-TPL-02/TPL-03 gates. Smarty is no longer a core dependency. See `compat/smarty/README.md` for the separate compatibility test/install profile.
+TPL-02/TPL-03 gates. Smarty is no longer a core dependency. See [the separate compatibility profile](docs/ref-smarty-compatibility.md) for the separate compatibility test/install profile.
 Smarty plugins, capture/section, config files, custom delimiters, smarty metadata
 and inheritance are outside the supported native language; migrate them before
 removing the compatibility dependency.
@@ -333,7 +355,7 @@ are restricted to http/https/mailto and relative paths. Default limits include
 1 MiB input and 8 MiB expanded HTML output; exceeding work/depth/size budgets
 throws LengthException. There is no unsafe HTML mode.
 
-See [the Markdown contract and conformance evidence](ref-markdown.md) for all
+See [the Markdown contract and conformance evidence](docs/ref-markdown.md) for all
 652 official CommonMark examples, 12 GFM examples, 76 exact safe-output deviations,
 source attribution and regression cases discovered beyond the official corpus.
 Use `$app->getMarkdown()` for the lazy shared service. NativeRenderer also accepts
@@ -348,7 +370,7 @@ retain their previous trusted HTML bytes. New Markdown fields render through the
 safe parser. Partial translations inherit each omitted field's original format;
 changing an existing translation format requires both text fields to be replaced
 or cleared and rejects stale concurrent format changes. Normal content writes must
-still invalidate caches. Texy is removed from the core. The reviewed reversible offline converter is documented in `ref-markdown.md` and `compat/texy-migration/README.md`. The legacy `Renderer::getFormater()->process($source)` entry now processes Markdown. Migrate actual Texy sources explicitly before using it; Texy runtime selection fails with migration instructions.
+still invalidate caches. Texy is removed from the core. The reviewed reversible offline converter is documented in [the Markdown reference](docs/ref-markdown.md) and [the Texy migration guide](docs/ref-texy-migration.md). The legacy `Renderer::getFormater()->process($source)` entry now processes Markdown. Migrate actual Texy sources explicitly before using it; Texy runtime selection fails with migration instructions.
 
 ## Internationalisation
 
@@ -825,7 +847,7 @@ The versioned server-to-server API foundation is available at `/api/v2` and
 `/api/v2/capabilities`, with HTTPS scoped integration identity at `/api/v2/identity`.
 Keys are hashed on the website and provisioned/revoked only through trusted local
 model APIs in this phase. Discovery accurately reports unavailable content CRUD.
-See [API v2 contracts, schema upgrade and audit/transaction rules](ref-api-v2.md).
+See [API v2 contracts, schema upgrade and audit/transaction rules](docs/ref-api-v2.md).
 V1 remains supported; V2 intentionally has no browser CORS and rejects OPTIONS.
 
 First-party aggregate analytics is opt-in. Before enabling it, apply
@@ -1147,7 +1169,7 @@ passwords can still log in and are upgraded once the schema supports it.
 ## Development and tests
 
 The next major version is **4.0.0**, currently in development. The
-[modernization plan](plan-framework-improvements.md) records completed work, active
+[modernization plan](docs/plan-framework-improvements.md) records completed work, active
 tasks, dependencies, migration procedures and the remaining release gates. New PHP
 features must follow the existing Application/Site/Section/Box object tree,
 namespaces, lazy services, model and renderer adapter conventions.
@@ -1181,7 +1203,7 @@ The integration tests create their tables from `tests/schema.sql`. They are skip
 
 ## License
 
-MIT, see [LICENSE.md](LICENSE.md).
+MIT, see [the license text](docs/ref-license.md).
 
 
 ## Development and deployment CLI (4.0)
@@ -1194,18 +1216,22 @@ vendor/bin/wbengine.php doctor --config=/site/src/Config/Settings.json --root=/s
 vendor/bin/wbengine.php migration:status --config=/site/src/Config/Settings.json --root=/site/src
 vendor/bin/wbengine.php analytics:prune --config=/site/src/Config/Settings.json
 vendor/bin/wbengine.php generate:box --root=/site/src --namespace=App --section=Main --module=Welcome --method=index
+vendor/bin/wbengine.php privacy:inspect --config=/site/src/Config/Settings.json --user-id=101
+vendor/bin/wbengine.php privacy:erase --config=/site/src/Config/Settings.json --user-id=101 --confirm=HASH_FROM_INSPECTION
 ```
 
 `config:check` does not contact the DB. Doctor and migration status inspect schema read-only, never run DDL. Doctor prints fixed actions without secret values and checks production Composer/OPcache, renderer, cache, proxies and optional API schema. CLI permissions and OPcache may differ from the web worker; verify that environment separately. Exit0 is success,1 failed checks,2 invalid input.
 
 The generator defaults to a JSON preview with class, template and reviewable SQL. `--write` atomically creates its files without overwriting existing paths. Inspect SQL placeholders and unpublished page metadata, choose a real page link, then apply it separately after review. Generated classes extend the existing Box tree; no new router or component framework is introduced.
 
+Privacy erasure is a privileged, local CLI workflow. First verify the request and make the installation's normal database backup, then run `privacy:inspect` and review its record counts, manual review list and one-time confirmation hash. The output contains a user ID and counts, not account fields. Pass that hash to `privacy:erase` immediately; the command rejects malformed or stale hashes, protects the last administrator, and wraps supported database mutations in an InnoDB transaction. A successful result does not cover custom application tables, article authorship or uploaded files, server/database logs, backups, or Google Analytics. Review those sources separately and repeat the command after resolving any failed step. The tool keeps aggregate analytics unchanged. Do not treat the CLI result as a legal decision about whether a request must be fulfilled.
+
 HTTP benchmarking is opt-in: `php tests/benchmarks/request-matrix.php /private/manifest.json 20 4`. Copy the documented fixture manifest and describe the real server, data and OPcache; supply your own isolated URLs and cookies. It measures off/data-warm/page-warm with anonymous, anonymous-session, logged, custom API and parallel same-session requests. Cookies are never printed. p50/p95, throughput and HTTP errors are measured; SQL, connections and server memory are null unless test-only response headers provide them. Client memory is never substituted for server memory. No benchmark code is attached to production requests.
 
 
 The isolated two-website administration acceptance pilot is documented in
-[tests/pilot/ref-pilot.md](tests/pilot/ref-pilot.md). It verifies real central forms
+[pilot guide](docs/ref-pilot.md). It verifies real central forms
 through certificate-verified PHP APIs, separate keys/databases, outage recovery,
 revocation and a real database dump/restore. See
-[book-wbengine-4-upgrade.md](book-wbengine-4-upgrade.md) for the operator upgrade
+[operator upgrade guide](docs/book-wbengine-4-upgrade.md) for the operator upgrade
 and rollback procedure. Test success does not mean production data were migrated.
