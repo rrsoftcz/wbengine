@@ -17,18 +17,9 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální stav k 2026-10-27: framework `v4.1.0` a privátní WBengine Admin `v0.2.0` jsou vydané; veřejný Skeleton App je čistě nasazen z aktuální větve `main` na novém VPS. Aplikace běží přes HTTPS s hostitelským Nginxem a PHP 8.4/MySQL 8.4 v Dockeru. Nová databáze byla naplněna verzovaným schématem a obsahem aplikace, stará produkční databáze se nepřenášela. Tabulky API a analytiky byly vytvořeny migracemi frameworku. Analytika je zatím vypnutá, takže API neoznamuje `analytics.read`; GA4 na webu zůstává podle schváleného plánu aktivní do dokončení a ověření vlastní analytiky. Původní demo heslo bylo zneplatněno a ověřeno neúspěšným HTTP 403. WBengine Admin se na VPS nehostuje, jeho lokální připojení k webu a vytvoření omezeného integračního klíče zůstává dalším krokem. Ruční převod deseti historických HTML položek je nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo.
+Aktuální stav k 2026-10-28: původní modernizační rozsah včetně vlastního Markdown, nativních šablon, API, anonymní agregované analytiky a samostatné SvelteKit administrace je implementovaný a vydaný jako WBengine `v4.1.0`, Admin `v0.2.0`. Skeleton běží na novém VPS. Analytika zůstává v produkci vypnutá a Google Analytics zůstává aktivní do samostatného porovnání a rozhodnutí uživatele. Na novém VPS byla po read-only diagnostice opravena důvěra k přesné Docker proxy adrese `172.18.0.1/32`; chráněná API identity nyní funguje přes ověřené HTTPS. Byl vytvořen pouze lokální administrační klíč s read scopes, bez zápisových oprávnění. Původní VPS `docker.rrsoft.cz` byl ověřen jen pro čtení jako `roza` v `/home/roza/docker`; další weby ani kontejnery nebyly dotčeny.
 
-### 2026-10-27: čisté nasazení Skeleton App na nový VPS
-
-- `www.wbengine.org` ukazuje na nový server. Nginx 1.24 a Certbot 2.9 obsluhují HTTP/HTTPS; certifikát Let's Encrypt je vydán, automatický timer je aktivní. `certbot renew --dry-run --no-random-sleep-on-renew` prošel.
-- Skeleton App commit `fcaf38a` běží v Docker Compose pod `/opt/wbengine-skeleton-app`; framework v kontejneru je `v4.1.0`. Docker Engine 29.9.2 a Compose 5.6.1. MySQL 8.4 je dostupný pouze uvnitř Docker sítě, webový port 8080 je publikován jen na loopbacku.
-- Databáze vznikla z prázdného svazku z aktuálních souborů `schemas/`; nebyla provedena záloha ani obnova staré databáze. Migrace frameworku `002-api-v2-integrations.sql`, `005-api-content.sql` a `006-analytics.sql` byly aplikovány. Analytics nastavení zůstává `enabled: false`.
-- Produkční `.env` má práva 0600, `Settings.json` 0640 `root:www-data`. Apache může nastavení číst, ale ostatní uživatelé na hostu nikoli. Výchozí demo heslo bylo nahrazeno náhodným bcrypt hashem; test původního přihlášení vrátil 403.
-- Ověřeno veřejně přes HTTPS: `/`, `/cs/`, `/docs/` a `/cs/docs/` vracejí 200. Healthcheck webu i databáze je healthy. Nasazení Skeleton používá commity `2416ddf` a opravu oprávnění `fcaf38a`.
-- Další krok: připravit lokální WBengine Admin pro připojení k API tohoto webu a provést neinvazivní ověření. Administrace nebude hostovaná na VPS; veřejný integrační klíč se nevytváří a analytics sběr se nepovoluje bez dalšího řízeného kroku.
-
-Nejbližší navazující krok: dokončit místní provoz administrace dle `plan-analytics-administration.md`, bezpečně jí nakonfigurovat přístup k veřejnému webu a ověřit capability/discovery a autentizaci. Vlastní analytika je implementována ve frameworku, ale její produkční sběr i zobrazení v administraci zůstávají vypnuté/nepřipojené. GA4 se vypne až po ověření vlastních metrik podle `plan-analytics.md`. Návrh nástroje pro výmaz zůstává před implementací; rozhodnutí CLI nejdřív zůstává platné.
+Aktuální pracovní fáze: privacy erasure CLI (náhled, registr handlerů, potvrzovací hash, transakční databázový výmaz, limiter cleanup) a finální dokumentační/CI checkpoint. Implementace zůstává v oddělené větvi a nebude mazat analytické agregáty. Další test uživatele se provede na lokální Admin instanci `https://localhost:13443`; produkční analytics sběr se předem nezapíná.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -856,3 +847,11 @@ Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Praco
 - PR #1 skeletonu sloučen jako 19fde667530a273e95ce05a118bd438c705520b5; PR #1 administrace jako a74892ab17205a15955264f0a1ca5a669d585ca0. Obě CI integrace používají tag v4.0.0.
 - CI master/main všech tří repozitářů prošlo; administrativní pilot zahrnul TLS, oddělení webů, výpadek/revokaci a obnovu databáze.
 - Produkční nasazení a migrace provozních dat jsou dosud neprovedené a zůstávají samostatným krokem provozovatele.
+
+
+### 2026-10-28: privacy CLI a testovací napojení
+
+- Přidán `Wbengine\Privacy` strom handlerů a koordinátoru, redigovaný `privacy:inspect` a otiskem chráněný `privacy:erase`. Databázové změny používají transakci, znovu ověřují otisk a zamykají administratorskou množinu před rozhodnutím o posledním adminovi. Analytické denní i celoživotní sumáře se nedotýkají.
+- Login limiter odstraňuje jen account a doložitelné IP/account pair soubory; IP-only čítače zůstávají. Symlinky se nemažou přes jejich cíl a chybu unlinku příkaz oznámí.
+- Dokončovací brána: celý framework suite a lint, cílené privacy regrese, Svelte Admin unit/transport testy, check a build. Přesná čísla z finálního běhu jsou v `docs/plan-gdpr-erasure-tool.md`.
+- Všechny projektové Markdown dokumenty byly přesunuty do `docs/`; root obsahuje jen README.

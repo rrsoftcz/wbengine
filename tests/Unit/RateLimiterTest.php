@@ -92,6 +92,20 @@ class RateLimiterTest extends TestCase
         $this->assertSame(0, $l->retryAfter('k', 5, 900));
     }
 
+    public function testClearReportsFailureAndUnlinksOnlyTheHashedSymlink(): void
+    {
+        $l = $this->limiter();
+        $l->hit('target-key', 900);
+        self::assertTrue($l->clear('target-key'));
+        $target = $this->dir . '/outside';
+        file_put_contents($target, 'keep');
+        self::assertTrue(symlink($target, $this->dir . '/' . hash('sha256', 'target-key') . '.rl'));
+        self::assertTrue($l->clear('target-key'));
+        self::assertFileExists($target);
+        self::assertSame('keep', file_get_contents($target));
+        self::assertTrue($l->clear('missing-key'));
+    }
+
     public function testHostileKeysStayInsideTheDirectory(): void
     {
         $l = $this->limiter();

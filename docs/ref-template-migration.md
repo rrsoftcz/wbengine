@@ -6,7 +6,7 @@ Stav k 2026-10-26: TPL-01 a TPL-02 dokončeny, TPL-03 ověřuje oddělený kompa
 
 Framework: větev `codex/wbengine-4.0`, výchozí commit `b7cf3d4`. Vzorová aplikace: lokální `wbengine-skeleton-app`, čistý commit `d22281fc86e9efd63a333ac6668b9261f22777e9`, zdroje `src/View`. Aplikace byla pouze čtena; její konfigurace již vybírá NativeRenderer. Kompilované soubory, vendor, node_modules a testovací fixtures nejsou zdrojovou inventurou.
 
-Snapshot cest, SHA-256 a kompilace je v [inventory.json](tests/fixtures/template-migration/inventory.json). Jsou to identity zdrojů v okamžiku inventury, nikoli kopie externí aplikace ani náhrada jejího checkoutu. CI na externím adresáři nezávisí. [corpus.json](tests/fixtures/template-migration/corpus.json) obsahuje 17 pojmenovaných scénářů a 31 očekávaných výsledků podle adaptéru: 30 výstupů a jednu diagnostiku nepodporovaného tagu. Dalších pět testů porovnává skutečné frameworkové šablony, včetně obou větví CAPTCHA. Při místním ověření: PHP 8.4.27 a Smarty 5.8.5, požadavek Composeru zůstává `^5.5.2`.
+Snapshot cest, SHA-256 a kompilace je v [inventory.json](../tests/fixtures/template-migration/inventory.json). Jsou to identity zdrojů v okamžiku inventury, nikoli kopie externí aplikace ani náhrada jejího checkoutu. CI na externím adresáři nezávisí. [corpus.json](../tests/fixtures/template-migration/corpus.json) obsahuje 17 pojmenovaných scénářů a 31 očekávaných výsledků podle adaptéru: 30 výstupů a jednu diagnostiku nepodporovaného tagu. Dalších pět testů porovnává skutečné frameworkové šablony, včetně obou větví CAPTCHA. Při místním ověření: PHP 8.4.27 a Smarty 5.8.5, požadavek Composeru zůstává `^5.5.2`.
 
 Knihovna obsahuje sedm `.tpl` souborů:
 

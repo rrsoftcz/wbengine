@@ -64,5 +64,19 @@ final class ConsoleCliTest extends TestCase
     {
         [$code] = $this->cli(['doctor','--password=SECRET']); self::assertSame(2, $code);
         [$code,$output] = $this->cli(['help']); self::assertSame(0, $code); self::assertStringContainsString('--no-dev --optimize-autoloader', $output);
+        self::assertStringContainsString('analytics:prune', $output);
+        self::assertStringContainsString('privacy:inspect', $output);
+        self::assertStringContainsString('privacy:erase', $output);
+    }
+
+    public function testPrivacyEraseRequiresAnExplicitTargetAndConfirmation(): void
+    {
+        [$code,$output] = $this->cli(['privacy:inspect','--config=' . dirname(__DIR__) . '/config/Settings.test.json']);
+        self::assertSame(2, $code);
+        self::assertStringContainsString('Command failed:', $output);
+        self::assertStringNotContainsString('password', strtolower($output));
+        [$code,$output] = $this->cli(['privacy:erase','--config=' . dirname(__DIR__) . '/config/Settings.test.json','--user-id=101']);
+        self::assertSame(2, $code);
+        self::assertStringNotContainsString('SQL', $output);
     }
 }

@@ -101,7 +101,12 @@ class Limiter
      */
     public function clear($key)
     {
-        @unlink($this->_file($key));
+        $file = $this->_file($key);
+        if (!file_exists($file) && !is_link($file)) {
+            return true;
+        }
+        // unlink removes the directory entry itself, never follows a symlink.
+        return @unlink($file);
     }
 
     private function _read($key)
