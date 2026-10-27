@@ -248,7 +248,7 @@ Administrace je připravená k vydání, když unit testy, HTTP testy, type-chec
 
 Stav 2026-10-27: lokální ověření i GitHub CI release gate prošly. Změny jsou na `wbengine/master` a `wbengine-admin/main`. Analytika zůstává opt-in, migration `006-analytics.sql` se musí na cílovém webu aplikovat před zapnutím. Produkční aktivace ani vypnutí GA4 zatím neproběhly.
 
-Vydání 2026-10-27: framework `v4.1.0` a soukromý admin `v0.2.0` byly publikovány. Tagy ukazují na CI ověřené commity `cdf7b90287825af5d1d0f16445c43965a56c3231` a `6e4a1253c3154ae0d1bfb88bc67ea83ab8e9d74d`. CI běhy [framework](https://github.com/rrsoftcz/wbengine/actions/runs/40573908541) a [admin](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40573888645), včetně dvouwebového API pilotu, prošly. Produkční nasazení, migrace `006-analytics.sql` a aktivace analytiky zůstávají dalším provozním krokem.
+Vydání 2026-10-27: framework `v4.1.0` a soukromý admin `v0.2.0` byly publikovány. Tagy ukazují na CI ověřené commity `cdf7b90287825af5d1d0f16445c43965a56c3231` a `6e4a1253c3154ae0d1bfb88bc67ea83ab8e9d74d`. CI běhy [framework](https://github.com/rrsoftcz/wbengine/actions/runs/40573908541) a [admin](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40573888645), včetně dvouwebového API pilotu, prošly. Skeleton App pin na `v4.1.0` a smoke opravy jsou v `main`: `5bcc949`, `49d7646`; nová [CI smoke brána](https://github.com/rrsoftcz/wbengine-skeleton-app/actions/runs/40577284046) prošla. Produkční nasazení, migrace `006-analytics.sql`, vytvoření omezeného klíče a ověření živých metrik zůstávají dalším krokem.
 
 ## Doporučené pořadí
 
