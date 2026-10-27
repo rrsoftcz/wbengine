@@ -1,6 +1,6 @@
 # Návrh vlastní analytiky WBengine
 
-Stav: schválený plán; základ API v implementaci na větvi `codex/wbengine-analytics`.
+Stav k 2026-10-27: schválený plán; analytics API a úložiště jsou součástí frameworku `v4.1.0`. Čerstvá produkční databáze má migraci 006, ale sběr je vypnutý. Připojení lokální administrace a zapnutí měření zůstávají otevřené.
 Datum: 2026-10-27.
 
 ## Záměr

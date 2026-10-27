@@ -5,7 +5,7 @@ Aktuální kontrolní bod: 2026-10-27
 
 ## Účel a stav
 
-Cílové vydání **4.0.0**, nová hlavní verze po 3.5.0, bylo zveřejněno po dokončení release gate. Aktuální oprava frameworku je vydána jako `v4.0.2`.
+Cílové vydání **4.0.0**, nová hlavní verze po 3.5.0, bylo zveřejněno po dokončení release gate. Aktuální vydání frameworku je `v4.1.0`.
 
 Trvalý společný seznam návrhů z rozboru frameworku a jejich následného doplnění uživatelem. Uživatel chce návrhy realizovat. Tento dokument zachycuje směr, priority a podmínky ověření; implementace byla zahájena v odděleném worktree `/private/tmp/wbengine-modernization`. Konkrétní návrh rozhraní a migrační postup se dopracují před jednotlivými zásahy.
 
@@ -17,9 +17,18 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální stav k 2026-10-27: původní implementační rozsah je dokončen a WBengine 4 běží na `www.wbengine.org`. Live opravy jazykového přepínače a výchozí angličtiny uživatel potvrdil jako funkční. Framework `v4.0.2` je zveřejněn v `main` i `master`; skeleton je aktualizován v `main`. Bezpečnost, výkon, nativní šablony a Markdown, migrační nástroje, API, CLI a samostatná administrace ADM-01 až ADM-05 jsou implementované. Zelená release CI a benchmarky jsou doložené níže. Produkční nasazení proběhlo; ruční převod deseti historických HTML položek zůstává nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo. Odpovědnost Codex.
+Aktuální stav k 2026-10-27: framework `v4.1.0` a privátní WBengine Admin `v0.2.0` jsou vydané; veřejný Skeleton App je čistě nasazen z aktuální větve `main` na novém VPS. Aplikace běží přes HTTPS s hostitelským Nginxem a PHP 8.4/MySQL 8.4 v Dockeru. Nová databáze byla naplněna verzovaným schématem a obsahem aplikace, stará produkční databáze se nepřenášela. Tabulky API a analytiky byly vytvořeny migracemi frameworku. Analytika je zatím vypnutá, takže API neoznamuje `analytics.read`; GA4 na webu zůstává podle schváleného plánu aktivní do dokončení a ověření vlastní analytiky. Původní demo heslo bylo zneplatněno a ověřeno neúspěšným HTTP 403. WBengine Admin se na VPS nehostuje, jeho lokální připojení k webu a vytvoření omezeného integračního klíče zůstává dalším krokem. Ruční převod deseti historických HTML položek je nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo.
 
-Nejbližší navazující krok: uživatel schválil technický směr vlastní analytiky v `plan-analytics.md`. Připravený `plan-analytics-administration.md` rozepisuje integraci soukromé SvelteKit administrace, její testy a dvouwebovou API release bránu. Další postup je zkontrolovat tento plán a nejprve implementovat frameworkové API a pilotní fixture, pak administraci. Kód ani GA4 vypnutí zatím nejsou součástí této fáze. Návrh nástroje pro výmaz zůstává před implementací; rozhodnutí CLI nejdřív zůstává platné.
+### 2026-10-27: čisté nasazení Skeleton App na nový VPS
+
+- `www.wbengine.org` ukazuje na nový server. Nginx 1.24 a Certbot 2.9 obsluhují HTTP/HTTPS; certifikát Let's Encrypt je vydán, automatický timer je aktivní. Ověření obnovy bylo spuštěno a čeká na dokončení testovacího ACME požadavku.
+- Skeleton App commit `fcaf38a` běží v Docker Compose pod `/opt/wbengine-skeleton-app`; framework v kontejneru je `v4.1.0`. Docker Engine 29.9.2 a Compose 5.6.1. MySQL 8.4 je dostupný pouze uvnitř Docker sítě, webový port 8080 je publikován jen na loopbacku.
+- Databáze vznikla z prázdného svazku z aktuálních souborů `schemas/`; nebyla provedena záloha ani obnova staré databáze. Migrace frameworku `002-api-v2-integrations.sql`, `005-api-content.sql` a `006-analytics.sql` byly aplikovány. Analytics nastavení zůstává `enabled: false`.
+- Produkční `.env` má práva 0600, `Settings.json` 0640 `root:www-data`. Apache může nastavení číst, ale ostatní uživatelé na hostu nikoli. Výchozí demo heslo bylo nahrazeno náhodným bcrypt hashem; test původního přihlášení vrátil 403.
+- Ověřeno veřejně přes HTTPS: `/`, `/cs/`, `/docs/` a `/cs/docs/` vracejí 200. Healthcheck webu i databáze je healthy. Nasazení Skeleton používá commity `2416ddf` a opravu oprávnění `fcaf38a`.
+- Další krok: dokončit dry-run obnovy certifikátu, poté připravit lokální WBengine Admin pro připojení k API tohoto webu a provést neinvazivní ověření. Administrace nebude hostovaná na VPS; veřejný integrační klíč se nevytváří a analytics sběr se nepovoluje bez dalšího řízeného kroku.
+
+Nejbližší navazující krok: dokončit místní provoz administrace dle `plan-analytics-administration.md`, bezpečně jí nakonfigurovat přístup k veřejnému webu a ověřit capability/discovery a autentizaci. Vlastní analytika je implementována ve frameworku, ale její produkční sběr i zobrazení v administraci zůstávají vypnuté/nepřipojené. GA4 se vypne až po ověření vlastních metrik podle `plan-analytics.md`. Návrh nástroje pro výmaz zůstává před implementací; rozhodnutí CLI nejdřív zůstává platné.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
