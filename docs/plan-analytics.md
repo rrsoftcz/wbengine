@@ -1,7 +1,7 @@
 # Návrh vlastní analytiky WBengine
 
-Stav k 2026-10-27: schválený plán; analytics API a úložiště jsou součástí frameworku `v4.1.0`. Čerstvá produkční databáze má migraci 006, ale sběr je vypnutý. Připojení lokální administrace a zapnutí měření zůstávají otevřené.
-Datum: 2026-10-27.
+Stav k 2026-10-28: analytics API a úložiště jsou ve frameworku `v4.1.0`, administrační dashboard ve WBengine Admin `v0.2.0`. Nový VPS má aplikovanou migraci `006`; lokální Admin byl připojen read-only a ověřil capability, identitu i čtení obsahu. Sběr na veřejném webu zůstává vypnutý záměrně, GA4 zůstává aktivní. Zapnutí měření na veřejném webu a GA4 přechod jsou provozní kroky po kontrole oznámení o soukromí a samostatném rozhodnutí provozovatele. Viz [plán integrace administrace](plan-analytics-administration.md).
+Datum: 2026-10-28.
 
 ## Záměr
 

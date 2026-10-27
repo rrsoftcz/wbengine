@@ -118,7 +118,7 @@ Funkce je připravená k uživatelskému testu, když `privacy:inspect` nic neza
 
 ### Testovací stav k 2026-10-28
 
-- Implementace privacy CLI a testy jsou připraveny v pracovní větvi; implementaci nezávisle zkontroloval reviewer bez nalezené regrese. Commit a push čekají na závěrečné ověření dostupnosti vzdáleného GitHubu.
+- Implementace privacy CLI a testy jsou publikované v GitHub větvi `codex/wbengine-privacy-erasure`, commit `d504e20`; nezávislý reviewer nenašel regresi. Push byl potvrzen odpovědí GitHubu. Pozdější opakované DNS ověření už selhalo, proto stav větve vychází z úspěšné push odpovědi.
 - Nový VPS: veřejný `capabilities` endpoint potvrzuje analytics disabled. Po potvrzení přesné Docker brány `172.18.0.1` a Nginx hlaviček byla do `Settings.json` přidána výhradně tato trusted proxy `/32` s hlavičkami `x-forwarded-for` a `x-forwarded-proto`. Web kontejner byl restartován.
 - Lokální WBengine Admin je připravený na `https://localhost:13443`, používá lokální Docker MySQL a samostatný jednorázový testovací účet. Do lokálního admin vaultu byl přes bezpečný pipe uložen HTTPS klíč s pouze čtecími scopes (`discovery:read`, obsah/preview read a `analytics:read`); žádný write scope nebyl vydán. Pinned HTTPS klient ověřil identity a přečetl kolekci článků. API dále hlásí analytics disabled, sběr nebyl zapnut a GA4 zůstává aktivní.
 - Původní VPS `docker.rrsoft.cz` byl dříve prověřen read-only přes SSH jako `roza`: projekty jsou v `/home/roza/docker`. Při závěrečném opakování zde DNS překlad hostitele selhal, proto je nutné opakovat dostupnostní kontrolu. Nebyly měněny jeho repozitáře ani kontejnery.
