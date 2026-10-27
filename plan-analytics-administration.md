@@ -205,7 +205,9 @@ Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystav
 
   Run from framework repo: `sh tests/pilot/pilot.sh start`, `sh tests/pilot/pilot.sh probe`, `sh tests/pilot/pilot.sh consumer /Users/roza/Sites/svelte/wbengine-admin`, `sh tests/pilot/pilot.sh backup-check`, potom `sh tests/pilot/pilot.sh reset`.
 
-  Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build`, `npm run test:mysql` a `npm audit --audit-level=high` prošly; npm audit nenašel zranitelnosti. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat. Po nové tabulce `cms_analytics_meta` ověřil `backup-check` 20 tabulek a 158 řádků se shodnými hashi schématu a dat; `reset` odstranil pouze pilotní kontejnery, síť a volume. GitHub CI nebylo spuštěno, protože místní `gh` token je neplatný.
+  Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build`, `npm run test:mysql` a `npm audit --audit-level=high` prošly; npm audit nenašel zranitelnosti. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat. Po nové tabulce `cms_analytics_meta` ověřil `backup-check` 20 tabulek a 158 řádků se shodnými hashi schématu a dat; `reset` odstranil pouze pilotní kontejnery, síť a volume.
+
+  Framework GitHub CI run [40570318253](https://github.com/rrsoftcz/wbengine/actions/runs/40570318253) prošel všemi 7 úlohami: PHP 8.3–8.5, MySQL 8.4, MariaDB 10.11/11.4, Texy migration a Smarty compatibility. Admin GitHub CI run [40570331198](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40570331198) prošel `test` i dvouwebovým API pilotem.
 
   Po následné revizi se CI pilot připíná na framework commit `351a5e79b0061d69a1e714552ccdd4c07b675db0`, ne na starý tag `v4.0.0`. Tento commit obsahuje nové API, migration metadata, start měření i veřejný event guard. Po vydání frameworku se pin aktualizuje na stabilní release tag.
 
@@ -215,7 +217,7 @@ Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystav
 
 - [x] **Krok 4: Zaznamenat důkazy a commitnout oba repozitáře**
 
-  Do plánu zapsat lokální pilotní důkaz. Samostatný lokální commit v obou worktree; CI a push zůstávají otevřené kroky.
+  Do plánu zapsat lokální i vzdálené CI důkazy. Samostatné commity jsou na cílových větvích framework `master` a admin `main`; zbývá vydání a nasazení.
 
 ### Task 4: Návod a připravenost k zapnutí
 
@@ -232,7 +234,7 @@ Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystav
 
 - [x] **Krok 2: Aktualizovat rozhodovací tracker**
 
-  Zapsat dokončenou implementaci, lokální testovací důkazy, migraci, retenční údržbu a otevřené nasazení. CI nebylo spuštěno. GA4 zůstává aktivní do samostatného provozního porovnání.
+  Zapsat dokončenou implementaci, lokální testovací důkazy, migraci, retenční údržbu a otevřené nasazení. Obě CI sady prošly. GA4 zůstává aktivní do samostatného provozního porovnání.
 
 - [x] **Krok 3: Ověřit změny dokumentace**
 
@@ -243,6 +245,8 @@ Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystav
 ## Hranice dokončení
 
 Administrace je připravená k vydání, když unit testy, HTTP testy, type-check/build a dvouwebový actual API pilot projdou; uživatel s omezeným grantem ani klíč bez analytics scope nezíská data; výpadky jsou srozumitelné; `no-store` a absence tajemství jsou ověřeny. GA4 se vypíná až v samostatném schváleném provozním kroku po nasazení frameworku i administrace.
+
+Stav 2026-10-27: lokální ověření i GitHub CI release gate prošly. Změny jsou na `wbengine/master` a `wbengine-admin/main`. Analytika zůstává opt-in, migration `006-analytics.sql` se musí na cílovém webu aplikovat před zapnutím. Produkční aktivace ani vypnutí GA4 zatím neproběhly.
 
 ## Doporučené pořadí
 
