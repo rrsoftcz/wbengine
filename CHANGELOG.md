@@ -7,8 +7,38 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
-Target: **4.0.0**. The major-version modernization is in progress; the roadmap tracks
-the remaining template, Markdown, API and central administration work.
+Target: **4.1.0**.
+
+### Added
+
+- Opt-in first-party analytics with daily aggregate page, article and box counts,
+  long-lived totals, configurable timezone, bounded retention and no visitor identity.
+- Read-only `GET /api/v2/analytics/overview` for integrations with the
+  `analytics:read` scope, including daily, weekly and monthly series and top content.
+- `analytics:prune` CLI command for bounded removal of expired daily aggregates.
+- Public-page measurement start marker. API responses distinguish dates before
+  measurement from dates with zero recorded views.
+
+### Upgrade notes
+
+- Apply `migrations/4.0.0/006-analytics.sql` before enabling `analytics.enabled`.
+- Analytics is disabled by default. See the README for timezone, retention,
+  administration scope and the regular `analytics:prune` command.
+
+## [4.0.2] - 2026-10-27
+
+### Fixed
+
+- Explicit locale switching now redirects without reusing a cached response.
+
+## [4.0.1] - 2026-10-26
+
+### Fixed
+
+- Debug exception pages render actionable diagnostics through the framework debug
+  template.
+
+## [4.0.0] - 2026-10-26
 
 ### Added
 

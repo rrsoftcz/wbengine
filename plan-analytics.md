@@ -113,5 +113,6 @@ MVP nebude vykazovat unikátní návštěvníky, čas na stránce, cesty mezi st
 - [x] Framework PHPUnit: 2007 testů, 5732 assertions; `composer lint` prošel a `composer audit` nenašel žádná bezpečnostní upozornění.
 - [x] Framework GitHub CI run [40570318253](https://github.com/rrsoftcz/wbengine/actions/runs/40570318253) prošel všemi sedmi úlohami. Admin GitHub CI run [40570331198](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40570331198) prošel testy i dvouwebovým API pilotem.
 - [x] Lokální checkpointy jsou pushnuté na `wbengine/master` a `wbengine-admin/main`: framework `4e46bc3`, `351a5e7`, `bc4b1f9`, `2ad8b78`; administrace `50c7487`, `34c9f68`.
+- [x] Připravené changelogy navrhují framework `v4.1.0` a soukromou administraci `v0.2.0`; tagy ani GitHub Releases zatím nebyly vytvořeny.
 - [ ] Vydat a nasadit odpovídající framework i administraci, aplikovat migraci na cílových webech a provozně ověřit metriky.
 - [ ] GA4 vypnutí zůstává samostatným krokem po porovnání trendů a aktualizaci provozních/ochranářských informací.
