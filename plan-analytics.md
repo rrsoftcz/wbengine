@@ -115,5 +115,5 @@ MVP nebude vykazovat unikátní návštěvníky, čas na stránce, cesty mezi st
 - [x] Lokální checkpointy jsou pushnuté na `wbengine/master` a `wbengine-admin/main`: framework `4e46bc3`, `351a5e7`, `bc4b1f9`, `2ad8b78`; administrace `50c7487`, `34c9f68`.
 - [x] Framework `v4.1.0` a soukromá administrace `v0.2.0` jsou publikovány jako GitHub Releases. Tagy ukazují na otestované commity `cdf7b902` a `6e4a1253`.
 - [x] Skeleton App `main` zamyká `wbengine/wbengine` na `v4.1.0` (`5bcc949`). Smoke test nyní používá framework 4.1, ověřuje aktuálních 10 článků a jazykový přepínač; lokální Docker prošel a GitHub CI [40577284046](https://github.com/rrsoftcz/wbengine-skeleton-app/actions/runs/40577284046) prošlo.
-- [ ] Nasadit Skeleton App i soukromou administraci, po záloze aplikovat migraci `006-analytics.sql`, vytvořit omezený `analytics:read` klíč a ověřit živé metriky.
+- [ ] Nasadit Skeleton App i soukromou administraci, po záloze aplikovat migraci `006-analytics.sql`, vytvořit omezený `analytics:read` klíč a ověřit živé metriky. Read-only kontrola veřejného `/api/v2/capabilities` zatím vrací API 2.0 bez `analytics.read`; produkční web není pro analytiku připraven. V tomto prostředí není nakonfigurovaný SSH alias k VPS.
 - [ ] GA4 vypnutí zůstává samostatným krokem po porovnání trendů a aktualizaci provozních/ochranářských informací.
