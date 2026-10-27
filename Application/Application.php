@@ -953,7 +953,7 @@ class Application implements ComponentParentInterface, ResponseInterface
         foreach (headers_list() as $header) {
             if (0 === stripos($header, 'Content-Type:') && false === stripos($header, 'text/html')) { return; }
         }
-        $this->getAnalyticsTracker()->record($site->getSiteId(), 'page', $site->getSiteId());
+        $this->getAnalyticsTracker()->beginPublicPage($site->getSiteId());
     }
 
     private function _hasResponseOutput(): bool

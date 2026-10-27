@@ -40,7 +40,7 @@ top_articles: [{ id, title, views }]
 top_boxes: [{ id, name, appearances }]
 ```
 
-Čítače jsou nezáporná bezpečná celá čísla. Pole `complete=false` znamená, že začátek požadovaného rozsahu už leží mimo uchovávanou denní historii. API vrací nejvýše 10 položek v každém top seznamu. Endpoint vyžaduje `analytics:read` a parametry nesmějí překročit retenci 62 dní.
+Čítače jsou nezáporná bezpečná celá čísla. Pole `complete=false` znamená, že požadované období začíná před prvním zaznamenaným veřejným zobrazením. Rozsahy mimo retenci API odmítá. API vrací nejvýše 10 položek v každém top seznamu. Endpoint vyžaduje `analytics:read` a parametry nesmějí překročit retenci 62 dní.
 
 ## Přehled souborů
 
@@ -96,7 +96,7 @@ Stav: implementováno, unit testy, transport testy, typová kontrola a produkčn
 
 - `AnalyticsGranularity = 'day' | 'week' | 'month'`.
 - `AnalyticsRange = { from: string; to: string; granularity: AnalyticsGranularity }`.
-- `parseAnalyticsRange(params: URLSearchParams, now: Date): AnalyticsRange` použije při chybějícím rozsahu posledních 30 UTC kalendářních dnů, odmítne nevalidní datum, `from > to`, neplatnou granularitu a rozsah delší než 62 dní.
+- `parseAnalyticsRange(params: URLSearchParams, now: Date): AnalyticsRange` použije při chybějícím rozsahu 30 kalendářních dat končících předchozím dnem UTC, aby datum nebylo budoucí pro žádnou platnou časovou zónu cílového webu. Odmítne nevalidní datum, `from > to`, neplatnou granularitu a rozsah delší než 62 dní.
 - `validateAnalyticsOverview(value: unknown, expected: AnalyticsRange): AnalyticsOverview` ověří kontrakt, počty, hranice období, IANA timezone, nejvýše 10 top položek a shodu požadované granularity.
 - `canReadAnalytics(role: Role, scopes: string[], capabilities: Capabilities): boolean` vrátí true pouze s povoleným site read rolí, `analytics:read` scope a `capabilities.analytics.read === true`.
 - `createAnalyticsGateway({ role, scopes, capabilities, call }).overview(range): Promise<AnalyticsOverview>` odmítne chybějící oprávnění před sítí a volá pouze GET overview.
@@ -205,7 +205,11 @@ Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystav
 
   Run from framework repo: `sh tests/pilot/pilot.sh start`, `sh tests/pilot/pilot.sh probe`, `sh tests/pilot/pilot.sh consumer /Users/roza/Sites/svelte/wbengine-admin`, `sh tests/pilot/pilot.sh backup-check`, potom `sh tests/pilot/pilot.sh reset`.
 
-  Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build` prošel. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat, `backup-check` ověřil 19 tabulek a 157 řádků se shodnými hashi schématu a dat a `reset` odstranil pouze pilotní kontejnery, síť a volume. CI run nebyl spuštěn.
+  Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build` a `npm run test:mysql` prošly. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat. Po nové tabulce `cms_analytics_meta` ověřil `backup-check` 20 tabulek a 158 řádků se shodnými hashi schématu a dat; `reset` odstranil pouze pilotní kontejnery, síť a volume. GitHub CI nebylo spuštěno, protože místní `gh` token je neplatný.
+
+  Po následné revizi se CI pilot připíná na framework analytics commit, ne na starý tag `v4.0.0`. Aktuální přesný SHA se doplní po lokálním checkpoint commitu; po vydání frameworku se pin aktualizuje na stabilní release tag.
+
+  Read-only review 2026-10-27 našel a následně byly opraveny: article/box události před veřejným HTML renderem a nepřesné `period.complete` před začátkem měření. Výchozí admin období také končí předchozím UTC dnem, aby nebylo budoucím datem na webu v západním časovém pásmu.
 
 - [x] **Krok 4: Zaznamenat důkazy a commitnout oba repozitáře**
 

@@ -832,7 +832,9 @@ First-party aggregate analytics is opt-in. Before enabling it, apply
 [`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql),
 then set `analytics.enabled` to `true` in `Settings.json`. The default retention is
 62 calendar days; set `analytics.timezone` to an IANA timezone when daily boundaries
-should follow the website's local time. `analytics:read` exposes the read-only
+should follow the website's local time. The first accepted public view stores the
+measurement start date. Overview periods beginning earlier are marked incomplete,
+so unmeasured days are not presented as confirmed zero views. `analytics:read` exposes the read-only
 `/api/v2/analytics/overview` endpoint to the private administration. The tables store
 daily counts and lifetime page/box totals; lifetime article counts remain in
 `cms_articles.views`. No visitor identifiers or individual request rows are stored.

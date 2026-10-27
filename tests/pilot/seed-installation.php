@@ -69,6 +69,7 @@ try {
         Db::insert('cms_article_translations', ['article_id' => 1, 'locale' => 'cs', 'title' => 'Pilotni clanek', 'bodytext' => '# Publikovany pilot', 'content_format' => 'markdown']);
     }
     $analyticsDay = (new DateTimeImmutable('today', new DateTimeZone('UTC')))->format('Y-m-d');
+    Db::query('INSERT INTO cms_analytics_meta (id, tracking_started_on) VALUES (1, ?) ON DUPLICATE KEY UPDATE tracking_started_on = LEAST(tracking_started_on, VALUES(tracking_started_on))', [$analyticsDay]);
     foreach ([['page', 1, 2], ['article', 1, 1], ['box', 1, 3]] as [$type, $id, $views]) {
         if (!Db::fetchAssoc('SELECT entity_id FROM cms_analytics_daily WHERE day = ? AND site_id = ? AND entity_type = ? AND entity_id = ?', [$analyticsDay, 1, $type, $id])) {
             Db::insert('cms_analytics_daily', ['day' => $analyticsDay, 'site_id' => 1, 'entity_type' => $type, 'entity_id' => $id, 'views' => $views]);

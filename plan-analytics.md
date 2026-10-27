@@ -65,7 +65,7 @@ MVP nebude vykazovat unikátní návštěvníky, čas na stránce, cesty mezi st
 
 - Rozšířit `Wbengine\\Api\\V2` o read-only scope `analytics:read`. Integrace bez tohoto scope nesmí získat žádná analytická data.
 - Doporučený první endpoint je `GET /api/v2/analytics/overview?from=YYYY-MM-DD&to=YYYY-MM-DD&granularity=day|week|month`. Vrátí webový souhrn a omezené seznamy nejnavštěvovanějších stránek, článků a boxů. Detailní endpointy podle entity mohou následovat, pokud se ukážou potřebné.
-- Odpověď přehledu bude mít `timezone`, `period` (`from`, `to`, `granularity`, `complete`), `totals` (`page_views`, `article_views`, `box_appearances`), `lifetime_totals` se stejnými klíči a `series` (`period_start` a stejné čítače) a `top_pages`, `top_articles`, `top_boxes`. Záznam top seznamu obsahuje stabilní ID, bezpečný zobrazovaný název a počet.
+- Odpověď přehledu bude mít `timezone`, `period` (`from`, `to`, `granularity`, `complete`), `totals` (`page_views`, `article_views`, `box_appearances`), `lifetime_totals` se stejnými klíči a `series` (`period_start` a stejné čítače) a `top_pages`, `top_articles`, `top_boxes`. Záznam top seznamu obsahuje stabilní ID, bezpečný zobrazovaný název a počet. `complete=false` označuje období začínající před prvním zaznamenaným veřejným zobrazením.
 - API přijme jen validní datum od/do v podporovaném rozsahu a granularitu `day`, `week` nebo `month`; maximální období omezí podle retence (výchozí nejvýše 62 kalendářních dnů včetně dnešního dne). Odpověď uvede časovou zónu, přesné hranice a informaci o chybějícím či částečném rozsahu. Nepřijímat libovolný SQL, název tabulky ani libovolnou metriku od klienta.
 - Soukromá SvelteKit administrace zobrazí přehled trendu, nejnavštěvovanější obsah a boxy a možnost přepnout denní, týdenní a měsíční souhrn. Nezavádět do administrace klientské měření webových návštěvníků.
 - Změna vyžaduje koordinované vydání frameworku, migrace vzorové aplikace a změny klienta administrace. Veřejné analytické endpointy ani veřejný dashboard nejsou cílem.
@@ -106,8 +106,10 @@ MVP nebude vykazovat unikátní návštěvníky, čas na stránce, cesty mezi st
 - [x] Integrační testy scope, odpovědi, lifetime součtů a chybných období procházejí.
 - [x] Zachytávání veřejných GET renderů, boxů s neprázdným výstupem a článků; metadata cache verze 3 počítají HIT i 304 bez návštěvnických údajů.
 - [x] Jedna request-local dávka se ukládá transakčně v omezeném počtu SQL operací; CLI `analytics:prune` maže nejvýše 1000 denních řádků na spuštění. Trvalá souborová fronta není použita, pád během právě zpracovávané odpovědi může ztratit její dávku.
-- [x] Lokální dvouwebový Docker API pilot ověřil oddělení instalací, analytics dashboard, MFA/grant omezení a nezávislé HTTPS API. Zálohovací kontrola potvrdila 19 tabulek a 157 řádků se shodnými hashi.
+- [x] Zaznamenání článků a boxů vyžaduje potvrzený anonymní veřejný HTML požadavek. Cache metadata bez validního veřejného page eventu se ignorují.
+- [x] `cms_analytics_meta` ukládá datum prvního měřeného veřejného zobrazení; API tím rozliší nezměřenou historii od nulové návštěvnosti.
+- [x] Lokální dvouwebový Docker API pilot ověřil oddělení instalací, analytics dashboard, MFA/grant omezení a nezávislé HTTPS API. Po přidání měřicího metadata ověřila zálohovací kontrola 20 tabulek a 158 řádků se shodnými hashi.
 - [x] README a administrační návod popisují opt-in konfiguraci, migraci `006`, `analytics:read`, 62denní denní historii, celoživotní součty a CLI údržbu.
-- [x] Framework PHPUnit: 2004 testů, 5725 assertions. CI nebylo spuštěno.
+- [x] Framework PHPUnit: 2007 testů, 5732 assertions; `composer lint` prošel. GitHub CI nebylo spuštěno, protože místní `gh` token je neplatný.
 - [ ] Vydat a nasadit odpovídající framework i administraci, aplikovat migraci na cílových webech a provozně ověřit metriky.
 - [ ] GA4 vypnutí zůstává samostatným krokem po porovnání trendů a aktualizaci provozních/ochranářských informací.

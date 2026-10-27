@@ -34,6 +34,8 @@ class ApiV2AnalyticsTest extends TestCase
         Db::query('CREATE TEMPORARY TABLE cms_boxes (id INT PRIMARY KEY, name VARCHAR(100)) ENGINE=InnoDB');
         Db::query('CREATE TEMPORARY TABLE cms_analytics_daily (day DATE NOT NULL, site_id INT UNSIGNED NOT NULL, entity_type VARCHAR(16) NOT NULL, entity_id INT UNSIGNED NOT NULL, views BIGINT UNSIGNED NOT NULL, PRIMARY KEY(day,site_id,entity_type,entity_id), KEY site_day(site_id,day)) ENGINE=InnoDB');
         Db::query('CREATE TEMPORARY TABLE cms_analytics_totals (site_id INT UNSIGNED NOT NULL, entity_type VARCHAR(16) NOT NULL, entity_id INT UNSIGNED NOT NULL, views BIGINT UNSIGNED NOT NULL, PRIMARY KEY(site_id,entity_type,entity_id)) ENGINE=InnoDB');
+        Db::query('CREATE TEMPORARY TABLE cms_analytics_meta (id TINYINT UNSIGNED PRIMARY KEY, tracking_started_on DATE NOT NULL) ENGINE=InnoDB');
+        Db::insert('cms_analytics_meta', ['id' => 1, 'tracking_started_on' => '2026-10-25']);
         Db::insert('cms_sites', ['site_id' => 1, 'title' => 'Home', 'visible' => 1, 'acl' => 0]);
         Db::insert('cms_articles', ['id' => 1, 'site_id' => 1, 'views' => 123, 'title' => 'Story', 'published' => 1]);
         Db::insert('cms_boxes', ['id' => 1, 'name' => 'Header']);
@@ -52,7 +54,7 @@ class ApiV2AnalyticsTest extends TestCase
     protected function tearDown(): void
     {
         foreach (array_reverse($this->tables) as $table) { Db::query('DROP TEMPORARY TABLE IF EXISTS `' . $table . '`'); }
-        Db::query('DROP TEMPORARY TABLE IF EXISTS cms_users,cms_sites,cms_articles,cms_boxes,cms_analytics_daily,cms_analytics_totals');
+        Db::query('DROP TEMPORARY TABLE IF EXISTS cms_users,cms_sites,cms_articles,cms_boxes,cms_analytics_daily,cms_analytics_totals,cms_analytics_meta');
         Config::$config = $this->oldConfig;
     }
 
@@ -116,6 +118,19 @@ class ApiV2AnalyticsTest extends TestCase
             self::assertSame(400, $response['status']);
             self::assertSame($code, $response['body']['error']['code']);
         }
+    }
+
+    public function testOverviewMarksDatesBeforeFirstMeasurementIncomplete(): void
+    {
+        Db::query('UPDATE cms_analytics_meta SET tracking_started_on = ? WHERE id = 1', ['2026-10-26']);
+        $model = new Model();
+        $issued = $model->provision(11, 'Analytics reader', ['discovery:read', 'analytics:read']);
+        $response = $this->api($model)->handle('GET', '/api/v2/analytics/overview', 'Bearer ' . $issued['key'], true, null, '', [
+            'from' => '2026-10-25', 'to' => '2026-10-27', 'granularity' => 'day',
+        ]);
+
+        self::assertSame(200, $response['status']);
+        self::assertFalse($response['body']['data']['period']['complete']);
     }
 
     private function api(Model $model): V2

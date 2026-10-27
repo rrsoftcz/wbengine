@@ -13,10 +13,19 @@ class Tracker
     private array $events = [];
     private int $eventCount = 0;
     private bool $flushed = false;
+    private ?int $publicSiteId = null;
+
+    /** Begin counting only after the application confirms an anonymous public HTML response. */
+    public function beginPublicPage(int $siteId): void
+    {
+        if ($this->flushed || $siteId < 1) { return; }
+        $this->publicSiteId = $siteId;
+        $this->record($siteId, 'page', $siteId);
+    }
 
     public function record(int $siteId, string $type, int $entityId): void
     {
-        if ($this->flushed || $siteId < 1 || $entityId < 1 || !in_array($type, ['page', 'article', 'box'], true)) { return; }
+        if ($this->flushed || null === $this->publicSiteId || $siteId !== $this->publicSiteId || $siteId < 1 || $entityId < 1 || !in_array($type, ['page', 'article', 'box'], true)) { return; }
         try { if (!Config::getAnalyticsSettings()['enabled']) { return; } }
         catch (\Throwable) { $this->logFailure(); return; }
         $key = $siteId . ':' . $type . ':' . $entityId;
@@ -49,7 +58,17 @@ class Tracker
     /** A cached page hit replays the same validated content dimensions. */
     public static function flushMetadata(array $events, ?DateTimeImmutable $now = null): void
     {
+        $page = null;
+        foreach ($events as $event) {
+            if (is_array($event) && 'page' === ($event['entity_type'] ?? null)) {
+                $siteId = (int) ($event['site_id'] ?? 0);
+                $entityId = (int) ($event['entity_id'] ?? 0);
+                if ($siteId > 0 && $entityId === $siteId) { $page = $siteId; break; }
+            }
+        }
+        if (null === $page) { return; }
         $tracker = new self();
+        $tracker->publicSiteId = $page;
         $budget = self::MAX_EVENTS;
         foreach (array_slice($events, 0, self::MAX_EVENTS) as $event) {
             if ($budget < 1) { break; }
@@ -77,6 +96,7 @@ class Tracker
             $connection->query('SET TRANSACTION READ WRITE');
             if (!$connection->begin_transaction()) { self::logFailure(); return; }
             try {
+                self::markTrackingStarted($day);
                 self::upsertDaily($events, $day);
                 self::upsertLifetime($events);
                 if ($cachedHit) { self::incrementCachedArticleViews($events); }
@@ -88,6 +108,11 @@ class Tracker
         } catch (\Throwable $e) {
             self::logFailure(get_class($e) . ':' . $e->getCode());
         }
+    }
+
+    private static function markTrackingStarted(string $day): void
+    {
+        Db::query('INSERT INTO cms_analytics_meta (id, tracking_started_on) VALUES (1, ?) ON DUPLICATE KEY UPDATE tracking_started_on = LEAST(tracking_started_on, VALUES(tracking_started_on))', [$day]);
     }
 
     private static function upsertDaily(array $events, string $day): void

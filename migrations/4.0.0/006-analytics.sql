@@ -17,3 +17,8 @@ CREATE TABLE IF NOT EXISTS cms_analytics_totals (
     views BIGINT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (site_id, entity_type, entity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cms_analytics_meta (
+    id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+    tracking_started_on DATE NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

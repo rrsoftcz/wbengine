@@ -24,6 +24,8 @@ class Overview
         $oldest = (new DateTimeImmutable('today', $zone))->modify('-' . ($settings['retentionDays'] - 1) . ' days');
         if ($from < $oldest || $to > new DateTimeImmutable('today', $zone)) { throw new Problem('invalid_period', 'The requested dates are outside the available analytics period.'); }
         $fromText = $from->format('Y-m-d'); $toText = $to->format('Y-m-d');
+        $trackingStart = Db::fetchAssoc('SELECT tracking_started_on FROM cms_analytics_meta WHERE id = 1');
+        $complete = is_array($trackingStart) && $fromText >= (string) $trackingStart['tracking_started_on'];
         $periodExpr = match ($granularity) {
             'week' => "DATE_SUB(day, INTERVAL WEEKDAY(day) DAY)",
             'month' => "DATE_FORMAT(day, '%Y-%m-01')",
@@ -35,7 +37,7 @@ class Overview
         foreach ($series as $row) { foreach (array_keys($totals) as $key) { $totals[$key] += $row[$key]; } }
         return [
             'timezone' => $timezone,
-            'period' => ['from' => $fromText, 'to' => $toText, 'granularity' => $granularity, 'complete' => true],
+            'period' => ['from' => $fromText, 'to' => $toText, 'granularity' => $granularity, 'complete' => $complete],
             'totals' => $totals,
             'lifetime_totals' => $this->lifetimeTotals(),
             'series' => $series,
