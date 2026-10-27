@@ -21,12 +21,12 @@ Aktuální stav k 2026-10-27: framework `v4.1.0` a privátní WBengine Admin `v0
 
 ### 2026-10-27: čisté nasazení Skeleton App na nový VPS
 
-- `www.wbengine.org` ukazuje na nový server. Nginx 1.24 a Certbot 2.9 obsluhují HTTP/HTTPS; certifikát Let's Encrypt je vydán, automatický timer je aktivní. Ověření obnovy bylo spuštěno a čeká na dokončení testovacího ACME požadavku.
+- `www.wbengine.org` ukazuje na nový server. Nginx 1.24 a Certbot 2.9 obsluhují HTTP/HTTPS; certifikát Let's Encrypt je vydán, automatický timer je aktivní. `certbot renew --dry-run --no-random-sleep-on-renew` prošel.
 - Skeleton App commit `fcaf38a` běží v Docker Compose pod `/opt/wbengine-skeleton-app`; framework v kontejneru je `v4.1.0`. Docker Engine 29.9.2 a Compose 5.6.1. MySQL 8.4 je dostupný pouze uvnitř Docker sítě, webový port 8080 je publikován jen na loopbacku.
 - Databáze vznikla z prázdného svazku z aktuálních souborů `schemas/`; nebyla provedena záloha ani obnova staré databáze. Migrace frameworku `002-api-v2-integrations.sql`, `005-api-content.sql` a `006-analytics.sql` byly aplikovány. Analytics nastavení zůstává `enabled: false`.
 - Produkční `.env` má práva 0600, `Settings.json` 0640 `root:www-data`. Apache může nastavení číst, ale ostatní uživatelé na hostu nikoli. Výchozí demo heslo bylo nahrazeno náhodným bcrypt hashem; test původního přihlášení vrátil 403.
 - Ověřeno veřejně přes HTTPS: `/`, `/cs/`, `/docs/` a `/cs/docs/` vracejí 200. Healthcheck webu i databáze je healthy. Nasazení Skeleton používá commity `2416ddf` a opravu oprávnění `fcaf38a`.
-- Další krok: dokončit dry-run obnovy certifikátu, poté připravit lokální WBengine Admin pro připojení k API tohoto webu a provést neinvazivní ověření. Administrace nebude hostovaná na VPS; veřejný integrační klíč se nevytváří a analytics sběr se nepovoluje bez dalšího řízeného kroku.
+- Další krok: připravit lokální WBengine Admin pro připojení k API tohoto webu a provést neinvazivní ověření. Administrace nebude hostovaná na VPS; veřejný integrační klíč se nevytváří a analytics sběr se nepovoluje bez dalšího řízeného kroku.
 
 Nejbližší navazující krok: dokončit místní provoz administrace dle `plan-analytics-administration.md`, bezpečně jí nakonfigurovat přístup k veřejnému webu a ověřit capability/discovery a autentizaci. Vlastní analytika je implementována ve frameworku, ale její produkční sběr i zobrazení v administraci zůstávají vypnuté/nepřipojené. GA4 se vypne až po ověření vlastních metrik podle `plan-analytics.md`. Návrh nástroje pro výmaz zůstává před implementací; rozhodnutí CLI nejdřív zůstává platné.
 
