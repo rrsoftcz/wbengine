@@ -248,7 +248,7 @@ Administrace je připravená k vydání, když unit testy, HTTP testy, type-chec
 
 Stav 2026-10-27: lokální ověření i GitHub CI release gate prošly. Změny jsou na `wbengine/master` a `wbengine-admin/main`. Analytika zůstává opt-in, migration `006-analytics.sql` se musí na cílovém webu aplikovat před zapnutím. Produkční aktivace ani vypnutí GA4 zatím neproběhly.
 
-Příprava vydání 2026-10-27: pracovní návrhy v `CHANGELOG.md` cílí na framework `v4.1.0` a soukromý admin `v0.2.0`. GitHub release objekty ani tagy zatím nejsou vytvořené; zveřejnění a produkční nasazení zůstávají oddělenými kroky.
+Příprava vydání 2026-10-27: pracovní návrhy v `CHANGELOG.md` cílí na framework `v4.1.0` a soukromý admin `v0.2.0`. Verze administrace je srovnána v `package.json` i `package-lock.json` a pushnuta do `main` v commitu `6e4a125`. Závěrečné GitHub CI běhy #55 frameworku a #10 administrace prošly. GitHub release objekty ani tagy zatím nejsou vytvořené; zveřejnění a produkční nasazení zůstávají oddělenými kroky.
 
 ## Doporučené pořadí
 
