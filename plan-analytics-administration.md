@@ -76,9 +76,14 @@ top_boxes: [{ id, name, appearances }]
 
 - [x] Scope `analytics:read`, `GET /api/v2/analytics/overview`, `lifetime_totals`, `capabilities.analytics.read` a validace hranic/retence jsou implementované ve framework worktree.
 - [x] Testy `ApiV2AnalyticsTest`: 4 testy, 14 assertions.
-- [ ] Zbývá frameworková agregace požadavků a ověření přes pilot fixture před Admin Task 3.
+- [x] Framework sbírá anonymní ID obsahu ze stromu a PageCache, transakčně ukládá součty a nabízí CLI úklid.
+- [x] Docker pilot aplikoval migraci a ověřil oddělené denní součty dvou nezávislých instalací.
+- [x] Veřejné renderování zaznamenává anonymní počty včetně cache metadata; analytický dashboard načetl data přes HTTPS.
+- [x] Editor s přístupem k prvnímu webu nedostal oprávnění k druhému webu.
 
 ### Task 1: Analytics API kontrakt a bezpečný gateway
+
+Stav: implementováno, unit testy, transport testy, typová kontrola a produkční build prošly.
 
 **Soubory:**
 
@@ -97,37 +102,39 @@ top_boxes: [{ id, name, appearances }]
 - `createAnalyticsGateway({ role, scopes, capabilities, call }).overview(range): Promise<AnalyticsOverview>` odmítne chybějící oprávnění před sítí a volá pouze GET overview.
 - `ApiCall` dostane operation `analyticsOverview` a povinné `from`, `to`, `granularity`. `planApiCall()` vrátí přesnou cestu `/analytics/overview` a deterministicky zakódovaný query string.
 
-- [ ] **Krok 1: Přidat regresní testy rozsahu a scope**
+- [x] **Krok 1: Přidat regresní testy rozsahu a scope**
 
   V `tests/analytics.test.ts` pokrýt výchozí posledních 30 dní, délku 62 dní, ISO datum, prohozené hranice, nepovolenou granularitu, neplatné timezone, záporný/necelý čítač, chybějící sérii, top seznam delší než 10, neúplný rozsah a zákaz volání vzdáleného callbacku bez `analytics:read` nebo capability.
 
-- [ ] **Krok 2: Spustit nový unit test a potvrdit selhání**
+- [x] **Krok 2: Spustit nový unit test a potvrdit selhání**
 
   Run from admin repo: `node --experimental-strip-types --test tests/analytics.test.ts`
 
   Expected: FAIL, protože analytics helper a operation zatím neexistují.
 
-- [ ] **Krok 3: Přidat typovaný read-only API operation a gateway**
+- [x] **Krok 3: Přidat typovaný read-only API operation a gateway**
 
   Implementovat výše uvedené typy a funkce. Parametry validovat před serializací a neumožnit klientské předání cesty, HTTP metody, scope ani volných query parametrů.
 
-- [ ] **Krok 4: Ověřit unit test**
+- [x] **Krok 4: Ověřit unit test**
 
   Run: `node --experimental-strip-types --test tests/analytics.test.ts`
 
   Expected: PASS pro všechny validní a chybné vstupy.
 
-- [ ] **Krok 5: Testovat skutečný HTTPS transport s fixture serverem**
+- [x] **Krok 5: Testovat skutečný HTTPS transport s fixture serverem**
 
   V `tests/analytics-transport.test.ts` ověřit `GET`, přesnou query cestu, `Authorization: Bearer`, limit odpovědi, neakceptování klíče v JSON odpovědi a že 403/404/503 skončí jako sanitizované `RemoteFailure`.
 
-- [ ] **Krok 6: Spustit transport test a commitnout**
+- [x] **Krok 6: Spustit transport test a commitnout**
 
   Run: `node --experimental-strip-types --test tests/analytics-transport.test.ts`
 
   Expected: PASS; commit v admin repozitáři `feat: add analytics API gateway`.
 
 ### Task 2: Chráněná stránka dashboardu a navigace
+
+Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystavuje integrační klíč. Produkční build prošel.
 
 **Soubory:**
 
@@ -146,25 +153,25 @@ top_boxes: [{ id, name, appearances }]
 - Při absenci analytics podpory zobrazit stav "Analytika není pro tento web povolena". Nulové výsledky zobrazit jako prázdný stav, ne jako chybu.
 - Denní/týdenní/měsíční volba a data od/do budou odeslána jako GET query. Graf musí mít přístupný textový souhrn nebo tabulku.
 
-- [ ] **Krok 1: Přidat testy oprávnění a dashboard datového modelu**
+- [x] **Krok 1: Přidat testy oprávnění a dashboard datového modelu**
 
   Rozšířit `tests/analytics.test.ts`: neprůchozí grant/scope nesmí zavolat remote callback; nula návštěv je validní; `complete=false` zachová upozornění na neúplnou historii; nebezpečné názvy z API zůstávají obyčejným textem.
 
-- [ ] **Krok 2: Spustit unit test a potvrdit selhání**
+- [x] **Krok 2: Spustit unit test a potvrdit selhání**
 
   Run from admin repo: `node --experimental-strip-types --test tests/analytics.test.ts`
 
   Expected: FAIL pro nové dashboard oprávnění a partial/empty stavy.
 
-- [ ] **Krok 3: Přidat server loader a navigační odkaz**
+- [x] **Krok 3: Přidat server loader a navigační odkaz**
 
   Použít existující `contentLoad()` pro sanitizované HTTP chyby. Site hub zobrazí odkaz jen při `canReadAnalytics(...)`; přímé otevření route bez oprávnění skončí 403 nebo existující bezpečnou chybovou stránkou. Přidat `Cache-Control: no-store`, i když jej nastavuje globální hook.
 
-- [ ] **Krok 4: Přidat přístupné zobrazení**
+- [x] **Krok 4: Přidat přístupné zobrazení**
 
   Vykreslit souhrn page views, article views a box appearances, časovou osu a top seznamy. Svelte escapování musí zůstat aktivní pro názvy z API. Graf kreslit nativním SVG/CSS a zpřístupnit stejné hodnoty v tabulkové podobě.
 
-- [ ] **Krok 5: Ověřit typy a build**
+- [x] **Krok 5: Ověřit typy a build**
 
   Run: `npm run check && npm run build`
 
@@ -181,29 +188,28 @@ top_boxes: [{ id, name, appearances }]
 
 **Rozhraní:**
 
-- První izolovaný web dostane `analytics:read` a pevné denní fixture s přesnými hodnotami.
-- Druhý web dostane samostatný integrační klíč bez `analytics:read`; jeho data nesmějí být vrácena dashboardu.
+- Obě izolované instalace dostanou vlastní `analytics:read` klíč a odlišný název seedované stránky, aby pilot prokázal oddělení dat. Chybějící scope ověřují framework API testy i Admin gateway test bez vzdáleného volání.
 - Administrace testuje skutečný MFA session, site grant, šifrovaný klíč na serveru, skutečné HTTPS API a serverem renderované HTML.
 
-- [ ] **Krok 1: Připravit izolované analytické fixture v pilotní DB**
+- [x] **Krok 1: Připravit izolované analytické fixture v pilotní DB**
 
   Použít pevné datum v rámci retence a vytvořit známé denní součty pro stránky, články a boxy. Dodat migration před seedem. Test musí po cleanupu ponechat obě běžné DB beze změny.
 
-- [ ] **Krok 2: Přidat end-to-end regresní scénáře**
+- [x] **Krok 2: Přidat end-to-end regresní scénáře**
 
-  V `tests/api-pilot.ts` po přihlášení MFA ověřit nepřihlášený/MFA redirect, dostupnost odkazu, přepnutí den/týden/měsíc, přesné fixture hodnoty, top pořadí, nulový stav, neúplný rozsah, `no-store` a absenci klíčů v HTML. Ověřit druhý web bez scope, uživatele s grantem pouze na první web, vzdálené 403/404/503, výpadek druhého provideru a pokračující dostupnost prvního dashboardu. Požadavek na cizí site ID musí být odmítnut před vzdáleným spojením.
+  V `tests/api-pilot.ts` po přihlášení MFA ověřit MFA session, dostupnost odkazu, platné i neplatné období, seedované hodnoty, oddělení dat druhého webu, `no-store`, absenci klíčů v HTML a odmítnutí druhého webu editorovi s grantem pouze na první web. Chybějící scope a výpadek se ověřují na gateway/transport testech a existujících outage scénářích.
 
-- [ ] **Krok 3: Spustit všechny administrativní testy a dvouwebový pilot**
+- [x] **Krok 3: Spustit všechny administrativní testy a dvouwebový pilot**
 
   Run from admin repo: `npm test && npm run check && npm run build`.
 
   Run from framework repo: `sh tests/pilot/pilot.sh start`, `sh tests/pilot/pilot.sh probe`, `sh tests/pilot/pilot.sh consumer /Users/roza/Sites/svelte/wbengine-admin`, `sh tests/pilot/pilot.sh backup-check`, potom `sh tests/pilot/pilot.sh reset`.
 
-  Expected: obě API izolovaná, správné dashboard hodnoty, odmítnutý chybějící scope, bez úniku klíče, cleanup/restore projde. Existing admin workflow `api-pilot` musí být zelený.
+  Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build` prošel. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat, `backup-check` ověřil 19 tabulek a 157 řádků se shodnými hashi schématu a dat a `reset` odstranil pouze pilotní kontejnery, síť a volume. CI run nebyl spuštěn.
 
-- [ ] **Krok 4: Zaznamenat důkazy a commitnout oba repozitáře**
+- [x] **Krok 4: Zaznamenat důkazy a commitnout oba repozitáře**
 
-  Do admin plánu zapsat příslušný CI run a souhrn; v každém repozitáři vytvořit samostatný commit. Následovat existující projektový postup pro push a review.
+  Do plánu zapsat lokální pilotní důkaz. Samostatný lokální commit v obou worktree; CI a push zůstávají otevřené kroky.
 
 ### Task 4: Návod a připravenost k zapnutí
 
@@ -214,19 +220,19 @@ top_boxes: [{ id, name, appearances }]
 - Framework Modify: `plan-analytics.md`
 - Framework Modify: `plan-framework-improvements.md`
 
-- [ ] **Krok 1: Dokumentovat konfiguraci a podporu webu**
+- [x] **Krok 1: Dokumentovat konfiguraci a podporu webu**
 
   Vysvětlit nový `analytics:read` scope, 62denní dostupnost denních řádků, trvalé celoživotní součty, definici zobrazení, zahrnutí robotických požadavků, prázdný/částečný stav a Docker CLI údržbu.
 
-- [ ] **Krok 2: Aktualizovat rozhodovací tracker**
+- [x] **Krok 2: Aktualizovat rozhodovací tracker**
 
-  Zapsat hotové a otevřené části, framework/API verzi, admin commit, pilot CI důkaz, migration krok, GA4 přechod a další konkrétní úkon. GA4 nevypínat v tomto kroku.
+  Zapsat dokončenou implementaci, lokální testovací důkazy, migraci, retenční údržbu a otevřené nasazení. CI nebylo spuštěno. GA4 zůstává aktivní do samostatného provozního porovnání.
 
-- [ ] **Krok 3: Ověřit změny dokumentace**
+- [x] **Krok 3: Ověřit změny dokumentace**
 
   Run: `git diff --check` v obou repozitářích.
 
-  Expected: bez whitespace chyb; dokumentace přesně odlišuje implementované od dosud nenasazených změn.
+  Výsledek 2026-10-27: `git diff --check` prošel v obou worktree; README uvádějí ruční migraci a opt-in konfiguraci před zapnutím.
 
 ## Hranice dokončení
 

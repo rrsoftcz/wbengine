@@ -50,6 +50,12 @@ class PageCache
         return self::$_bypassed;
     }
 
+    /** Check an existing session cookie without starting or modifying a PHP session. */
+    public static function isLoggedInRequest(): bool
+    {
+        return self::_isLoggedIn();
+    }
+
     /** @var callable|null returns the response headers, headers_list() unless replaced */
     private static $_headerProvider = null;
 
@@ -97,8 +103,8 @@ class PageCache
         self::$_path = $path;
 
         $page = Cache::fetch(self::$_key, $found);
-        if ($found && is_array($page) && 2 === ($page['format'] ?? null)
-            && isset($page['body'], $page['etag'], $page['headers']) && is_array($page['headers'])) {
+        if ($found && is_array($page) && 3 === ($page['format'] ?? null)
+            && isset($page['body'], $page['etag'], $page['headers'], $page['analytics']) && is_array($page['headers']) && is_array($page['analytics'])) {
             self::_serve($page);
         }
 
@@ -234,6 +240,10 @@ class PageCache
         header('X-WBengine-Cache: HIT');
         header('ETag: ' . $page['etag']);
 
+        if (3 === ($page['format'] ?? null) && isset($page['analytics']) && is_array($page['analytics'])) {
+            \Wbengine\Analytics\Tracker::flushMetadata($page['analytics']);
+        }
+
         if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === $page['etag']) {
             http_response_code(304);
             exit;
@@ -251,8 +261,9 @@ class PageCache
     {
         try {
             if (self::_mayStore($buffer)) {
+                $analytics = self::$_app->getAnalyticsTracker()->metadata();
                 Cache::store(self::$_key, array('body' => $buffer, 'etag' => '"' . md5($buffer) . '"',
-                    'headers' => self::_reusableHeaders(), 'format' => 2), self::$_ttl);
+                    'headers' => self::_reusableHeaders(), 'analytics' => $analytics, 'format' => 3), self::$_ttl);
                 self::_mark('MISS-STORED');
             } else {
                 self::_mark('BYPASS');

@@ -75,6 +75,10 @@ class ArticleModel extends ModelAbstract {
     Public function updateViews($id)
     {
         $id = (int)$id;
+        $application = method_exists($this->site, 'getParent') ? $this->site->getParent() : null;
+        if (is_object($application) && method_exists($application, 'getAnalyticsTracker')) {
+            $application->getAnalyticsTracker()->record($this->site->getSiteId(), 'article', $id);
+        }
         $settings = Config::getViewCounterSettings();
         $write = function ($count) use ($id) {
             Db::query(sprintf("UPDATE %s SET views = views + ? WHERE id = ?;", S_TABLE_ARTICLES), array((int)$count, $id));

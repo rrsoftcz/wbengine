@@ -8,6 +8,7 @@ Stav 2026-10-26: API-01 až API-04 implementovány, obsahové operace mají tran
 
 - `GET /api/v2` a `/api/v2/capabilities`: veřejná minimální verze API 2.0, capability flags a stránkovací smlouva. Bez připojení k DB, serverových cest či diagnostických verzí.
 - `GET /api/v2/identity`: HTTPS, Bearer integration key a scope `discovery:read`. Vrací ID/název/scopes integrace, nikoli její klíč.
+- `GET /api/v2/analytics/overview`: HTTPS, Bearer key se scope `analytics:read`, capability `analytics.read` a migration `006-analytics.sql`. Vrací souhrn podle zadaného období a časové zóny, top stránky/články/boxy a lifetime totals. Denní historii omezuje konfigurace `analytics.retentionDays`; endpoint nepřijímá návštěvnické identifikátory.
 - Úspěch: `success: true`, `data`, případně `pagination`. Chyba: `success: false`, `error.code`, `error.message`. Neznámé cesty 404, nepovolené metody 405 s Allow. Interní DB chyby 503 s obecným textem.
 
 V2 je server-to-server rozhraní pro server centrální administrace. Neposkytuje CORS prohlížeči, OPTIONS vrací 405. Webový prohlížeč komunikuje s centrálním serverem, nikoli přímo s integračním klíčem webu. HTTPS za proxy používá již nastavenou politiku důvěryhodných proxy; náhodný forwarded header není důkaz TLS.

@@ -104,9 +104,10 @@ MVP nebude vykazovat unikátní návštěvníky, čas na stránce, cesty mezi st
 - [x] Přidána migrace `006-analytics.sql` pro denní součty a trvalé počty stránek/boxů. Migraci je nutné ručně aplikovat před zapnutím.
 - [x] Přidána validace nastavení a rozsahu; analytika je ve výchozím stavu vypnutá.
 - [x] Integrační testy scope, odpovědi, lifetime součtů a chybných období procházejí.
-- [ ] Zachytávání MISS/HIT/304 a identifikátorů stránky, článku a vykreslených boxů.
-- [ ] Obnovitelné dávkování, CLI flush a promazávání denní retence.
-- [ ] Bezpečnostní/performance test cache hitů a následné doplnění SvelteKit administrace.
-- [ ] Dokumentace, dvouwebový pilot a GA4 přechod.
-
-Dalším krokem je naplnit denní agregace z veřejného stromového renderování a PageCache, poté dokončit Admin Tasks 1–4 podle `plan-analytics-administration.md`.
+- [x] Zachytávání veřejných GET renderů, boxů s neprázdným výstupem a článků; metadata cache verze 3 počítají HIT i 304 bez návštěvnických údajů.
+- [x] Jedna request-local dávka se ukládá transakčně v omezeném počtu SQL operací; CLI `analytics:prune` maže nejvýše 1000 denních řádků na spuštění. Trvalá souborová fronta není použita, pád během právě zpracovávané odpovědi může ztratit její dávku.
+- [x] Lokální dvouwebový Docker API pilot ověřil oddělení instalací, analytics dashboard, MFA/grant omezení a nezávislé HTTPS API. Zálohovací kontrola potvrdila 19 tabulek a 157 řádků se shodnými hashi.
+- [x] README a administrační návod popisují opt-in konfiguraci, migraci `006`, `analytics:read`, 62denní denní historii, celoživotní součty a CLI údržbu.
+- [x] Framework PHPUnit: 2004 testů, 5725 assertions. CI nebylo spuštěno.
+- [ ] Vydat a nasadit odpovídající framework i administraci, aplikovat migraci na cílových webech a provozně ověřit metriky.
+- [ ] GA4 vypnutí zůstává samostatným krokem po porovnání trendů a aktualizaci provozních/ochranářských informací.

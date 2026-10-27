@@ -92,6 +92,9 @@ class Application implements ComponentParentInterface, ResponseInterface
      */
     private $_site = NULL;
 
+    /** Request-local aggregate analytics collector. */
+    private ?\Wbengine\Analytics\Tracker $_analyticsTracker = null;
+
     /**
      * Site Vars
      * @var Vars
@@ -806,6 +809,11 @@ class Application implements ComponentParentInterface, ResponseInterface
         return $this->_site;
     }
 
+    public function getAnalyticsTracker(): \Wbengine\Analytics\Tracker
+    {
+        return $this->_analyticsTracker ??= new \Wbengine\Analytics\Tracker();
+    }
+
 
     /** Register a deferred GET handler. Call run() after configuration is complete. */
     public function get($path, $callable)
@@ -927,12 +935,25 @@ class Application implements ComponentParentInterface, ResponseInterface
         if ($this->_requestFinished) {
             return;
         }
+        $this->_trackPublicPageView();
         if (Config::isDebugEnabled()) {
             $this->setEndtime(microtime(true));
             $this->setValue('debug', new Debug($this));
         }
         $this->_requestFinished = true;
         $this->getRenderer()->dispatch($this);
+        $this->getAnalyticsTracker()->flush();
+    }
+
+    private function _trackPublicPageView(): void
+    {
+        if ('GET' !== ($_SERVER['REQUEST_METHOD'] ?? '') || 200 !== http_response_code() || !$this->_cmsInitialized) { return; }
+        $site = $this->getSite();
+        if (!$site->isLoaded() || (int) $site->acl > 0 || PageCache::isLoggedInRequest()) { return; }
+        foreach (headers_list() as $header) {
+            if (0 === stripos($header, 'Content-Type:') && false === stripos($header, 'text/html')) { return; }
+        }
+        $this->getAnalyticsTracker()->record($site->getSiteId(), 'page', $site->getSiteId());
     }
 
     private function _hasResponseOutput(): bool
