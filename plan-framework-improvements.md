@@ -1,10 +1,11 @@
 # Plán zlepšení WBengine
 
-Datum: 2026-10-25
+Zahájeno: 2026-10-25
+Aktuální kontrolní bod: 2026-10-27
 
 ## Účel a stav
 
-Cílové vydání: **4.0.0**, nová hlavní verze po 3.5.0. Vydání `v4.0.0` bylo zveřejněno po dokončení release gate; produkční nasazení zůstává samostatnou řízenou operací.
+Cílové vydání **4.0.0**, nová hlavní verze po 3.5.0, bylo zveřejněno po dokončení release gate. Aktuální oprava frameworku je vydána jako `v4.0.2`.
 
 Trvalý společný seznam návrhů z rozboru frameworku a jejich následného doplnění uživatelem. Uživatel chce návrhy realizovat. Tento dokument zachycuje směr, priority a podmínky ověření; implementace byla zahájena v odděleném worktree `/private/tmp/wbengine-modernization`. Konkrétní návrh rozhraní a migrační postup se dopracují před jednotlivými zásahy.
 
@@ -16,7 +17,9 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální etapa: implementace bezpečnosti, výkonu, vlastních šablon/Markdownu, migračních nástrojů, API a CLI dokončena a samostatně verzována. Centrální administrace ADM-01 až ADM-05 dokončena v samostatném privátním repozitáři, kontrolní bod357d410. Finální integrační review nalezlo a regresně ověřilo dvě opravy propojení box nastavení a generátoru. Běžná CI matice všech pěti PHP/DB kombinací a obě volitelné kompatibilní sady znovu zelené. REL-01 je dokončen. Jádro, skeleton a administrace jsou sloučeny; tag a GitHub release v4.0.0 byly zveřejněny po zelených CI hlavních větví. Produkční nasazení ani převod produkčních dat neproběhly. Merge commity: jádro cf710e5, skeleton 19fde66, administrace a74892a. Odpovědnost Codex.
+Aktuální stav k 2026-10-27: původní implementační rozsah je dokončen a WBengine 4 běží na `www.wbengine.org`. Live opravy jazykového přepínače a výchozí angličtiny uživatel potvrdil jako funkční. Framework `v4.0.2` je zveřejněn v `main` i `master`; skeleton je aktualizován v `main`. Bezpečnost, výkon, nativní šablony a Markdown, migrační nástroje, API, CLI a samostatná administrace ADM-01 až ADM-05 jsou implementované. Zelená release CI a benchmarky jsou doložené níže. Produkční nasazení proběhlo; ruční převod deseti historických HTML položek zůstává nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo. Odpovědnost Codex.
+
+Nejbližší plánovaná fáze: žádná nová implementační fáze není schválena. Doporučený další krok je pilot vzdálené administrace proti oddělenému testovacímu webu, následně rozhodnutí o jejím připojení k live. Historické HTML se nepřevádí bez výslovného výběru a schválení konkrétních záznamů.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
