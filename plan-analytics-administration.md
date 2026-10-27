@@ -205,7 +205,7 @@ Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystav
 
   Run from framework repo: `sh tests/pilot/pilot.sh start`, `sh tests/pilot/pilot.sh probe`, `sh tests/pilot/pilot.sh consumer /Users/roza/Sites/svelte/wbengine-admin`, `sh tests/pilot/pilot.sh backup-check`, potom `sh tests/pilot/pilot.sh reset`.
 
-  Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build` a `npm run test:mysql` prošly. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat. Po nové tabulce `cms_analytics_meta` ověřil `backup-check` 20 tabulek a 158 řádků se shodnými hashi schématu a dat; `reset` odstranil pouze pilotní kontejnery, síť a volume. GitHub CI nebylo spuštěno, protože místní `gh` token je neplatný.
+  Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build`, `npm run test:mysql` a `npm audit --audit-level=high` prošly; npm audit nenašel zranitelnosti. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat. Po nové tabulce `cms_analytics_meta` ověřil `backup-check` 20 tabulek a 158 řádků se shodnými hashi schématu a dat; `reset` odstranil pouze pilotní kontejnery, síť a volume. GitHub CI nebylo spuštěno, protože místní `gh` token je neplatný.
 
   Po následné revizi se CI pilot připíná na framework commit `351a5e79b0061d69a1e714552ccdd4c07b675db0`, ne na starý tag `v4.0.0`. Tento commit obsahuje nové API, migration metadata, start měření i veřejný event guard. Po vydání frameworku se pin aktualizuje na stabilní release tag.
 

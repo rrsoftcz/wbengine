@@ -110,6 +110,7 @@ MVP nebude vykazovat unikátní návštěvníky, čas na stránce, cesty mezi st
 - [x] `cms_analytics_meta` ukládá datum prvního měřeného veřejného zobrazení; API tím rozliší nezměřenou historii od nulové návštěvnosti.
 - [x] Lokální dvouwebový Docker API pilot ověřil oddělení instalací, analytics dashboard, MFA/grant omezení a nezávislé HTTPS API. Po přidání měřicího metadata ověřila zálohovací kontrola 20 tabulek a 158 řádků se shodnými hashi.
 - [x] README a administrační návod popisují opt-in konfiguraci, migraci `006`, `analytics:read`, 62denní denní historii, celoživotní součty a CLI údržbu.
-- [x] Framework PHPUnit: 2007 testů, 5732 assertions; `composer lint` prošel. GitHub CI nebylo spuštěno, protože místní `gh` token je neplatný.
+- [x] Framework PHPUnit: 2007 testů, 5732 assertions; `composer lint` prošel a `composer audit` nenašel žádná bezpečnostní upozornění. GitHub CI nebylo spuštěno, protože místní `gh` token je neplatný.
+- [x] Lokální checkpointy: framework `4e46bc3` a `351a5e7`; administrace `50c7487` a `34c9f68`. Změny zatím nejsou pushnuté.
 - [ ] Vydat a nasadit odpovídající framework i administraci, aplikovat migraci na cílových webech a provozně ověřit metriky.
 - [ ] GA4 vypnutí zůstává samostatným krokem po porovnání trendů a aktualizaci provozních/ochranářských informací.
