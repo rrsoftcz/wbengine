@@ -49,13 +49,24 @@ class ApiV2ContentValidationTest extends TestCase
         }
     }
 
-    public function testArticleSourceCannotBecomeAnExecutableHref(): void
+    public function testArticleSourceIsOptionalFreeText(): void
     {
-        foreach (['javascript:alert(1)', 'data:text/html,<script>bad()</script>', " javascript:bad()", "java\nscript:bad()"] as $source) {
-            try { Resources::validate('articles', ['source' => $source], ['content_format' => 'markdown']); self::fail('Executable source URL accepted'); }
-            catch (Problem $e) { self::assertSame('invalid_source', $e->errorCode); }
+        $values = ['https://example.test/reference', '/references/book/', '#reference', 'Plain Name, The Book (2020)', 'javascript:alert(1)', 'data:text/html,<b>x</b>', "Zdroj: \u{010D}esky", str_repeat('a', 255), '', null];
+        foreach ($values as $source) { self::assertSame($source, Resources::validate('articles', ['source' => $source])['source']); }
+        self::assertArrayNotHasKey('source', Resources::validate('articles', ['title' => 'Without source']));
+    }
+
+    public function testArticleSourceRejectsControlCharactersAndLongText(): void
+    {
+        foreach (["line\nbreak", "tab\tsource", "bell\x07", "del\x7f"] as $source) {
+            try { Resources::validate('articles', ['source' => $source]); self::fail('Control character accepted'); }
+            catch (Problem $e) {
+                self::assertSame('invalid_source', $e->errorCode);
+                self::assertSame('Source must be plain text without control characters.', $e->getMessage());
+            }
         }
-        foreach (['https://example.test/reference', '/references/book/', '#reference', '', null] as $source) { self::assertSame($source, Resources::validate('articles', ['source' => $source])['source']); }
+        try { Resources::validate('articles', ['source' => str_repeat('a', 256)]); self::fail('Too long source accepted'); }
+        catch (Problem $e) { self::assertSame(400, $e->getCode()); }
     }
 
     public function testStrictTypesPathAndUtf8Validation(): void

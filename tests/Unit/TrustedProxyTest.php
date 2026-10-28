@@ -204,4 +204,20 @@ class TrustedProxyTest extends TestCase
         $this->assertSame('10.0.0.1', $context->getClientIp());
         $this->assertSame('10.0.0.1', Http::getClientIp());
     }
+
+    public function testUrlHostNameFollowsTrustedForwardedProto(): void
+    {
+        $url = (new \ReflectionClass(\Wbengine\Url::class))->newInstanceWithoutConstructor();
+        $base = ['SERVER_PROTOCOL' => 'HTTP/1.1', 'HTTP_HOST' => 'example.test', 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_PROTO' => 'https'];
+        $this->policy(['10.0.0.0/8']);
+        $_SERVER = $base;
+        $this->assertSame('https://example.test', $url->getHostName());
+        $_SERVER = ['REMOTE_ADDR' => '203.0.113.5'] + $base;
+        $this->assertSame('http://example.test', $url->getHostName(), 'untrusted peer cannot choose the scheme');
+        $this->policy([]);
+        $_SERVER = $base;
+        $this->assertSame('http://example.test', $url->getHostName());
+        $_SERVER = ['HTTPS' => 'on'] + $base;
+        $this->assertSame('https://example.test', $url->getHostName());
+    }
 }

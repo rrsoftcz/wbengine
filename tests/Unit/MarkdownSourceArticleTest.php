@@ -62,4 +62,60 @@ class MarkdownSourceArticleTest extends TestCase
         $this->expectException(\UnexpectedValueException::class);
         $this->article($this->row(['content_format' => 'html', 'introtext' => 'text']))->getArticleBox();
     }
+
+    private function byline(array $fields): string
+    {
+        $html = $this->article($this->row($fields))->getArticleBox();
+        return preg_match('~<p class="story-byline">.*?</p>~s', $html, $m) ? $m[0] : '';
+    }
+
+    public function testSourceThatIsNotALinkIsPlainEscapedText(): void
+    {
+        $html = $this->byline(['author' => 'Ann', 'source' => 'Book <b>One</b>, 2020']);
+        self::assertStringContainsString('Book &lt;b&gt;One&lt;/b&gt;, 2020', $html);
+        self::assertStringNotContainsString('<a ', $html);
+    }
+
+    public function testDangerousSchemesNeverBecomeLinks(): void
+    {
+        foreach (['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,<script>x</script>', 'vbscript:x', '//evil.example/x', 'ftp://example.test/f'] as $source) {
+            $html = $this->byline(['source' => $source]);
+            self::assertStringNotContainsString('<a ', $html, $source);
+            self::assertStringNotContainsString('href', $html, $source);
+            self::assertStringContainsString('Source:', $html, $source);
+            self::assertStringNotContainsString('<script>', $html, $source);
+        }
+    }
+
+    public function testValidSourceBecomesLink(): void
+    {
+        $html = $this->byline(['source' => 'https://example.test/a?b=1&c=2']);
+        self::assertStringContainsString('<a href="https://example.test/a?b=1&amp;c=2" rel="noopener noreferrer">', $html);
+        $html = $this->byline(['author' => 'Ann', 'source' => '/references/book/']);
+        self::assertStringContainsString('<a href="/references/book/">/references/book/</a>', $html);
+        self::assertStringNotContainsString('noopener', $html);
+        self::assertStringContainsString('<a href="#note">', $this->byline(['source' => '#note']));
+    }
+
+    public function testEmptyAuthorAndSourceRenderNoLabelsOrLine(): void
+    {
+        foreach ([['author' => '', 'source' => ''], ['author' => null, 'source' => null], ['author' => '  ', 'source' => ' ']] as $fields) {
+            $html = $this->article($this->row($fields))->getArticleBox();
+            self::assertStringNotContainsString('story-byline', $html);
+            self::assertStringNotContainsString('Source:', $html);
+            self::assertStringNotContainsString('Author:', $html);
+            self::assertStringNotContainsString('<a ', $html);
+        }
+    }
+
+    public function testBylineShowsOnlyFilledValues(): void
+    {
+        $html = $this->byline(['author' => 'Ann', 'source' => '']);
+        self::assertStringContainsString('Ann', $html);
+        self::assertStringNotContainsString('Source:', $html);
+        $html = $this->byline(['author' => '', 'source' => 'A book']);
+        self::assertStringContainsString('A book', $html);
+        self::assertStringContainsString('Source:', $html);
+        self::assertStringNotContainsString('Author:', $html);
+    }
 }

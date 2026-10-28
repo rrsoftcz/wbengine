@@ -57,7 +57,33 @@ class Article extends WbengineStaticBox
                 $article->$field = $this->getParent()->getSite()->getParent()->getMarkdown()->render($article->$field ?? '');
             }
         }
+        foreach (self::sourceView($article->source ?? null) as $key => $value) { $article->$key = $value; }
+        $article->byline = '' !== trim((string) ($article->author ?? '')) || null !== $article->source_text;
         return $article;
+    }
+
+    /**
+     * Describe the free text article source for output: plain text, or a link when it is
+     * safe to link (an http or https URL, a local absolute path or a fragment). Any other
+     * scheme, such as javascript: or data:, is only ever shown as escaped text.
+     *
+     * @return array{source_text: ?string, source_href: ?string, source_external: bool}
+     */
+    public static function sourceView($source): array
+    {
+        $text = is_string($source) ? trim($source) : '';
+        if ('' === $text) { return ['source_text' => null, 'source_href' => null, 'source_external' => false]; }
+        $href = null;
+        $external = false;
+        if (!preg_match('/[\\\\\x00-\x20\x7f]/', $text)) {
+            if (in_array(strtolower((string) parse_url($text, PHP_URL_SCHEME)), ['http', 'https'], true) && false !== filter_var($text, FILTER_VALIDATE_URL)) {
+                $href = $text;
+                $external = true;
+            } elseif ((str_starts_with($text, '/') && !str_starts_with($text, '//')) || str_starts_with($text, '#')) {
+                $href = $text;
+            }
+        }
+        return ['source_text' => $text, 'source_href' => $href, 'source_external' => $external];
     }
 
     /**

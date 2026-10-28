@@ -137,7 +137,7 @@ class NativeRendererTest extends TestCase
             $this->assertStringNotContainsString('Username', $html);
 
             $article = $this->renderer();
-            $article->assign('Article', (object) ['title' => 'T', 'author' => 'A', 'source' => 'S', 'introtext' => '', 'bodytext' => '']);
+            $article->assign('Article', (object) ['title' => 'T', 'author' => 'A', 'byline' => true, 'source_text' => 'S', 'source_href' => null, 'source_external' => false, 'introtext' => '', 'bodytext' => '']);
             $article->assign('t', $this->labels(['author', 'source'], 'article'));
             $this->assertStringContainsString('Autor:', $article->fetch($this->framework . '/Box/Article/View/Article.tpl'));
         } finally {
@@ -170,6 +170,10 @@ class NativeRendererTest extends TestCase
             'title' => '<script>t</script>',
             'author' => '<img src=x onerror=a>',
             'source' => '"><svg>',
+            'byline' => true,
+            'source_text' => '"><svg>',
+            'source_href' => '"><svg>',
+            'source_external' => true,
             'introtext' => '<p class="intro">Intro <b>bold</b></p>',
             'bodytext' => '<h2>Body</h2>',
         );
