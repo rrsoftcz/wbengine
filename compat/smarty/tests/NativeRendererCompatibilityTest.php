@@ -137,7 +137,7 @@ class NativeRendererCompatibilityTest extends TestCase
             $this->assertStringNotContainsString('Username', $html);
 
             $article = $this->renderer();
-            $article->assign('Article', (object) ['title' => 'T', 'author' => 'A', 'source' => 'S', 'introtext' => '', 'bodytext' => '']);
+            $article->assign('Article', (object) ['title' => 'T', 'author' => 'A', 'byline' => true, 'source_text' => 'S', 'source_href' => null, 'source_external' => false, 'introtext' => '', 'bodytext' => '']);
             $article->assign('t', $this->labels(['author', 'source'], 'article'));
             $this->assertStringContainsString('Autor:', $article->fetch($this->framework . '/Box/Article/View/Article.tpl'));
         } finally {
@@ -170,6 +170,10 @@ class NativeRendererCompatibilityTest extends TestCase
             'title' => '<script>t</script>',
             'author' => '<img src=x onerror=a>',
             'source' => '"><svg>',
+            'byline' => true,
+            'source_text' => '"><svg>',
+            'source_href' => '"><svg>',
+            'source_external' => true,
             'introtext' => '<p class="intro">Intro <b>bold</b></p>',
             'bodytext' => '<h2>Body</h2>',
         );
@@ -188,7 +192,7 @@ class NativeRendererCompatibilityTest extends TestCase
 
     public function testBundledTemplatesAreIdenticalInSmarty(): void
     {
-        $article = (object) array('title' => 'T & <U>', 'author' => 'A', 'source' => 'http://x?a=1&b=2', 'introtext' => '<p>i</p>', 'bodytext' => '<p>b</p>');
+        $article = (object) array('title' => 'T & <U>', 'author' => 'A', 'source' => 'http://x?a=1&b=2', 'byline' => true, 'source_text' => 'http://x?a=1&b=2', 'source_href' => 'http://x?a=1&b=2', 'source_external' => true, 'introtext' => '<p>i</p>', 'bodytext' => '<p>b</p>');
         $smarty = new \Wbengine\Renderer\Adapter\SmartyRenderer();
         $smarty->setTemplateDir($this->framework . '/Box');
         $smarty->setCompileDir($this->dir . '/compiled');
