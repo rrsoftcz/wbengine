@@ -205,6 +205,7 @@ class Integrations extends WbengineBoxAbstract
             'action' => $this->formAction(),
             'defaultName' => self::DEFAULT_NAME,
             'scopes' => $this->scopeDescriptions(),
+            'scopeCount' => count(self::PROFILE_SCOPES),
             'integrations' => $list,
             'rotatable' => $rotatable,
             'issued' => $issued,
@@ -259,7 +260,7 @@ class Integrations extends WbengineBoxAbstract
         $this->sendPrivateHeaders();
         $this->getRenderer()->assign('view', [
             't' => $this->texts(), 'error' => I18n::t('wb.integrations.' . $messageKey), 'notice' => '', 'problems' => [],
-            'canIssue' => false, 'showList' => false, 'issued' => null, 'scopes' => [], 'integrations' => [], 'rotatable' => [],
+            'canIssue' => false, 'showList' => false, 'issued' => null, 'scopes' => [], 'scopeCount' => 0, 'integrations' => [], 'rotatable' => [],
             'address' => '', 'action' => '', 'defaultName' => '', 'tokens' => ['issue' => '', 'revoke' => ''],
         ], true);
         return $this->getRenderer()->render(self::TEMPLATE, null, true);

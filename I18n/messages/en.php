@@ -50,6 +50,7 @@ return array(
     'wb.integrations.connect_help' => 'The key gets the profile "Site management in WBengine Admin": it can read and edit the content, translations and images, preview and publish. It cannot be changed later, a different set of permissions always means a new key.',
     'wb.integrations.name_label' => 'Integration name',
     'wb.integrations.name_default' => 'WBengine Admin',
+    'wb.integrations.name_help' => 'A label that helps you recognise this key in the list below, for example the application that will use it. It is stored with the key and is returned by the API as the name of the integration. It does not grant or limit any permission and cannot be changed later: to use another name, issue a new key.',
     'wb.integrations.scopes_title' => 'Permissions of the key',
     'wb.integrations.password_label' => 'Your password',
     'wb.integrations.password_help' => 'Confirm the change with the password of your account.',

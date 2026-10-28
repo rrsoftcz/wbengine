@@ -50,6 +50,7 @@ return array(
     'wb.integrations.connect_help' => 'Klíč dostane profil „Správa webu v WBengine Adminu“: může číst a upravovat obsah, překlady a obrázky, zobrazit náhled a publikovat. Oprávnění klíče nelze později změnit, jiná oprávnění vždy znamenají nový klíč.',
     'wb.integrations.name_label' => 'Název integrace',
     'wb.integrations.name_default' => 'WBengine Admin',
+    'wb.integrations.name_help' => 'Popisek, podle kterého tento klíč poznáte v seznamu níže, například aplikace, která jej bude používat. Ukládá se s klíčem a API jej vrací jako název integrace. Nepřidává ani neomezuje žádná oprávnění a později jej nelze změnit: pro jiný název vydejte nový klíč.',
     'wb.integrations.scopes_title' => 'Oprávnění klíče',
     'wb.integrations.password_label' => 'Vaše heslo',
     'wb.integrations.password_help' => 'Změnu potvrďte heslem svého účtu.',
