@@ -233,7 +233,8 @@ class PageCacheStoreTest extends DbTestCase
         $this->assertTrue($found);
         $this->assertSame(['Content-Type: text/html; charset=UTF-8', 'X-Frame-Options: DENY',
             "Content-Security-Policy: default-src 'self'", 'Referrer-Policy: same-origin'], $page['headers'] ?? null);
-        $this->assertSame(2, $page['format'] ?? null);
+        $this->assertSame(3, $page['format'] ?? null);
+        $this->assertSame([], $page['analytics'] ?? null);
     }
 
     public function testARedirectHeaderIsNotStoredEvenWithA200Status(): void

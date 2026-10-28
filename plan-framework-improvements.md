@@ -5,7 +5,7 @@ Aktuální kontrolní bod: 2026-10-27
 
 ## Účel a stav
 
-Cílové vydání **4.0.0**, nová hlavní verze po 3.5.0, bylo zveřejněno po dokončení release gate. Aktuální oprava frameworku je vydána jako `v4.0.2`.
+Cílové vydání **4.0.0**, nová hlavní verze po 3.5.0, bylo zveřejněno po dokončení release gate. Aktuální vydání frameworku je `v4.1.0`.
 
 Trvalý společný seznam návrhů z rozboru frameworku a jejich následného doplnění uživatelem. Uživatel chce návrhy realizovat. Tento dokument zachycuje směr, priority a podmínky ověření; implementace byla zahájena v odděleném worktree `/private/tmp/wbengine-modernization`. Konkrétní návrh rozhraní a migrační postup se dopracují před jednotlivými zásahy.
 
@@ -17,9 +17,18 @@ Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správno
 
 ## Pracovní registr
 
-Aktuální stav k 2026-10-27: původní implementační rozsah je dokončen a WBengine 4 běží na `www.wbengine.org`. Live opravy jazykového přepínače a výchozí angličtiny uživatel potvrdil jako funkční. Framework `v4.0.2` je zveřejněn v `main` i `master`; skeleton je aktualizován v `main`. Bezpečnost, výkon, nativní šablony a Markdown, migrační nástroje, API, CLI a samostatná administrace ADM-01 až ADM-05 jsou implementované. Zelená release CI a benchmarky jsou doložené níže. Produkční nasazení proběhlo; ruční převod deseti historických HTML položek zůstává nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo. Odpovědnost Codex.
+Aktuální stav k 2026-10-27: framework `v4.1.0` a privátní WBengine Admin `v0.2.0` jsou vydané; veřejný Skeleton App je čistě nasazen z aktuální větve `main` na novém VPS. Aplikace běží přes HTTPS s hostitelským Nginxem a PHP 8.4/MySQL 8.4 v Dockeru. Nová databáze byla naplněna verzovaným schématem a obsahem aplikace, stará produkční databáze se nepřenášela. Tabulky API a analytiky byly vytvořeny migracemi frameworku. Analytika je zatím vypnutá, takže API neoznamuje `analytics.read`; GA4 na webu zůstává podle schváleného plánu aktivní do dokončení a ověření vlastní analytiky. Původní demo heslo bylo zneplatněno a ověřeno neúspěšným HTTP 403. WBengine Admin se na VPS nehostuje, jeho lokální připojení k webu a vytvoření omezeného integračního klíče zůstává dalším krokem. Ruční převod deseti historických HTML položek je nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo.
 
-Nejbližší plánovaná fáze: implementační pilot vzdálené administrace proti dvěma izolovaným API webům je hotový a CI jej ověřila. Administrace zůstává samostatným SvelteKit repozitářem mimo PHP/Composer balíček; lokální checkout je v `Sites/svelte/wbengine-admin`. Dalším krokem je dokončit kontrolu jejího PR a připravit oddělené vydání po rozhodnutí o viditelnosti repozitáře a publikaci kontejneru. Produkční obsahové operace administrace nebyly provedeny. Historické HTML se nepřevádí bez výslovného výběru a schválení konkrétních záznamů.
+### 2026-10-27: čisté nasazení Skeleton App na nový VPS
+
+- `www.wbengine.org` ukazuje na nový server. Nginx 1.24 a Certbot 2.9 obsluhují HTTP/HTTPS; certifikát Let's Encrypt je vydán, automatický timer je aktivní. `certbot renew --dry-run --no-random-sleep-on-renew` prošel.
+- Skeleton App commit `fcaf38a` běží v Docker Compose pod `/opt/wbengine-skeleton-app`; framework v kontejneru je `v4.1.0`. Docker Engine 29.9.2 a Compose 5.6.1. MySQL 8.4 je dostupný pouze uvnitř Docker sítě, webový port 8080 je publikován jen na loopbacku.
+- Databáze vznikla z prázdného svazku z aktuálních souborů `schemas/`; nebyla provedena záloha ani obnova staré databáze. Migrace frameworku `002-api-v2-integrations.sql`, `005-api-content.sql` a `006-analytics.sql` byly aplikovány. Analytics nastavení zůstává `enabled: false`.
+- Produkční `.env` má práva 0600, `Settings.json` 0640 `root:www-data`. Apache může nastavení číst, ale ostatní uživatelé na hostu nikoli. Výchozí demo heslo bylo nahrazeno náhodným bcrypt hashem; test původního přihlášení vrátil 403.
+- Ověřeno veřejně přes HTTPS: `/`, `/cs/`, `/docs/` a `/cs/docs/` vracejí 200. Healthcheck webu i databáze je healthy. Nasazení Skeleton používá commity `2416ddf` a opravu oprávnění `fcaf38a`.
+- Další krok: připravit lokální WBengine Admin pro připojení k API tohoto webu a provést neinvazivní ověření. Administrace nebude hostovaná na VPS; veřejný integrační klíč se nevytváří a analytics sběr se nepovoluje bez dalšího řízeného kroku.
+
+Nejbližší navazující krok: dokončit místní provoz administrace dle `plan-analytics-administration.md`, bezpečně jí nakonfigurovat přístup k veřejnému webu a ověřit capability/discovery a autentizaci. Vlastní analytika je implementována ve frameworku, ale její produkční sběr i zobrazení v administraci zůstávají vypnuté/nepřipojené. GA4 se vypne až po ověření vlastních metrik podle `plan-analytics.md`. Návrh nástroje pro výmaz zůstává před implementací; rozhodnutí CLI nejdřív zůstává platné.
 
 Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
 
@@ -343,6 +352,18 @@ Před každým úkolem: ověřit stav, dopsat konkrétní rozhraní a migrační
 Release gate: vzorová aplikace a jeden pilot, funkční záloha a návrat, ověřené originály obsahu, dokončené ruční migrační opravy, žádná povinná Smarty/Texy závislost, koncové testy dvou webů a omezeného uživatele, souběžné editace, odvolaný klíč, výpadky webu/centrály, bezpečné preview, SSRF a obnovy. Tag a GitHub release až po splnění brány; průběžný draft PR není hotový release.
 
 ## Záznam postupu
+
+### 2026-10-27: rozhodnutí o vlastní analytice
+
+- Schválený produktový směr: WBengine bude směřovat k vlastní souhrnné analytice dostupné přes samostatnou administraci. Metriky mají odpovídat počtu zobrazení a trendům, nikoli identitě konkrétních návštěvníků.
+- Celoživotní počty zobrazení stránek/článků se zachovávají i při žádosti o výmaz uživatelského účtu, pokud nejsou spojitelné s konkrétní osobou. Žádost o výmaz se nesmí stát důvodem ke smazání globálních agregátů.
+- Navržené hranice ukládání: žádná IP adresa, analytické cookie, uživatelský identifikátor ani individuální návštěvní profil v analytickém úložišti. Případné dočasné technické údaje dostanou samostatnou nezbytnou retenční dobu. Přesný právní režim a anonymizační vlastnosti je nutné posoudit podle konkrétní implementace.
+- Počet zobrazení se nesmí označovat za počet unikátních lidí. Přesná deduplikace unikátních návštěvníků bez identifikátoru není možná. Počítání výskytu boxu znamená výskyt ve vykreslené stránce, nikoli důkaz, že jej návštěvník viděl na obrazovce.
+- Technické požadavky k návrhu: zahrnout požadavky obsloužené full-page cache HIT, aby měření nepodhodnocovalo návštěvy; vyhodnotit existující `Wbengine\\Counter\\BatchCounter`; omezit práci na požadavek a nemít synchronní databázový zápis pro každé zobrazení; zpřístupnit agregáty přes úzce oprávněné API administraci.
+- Přechod: dokud vlastní metriky nebudou implementovány a ověřeny, stávající GA4 zůstává provozní záležitostí. Její případné vypnutí bude samostatný krok; vypnutí měření samo nevymaže historické reporty Google Analytics.
+- Stav: uživatel schválil technický návrh analytiky. Implementace čeká. Schválená výchozí hranice je 62denní retence denních součtů, trvalé celoživotní součty a započítávání známých i neznámých robotických požadavků.
+- Podrobné metriky, období, API kontrakt, retence a migrace jsou v `plan-analytics.md`. Strategie cache HIT, dávkové vyprázdnění a výkonu je podmínkou implementace.
+- 2026-10-27: uživatel schválil návrh analytiky. Admin integration/test implementation plan je v `plan-analytics-administration.md`; jde zatím o plán, žádná část analytiky ani administrace se v této fázi nemění.
 
 ### 2026-10-25: Zahájení 4.0.0
 

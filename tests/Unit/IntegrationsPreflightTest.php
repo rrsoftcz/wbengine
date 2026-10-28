@@ -46,7 +46,7 @@ class IntegrationsPreflightTest extends TestCase
             foreach ([Preflight::API_DISABLED, Preflight::NOT_HTTPS, Preflight::SCHEMA_INTEGRATIONS, Preflight::SCHEMA_LAST_USED, Preflight::DATABASE] as $code) {
                 $this->assertArrayHasKey('wb.integrations.problem.' . $code, $messages);
             }
-            foreach (\Wbengine\Api\V2\Model::SCOPES as $scope) {
+            foreach (\Wbengine\Box\Integrations::PROFILE_SCOPES as $scope) {
                 $this->assertArrayHasKey('wb.integrations.scope.' . str_replace(':', '_', $scope), $messages);
             }
         }

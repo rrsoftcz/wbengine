@@ -18,19 +18,22 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
     private ?ContentModel $content;
     private ?Limiter $limiter;
     private ?ImageModel $images;
+    private ?\Wbengine\Analytics\Overview $analytics;
 
-    public function __construct(Api $api, ?Model $model = null, ?ContentModel $content = null, ?Limiter $limiter = null, ?ImageModel $images = null)
+    public function __construct(Api $api, ?Model $model = null, ?ContentModel $content = null, ?Limiter $limiter = null, ?ImageModel $images = null, ?\Wbengine\Analytics\Overview $analytics = null)
     {
         parent::__construct($api);
         $this->model = $model;
         $this->content = $content;
         $this->limiter = $limiter;
         $this->images = $images;
+        $this->analytics = $analytics;
     }
 
     public function getModel(): Model { return $this->model ??= new Model(); }
     public function getContentModel(): ContentModel { return $this->content ??= new ContentModel(); }
     public function getImageModel(): ImageModel { return $this->images ??= new ImageModel(); }
+    public function getAnalytics(): \Wbengine\Analytics\Overview { return $this->analytics ??= new \Wbengine\Analytics\Overview(); }
 
     /** Return a response independently of output; headers carry strong resource ETags. */
     public function handle(string $method, string $path, string $authorization = '', bool $secure = false, ?string $centralActor = null, string $body = '', array $query = [], ?string $ifMatch = null, ?string $clientIp = null): array
@@ -47,6 +50,11 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
                 $identity = $this->authorize(['discovery:read'], 'identity.read', $authorization, $secure, $centralActor, $clientIp);
                 $this->getModel()->audit($identity['integration_id'], $centralActor, 'identity.read', 'allowed');
                 return $this->response(Contract::success($identity));
+            }
+            if ('/api/v2/analytics/overview' === $path) {
+                $this->method($method, ['GET']);
+                $actor = $this->authorize(['analytics:read'], 'analytics.overview', $authorization, $secure, $centralActor, $clientIp);
+                return $this->readReply($this->response(Contract::success($this->getAnalytics()->overview($query))), $actor, 'analytics.overview');
             }
             if (preg_match('~^/api/v2/(articles|pages|menu|sections|boxes)(?:/([1-9][0-9]{0,9}))?$~D', $path, $match)) {
                 $resource = $match[1]; $id = isset($match[2]) ? Resources::id($match[2]) : null;
@@ -166,6 +174,7 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
         $resources['discovery'] = ['read' => true, 'write' => false];
         $resources['preview'] = ['read' => true, 'write' => false];
         $resources['publish'] = ['read' => false, 'write' => true];
+        $resources['analytics'] = ['read' => \Wbengine\Config::getAnalyticsSettings()['enabled'], 'write' => false];
         return ['api_version' => '2.0', 'capabilities' => $resources, 'box_types' => $this->getContentModel()->boxTypes(), 'authentication' => ['type' => 'integration_bearer', 'https_required' => true], 'pagination' => ['type' => 'page', 'default_per_page' => 25, 'max_per_page' => 100]];
     }
 

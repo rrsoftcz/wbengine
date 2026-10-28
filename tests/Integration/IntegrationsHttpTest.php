@@ -3,6 +3,7 @@
 namespace Wbengine\Tests\Integration;
 
 use Wbengine\Api\V2\Model;
+use Wbengine\Box\Integrations;
 use Wbengine\Db;
 
 /**
@@ -227,14 +228,15 @@ class IntegrationsHttpTest extends DbTestCase
         $this->assertStringContainsString('value="https://' . substr($this->origin, 7) . '/"', $response['body']);
         $this->assertStringContainsString('value="WBengine Admin"', $response['body']);
         // Every scope of the Admin profile is described in words.
-        foreach (Model::SCOPES as $scope) {
+        foreach (Integrations::PROFILE_SCOPES as $scope) {
             $this->assertStringContainsString(\Wbengine\I18n::t('wb.integrations.scope.' . str_replace(':', '_', $scope)), $response['body']);
         }
-        $this->assertCount(17, Model::SCOPES);
+        $this->assertCount(17, Integrations::PROFILE_SCOPES);
+        $this->assertNotContains('analytics:read', Integrations::PROFILE_SCOPES);
 
         $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
         $this->assertSame(hash('sha256', $key), $row['key_hash']);
-        $this->assertSame(Model::SCOPES, json_decode($row['scopes'], true));
+        $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($row['scopes'], true));
         $this->assertSame(21, $row['created_by']);
         $dump = json_encode([Db::fetchAllAssoc('SELECT * FROM cms_api_integrations'), Db::fetchAllAssoc('SELECT * FROM cms_api_audit'), Db::fetchAllAssoc('SELECT * FROM cms_sessions')]);
         $this->assertStringNotContainsString($key, $dump);

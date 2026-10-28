@@ -104,9 +104,11 @@ class IntegrationsBoxTest extends TestCase
         $this->assertSame(1, preg_match_all('/wbv2_[a-f0-9]{64}/', $html, $m));
         $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
         $this->assertSame(hash('sha256', $m[0][0]), $row['key_hash']);
-        $this->assertSame(Model::SCOPES, json_decode($row['scopes'], true));
-        $this->assertCount(17, Model::SCOPES);
-        $this->assertNotContains('analytics:read', Model::SCOPES);
+        $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($row['scopes'], true));
+        $this->assertCount(17, Integrations::PROFILE_SCOPES);
+        $this->assertNotContains('analytics:read', Integrations::PROFILE_SCOPES);
+        // Every scope of the profile is a real framework scope, even when the framework knows more.
+        $this->assertSame([], array_diff(Integrations::PROFILE_SCOPES, Model::SCOPES));
         $this->assertContains('Cache-Control: private, no-store', $out->headers);
         $this->assertContains('Referrer-Policy: same-origin', $out->headers);
         $this->assertNotContains('Referrer-Policy: no-referrer', $out->headers);

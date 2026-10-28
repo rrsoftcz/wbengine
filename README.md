@@ -827,10 +827,24 @@ Keys are hashed on the website. A logged in local `ADMIN` issues, lists, revokes
 rotates them on the "Integrations" screen (`Wbengine\Box\Integrations`, bind it with a
 thin subclass and a `cms_boxes` row on a page with `acl = 1`), or through the trusted local
 model APIs. Every change is a POST with a CSRF token and a fresh password confirmation;
-the raw key is shown once in the POST response. Apply `migrations/4.0.3/001-api-integration-last-used.sql`
+the raw key is shown once in the POST response. Apply `migrations/4.0.0/007-api-integration-last-used.sql`
 (adds `last_used_at`) and check with `doctor`. Discovery accurately reports unavailable content CRUD.
 See [API v2 contracts, schema upgrade and audit/transaction rules](ref-api-v2.md).
 V1 remains supported; V2 intentionally has no browser CORS and rejects OPTIONS.
+
+First-party aggregate analytics is opt-in. Before enabling it, apply
+[`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql),
+then set `analytics.enabled` to `true` in `Settings.json`. The default retention is
+62 calendar days; set `analytics.timezone` to an IANA timezone when daily boundaries
+should follow the website's local time. The first accepted public view stores the
+measurement start date. Overview periods beginning earlier are marked incomplete,
+so unmeasured days are not presented as confirmed zero views. `analytics:read` exposes the read-only
+`/api/v2/analytics/overview` endpoint to the private administration. The tables store
+daily counts and lifetime page/box totals; lifetime article counts remain in
+`cms_articles.views`. No visitor identifiers or individual request rows are stored.
+Run `vendor/bin/wbengine.php analytics:prune --config=/site/src/Config/Settings.json`
+regularly to remove at most 1000 expired daily rows per invocation. Lifetime totals
+are not pruned.
 
 ## Authentication, sessions and users
 
@@ -899,6 +913,7 @@ changes and absence of logout resurrection after an older closed worker exits.
 | `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
 | `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
 | `counters` | `views`: `enabled` (default `false`), `hits` (50) and `seconds` (60) per batch, `dir` for the counter files. Batches the article view counter |
+| `analytics` | `enabled` (default `false`), `timezone` (default `UTC`), `retentionDays` (default `62`, allowed 31–365). Stores identity-free daily aggregates after migration `006-analytics.sql` |
 | `i18n` | `enabled` (default `false`), `default`, `locales`, `detect`, `urlPrefix`, `prefixDefault`, `cookie`, `cookieDays`, `dir`. See Internationalisation |
 | `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `{ "enabled": false, "ttl": 60 }` for the whole page cache. See the performance notes |
 | `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (both adapters, default `true`; `false` is a legacy migration option), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
@@ -1181,6 +1196,7 @@ Composer installs `vendor/bin/wbengine.php` and `vendor/bin/migrate-content.php`
 vendor/bin/wbengine.php config:check --config=/site/src/Config/Settings.json --root=/site/src
 vendor/bin/wbengine.php doctor --config=/site/src/Config/Settings.json --root=/site/src
 vendor/bin/wbengine.php migration:status --config=/site/src/Config/Settings.json --root=/site/src
+vendor/bin/wbengine.php analytics:prune --config=/site/src/Config/Settings.json
 vendor/bin/wbengine.php generate:box --root=/site/src --namespace=App --section=Main --module=Welcome --method=index
 ```
 

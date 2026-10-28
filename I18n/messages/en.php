@@ -96,7 +96,7 @@ return array(
     'wb.integrations.problem.api_disabled' => 'API v2 is disabled. Set "apiV2": {"enabled": true} in the website settings.',
     'wb.integrations.problem.not_https' => 'The page was not recognised as HTTPS. Open it over HTTPS, set i18n.baseUrl to the public https:// address and, behind a proxy, configure http.trustedProxies and http.forwardedHeaders. A key must never be shown over plain HTTP.',
     'wb.integrations.problem.schema_integrations' => 'The integration tables are missing. After a backup apply migrations/4.0.0/002-api-v2-integrations.sql, then check with the doctor command.',
-    'wb.integrations.problem.schema_last_used' => 'The last_used_at column is missing. After a backup apply migrations/4.0.3/001-api-integration-last-used.sql, then check with the doctor command.',
+    'wb.integrations.problem.schema_last_used' => 'The last_used_at column is missing. After a backup apply migrations/4.0.0/007-api-integration-last-used.sql, then check with the doctor command.',
     'wb.integrations.problem.database' => 'The database schema could not be checked. Verify the database connection and run the doctor command. No change was made.',
     'wb.integrations.error.login_required' => 'Sign in to manage integrations.',
     'wb.integrations.error.forbidden' => 'Only an administrator can manage integrations.',

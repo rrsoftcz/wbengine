@@ -100,7 +100,7 @@ class ApiV2LastUsedTest extends TestCase
 
     public function testFailedLastUsedWriteNeverFailsTheRequest(): void
     {
-        // Before migration 4.0.3/001 the column does not exist: authentication still succeeds.
+        // Before migration 4.0.0/007 the column does not exist: authentication still succeeds.
         $this->tables(false);
         $issued = (new Model())->provision(51, 'Unmigrated', ['discovery:read']);
         $log = ini_set('error_log', '/dev/null');
@@ -121,7 +121,7 @@ class ApiV2LastUsedTest extends TestCase
         try {
             Db::query('ALTER TABLE cms_api_integrations DROP COLUMN last_used_at');
             $this->assertFalse((new MigrationStatus())->inspect(Doctor::SCHEMA_INTEGRATIONS_LAST_USED));
-            $sql = preg_replace('/^--.*$/m', '', file_get_contents(dirname(__DIR__, 2) . '/migrations/4.0.3/001-api-integration-last-used.sql'));
+            $sql = preg_replace('/^--.*$/m', '', file_get_contents(dirname(__DIR__, 2) . '/migrations/4.0.0/007-api-integration-last-used.sql'));
             for ($run = 0; $run < 2; $run++) {
                 foreach (explode(';', $sql) as $statement) {
                     if ('' !== trim($statement)) {
@@ -149,16 +149,16 @@ class ApiV2LastUsedTest extends TestCase
     {
         $config = ['apiV2' => ['enabled' => true]];
         $report = (new Doctor())->check($config, sys_get_temp_dir(), true);
-        $this->assertArrayHasKey('migration.4.0.3/001', $report);
-        $this->assertSame('ok', $report['migration.4.0.3/001']['status']);
+        $this->assertArrayHasKey('migration.007', $report);
+        $this->assertSame('ok', $report['migration.007']['status']);
         $this->assertSame('ok', $report['migration.002']['status']);
         $skipped = (new Doctor())->check([], sys_get_temp_dir(), false);
-        $this->assertSame('skip', $skipped['migration.4.0.3/001']['status']);
+        $this->assertSame('skip', $skipped['migration.007']['status']);
         Db::query('ALTER TABLE cms_api_integrations DROP COLUMN last_used_at');
         try {
             $report = (new Doctor())->check($config, sys_get_temp_dir(), true);
-            $this->assertSame('fail', $report['migration.4.0.3/001']['status']);
-            $this->assertStringContainsString('migrations/4.0.3/001', $report['migration.4.0.3/001']['action']);
+            $this->assertSame('fail', $report['migration.007']['status']);
+            $this->assertStringContainsString('migrations/4.0.0/007', $report['migration.007']['action']);
         } finally {
             Db::query('ALTER TABLE cms_api_integrations ADD COLUMN last_used_at BIGINT UNSIGNED NULL DEFAULT NULL AFTER revoked_at');
         }

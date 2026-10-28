@@ -14,6 +14,7 @@ try {
     $config = [
         'timeZone' => 'Europe/Prague', 'codePage' => 'utf8', 'debug' => false, 'minimizeHtml' => false, 'minimizeCss' => false, 'cdnPath' => '',
         'apiV2' => ['enabled' => true, 'imageDirectory' => '/state/images'],
+        'analytics' => ['enabled' => true, 'timezone' => 'UTC', 'retentionDays' => 62],
         'renderer' => ['adapterName' => 'NativeRenderer', 'templatesDir' => '/View/', 'compiledDir' => 'Compiled/', 'configDir' => '/Config/'],
         'dbAdapterDefinition' => ['adapterName' => 'Mysqli', 'database' => $installation['database'], 'charset' => 'utf8mb4', 'port' => '3306', 'hostname' => 'db', 'username' => $installation['user'], 'password' => pilotSecret($installation['secret'])],
         'http' => ['trustedProxies' => [$proxy], 'forwardedHeaders' => ['x-forwarded-proto', 'x-forwarded-for']],
@@ -29,7 +30,7 @@ try {
     Config::load(new File($installation['app'] . '/Config/Settings.json'));
     if (Config::getDbCredentials()->database !== $installation['database']) { throw new RuntimeException('Pilot database guard rejected the target.'); }
     Db::query('SELECT 1');
-    foreach (['/app/tests/schema.sql', '/app/migrations/4.0.0/002-api-v2-integrations.sql', '/app/migrations/4.0.0/003-markdown-content.sql', '/app/migrations/4.0.0/005-api-content.sql'] as $file) {
+    foreach (['/app/tests/schema.sql', '/app/migrations/4.0.0/002-api-v2-integrations.sql', '/app/migrations/4.0.0/003-markdown-content.sql', '/app/migrations/4.0.0/005-api-content.sql', '/app/migrations/4.0.0/006-analytics.sql'] as $file) {
         $sql = preg_replace('/^--.*$/m', '', file_get_contents($file));
         foreach (explode(';', $sql) as $statement) {
             $statement = trim($statement);
@@ -62,10 +63,22 @@ try {
         Db::insert('cms_boxes', ['id' => 1, 'name' => 'Pilot article', 'module' => 'blog', 'method' => 'story', 'section_id' => 1, 'sites' => '["1"]', 'api_settings' => '{}']);
     }
     if (!Db::fetchAssoc("SELECT `id` FROM `cms_articles` WHERE `id` = ?", [1])) {
-        Db::insert('cms_articles', ['id' => 1, 'site_id' => 1, 'title' => 'Published ' . $installation['label'] . ' article', 'introtext' => 'Published introduction.', 'bodytext' => "# Published " . $installation['label'] . "\n\nThis content is public on " . $installation['hostname'] . ".", 'content_format' => 'markdown', 'published' => time()]);
+        Db::insert('cms_articles', ['id' => 1, 'site_id' => 1, 'title' => 'Published ' . $installation['label'] . ' article', 'introtext' => 'Published introduction.', 'bodytext' => "# Published " . $installation['label'] . "\n\nThis content is public on " . $installation['hostname'] . ".", 'content_format' => 'markdown', 'published' => time(), 'views' => 100]);
     }
     if (!Db::fetchAssoc("SELECT `article_id` FROM `cms_article_translations` WHERE `article_id` = ? AND locale = 'cs'", [1])) {
         Db::insert('cms_article_translations', ['article_id' => 1, 'locale' => 'cs', 'title' => 'Pilotni clanek', 'bodytext' => '# Publikovany pilot', 'content_format' => 'markdown']);
+    }
+    $analyticsDay = (new DateTimeImmutable('today', new DateTimeZone('UTC')))->format('Y-m-d');
+    Db::query('INSERT INTO cms_analytics_meta (id, tracking_started_on) VALUES (1, ?) ON DUPLICATE KEY UPDATE tracking_started_on = LEAST(tracking_started_on, VALUES(tracking_started_on))', [$analyticsDay]);
+    foreach ([['page', 1, 2], ['article', 1, 1], ['box', 1, 3]] as [$type, $id, $views]) {
+        if (!Db::fetchAssoc('SELECT entity_id FROM cms_analytics_daily WHERE day = ? AND site_id = ? AND entity_type = ? AND entity_id = ?', [$analyticsDay, 1, $type, $id])) {
+            Db::insert('cms_analytics_daily', ['day' => $analyticsDay, 'site_id' => 1, 'entity_type' => $type, 'entity_id' => $id, 'views' => $views]);
+        }
+    }
+    foreach ([['page', 1, 50], ['box', 1, 75]] as [$type, $id, $views]) {
+        if (!Db::fetchAssoc('SELECT entity_id FROM cms_analytics_totals WHERE site_id = ? AND entity_type = ? AND entity_id = ?', [1, $type, $id])) {
+            Db::insert('cms_analytics_totals', ['site_id' => 1, 'entity_type' => $type, 'entity_id' => $id, 'views' => $views]);
+        }
     }
     if (!Db::fetchAssoc("SELECT `menu_id` FROM `cms_menu` WHERE `menu_id` = ?", [1])) {
         Db::insert('cms_menu', ['menu_id' => 1, 'site_id' => 1, 'name' => 'Pilot article', 'type' => 1, 'order' => 1]);

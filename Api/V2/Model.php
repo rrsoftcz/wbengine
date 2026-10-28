@@ -14,7 +14,7 @@ class Model extends \Wbengine\Model\ModelAbstract
     /** Seconds between two last_used_at writes of one key. */
     public const LAST_USED_INTERVAL = 60;
     public const LIST_LIMIT = 500;
-    public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write'];
+    public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write', 'analytics:read'];
 
     /**
      * Trusted local provisioning API. The administrator's current role is read from DB.
@@ -114,7 +114,7 @@ class Model extends \Wbengine\Model\ModelAbstract
     /**
      * One conditional UPDATE per key and interval, so a busy integration does not write on every
      * request and concurrent workers do not race. A failed write (for example before migration
-     * 4.0.3/001 was applied) never fails the request.
+     * 4.0.0/007 was applied) never fails the request.
      */
     private function touchLastUsed(int $integrationId): void
     {

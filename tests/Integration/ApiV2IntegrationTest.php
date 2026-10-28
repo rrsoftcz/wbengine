@@ -30,7 +30,7 @@ class ApiV2IntegrationTest extends TestCase
                 Db::query($statement);
             }
         }
-        // migrations/4.0.3/001, applied directly: information_schema does not list temporary tables.
+        // migrations/4.0.0/007, applied directly: information_schema does not list temporary tables.
         Db::query('ALTER TABLE cms_api_integrations ADD COLUMN last_used_at BIGINT UNSIGNED NULL DEFAULT NULL');
     }
 

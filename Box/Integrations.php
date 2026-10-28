@@ -31,6 +31,12 @@ class Integrations extends WbengineBoxAbstract
 {
     const PURPOSE_ISSUE = 'integrations.issue';
     const PURPOSE_REVOKE = 'integrations.revoke';
+    /**
+     * The profile "Site management in WBengine Admin": exactly these scopes, nothing derived from
+     * Model::SCOPES, so a scope the framework adds later is never issued by accident.
+     */
+    const PROFILE_SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write'];
+
     const TEMPLATE = 'Integrations/View/Integrations';
 
     /** Recommended name of the integration in the central Admin. */
@@ -119,7 +125,7 @@ class Integrations extends WbengineBoxAbstract
 
         try {
             if ('issue' === $action) {
-                $issued = $model->provision($userId, $name, Model::SCOPES);
+                $issued = $model->provision($userId, $name, self::PROFILE_SCOPES);
                 return $this->show($userId, 200, ['issued' => $issued, 'replaces' => $replaces]);
             }
             $revoked = $model->revoke($userId, $revokeId);
@@ -227,7 +233,7 @@ class Integrations extends WbengineBoxAbstract
     protected function scopeDescriptions(): array
     {
         $result = [];
-        foreach (Model::SCOPES as $scope) {
+        foreach (self::PROFILE_SCOPES as $scope) {
             $result[] = I18n::t('wb.integrations.scope.' . str_replace(':', '_', $scope));
         }
         return $result;

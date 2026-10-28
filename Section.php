@@ -102,7 +102,15 @@ class Section implements ComponentParentInterface
                 $this->_createMethodName($b['method'], $this->_getModuleBox($b), function ($box, $method) {
                     if ($box instanceof Box\WbengineBoxAbstract) {
                         if (method_exists($box, $method)) {
-                            $this->_content .= $box->$method();
+                            $output = $box->$method();
+                            $this->_content .= $output;
+                            $rendered = is_scalar($output) ? (string) $output : (is_object($output) && method_exists($output, '__toString') ? (string) $output : '');
+                            if ('' !== trim($rendered)) {
+                                $app = $this->getSite()->getParent();
+                                if (method_exists($app, 'getAnalyticsTracker')) {
+                                    $app->getAnalyticsTracker()->record($this->getSite()->getSiteId(), 'box', (int) $box->id);
+                                }
+                            }
                         } else {
                             Throw New SectionException(
                                 sprintf('%s->%s : The method name "%s::%s()" not found.'

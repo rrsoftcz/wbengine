@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS `cms_sessions` (
   PRIMARY KEY (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- API v2 integrations: migrations/4.0.0/002 plus migrations/4.0.3/001 (last_used_at).
+-- API v2 integrations: migrations/4.0.0/002 plus migrations/4.0.0/007 (last_used_at).
 CREATE TABLE IF NOT EXISTS `cms_api_integrations` (
   `integration_id` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,

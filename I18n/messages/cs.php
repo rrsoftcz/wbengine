@@ -96,7 +96,7 @@ return array(
     'wb.integrations.problem.api_disabled' => 'API v2 je vypnuté. V nastavení webu nastavte "apiV2": {"enabled": true}.',
     'wb.integrations.problem.not_https' => 'Stránka nebyla rozpoznána jako HTTPS. Otevřete ji přes HTTPS, nastavte i18n.baseUrl na veřejnou adresu https:// a za proxy nastavte http.trustedProxies a http.forwardedHeaders. Klíč se nikdy nesmí zobrazit přes prosté HTTP.',
     'wb.integrations.problem.schema_integrations' => 'Chybí tabulky integrací. Po záloze spusťte migrations/4.0.0/002-api-v2-integrations.sql a poté zkontrolujte příkazem doctor.',
-    'wb.integrations.problem.schema_last_used' => 'Chybí sloupec last_used_at. Po záloze spusťte migrations/4.0.3/001-api-integration-last-used.sql a poté zkontrolujte příkazem doctor.',
+    'wb.integrations.problem.schema_last_used' => 'Chybí sloupec last_used_at. Po záloze spusťte migrations/4.0.0/007-api-integration-last-used.sql a poté zkontrolujte příkazem doctor.',
     'wb.integrations.problem.database' => 'Schéma databáze se nepodařilo zkontrolovat. Ověřte připojení k databázi a spusťte příkaz doctor. Nic se nezměnilo.',
     'wb.integrations.error.login_required' => 'Pro správu integrací se přihlaste.',
     'wb.integrations.error.forbidden' => 'Integrace může spravovat jen správce.',
