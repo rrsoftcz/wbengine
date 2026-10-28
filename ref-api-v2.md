@@ -18,7 +18,20 @@ Contract umí omezené stránkování (default25, maximum100), JSON object body 
 
 Volitelná SQL migrace `002-api-v2-integrations.sql` vytváří tabulky klíčů a auditu. Provádí ji operátor při explicitním upgradu schématu, nikdy webový request. Bez tabulek může veřejné discovery dál fungovat, autentizované identity selžou uzavřeně s obecnou 503.
 
-V tomto kontrolním bodu se klíče vydávají pouze důvěryhodným lokálním PHP rozhraním `Api\V2\Model::provision($adminUserId, $name, $scopes)` a odvolávají přes `revoke`. Aktuální role správce se načte z DB. Volající je lokální správní kód, ne ID přijímané ze vzdáleného požadavku. Veřejný provision endpoint neexistuje; provisioning je důvěryhodný lokální kód.
+Klíče se vydávají a odvolávají na webu přihlášeným místním správcem přes obrazovku „Integrace“ (`Wbengine\Box\Integrations`), případně důvěryhodným lokálním PHP kódem `Api\V2\Model::provision($adminUserId, $name, $scopes)` a `revoke`. Aktuální role `ADMIN` se vždy načte z DB (`ApiUserModel::getAuthorization`), nikdy ze session, JWT nebo formuláře. Veřejný provision endpoint ani izolovaný skript neexistují.
+
+Migrace `migrations/4.0.3/001-api-integration-last-used.sql` (po `002`) přidá do `cms_api_integrations` sloupec `last_used_at BIGINT UNSIGNED NULL`. Je idempotentní (sloupec přidá jen tehdy, když chybí), provádí ji operátor po záloze, nikdy webový request. `Model::authenticate()` aktualizuje `last_used_at` nejvýše jednou za 60 s na klíč jedním podmíněným UPDATE; chyba zápisu (například neaplikovaná migrace) požadavek nikdy neshodí. `Model::list()` vrací jen nesekretní metadata (`integration_id`, `name`, `created_by`, `created_at`, `revoked_at`, `scopes`, `last_used_at`), nikdy klíč ani jeho hash. `Console\Doctor` kontroluje obě migrace (`migration.002`, `migration.4.0.3/001`) bez DDL.
+
+### Obrazovka Integrace
+
+Box dědí z `WbengineBoxAbstract` a aplikace jej zapojí tenkou podtřídou ve svém namespace (například `App\Box\Central\Integrations`) a řádkem v `cms_boxes` u stránky s `acl = 1`. ACL stromu rozlišuje jen přihlášeného uživatele, proto roli `ADMIN` ověřuje sám Box. Odhlášený dostane 401, přihlášený bez role `ADMIN` 403.
+
+- GET jen zobrazuje stav a seznam. Každá změna je POST s CSRF tokenem vázaným na akci (`integrations.issue`, `integrations.revoke`) a s čerstvým potvrzením hesla (`User\PasswordConfirmation`). Heslo se nikam neukládá ani neloguje, ověřuje se konstantním časem proti hashi uživatele ze session a pokusy jsou omezeny (5 na uživatele a 20 na IP za okno přihlašovacího limiteru, poté 429 s `Retry-After`). Selhané potvrzení se zapíše do auditu (`integration.reauth`, `denied`) bez hodnot formuláře.
+- Předběžná kontrola (`Api\V2\Preflight`, jen čtení): `apiV2.enabled`, tabulky a sloupec `last_used_at` (stejné požadavky jako Doctor), požadavek přes HTTPS (včetně `i18n.baseUrl`), aktuální role `ADMIN`. Při nesplnění stránka ukáže konkrétní návod a klíč se nevydá. DDL se v HTTP requestu nikdy nespouští.
+- Vydání: `Model::provision()` s profilem všech 17 scope z `Model::SCOPES` (bez `analytics:read`, ten framework zatím nemá). Název se validuje (1 až 128 bajtů bez řídicích znaků), doporučený je `WBengine Admin`. Scope se zobrazují lidsky čitelně (cs, en, klíče `wb.integrations.*`).
+- Surový klíč je jen v těle odpovědi POST s `Cache-Control: private, no-store` a `Referrer-Policy: same-origin` (ne `no-referrer`, ten způsobí `Origin: null` u POST formulářů). PageCache i FragmentCache jsou obejity. Klíč není v URL, logu, auditu, session ani cache. Stránka ukáže adresu webu, doporučený název a klíč s tlačítkem Kopírovat (schránka, bez trvalého úložiště prohlížeče) pro registraci v centrálním Adminu.
+- Rotace: vydat nový klíč (volitelně s označením nahrazované integrace), ověřit jej v centrálním Adminu a teprve potom odvolat starý. Box nic neodvolává automaticky. Scope existujícího klíče nelze měnit, jiné scope znamenají nový klíč.
+- Odvolání: POST s heslem přes `Model::revoke()`, účinkuje okamžitě. Při chybě auditu se vydání i odvolání vrátí zpět.
 
 Nový klíč má kryptograficky náhodnou část, vrátí se jednou a DB ukládá pouze SHA-256 hash. Každý request ověřuje aktivní řádek, takže revoke účinkuje okamžitě. Scope whitelist je konečný a příliš široká identita sama nevytvoří nepodporovaný endpoint. Rotace znamená nový klíč, aktualizaci centrálního spojení a následné odvolání starého.
 
@@ -27,6 +40,8 @@ Provision/revoke a jejich audit commitnou společně. Metody vyžadují neaktivn
 Audit rozlišuje integration_id, lokálního administrátora a volitelný `X-WBengine-Actor`. Ten je pouze omezený, nedůvěryhodný atribuční popisek uživatele centrály, nikdy důvod oprávnění. Klíče ani těla požadavků se do auditu nevkládají. Chybějící credentials či scope se auditují; chyba auditu povolenou identitu nevydá. Neúspěšná autentizace je omezena přes existující limiter podle důvěryhodně určené IP před přidáváním auditu. Místní Model::pruneAudit vyžaduje skutečnou ADMIN roli, má omezenou retenci a velikost dávky; její pravidelné spouštění je provozní úloha.
 
 ## Ověření a další kroky
+
+Obrazovku Integrace pokrývají `IntegrationsHttpTest` (skutečná session, CSRF, hlavičky, jednorázové zobrazení, hash v DB), `IntegrationsBoxTest` (rollback při selhání auditu, role, preflight, rotace), `PasswordConfirmationTest`, `ApiV2LastUsedTest` (list, throttling `last_used_at`, migrace, Doctor) a `IntegrationsPreflightTest`.
 
 Samostatná Docker sada `ApiV2Test` + `ApiV2IntegrationTest`: 22 testů /126assertions na PHP8.4.27/MySQL. Integrační tests používají connection-local TEMP tabulky, nikoli mazání trvalých uživatelů. Testy zahrnují hlavičky, HTTPS/trusted proxy hranici, revoke/scope, chyby auditu, JSON/stránkování, injekční hodnoty a vlastnictví transakcí. Vzorová aplikace navíc ověřila skutečnou HTTP discovery odpověď a původní 401 API v1.
 

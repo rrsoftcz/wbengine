@@ -11,6 +11,9 @@ class Model extends \Wbengine\Model\ModelAbstract
 {
     public const KEYS_TABLE = 'cms_api_integrations';
     public const AUDIT_TABLE = 'cms_api_audit';
+    /** Seconds between two last_used_at writes of one key. */
+    public const LAST_USED_INTERVAL = 60;
+    public const LIST_LIMIT = 500;
     public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write'];
 
     /**
@@ -29,7 +32,7 @@ class Model extends \Wbengine\Model\ModelAbstract
                 'key_hash' => hash('sha256', $token),
                 'scopes' => json_encode(array_values(array_unique($scopes)), JSON_THROW_ON_ERROR),
                 'created_by' => $adminUserId,
-                'created_at' => time(),
+                'created_at' => $this->now(),
             ];
             $id = Db::insert(self::KEYS_TABLE, $values);
             $this->verifyExact(Db::fetchAssoc('SELECT * FROM `' . self::KEYS_TABLE . '` WHERE integration_id = ?', [$id]), $values);
@@ -53,7 +56,7 @@ class Model extends \Wbengine\Model\ModelAbstract
         $this->requireAdministrator($adminUserId);
         $connection = $this->beginOwnedTransaction();
         try {
-            Db::query('UPDATE `' . self::KEYS_TABLE . '` SET revoked_at = ? WHERE integration_id = ? AND revoked_at IS NULL', [time(), $id]);
+            Db::query('UPDATE `' . self::KEYS_TABLE . '` SET revoked_at = ? WHERE integration_id = ? AND revoked_at IS NULL', [$this->now(), $id]);
             $changed = Db::getAffected() > 0;
             if ($changed) {
                 $this->audit($id, null, 'integration.revoke', 'allowed', $adminUserId);
@@ -64,6 +67,26 @@ class Model extends \Wbengine\Model\ModelAbstract
             $connection->rollback();
             throw $e;
         }
+    }
+
+    /** Metadata only: neither the key nor its hash ever leaves storage through this method. */
+    public function list(): array
+    {
+        $rows = Db::fetchAllAssoc('SELECT integration_id, name, created_by, created_at, revoked_at, scopes, last_used_at FROM `' . self::KEYS_TABLE . '` ORDER BY integration_id DESC LIMIT ' . self::LIST_LIMIT);
+        $result = [];
+        foreach ($rows ?: [] as $row) {
+            $scopes = json_decode((string) $row['scopes'], true);
+            $result[] = [
+                'integration_id' => (int) $row['integration_id'],
+                'name' => (string) $row['name'],
+                'created_by' => (int) $row['created_by'],
+                'created_at' => (int) $row['created_at'],
+                'revoked_at' => null === $row['revoked_at'] ? null : (int) $row['revoked_at'],
+                'scopes' => is_array($scopes) && array_is_list($scopes) ? array_values(array_filter($scopes, 'is_string')) : [],
+                'last_used_at' => null === $row['last_used_at'] ? null : (int) $row['last_used_at'],
+            ];
+        }
+        return $result;
     }
 
     public function authenticate(string $token): ?array
@@ -84,7 +107,28 @@ class Model extends \Wbengine\Model\ModelAbstract
             return null;
         }
         foreach ($scopes as $scope) { if (!is_string($scope) || !in_array($scope, self::SCOPES, true)) { return null; } }
+        $this->touchLastUsed((int) $row['integration_id']);
         return ['integration_id' => (int) $row['integration_id'], 'name' => $row['name'], 'scopes' => $scopes];
+    }
+
+    /**
+     * One conditional UPDATE per key and interval, so a busy integration does not write on every
+     * request and concurrent workers do not race. A failed write (for example before migration
+     * 4.0.3/001 was applied) never fails the request.
+     */
+    private function touchLastUsed(int $integrationId): void
+    {
+        $now = $this->now();
+        try {
+            Db::query('UPDATE `' . self::KEYS_TABLE . '` SET last_used_at = ? WHERE integration_id = ? AND (last_used_at IS NULL OR last_used_at <= ?)', [$now, $integrationId, $now - self::LAST_USED_INTERVAL]);
+        } catch (\Throwable $e) {
+            error_log(__METHOD__ . ': last_used_at was not updated (' . get_class($e) . ').');
+        }
+    }
+
+    protected function now(): int
+    {
+        return time();
     }
 
     /** central_actor is an untrusted attribution label, never an authorization fact. */
@@ -99,7 +143,7 @@ class Model extends \Wbengine\Model\ModelAbstract
             'local_user_id' => $localUserId,
             'action' => $action,
             'outcome' => $outcome,
-            'created_at' => time(),
+            'created_at' => $this->now(),
         ];
         $id = Db::insert(self::AUDIT_TABLE, $values);
         $this->verifyExact(Db::fetchAssoc('SELECT * FROM `' . self::AUDIT_TABLE . '` WHERE audit_id = ?', [$id]), $values);

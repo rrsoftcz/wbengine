@@ -24,8 +24,12 @@ final class SectionSettingsTest extends TestCase
         $sql = str_replace('CREATE TABLE IF NOT EXISTS', 'CREATE TEMPORARY TABLE', preg_replace('/^--.*$/m', '', $sql));
         foreach (explode(';', $sql) as $statement) {
             if (trim($statement) === '') { continue; }
+            // schema.sql already holds the API v2 tables that migration 002 would create again.
+            if (preg_match('/CREATE TEMPORARY TABLE\s+`?([a-z0-9_]+)/i', $statement, $match)) {
+                if (in_array($match[1], $this->tables, true)) { continue; }
+                $this->tables[] = $match[1];
+            }
             Db::query($statement);
-            if (preg_match('/CREATE TEMPORARY TABLE\s+`?([a-z0-9_]+)/i', $statement, $match)) { $this->tables[] = $match[1]; }
         }
         $this->directory = sys_get_temp_dir() . '/section-settings-' . bin2hex(random_bytes(8));
         Cache::setDriver(new \Wbengine\Cache\FileCache($this->directory));

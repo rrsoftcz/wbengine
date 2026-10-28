@@ -12,6 +12,19 @@ the remaining template, Markdown, API and central administration work.
 
 ### Added
 
+- Local integration key management: `Box\Integrations` screen (ADMIN role read from the
+  database, POST only, action-bound CSRF, fresh password confirmation, one-time key in a
+  `private, no-store` response with `Referrer-Policy: same-origin`, scope descriptions in cs
+  and en, preflight with operator instructions, revoke and rotation order).
+- `User\PasswordConfirmation`: rate-limited, constant-time password re-check for the session
+  user, never logging the password.
+- `Api\V2\Model::list()` (non-secret metadata only) and `last_used_at`, written at most
+  once per 60 seconds per key and never failing a request. Migration
+  `migrations/4.0.3/001-api-integration-last-used.sql` (idempotent, no runtime DDL);
+  `doctor` checks it as `migration.4.0.3/001`; `tests/schema.sql` now contains the
+  API v2 tables.
+- `Api\V2\Preflight`: read-only check of API v2 configuration, schema and HTTPS.
+
 - Deferred `Application::route()` registration for common HTTP methods; `get()`
   delegates to it. Explicit true/false callback results complete or decline a route.
 
@@ -31,6 +44,12 @@ the remaining template, Markdown, API and central administration work.
   trusted IPv4/IPv6 proxy chains and original-scheme detection for session/API/locale
   cookies and absolute locale links.
   Forwarded headers are disabled by default; invalid configuration fails closed.
+
+### Fixed
+
+- `doctor` and `MigrationStatus` never detected a missing column (`Db::fetchOne()` returns
+  column metadata, not a value) and the database check called an undefined
+  `Db::setCredentials()`. Both now inspect the schema read-only as documented.
 
 ### Changed
 

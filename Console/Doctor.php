@@ -1,12 +1,14 @@
 <?php
 namespace Wbengine\Console;
 
-use Wbengine\Config;
-use Wbengine\Db;
-
 /** Setup/deploy diagnostics: never attached to an HTTP lifecycle. */
 final class Doctor
 {
+    /** Schema of migrations/4.0.0/002, shared with the integration screen preflight. */
+    public const SCHEMA_INTEGRATIONS = ['cms_api_integrations'=>['integration_id','name','key_hash','scopes','created_by','created_at','revoked_at'], 'cms_api_audit'=>['audit_id','integration_id','central_actor','local_user_id','action','outcome','created_at']];
+    /** Schema of migrations/4.0.3/001: last_used_at of integrations. */
+    public const SCHEMA_INTEGRATIONS_LAST_USED = ['cms_api_integrations'=>['last_used_at']];
+
     public function check(array $config, string $root, bool $database = true, bool $inspectOptional = false): array
     {
         $report = [];
@@ -53,20 +55,27 @@ final class Doctor
             $add('cache.driver', $ok, 'Select file with a writable cache.dir or writable parent for creation (default: system temp/DB namespace), or enable APCu in the web SAPI.');
         } else { $report['cache.driver'] = ['status'=>'skip','action'=>'Cache disabled.']; }
         $requirements = [
-            '002'=>[!empty($config['apiV2']['enabled']), ['cms_api_integrations'=>['integration_id','name','key_hash','scopes','created_by','created_at','revoked_at'], 'cms_api_audit'=>['audit_id','integration_id','central_actor','local_user_id','action','outcome','created_at']]],
+            '002'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_INTEGRATIONS],
             '003'=>[!empty($config['apiV2']['enabled']), ['cms_articles'=>['content_format'], 'cms_article_translations'=>['content_format']]],
             '004'=>[false, ['cms_content_migrations'=>['migration_id','entity','article_id','locale','source_format','before_data','after_data','source_hash','target_hash','created_at','rolled_back_at']]],
             '005'=>[!empty($config['apiV2']['enabled']), ['cms_boxes'=>['api_settings'], 'cms_api_changes'=>['change_id','resource','resource_id','action','before_data','after_data','integration_id','central_actor','created_at'], 'cms_api_drafts'=>['article_id','source_etag','payload','revision_id'], 'cms_api_revisions'=>['revision_id','article_id','payload','action','integration_id','central_actor','created_at'], 'cms_api_images'=>['image_id','mime','size','sha256','integration_id','created_at']]],
+            '4.0.3/001'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_INTEGRATIONS_LAST_USED],
         ];
         foreach ($requirements as $number => [$enabled, $schema]) {
             if (!$enabled && !$inspectOptional) { $report['migration.' . $number] = ['status'=>'skip','action'=>'Optional feature disabled.']; continue; }
             if (!$database) { $report['migration.' . $number] = ['status'=>'skip','action'=>'Run doctor or migration:status to check the database.']; continue; }
-            try { Db::setCredentials(Config::getDbCredentials()); $ok = (new MigrationStatus())->inspect($schema, $number === '005'); }
+            try { $ok = (new MigrationStatus())->inspect($schema, $number === '005'); }
             catch (\Throwable) { $ok = false; }
             if (!$enabled && !$ok) { $report['migration.' . $number] = ['status'=>'skip', 'action'=>'Optional schema missing or DB unavailable; feature disabled. Apply only after backup when needed.']; continue; }
-            $add('migration.' . $number, $ok, "Review and apply optional migrations/4.0.0/$number SQL manually after backup; verify DB connectivity. No DDL was executed.");
+            $add('migration.' . $number, $ok, "Review and apply optional " . $this->migrationPath($number) . " SQL manually after backup; verify DB connectivity. No DDL was executed.");
         }
         return $report;
+    }
+
+    /** Migrations of the 4.0.0 release are keyed by number only, later ones by version/number. */
+    private function migrationPath(string $number): string
+    {
+        return str_contains($number, '/') ? "migrations/$number" : "migrations/4.0.0/$number";
     }
 
     private function canCreateCacheDirectory(string $directory): bool

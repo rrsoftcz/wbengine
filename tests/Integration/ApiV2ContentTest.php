@@ -26,8 +26,12 @@ class ApiV2ContentTest extends TestCase
         $sql = str_replace('CREATE TABLE IF NOT EXISTS', 'CREATE TEMPORARY TABLE', $sql);
         foreach (explode(';', $sql) as $statement) {
             if ('' === trim($statement)) { continue; }
+            // schema.sql already holds the API v2 tables that migration 002 would create again.
+            if (preg_match('/CREATE TEMPORARY TABLE\s+`?([a-z0-9_]+)/i', $statement, $match)) {
+                if (in_array($match[1], $this->tables, true)) { continue; }
+                $this->tables[] = $match[1];
+            }
             Db::query($statement);
-            if (preg_match('/CREATE TEMPORARY TABLE\s+`?([a-z0-9_]+)/i', $statement, $match)) { $this->tables[] = $match[1]; }
         }
         Db::query("ALTER TABLE cms_articles ADD content_format VARCHAR(20) NOT NULL DEFAULT 'legacy_html'");
         Db::query("ALTER TABLE cms_article_translations ADD content_format VARCHAR(20) NOT NULL DEFAULT 'legacy_html'");

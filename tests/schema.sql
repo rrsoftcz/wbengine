@@ -148,3 +148,29 @@ CREATE TABLE IF NOT EXISTS `cms_sessions` (
   `user_salt` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- API v2 integrations: migrations/4.0.0/002 plus migrations/4.0.3/001 (last_used_at).
+CREATE TABLE IF NOT EXISTS `cms_api_integrations` (
+  `integration_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(128) NOT NULL,
+  `key_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `scopes` text NOT NULL,
+  `created_by` int unsigned NOT NULL,
+  `created_at` bigint unsigned NOT NULL,
+  `revoked_at` bigint unsigned DEFAULT NULL,
+  `last_used_at` bigint unsigned DEFAULT NULL,
+  PRIMARY KEY (`integration_id`),
+  UNIQUE KEY `api_integration_hash` (`key_hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cms_api_audit` (
+  `audit_id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `integration_id` int unsigned DEFAULT NULL,
+  `central_actor` varchar(128) DEFAULT NULL,
+  `local_user_id` int unsigned DEFAULT NULL,
+  `action` varchar(64) NOT NULL,
+  `outcome` varchar(64) NOT NULL,
+  `created_at` bigint unsigned NOT NULL,
+  PRIMARY KEY (`audit_id`),
+  KEY `api_audit_integration_time` (`integration_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
