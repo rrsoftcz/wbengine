@@ -16,6 +16,10 @@ final class Preflight
     public const SCHEMA_INTEGRATIONS = 'schema_integrations';
     public const SCHEMA_LAST_USED = 'schema_last_used';
     public const DATABASE = 'database';
+    /** Optional analytics permission: why it cannot be offered. These never block issuing a key. */
+    public const ANALYTICS_DISABLED = 'analytics_disabled';
+    public const ANALYTICS_SCHEMA = 'analytics_schema';
+    public const ANALYTICS_DATABASE = 'analytics_database';
 
     /** @var callable(array): bool */
     private $inspector;
@@ -47,6 +51,28 @@ final class Preflight
             }
         } catch (\Throwable $e) {
             $problems[] = self::DATABASE;
+        }
+        return $problems;
+    }
+
+    /**
+     * Whether the optional analytics permission may be offered: analytics must be enabled in the
+     * configuration and the schema of migrations/4.0.0/006-analytics.sql must exist.
+     *
+     * @return string[] codes, empty when analytics is usable on this website
+     */
+    public function analyticsProblems(bool $analyticsEnabled): array
+    {
+        $problems = [];
+        if (!$analyticsEnabled) {
+            $problems[] = self::ANALYTICS_DISABLED;
+        }
+        try {
+            if (!($this->inspector)(Doctor::SCHEMA_ANALYTICS)) {
+                $problems[] = self::ANALYTICS_SCHEMA;
+            }
+        } catch (\Throwable $e) {
+            $problems[] = self::ANALYTICS_DATABASE;
         }
         return $problems;
     }

@@ -54,7 +54,7 @@ class IntegrationsBoxTest extends TestCase
     }
 
     /** @return array{0: Integrations, 1: object} the box and a recorder of status and headers */
-    private function box(int $userId, ?string $method = null, array $problems = [], ?UserSession $session = null): array
+    private function box(int $userId, ?string $method = null, array $problems = [], ?UserSession $session = null, array $analyticsProblems = []): array
     {
         $session ??= new UserSession($userId);
         $renderer = new class($this->dir) {
@@ -72,13 +72,14 @@ class IntegrationsBoxTest extends TestCase
         $recorder->headers = [];
         $recorder->status = null;
         $limiter = new Limiter($this->dir . '/limits', fn () => 3_000_000);
-        $box = new class(null, $parent, $recorder, $method, $problems, $limiter) extends Integrations {
-            public function __construct($box, $parent, private $recorder, private ?string $method, private array $forcedProblems, private Limiter $limiter)
+        $box = new class(null, $parent, $recorder, $method, $problems, $limiter, $analyticsProblems) extends Integrations {
+            public function __construct($box, $parent, private $recorder, private ?string $method, private array $forcedProblems, private Limiter $limiter, private array $forcedAnalytics = [])
             {
                 parent::__construct($box, $parent);
             }
             protected function requestMethod(): string { return $this->method ?? 'GET'; }
             protected function preflight(): array { return $this->forcedProblems; }
+            protected function analyticsProblems(): array { return $this->forcedAnalytics; }
             protected function passwordConfirmation(): PasswordConfirmation { return new PasswordConfirmation($this->limiter, 900); }
             protected function sendHeader(string $line): void { $this->recorder->headers[] = $line; }
             protected function sendStatus(int $status): void { $this->recorder->status = $status; }
@@ -119,6 +120,111 @@ class IntegrationsBoxTest extends TestCase
         $_SERVER['REQUEST_METHOD'] = 'GET';
         $_POST = [];
         $this->assertStringNotContainsString($m[0][0], $box2->Integrations());
+    }
+
+    private function lastRow(): array
+    {
+        return Db::fetchAssoc('SELECT * FROM cms_api_integrations ORDER BY integration_id DESC LIMIT 1');
+    }
+
+    public function testIssueWithTheAnalyticsChoiceAddsExactlyOneScope(): void
+    {
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'WBengine Admin', 'analytics' => '1', 'password' => 'admin-secret'], $session, Integrations::PURPOSE_ISSUE);
+        $html = $box->Integrations();
+        $this->assertSame(200, $out->status);
+        $scopes = json_decode($this->lastRow()['scopes'], true);
+        $this->assertCount(18, $scopes);
+        $this->assertSame(array_merge(Integrations::PROFILE_SCOPES, ['analytics:read']), $scopes);
+        $this->assertSame([], array_diff($scopes, Model::SCOPES));
+        $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(18\)</summary>~', $html);
+        $this->assertStringContainsString('Read the website traffic overview', $html);
+        $this->assertStringNotContainsString('<details class="wb-scopes" open', $html);
+        // The list of keys shows that the key has analytics.
+        [$box2] = $this->box(41, 'GET', [], $session);
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_POST = [];
+        $this->assertStringContainsString('<span class="wb-badge">Analytics</span>', $box2->Integrations());
+    }
+
+    public function testIssueWithoutTheChoiceOrWithItUncheckedStaysTheFixedProfile(): void
+    {
+        foreach ([[], ['analytics' => ''], ['analytics' => '0']] as $extra) {
+            [$box, $out, $session] = $this->box(41, 'POST');
+            $this->post(['action' => 'issue', 'name' => 'WBengine Admin', 'password' => 'admin-secret'] + $extra, $session, Integrations::PURPOSE_ISSUE);
+            $html = $box->Integrations();
+            $this->assertSame(200, $out->status);
+            $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
+            $this->assertMatchesRegularExpression('~<summary>[^<]*\(17\)</summary>~', $html);
+            $this->assertStringNotContainsString('wb-badge">', $html);
+        }
+    }
+
+    public function testAnalyticsChoiceIsDisabledWithAnExplanationWhenAnalyticsIsNotUsable(): void
+    {
+        $cases = ['analytics_disabled' => 'analytics.enabled = true', 'analytics_schema' => '006-analytics.sql', 'analytics_database' => 'doctor'];
+        foreach ($cases as $code => $needle) {
+            [$box, $out] = $this->box(41, 'GET', [], null, [$code]);
+            $html = $box->Integrations();
+            $this->assertSame(200, $out->status);
+            $this->assertMatchesRegularExpression('~<input type="checkbox" id="wb-analytics" name="analytics" value="1" disabled~', $html, $code);
+            $this->assertStringContainsString(htmlspecialchars(\Wbengine\I18n::t('wb.integrations.analytics_problem.' . $code), ENT_QUOTES), $html);
+            $this->assertStringContainsString($needle, \Wbengine\I18n::t('wb.integrations.analytics_problem.' . $code));
+            $this->assertStringContainsString(Integrations::ANALYTICS_DOCS, $html);
+            // The form still issues a key without analytics.
+            $this->assertStringContainsString('name="password"', $html);
+        }
+        [$box, $out] = $this->box(41, 'GET');
+        $html = $box->Integrations();
+        $this->assertDoesNotMatchRegularExpression('~name="analytics" value="1" disabled~', $html);
+        $this->assertStringNotContainsString('wb-off', explode('</style>', $html)[1]);
+    }
+
+    public function testServerRefusesTheAnalyticsChoiceWhenAnalyticsIsNotUsableAndIssuesNothing(): void
+    {
+        foreach (['analytics_disabled', 'analytics_schema'] as $code) {
+            [$box, $out, $session] = $this->box(41, 'POST', [], null, [$code]);
+            $this->post(['action' => 'issue', 'name' => 'WBengine Admin', 'analytics' => '1', 'password' => 'admin-secret'], $session, Integrations::PURPOSE_ISSUE);
+            $html = $box->Integrations();
+            $this->assertSame(400, $out->status);
+            $this->assertStringContainsString(htmlspecialchars(\Wbengine\I18n::t('wb.integrations.error.analytics_unavailable'), ENT_QUOTES), $html);
+            $this->assertStringNotContainsString('wbv2_', $html);
+        }
+        $this->assertSame(0, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
+        $this->assertSame(0, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_audit')['n']);
+        // Without the choice the same configuration still issues.
+        [$box, $out, $session] = $this->box(41, 'POST', [], null, ['analytics_disabled']);
+        $this->post(['action' => 'issue', 'name' => 'WBengine Admin', 'password' => 'admin-secret'], $session, Integrations::PURPOSE_ISSUE);
+        $box->Integrations();
+        $this->assertSame(200, $out->status);
+        $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
+    }
+
+    public function testOnlyABooleanIsReadAndNeverAScopeListFromTheClient(): void
+    {
+        foreach ([['analytics' => 'analytics:read'], ['analytics' => 'yes'], ['analytics' => ['analytics:read']], ['scopes' => ['publish:write', 'analytics:read']], ['scopes' => 'analytics:read']] as $extra) {
+            [$box, $out, $session] = $this->box(41, 'POST');
+            $this->post(['action' => 'issue', 'name' => 'WBengine Admin', 'password' => 'admin-secret'] + $extra, $session, Integrations::PURPOSE_ISSUE);
+            $box->Integrations();
+            if (isset($extra['analytics']) && is_string($extra['analytics'])) {
+                $this->assertSame(400, $out->status, json_encode($extra));
+            } else {
+                $this->assertSame(200, $out->status, json_encode($extra));
+                $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
+            }
+        }
+        $this->assertSame(3, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
+    }
+
+    public function testRotationPrefillsTheChoiceFromTheOldKey(): void
+    {
+        (new Model())->provision(41, 'Plain key', Integrations::PROFILE_SCOPES);
+        (new Model())->provision(41, 'Analytics key', Integrations::scopesFor(true));
+        [$box] = $this->box(41, 'GET');
+        $html = $box->Integrations();
+        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="1">Analytics key #\d+</option>~', $html);
+        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="0">Plain key #\d+</option>~', $html);
+        $this->assertStringContainsString("getAttribute('data-analytics')", $html);
     }
 
     public function testCachesAreBypassedBeforeAnythingIsDecided(): void

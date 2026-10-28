@@ -162,6 +162,91 @@ class IntegrationsHttpTest extends DbTestCase
         $this->assertStringContainsString('cannot be changed later', $body);
     }
 
+    private function enableAnalyticsConfig(): void
+    {
+        file_put_contents($this->dir . '/analytics-enabled', '1');
+    }
+
+    /** Real tables of migrations/4.0.0/006: the fixture server uses its own connection. */
+    private function createAnalyticsSchema(): void
+    {
+        $sql = preg_replace('/^--.*$/m', '', (string) file_get_contents(dirname(__DIR__, 2) . '/migrations/4.0.0/006-analytics.sql'));
+        foreach (explode(';', $sql) as $statement) {
+            if ('' !== trim($statement)) { Db::query($statement); }
+        }
+    }
+
+    private function dropAnalyticsSchema(): void
+    {
+        Db::query('DROP TABLE IF EXISTS cms_analytics_daily, cms_analytics_totals, cms_analytics_meta');
+    }
+
+    public function testAnalyticsChoiceIsDisabledWithInstructionsWhileAnalyticsIsOffOrHasNoSchema(): void
+    {
+        $this->dropAnalyticsSchema();
+        $this->login('admin@example.test', 'admin-secret');
+        // Switched off in the configuration and no migration.
+        $response = $this->request('/integrations/');
+        $this->assertMatchesRegularExpression('~<input type="checkbox" id="wb-analytics" name="analytics" value="1" disabled~', $response['body']);
+        $this->assertStringContainsString('analytics.enabled = true', $response['body']);
+        $this->assertStringContainsString('006-analytics.sql', $response['body']);
+        $this->assertStringContainsString('href="' . Integrations::ANALYTICS_DOCS . '"', $response['body']);
+        // Enabled in the configuration but the migration is missing.
+        $this->enableAnalyticsConfig();
+        $response = $this->request('/integrations/');
+        $this->assertMatchesRegularExpression('~name="analytics" value="1" disabled~', $response['body']);
+        $this->assertStringNotContainsString('analytics.enabled = true', $response['body']);
+        $this->assertStringContainsString('006-analytics.sql', $response['body']);
+        // A key without analytics is still issued.
+        $issued = $this->issue($this->formToken($response, 'issue'), 'admin-secret');
+        $this->assertSame(200, $issued['status']);
+        $this->assertSame(Integrations::PROFILE_SCOPES, json_decode(Db::fetchAssoc('SELECT * FROM cms_api_integrations')['scopes'], true));
+    }
+
+    public function testServerRefusesAnalyticsWhenItIsNotUsable(): void
+    {
+        $this->dropAnalyticsSchema();
+        $this->login('admin@example.test', 'admin-secret');
+        $token = $this->formToken($this->request('/integrations/'), 'issue');
+        $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $token, 'name' => 'WBengine Admin', 'analytics' => '1', 'password' => 'admin-secret']);
+        $this->assertSame(400, $response['status']);
+        $this->assertPrivateHeaders($response);
+        $this->assertStringContainsString(htmlspecialchars(\Wbengine\I18n::t('wb.integrations.error.analytics_unavailable'), ENT_QUOTES), $response['body']);
+        $this->assertStringNotContainsString('wbv2_', $response['body']);
+        $this->assertSame(0, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
+    }
+
+    public function testAnalyticsKeyIsIssuedWithEighteenScopesWhenAnalyticsIsUsable(): void
+    {
+        $this->createAnalyticsSchema();
+        try {
+            $this->enableAnalyticsConfig();
+            $this->login('admin@example.test', 'admin-secret');
+            $form = $this->request('/integrations/');
+            $this->assertMatchesRegularExpression('~<input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby~', $form['body']);
+            $this->assertDoesNotMatchRegularExpression('~name="analytics" value="1" disabled~', $form['body']);
+            $this->assertMatchesRegularExpression('~<summary>[^<]*\(17\)</summary>~', $form['body']);
+            $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $this->formToken($form, 'issue'), 'name' => 'WBengine Admin', 'analytics' => '1', 'password' => 'admin-secret']);
+            $this->assertSame(200, $response['status']);
+            $this->assertPrivateHeaders($response);
+            $this->assertSame(1, preg_match_all('/wbv2_[a-f0-9]{64}/', $response['body']));
+            $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
+            $scopes = json_decode($row['scopes'], true);
+            $this->assertCount(18, $scopes);
+            $this->assertSame(array_merge(Integrations::PROFILE_SCOPES, ['analytics:read']), $scopes);
+            $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(18\)</summary>~', $response['body']);
+            $this->assertStringNotContainsString('<details class="wb-scopes" open', $response['body']);
+            $this->assertStringContainsString('Read the website traffic overview', $response['body']);
+            $this->assertStringContainsString('<span class="wb-badge">Analytics</span>', $response['body']);
+            $this->assertSame(1, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_audit WHERE action = ?', ['integration.provision'])['n']);
+            // Rotation offers the old key with its analytics flag.
+            $next = $this->request('/integrations/');
+            $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="1">WBengine Admin #\d+</option>~', $next['body']);
+        } finally {
+            $this->dropAnalyticsSchema();
+        }
+    }
+
     public function testGetOnlyShowsStateAndNeverChangesIt(): void
     {
         $this->login('admin@example.test', 'admin-secret');

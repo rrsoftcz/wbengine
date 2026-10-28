@@ -37,6 +37,12 @@ class Integrations extends WbengineBoxAbstract
      */
     const PROFILE_SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write'];
 
+    /** The optional scope added by the "Analytics" choice, on top of PROFILE_SCOPES. */
+    const ANALYTICS_SCOPE = 'analytics:read';
+
+    /** Where the operator reads how to enable analytics. */
+    const ANALYTICS_DOCS = 'https://github.com/rrsoftcz/wbengine#readme';
+
     const TEMPLATE = 'Integrations/View/Integrations';
 
     /** Recommended name of the integration in the central Admin. */
@@ -44,6 +50,9 @@ class Integrations extends WbengineBoxAbstract
 
     /** @var string[]|null preflight result of this request */
     private ?array $problems = null;
+
+    /** @var string[]|null analytics usability problems of this request */
+    private ?array $analyticsProblems = null;
 
     public function Integrations(): string
     {
@@ -91,10 +100,20 @@ class Integrations extends WbengineBoxAbstract
         $model = new Model();
         $replaces = null;
         $revokeId = null;
+        $withAnalytics = false;
         if ('issue' === $action) {
             $name = trim((string) Http::PostString('name'));
             if ('' === $name || strlen($name) > 128 || preg_match('/[\x00-\x1f\x7f]/', $name)) {
                 return $this->show($userId, 400, ['error' => 'error.invalid_name']);
+            }
+            // Only a checked box or not: a list of scopes from the client is never read.
+            $analyticsInput = Http::PostString('analytics');
+            if (null !== $analyticsInput && !in_array($analyticsInput, ['', '0', '1'], true)) {
+                return $this->show($userId, 400, ['error' => 'error.invalid_analytics']);
+            }
+            $withAnalytics = '1' === $analyticsInput;
+            if ($withAnalytics && $this->analyticsProblems()) {
+                return $this->show($userId, 400, ['error' => 'error.analytics_unavailable']);
             }
             $replacesInput = Http::PostString('replaces');
             if (is_string($replacesInput) && '' !== $replacesInput) {
@@ -125,7 +144,7 @@ class Integrations extends WbengineBoxAbstract
 
         try {
             if ('issue' === $action) {
-                $issued = $model->provision($userId, $name, self::PROFILE_SCOPES);
+                $issued = $model->provision($userId, $name, self::scopesFor($withAnalytics));
                 return $this->show($userId, 200, ['issued' => $issued, 'replaces' => $replaces]);
             }
             $revoked = $model->revoke($userId, $revokeId);
@@ -158,6 +177,11 @@ class Integrations extends WbengineBoxAbstract
             }
         }
         $canIssue = !$problems;
+        $analyticsProblems = $canIssue ? $this->analyticsProblems() : [];
+        $analyticsMessages = [];
+        foreach ($analyticsProblems as $code) {
+            $analyticsMessages[] = I18n::t('wb.integrations.analytics_problem.' . $code);
+        }
         $messages = [];
         foreach ($problems as $code) {
             $messages[] = I18n::t('wb.integrations.problem.' . $code);
@@ -167,7 +191,10 @@ class Integrations extends WbengineBoxAbstract
         $issued = null;
         if (isset($state['issued'])) {
             $replaces = $state['replaces'] ?? null;
+            $issuedScopes = (array) ($state['issued']['scopes'] ?? self::PROFILE_SCOPES);
             $issued = [
+                'scopes' => $this->scopeDescriptions($issuedScopes),
+                'scope_count' => count($issuedScopes),
                 'key' => $state['issued']['key'],
                 'name' => $state['issued']['name'],
                 'address' => $address,
@@ -188,9 +215,10 @@ class Integrations extends WbengineBoxAbstract
                 'by' => I18n::t('wb.integrations.user_id', ['id' => $row['created_by']]),
                 'last_used' => null === $row['last_used_at'] ? I18n::t('wb.integrations.never_used') : $this->date($row['last_used_at']),
                 'scope_count' => count($row['scopes']),
+                'has_analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true),
             ];
             if ($active && (!isset($state['issued']) || (int) $state['issued']['integration_id'] !== $row['integration_id'])) {
-                $rotatable[] = ['id' => $row['integration_id'], 'label' => $row['name'] . ' #' . $row['integration_id']];
+                $rotatable[] = ['id' => $row['integration_id'], 'label' => $row['name'] . ' #' . $row['integration_id'], 'analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true) ? '1' : '0'];
             }
         }
 
@@ -206,6 +234,7 @@ class Integrations extends WbengineBoxAbstract
             'defaultName' => self::DEFAULT_NAME,
             'scopes' => $this->scopeDescriptions(),
             'scopeCount' => count(self::PROFILE_SCOPES),
+            'analytics' => ['available' => !$analyticsProblems, 'off' => (bool) $analyticsProblems, 'problems' => $analyticsMessages, 'docs' => self::ANALYTICS_DOCS],
             'integrations' => $list,
             'rotatable' => $rotatable,
             'issued' => $issued,
@@ -230,11 +259,21 @@ class Integrations extends WbengineBoxAbstract
         $this->sendHeader('X-Robots-Tag: noindex, nofollow');
     }
 
-    /** Every scope of the issued profile in plain language. */
-    protected function scopeDescriptions(): array
+    /** The fixed profile, plus analytics:read only when the administrator chose it. */
+    public static function scopesFor(bool $withAnalytics): array
+    {
+        return $withAnalytics ? array_merge(self::PROFILE_SCOPES, [self::ANALYTICS_SCOPE]) : self::PROFILE_SCOPES;
+    }
+
+    /**
+     * Scopes in plain language. Without an argument: the fixed profile.
+     *
+     * @param string[]|null $scopes
+     */
+    protected function scopeDescriptions(?array $scopes = null): array
     {
         $result = [];
-        foreach (self::PROFILE_SCOPES as $scope) {
+        foreach ($scopes ?? self::PROFILE_SCOPES as $scope) {
             $result[] = I18n::t('wb.integrations.scope.' . str_replace(':', '_', $scope));
         }
         return $result;
@@ -247,7 +286,8 @@ class Integrations extends WbengineBoxAbstract
             'password_help', 'issue_submit', 'replaces_label', 'replaces_none', 'list_title', 'list_empty', 'col_name', 'col_created',
             'col_by', 'col_last_used', 'col_scopes', 'col_status', 'revoke_submit', 'revoke_password', 'rotation_title', 'rotation_1',
             'rotation_2', 'rotation_3', 'issued_title', 'issued_warning', 'copy', 'copied', 'copy_failed', 'instr_title', 'instr_1',
-            'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help'] as $key) {
+            'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help', 'name_help', 'analytics_label',
+            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge'] as $key) {
             $texts[$key] = I18n::t('wb.integrations.' . $key);
         }
         return $texts;
@@ -260,7 +300,7 @@ class Integrations extends WbengineBoxAbstract
         $this->sendPrivateHeaders();
         $this->getRenderer()->assign('view', [
             't' => $this->texts(), 'error' => I18n::t('wb.integrations.' . $messageKey), 'notice' => '', 'problems' => [],
-            'canIssue' => false, 'showList' => false, 'issued' => null, 'scopes' => [], 'scopeCount' => 0, 'integrations' => [], 'rotatable' => [],
+            'canIssue' => false, 'showList' => false, 'issued' => null, 'scopes' => [], 'analytics' => ['available' => false, 'off' => false, 'problems' => [], 'docs' => ''], 'scopeCount' => 0, 'integrations' => [], 'rotatable' => [],
             'address' => '', 'action' => '', 'defaultName' => '', 'tokens' => ['issue' => '', 'revoke' => ''],
         ], true);
         return $this->getRenderer()->render(self::TEMPLATE, null, true);
@@ -275,6 +315,26 @@ class Integrations extends WbengineBoxAbstract
         $apiEnabled = is_object(Config::$config) && true === (Config::$config->apiV2->enabled ?? false);
         $baseUrl = (string) (is_object(Config::$config) ? (Config::$config->i18n->baseUrl ?? '') : '');
         return $this->problems = (new Preflight())->problems($apiEnabled, Http::isSecure(), $baseUrl);
+    }
+
+    /**
+     * Problem codes of the optional analytics permission, empty when analytics is usable:
+     * enabled in the configuration and migrations/4.0.0/006-analytics.sql applied.
+     *
+     * @return string[]
+     */
+    protected function analyticsProblems(): array
+    {
+        if (null !== $this->analyticsProblems) {
+            return $this->analyticsProblems;
+        }
+        try {
+            $enabled = is_object(Config::$config) && true === Config::getAnalyticsSettings()['enabled'];
+        } catch (\Throwable $e) {
+            // An invalid analytics section means analytics is not usable.
+            $enabled = false;
+        }
+        return $this->analyticsProblems = (new Preflight())->analyticsProblems($enabled);
     }
 
     protected function passwordConfirmation(): PasswordConfirmation

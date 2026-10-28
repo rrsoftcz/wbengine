@@ -9,6 +9,9 @@ final class Doctor
     /** Schema of migrations/4.0.0/007: last_used_at of integrations. */
     public const SCHEMA_INTEGRATIONS_LAST_USED = ['cms_api_integrations'=>['last_used_at']];
 
+    /** Schema of migrations/4.0.0/006: first-party analytics, shared with the integration screen preflight. */
+    public const SCHEMA_ANALYTICS = ['cms_analytics_daily'=>['day','site_id','entity_type','entity_id','views'], 'cms_analytics_totals'=>['site_id','entity_type','entity_id','views'], 'cms_analytics_meta'=>['id','tracking_started_on']];
+
     public function check(array $config, string $root, bool $database = true, bool $inspectOptional = false): array
     {
         $report = [];

@@ -11,6 +11,14 @@ Target: **4.1.0**.
 
 ### Added
 
+- Optional "Analytics" choice when issuing an integration key: adds `analytics:read` to the
+  fixed 17 scope profile (18 in total, `PROFILE_SCOPES` is unchanged and a key without the
+  choice is issued exactly as before). It is offered only when analytics is enabled in
+  `Settings.json` and the schema of `migrations/4.0.0/006-analytics.sql` exists
+  (`Preflight::analyticsProblems()`, `Doctor::SCHEMA_ANALYTICS`); otherwise it is disabled
+  with instructions and the server refuses it. The permission list shows the real count,
+  the key list marks keys with analytics, and a rotation presets the choice from the old key.
+  Also the integration name explanation is now actually rendered.
 - User management CLI: `user:create`, `user:password`, `user:list` and `user:delete`
   (`--email` or `--example` for RFC 2606/6761 demo addresses, `--dry-run`). Passwords are
   read from a no-echo terminal prompt or one line of standard input, never from an
