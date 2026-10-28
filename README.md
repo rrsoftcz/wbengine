@@ -848,7 +848,7 @@ are not pruned.
 
 ## Authentication, sessions and users
 
-* **Passwords** are stored with `password_hash()`. Legacy unsalted MD5 hashes still work and are upgraded to a modern hash on the user's next successful login, provided `cms_users.password` is at least 60 characters wide (`varchar(255)` is recommended). If the column is still narrow the legacy hash is kept and a notice is written to the error log, so a narrow column can never lock a user out.
+* **Passwords** are stored with `password_hash()`. Legacy unsalted MD5 hashes still work and are upgraded to a modern hash on the user's next successful login, provided `cms_users.password` is at least 60 characters wide (`varchar(255)` is recommended). If the column is still narrow the legacy hash is kept and a notice is written to the error log, so a narrow column can never lock a user out. Accounts can be created and passwords reset without the web or API from the command line, see [Creating and managing users from the CLI](#creating-and-managing-users-from-the-cli).
 * **Web login** (`Box\Auth`) uses a CSRF token, a failed attempt counter and reCAPTCHA after repeated failures. The password is read untouched from the request (`Http::PostRaw`), so special characters work.
 * **Login rate limiting** covers the web form, the AJAX login and the API login. Within 15 minutes a client may fail 5 times for one account, 20 times over all accounts, and an account may fail 25 times from all addresses together; after that the answer is `429` with `Retry-After` (an error message on the web form). The strict limit is per IP and account pair, so an attacker cannot lock the real owner out from another address. A successful login clears the pair and account counters, not the IP counter. Counters are files in the temp directory (set `rateLimit.login.dir` to a shared directory with several servers). Behind a reverse proxy or load balancer the limiter sees the proxy's address unless the web server restores the real client IP (`mod_remoteip`, `real_ip_header`), otherwise all clients share one IP counter.
 * **Sessions** are stored in `cms_sessions`, bound to the client IP and a hash of the user agent. The session cookie is `HttpOnly` and `SameSite=Lax` (and `Secure` over HTTPS), strict mode is on, and the session id is regenerated on login to prevent fixation. Stored session data is unserialized with `allowed_classes` limited to `stdClass`.
@@ -898,6 +898,57 @@ second worker waited about 247 ms with the lock held and about 1 ms after early
 close. This measures lock wait in that scenario, not end-to-end website throughput.
 The integration suite also proves serialization, preservation of both writers'
 changes and absence of logout resurrection after an older closed worker exits.
+
+### Creating and managing users from the CLI
+
+The console tool creates, lists, re-passwords and deletes users directly in the database configured by `--config`. It is the way to get the first administrator, to reset a forgotten password when nobody can log in, and to remove demo accounts. It needs only the database, not a running web server or an API token. Composer installs the tool as `vendor/bin/wbengine.php`; from a framework checkout use `php bin/wbengine.php`.
+
+```sh
+php vendor/bin/wbengine.php user:create --email=EMAIL [--username=NAME] [--role=user|editor|admin] [--root=PATH] [--config=PATH]
+php vendor/bin/wbengine.php user:password --email=EMAIL [--root=PATH] [--config=PATH]
+php vendor/bin/wbengine.php user:list [--root=PATH] [--config=PATH]
+php vendor/bin/wbengine.php user:delete --email=EMAIL [--dry-run] [--root=PATH] [--config=PATH]
+php vendor/bin/wbengine.php user:delete --example [--dry-run] [--root=PATH] [--config=PATH]
+```
+
+Every command prints JSON on standard output and exits with `0`, or with `2` and a message on standard error when it refuses (the message never contains a password, a hash or SQL).
+
+```sh
+$ php vendor/bin/wbengine.php user:create --email=owner@corp.example.cz --role=admin --config=/var/www/html/src/Config/Settings.json
+Password:
+Repeat password:
+{"created": true, "id": 2, "email": "owner@corp.example.cz", "username": "owner", "role": "admin"}
+
+$ php vendor/bin/wbengine.php user:password --email=owner@corp.example.cz --config=...
+{"updated": true, "id": 2, "email": "owner@corp.example.cz"}
+
+$ php vendor/bin/wbengine.php user:list --config=...
+{"users": [{"id": 2, "username": "owner", "email": "owner@corp.example.cz", "role": "admin", "active": true}]}
+
+$ php vendor/bin/wbengine.php user:delete --example --dry-run --config=...
+{"deleted": [{"id": 1, "email": "admin@example.com", "role": "admin"}], "dryRun": true}
+```
+
+(The JSON is pretty printed in real output.)
+
+* **user:create** validates the e-mail, role and password with the same code as `POST /api/users/create` (`Api\Model\ApiUserModel`) and stores a `password_hash()` hash. The role defaults to `user`. `--username` defaults to the part of the e-mail before the `@` (characters other than letters, digits and `. _ + -` become `_`, and `-2`, `-3` is appended when the name is taken). An explicit `--username` may contain letters, digits and `. _ + @ -` and is refused when taken. An existing e-mail or username, an unknown role, an unreachable database or a missing configuration is refused and nothing is written. A user created this way can log in with the web form (which signs in by e-mail) and the API immediately.
+* **user:password** sets a new password for an existing user, revokes all of the user's refresh tokens and deletes their rows in `cms_sessions`, so every device is logged out.
+* **user:list** is read only and prints the id, username, e-mail, role and an `active` flag (the account has a usable password; the placeholder value `0` does not). The anonymous user (id 0) and the password hash are never shown.
+* **user:delete** removes one user by e-mail, or with `--example` every user whose e-mail domain is reserved for documentation by RFC 2606 and RFC 6761: `example.com`, `example.org`, `example.net` or a subdomain of them, and the top level domains `.example`, `.test`, `.invalid` and `.localhost`. Domains are matched by whole labels, so `notexample.com` is not touched. The anonymous user is never deleted, and the command refuses when no active administrator would remain, so create the replacement administrator first. The user's refresh tokens and sessions are deleted in the same transaction and the link in `cms_api_audit.local_user_id` is cleared (the audit rows stay). Integration keys created by the user are not changed: revoke them from the integrations screen if they should stop working. `--dry-run` only prints who would be deleted. The output lists the id, e-mail and role of every deleted user.
+
+**Passwords are never an argument.** They would end up in the shell history and in the process list of the machine. A `--password` option (or `--pass`, `--passwd`, `--pwd`, `--pw`) is refused, and the environment is not read either. On a terminal the password is requested twice without echo (the terminal state is restored on errors and on Ctrl+C). Without a terminal one line is read from standard input, which is how to automate it:
+
+```sh
+printf '%s\n' "$ADMIN_PASSWORD" | php vendor/bin/wbengine.php user:create --email=owner@corp.example.cz --role=admin --config=...
+```
+
+Keep the secret in a protected file or a secret store and avoid `echo` on a shared machine with `set -x`. The password must be 12 to 72 bytes long (the API itself enforces no minimum, the CLI does for the accounts it creates; 72 bytes is the limit of bcrypt). The column `cms_users.password` must be `varchar(255)`.
+
+**Forgotten password.** Run `user:password --email=...` on the server. It does not need the old password, and the previous password and all logins stop working.
+
+**First administrator on a fresh install.** The schema of the skeleton application seeds a demo account `admin@example.com` (user `admin`, role `admin`) with a published demo password, and the anonymous user with id 0. Never keep that account on a reachable site. Replace it in this order: create your own administrator with `user:create --role=admin`, log in with it to check that it works, then run `user:delete --example --dry-run` to see which demo accounts would go and `user:delete --example` to remove them. Alternatively change the demo password with `user:password --email=admin@example.com`, but a real administrator is preferable.
+
+In the skeleton's container the binary is `vendor/bin/wbengine.php` in `/var/www/html`, for example `docker compose exec web php vendor/bin/wbengine.php user:create --email=owner@corp.example.cz --role=admin --config=src/Config/Settings.json` (add `-T` and pipe the password for automation, otherwise the terminal prompt is used).
 
 ## Configuration reference
 
@@ -1197,6 +1248,7 @@ vendor/bin/wbengine.php config:check --config=/site/src/Config/Settings.json --r
 vendor/bin/wbengine.php doctor --config=/site/src/Config/Settings.json --root=/site/src
 vendor/bin/wbengine.php migration:status --config=/site/src/Config/Settings.json --root=/site/src
 vendor/bin/wbengine.php analytics:prune --config=/site/src/Config/Settings.json
+vendor/bin/wbengine.php user:create --email=owner@example.cz --role=admin --config=/site/src/Config/Settings.json
 vendor/bin/wbengine.php generate:box --root=/site/src --namespace=App --section=Main --module=Welcome --method=index
 ```
 

@@ -11,6 +11,13 @@ Target: **4.1.0**.
 
 ### Added
 
+- User management CLI: `user:create`, `user:password`, `user:list` and `user:delete`
+  (`--email` or `--example` for RFC 2606/6761 demo addresses, `--dry-run`). Passwords are
+  read from a no-echo terminal prompt or one line of standard input, never from an
+  argument or the environment. Validation, hashing and token revocation reuse
+  `ApiUserModel`; deletion keeps at least one active administrator and removes refresh
+  tokens and sessions in one transaction. Documented in the README, including the first
+  administrator on a fresh install.
 - Opt-in first-party analytics with daily aggregate page, article and box counts,
   long-lived totals, configurable timezone, bounded retention and no visitor identity.
 - Read-only `GET /api/v2/analytics/overview` for integrations with the
