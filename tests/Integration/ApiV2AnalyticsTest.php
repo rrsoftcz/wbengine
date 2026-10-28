@@ -29,6 +29,8 @@ class ApiV2AnalyticsTest extends TestCase
             Db::query($statement);
             if (preg_match('/CREATE TEMPORARY TABLE\s+`?([a-z0-9_]+)/i', $statement, $match)) { $this->tables[] = $match[1]; }
         }
+        // migrations/4.0.0/007, applied directly: information_schema does not list temporary tables.
+        Db::query('ALTER TABLE cms_api_integrations ADD COLUMN last_used_at BIGINT UNSIGNED NULL DEFAULT NULL');
         Db::query('CREATE TEMPORARY TABLE cms_sites (site_id INT PRIMARY KEY, title VARCHAR(120), visible TINYINT, acl INT) ENGINE=InnoDB');
         Db::query('CREATE TEMPORARY TABLE cms_articles (id INT PRIMARY KEY, site_id INT, views BIGINT, title VARCHAR(255), published INT) ENGINE=InnoDB');
         Db::query('CREATE TEMPORARY TABLE cms_boxes (id INT PRIMARY KEY, name VARCHAR(100)) ENGINE=InnoDB');

@@ -18,12 +18,33 @@ Target: **4.1.0**.
 - `analytics:prune` CLI command for bounded removal of expired daily aggregates.
 - Public-page measurement start marker. API responses distinguish dates before
   measurement from dates with zero recorded views.
+- Local integration key management: `Box\Integrations` screen (ADMIN role read from the
+  database, POST only, action-bound CSRF, fresh password confirmation, one-time key in a
+  `private, no-store` response with `Referrer-Policy: same-origin`, scope descriptions in cs
+  and en, preflight with operator instructions, revoke and rotation order). The issued
+  profile is a fixed list of 17 scopes and never includes `analytics:read`.
+- `User\PasswordConfirmation`: rate-limited, constant-time password re-check for the session
+  user, never logging the password.
+- `Api\V2\Model::list()` (non-secret metadata only) and `last_used_at`, written at most
+  once per 60 seconds per key and never failing a request. Migration
+  `migrations/4.0.0/007-api-integration-last-used.sql` (idempotent, no runtime DDL);
+  `doctor` checks it as `migration.007`; `tests/schema.sql` now contains the
+  API v2 tables.
+- `Api\V2\Preflight`: read-only check of API v2 configuration, schema and HTTPS.
 
 ### Upgrade notes
 
+- Apply `migrations/4.0.0/007-api-integration-last-used.sql` (idempotent) before using the
+  Integrations screen; `doctor` reports it as `migration.007`.
 - Apply `migrations/4.0.0/006-analytics.sql` before enabling `analytics.enabled`.
 - Analytics is disabled by default. See the README for timezone, retention,
   administration scope and the regular `analytics:prune` command.
+
+### Fixed
+
+- `doctor` and `MigrationStatus` never detected a missing column (`Db::fetchOne()` returns
+  column metadata, not a value) and the database check called an undefined
+  `Db::setCredentials()`. Both now inspect the schema read-only as documented.
 
 ## [4.0.2] - 2026-10-27
 

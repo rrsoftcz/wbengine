@@ -11,14 +11,21 @@ final class MigrationStatus extends ModelAbstract
     {
         foreach ($required as $table => $columns) {
             foreach ($columns as $column) {
-                if (!Db::fetchOne('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$table, $column])) { return false; }
+                if (!$this->scalar('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$table, $column])) { return false; }
             }
         }
         if ($transactional) {
             foreach (['cms_articles','cms_sites','cms_menu','cms_sections','cms_boxes','cms_site_translations','cms_menu_translations','cms_article_translations','cms_api_changes','cms_api_drafts','cms_api_revisions','cms_api_images'] as $table) {
-                if (strtolower((string) Db::fetchOne('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table])) !== 'innodb') { return false; }
+                if (strtolower((string) $this->scalar('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table])) !== 'innodb') { return false; }
             }
         }
         return true;
+    }
+
+    /** First column of the first row. Db::fetchOne() returns column metadata, not a value. */
+    private function scalar(string $sql, array $params)
+    {
+        $row = Db::fetchRow($sql, $params);
+        return is_array($row) ? $row[0] : null;
     }
 }
