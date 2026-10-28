@@ -47,6 +47,20 @@ Target: **4.1.0**.
   API v2 tables.
 - `Api\V2\Preflight`: read-only check of API v2 configuration, schema and HTTPS.
 
+### Changed
+
+- The article `source` field is optional free text. API v2 accepts any text up to 255
+  characters; only control characters (`\x00` to `\x1f`, `\x7f`) are rejected with
+  `invalid_source` ("Source must be plain text without control characters."). An empty,
+  omitted or `null` source is valid. Previously anything that was not an http(s) URL, a local
+  path or a fragment was rejected.
+- The article box renders the source safely: an http or https URL, a local absolute path or
+  a fragment becomes a link (external links get `rel="noopener noreferrer"`), everything else
+  (including `javascript:` and `data:`) is escaped plain text. `Article.tpl` shows the
+  author and source line only for filled values: no empty "Source:" label or link, and no
+  line at all without both. Template variables `source_text`, `source_href`,
+  `source_external` and `byline` are prepared by `Box\Article::sourceView()`.
+
 ### Upgrade notes
 
 - Apply `migrations/4.0.0/007-api-integration-last-used.sql` (idempotent) before using the
@@ -60,6 +74,10 @@ Target: **4.1.0**.
 - `doctor` and `MigrationStatus` never detected a missing column (`Db::fetchOne()` returns
   column metadata, not a value) and the database check called an undefined
   `Db::setCredentials()`. Both now inspect the schema read-only as documented.
+- `Url::getHostName()` derived the scheme from `SERVER_PROTOCOL` (the HTTP version), so
+  it always returned `http://`, for example in the Location of configured site
+  redirections behind a TLS proxy. It now uses the same HTTPS detection as the rest of the
+  framework, honouring `http.trustedProxies` and `http.forwardedHeaders`.
 
 ## [4.0.2] - 2026-10-27
 

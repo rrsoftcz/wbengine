@@ -434,8 +434,9 @@
          */
         public function getHostName()
         {
-            return preg_replace('/[^a-z](.*)/', '://' . $_SERVER['HTTP_HOST']
-                , strtolower($_SERVER['SERVER_PROTOCOL']));
+            // SERVER_PROTOCOL is the HTTP version (HTTP/1.1), never the scheme. The scheme follows the
+            // same HTTPS detection as the rest of the framework, including trusted proxy headers.
+            return (\Wbengine\Application\Env\Http::isSecure() ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
         }
 
 

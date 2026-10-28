@@ -88,7 +88,7 @@ class TemplateMigrationCorpusTest extends TestCase
         $vars = [
             't' => array_fill_keys(['title', 'username', 'password', 'submit', 'author', 'source', 'info'], 'A & B'),
             'Article' => (object) ['title' => '<script>title</script>', 'author' => 'A & B',
-                'source' => '<source>', 'introtext' => '<p>Intro</p>', 'bodytext' => '<p>Body</p>'],
+                'byline' => true, 'source_text' => '<source>', 'source_href' => '/x?a=1&b=2', 'source_external' => true, 'introtext' => '<p>Intro</p>', 'bodytext' => '<p>Body</p>'],
             'formAction' => '/login/?x="', 'logoutAction' => '/login/', 'logoutLabel' => 'Log & out',
             'userName' => '<script>name</script>', 'token' => 'token"&', 'captcha' => $captcha,
             'error' => $path === 'Application/error.tpl' ? ['title' => '<error>', 'code' => '403', 'msg' => 'A & B'] : 'A & B',

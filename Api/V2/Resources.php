@@ -55,11 +55,8 @@ final class Resources
         if (isset($data['link']) && (!str_starts_with($data['link'], '/') || preg_match('~[\\\\?#\x00-\x20]|(^|/)(\.|\.\.)(/|$)|%2[ef]|%5c~i', $data['link']) || str_starts_with($data['link'], '//'))) {
             throw new Problem('invalid_link', 'Page links must be local absolute paths.');
         }
-        if ('articles' === $resource && isset($data['source']) && '' !== $data['source']) {
-            $source = $data['source'];
-            $local = (str_starts_with($source, '/') && !str_starts_with($source, '//')) || str_starts_with($source, '#');
-            $http = in_array(strtolower((string) parse_url($source, PHP_URL_SCHEME)), ['http', 'https'], true) && false !== filter_var($source, FILTER_VALIDATE_URL);
-            if (preg_match('/[\\\\\x00-\x20\x7f]/', $source) || (!$local && !$http)) { throw new Problem('invalid_source', 'Source links must use HTTP, HTTPS, a local absolute path or a fragment.'); }
+        if ('articles' === $resource && isset($data['source']) && preg_match('/[\x00-\x1f\x7f]/', $data['source'])) {
+            throw new Problem('invalid_source', 'Source must be plain text without control characters.');
         }
         if (isset($data['return_error_code']) && 0 !== $data['return_error_code'] && $data['return_error_code'] < 400) { throw new Problem('invalid_status', 'Sections accept zero or an HTTP error status.'); }
         if (isset($data['key']) && !preg_match('/^[a-z][a-z0-9_]{0,44}$/D', $data['key'])) { throw new Problem('invalid_key', 'Invalid section key.'); }
