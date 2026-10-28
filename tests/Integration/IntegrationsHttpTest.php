@@ -146,6 +146,22 @@ class IntegrationsHttpTest extends DbTestCase
         $this->assertSame(403, $this->request('/integrations/')['status']);
     }
 
+    public function testPermissionsAreCollapsedAndTheFormIsAPanelWithANameExplanation(): void
+    {
+        $this->login('admin@example.test', 'admin-secret');
+        $body = $this->request('/integrations/')['body'];
+        // The permission list is a collapsed <details> with a count, not an always open list next to the form.
+        $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(17\)</summary>~', $body);
+        $this->assertStringNotContainsString('<details class="wb-scopes" open', $body);
+        $this->assertStringContainsString('Read the structure and capabilities of the website', $body);
+        // The form is its own panel and the inline styles survive the template engine unchanged.
+        $this->assertStringContainsString('<form class="wb-panel"', $body);
+        $this->assertStringContainsString('.wb-integrations .wb-panel{margin:1.5rem 0;', $body);
+        // The name field explains what the name is for.
+        $this->assertStringContainsString('id="wb-name-help"', $body);
+        $this->assertStringContainsString('cannot be changed later', $body);
+    }
+
     public function testGetOnlyShowsStateAndNeverChangesIt(): void
     {
         $this->login('admin@example.test', 'admin-secret');
