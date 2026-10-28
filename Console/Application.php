@@ -15,10 +15,14 @@ final class Application
                 if (isset($options[$match[1]])) { throw new \InvalidArgumentException('Duplicate option.'); }
                 $options[$match[1]] = $match[2] ?? true;
             }
-            $allowed = $command === 'generate:box' ? ['root','namespace','section','module','method','write'] : ['config','root'];
+            $users = ['user:create'=>['email','username','role'], 'user:password'=>['email'], 'user:list'=>[], 'user:delete'=>['email','example','dry-run']];
+            if (isset($users[$command]) && array_intersect(array_keys($options), ['password','passwd','pass','pwd','pw','secret'])) {
+                throw new CommandException('Passwords are never accepted as arguments: they would leak through shell history and the process list. Enter the password at the prompt or pipe one line on standard input.');
+            }
+            $allowed = $command === 'generate:box' ? ['root','namespace','section','module','method','write'] : array_merge(['config','root'], $users[$command] ?? []);
             if (array_diff(array_keys($options), $allowed)) { throw new \InvalidArgumentException('Unknown option.'); }
             if ($command === 'help') {
-                echo "doctor|config:check|migration:status|analytics:prune --config=/path/Settings.json [--root=/application]\ngenerate:box --root=/application --namespace=App --section=Main --module=Welcome --method=index [--write]\nExit codes: 0 healthy/success, 1 failed checks, 2 invalid input. Generator defaults to preview; SQL requires manual review.\nProduction deploy: composer install --no-dev --optimize-autoloader; disable debug and renderer.compileCheck; clear the configured compiled template directory during deploy, then warm caches. Verify web-SAPI OPcache, web-user permissions, trusted proxies and HTTPS separately.\n";
+                echo "doctor|config:check|migration:status|analytics:prune --config=/path/Settings.json [--root=/application]\nuser:create --email=EMAIL [--username=NAME] [--role=user|editor|admin] --config=/path/Settings.json [--root=/application]\nuser:password --email=EMAIL --config=/path/Settings.json [--root=/application]\nuser:list --config=/path/Settings.json [--root=/application]\nuser:delete --email=EMAIL|--example [--dry-run] --config=/path/Settings.json [--root=/application]\nuser:* commands read the password from a no-echo prompt on a terminal, or one line from standard input; never from an argument.\ngenerate:box --root=/application --namespace=App --section=Main --module=Welcome --method=index [--write]\nExit codes: 0 healthy/success, 1 failed checks, 2 invalid input. Generator defaults to preview; SQL requires manual review.\nProduction deploy: composer install --no-dev --optimize-autoloader; disable debug and renderer.compileCheck; clear the configured compiled template directory during deploy, then warm caches. Verify web-SAPI OPcache, web-user permissions, trusted proxies and HTTPS separately.\n";
                 return 0;
             }
             if ($command === 'generate:box') {
@@ -28,7 +32,7 @@ final class Application
                 echo json_encode(['written'=>isset($options['write']), 'files'=>$files], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
                 return 0;
             }
-            if (!in_array($command, ['doctor','config:check','migration:status','analytics:prune'], true)) { throw new \InvalidArgumentException('Unknown command; run help.'); }
+            if (!in_array($command, ['doctor','config:check','migration:status','analytics:prune','user:create','user:password','user:list','user:delete'], true)) { throw new \InvalidArgumentException('Unknown command; run help.'); }
             if (!isset($options['config']) || !is_string($options['config']) || !is_file($options['config']) || !is_readable($options['config'])) { throw new \InvalidArgumentException('Supply a readable --config=/path/Settings.json.'); }
             if (strtolower(pathinfo($options['config'], PATHINFO_EXTENSION)) !== 'json') { throw new \InvalidArgumentException('The existing Config loader requires a JSON configuration.'); }
             $raw = json_decode(file_get_contents($options['config']), true, 512, JSON_THROW_ON_ERROR);
@@ -39,12 +43,27 @@ final class Application
                 echo json_encode(['deleted_daily_rows' => $deleted, 'retention_days' => Config::getAnalyticsSettings()['retentionDays']], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
                 return 0;
             }
+            if (isset($users[$command])) {
+                if (isset($options['root']) && (!is_string($options['root']) || !is_dir($options['root']))) { throw new \InvalidArgumentException('Supply an existing application --root directory.'); }
+                if (!defined('S_TABLE_USERS')) { require_once dirname(__DIR__) . '/Application/Env/Const.php'; }
+                $commands = new UserCommands();
+                // An unreachable server makes mysqli warn; keep stderr free of connection details.
+                set_error_handler(static fn (): bool => true);
+                try {
+                    $result = match ($command) { 'user:create' => $commands->create($options), 'user:password' => $commands->password($options), 'user:list' => $commands->list(), 'user:delete' => $commands->delete($options) };
+                } finally { restore_error_handler(); }
+                echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
+                return 0;
+            }
             $root = $options['root'] ?? dirname(dirname(realpath($options['config'])));
             if (!is_string($root) || !is_dir($root)) { throw new \InvalidArgumentException('Supply an existing application --root directory.'); }
             $report = (new Doctor())->check($raw, $root, $command !== 'config:check', $command === 'migration:status');
             if ($command === 'migration:status') { $report = array_filter($report, static fn ($key) => str_starts_with($key, 'migration.'), ARRAY_FILTER_USE_KEY); }
             echo json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
             return in_array('fail', array_column($report, 'status'), true) ? 1 : 0;
+        } catch (CommandException $e) {
+            fwrite(STDERR, 'Command failed: ' . $e->getMessage() . "\n");
+            return 2;
         } catch (\Throwable) {
             // Third party config/database exceptions can contain credentials or SQL payloads.
             fwrite(STDERR, "Command failed: validate the command options, JSON configuration and destination permissions. Run help for usage. No secret values are printed.\n");
