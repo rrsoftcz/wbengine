@@ -829,6 +829,13 @@ thin subclass and a `cms_boxes` row on a page with `acl = 1`), or through the tr
 model APIs. Every change is a POST with a CSRF token and a fresh password confirmation;
 the raw key is shown once in the POST response. Apply `migrations/4.0.0/007-api-integration-last-used.sql`
 (adds `last_used_at`) and check with `doctor`. Discovery accurately reports unavailable content CRUD.
+The key gets a fixed profile of 17 permissions. The administrator may tick the optional
+"Analytics" choice when issuing it, which adds `analytics:read` (18 in total) so the central
+Admin can show the traffic overview of the website. The choice is offered only when analytics
+is usable: `analytics.enabled` is `true` in `Settings.json` and
+[`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql) is applied (see
+below). Otherwise it is disabled with instructions, and a key without analytics is issued as
+usual. The server accepts the choice only as a checked box, never a list of scopes.
 See [API v2 contracts, schema upgrade and audit/transaction rules](ref-api-v2.md).
 V1 remains supported; V2 intentionally has no browser CORS and rejects OPTIONS.
 

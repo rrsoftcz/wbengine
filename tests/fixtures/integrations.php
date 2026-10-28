@@ -16,6 +16,10 @@ $dir = getenv('WB_PAGE_CACHE_HTTP_DIR');
 Config::$config->debug = false;
 Config::$config->rateLimit = (object) ['login' => (object) ['enabled' => false, 'dir' => $dir . '/ratelimit']];
 Config::$config->apiV2 = (object) ['enabled' => true];
+// A test switches analytics on by creating this file in the fixture directory.
+if (is_file($dir . '/analytics-enabled')) {
+    Config::$config->analytics = (object) ['enabled' => true, 'timezone' => 'UTC', 'retentionDays' => 62];
+}
 // The page cache is enabled on purpose: the integrations page must never enter it.
 Config::$config->cache = (object) ['enabled' => true, 'pages' => (object) ['enabled' => true]];
 // Plain HTTP on loopback; the test marks requests as HTTPS through a trusted proxy header.

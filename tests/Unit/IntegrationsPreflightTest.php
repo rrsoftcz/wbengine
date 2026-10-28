@@ -52,6 +52,53 @@ class IntegrationsPreflightTest extends TestCase
         }
     }
 
+    public function testAnalyticsIsUsableOnlyWhenEnabledAndTheSchemaExists(): void
+    {
+        $ready = new Preflight(fn (array $schema) => true);
+        $this->assertSame([], $ready->analyticsProblems(true));
+        $this->assertSame([Preflight::ANALYTICS_DISABLED], $ready->analyticsProblems(false));
+        $noSchema = new Preflight(fn (array $schema) => $schema !== Doctor::SCHEMA_ANALYTICS);
+        $this->assertSame([Preflight::ANALYTICS_SCHEMA], $noSchema->analyticsProblems(true));
+        $this->assertSame([Preflight::ANALYTICS_DISABLED, Preflight::ANALYTICS_SCHEMA], $noSchema->analyticsProblems(false));
+        $down = new Preflight(function (array $schema): bool { throw new \RuntimeException('connection refused'); });
+        $this->assertSame([Preflight::ANALYTICS_DATABASE], $down->analyticsProblems(true));
+    }
+
+    public function testAnalyticsProblemsNeverBlockIssuingTheKey(): void
+    {
+        $preflight = new Preflight(fn (array $schema) => $schema !== Doctor::SCHEMA_ANALYTICS);
+        $this->assertSame([], $preflight->problems(true, true));
+    }
+
+    public function testAnalyticsSchemaMatchesTheMigration(): void
+    {
+        $sql = (string) file_get_contents(dirname(__DIR__, 2) . '/migrations/4.0.0/006-analytics.sql');
+        foreach (Doctor::SCHEMA_ANALYTICS as $table => $columns) {
+            $this->assertStringContainsString('CREATE TABLE IF NOT EXISTS ' . $table . ' (', $sql);
+            foreach ($columns as $column) {
+                $this->assertMatchesRegularExpression('~\b' . $column . '\s+[A-Z]~', $sql);
+            }
+        }
+    }
+
+    public function testAnalyticsTextsAndScopeDescriptionAreInBothLanguages(): void
+    {
+        foreach (['en', 'cs'] as $locale) {
+            $messages = require dirname(__DIR__, 2) . '/I18n/messages/' . $locale . '.php';
+            $this->assertArrayHasKey('wb.integrations.scope.analytics_read', $messages);
+            foreach ([Preflight::ANALYTICS_DISABLED, Preflight::ANALYTICS_SCHEMA, Preflight::ANALYTICS_DATABASE] as $code) {
+                $this->assertArrayHasKey('wb.integrations.analytics_problem.' . $code, $messages);
+            }
+            foreach (\Wbengine\Box\Integrations::scopesFor(true) as $scope) {
+                $this->assertArrayHasKey('wb.integrations.scope.' . str_replace(':', '_', $scope), $messages);
+            }
+        }
+        $cs = require dirname(__DIR__, 2) . '/I18n/messages/cs.php';
+        $this->assertSame('Číst přehled návštěvnosti webu', $cs['wb.integrations.scope.analytics_read']);
+        $this->assertCount(18, \Wbengine\Box\Integrations::scopesFor(true));
+        $this->assertCount(17, \Wbengine\Box\Integrations::scopesFor(false));
+    }
+
     public function testCatalogsHaveTheSameIntegrationKeys(): void
     {
         $en = array_keys(array_filter(require dirname(__DIR__, 2) . '/I18n/messages/en.php', fn ($k) => str_starts_with($k, 'wb.integrations.'), ARRAY_FILTER_USE_KEY));

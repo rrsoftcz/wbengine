@@ -6,6 +6,11 @@
 .wb-integrations .wb-panel .wb-fields{display:flex;flex-direction:column;gap:.35rem}
 .wb-integrations .wb-panel .wb-fields input,.wb-integrations .wb-panel .wb-fields select{margin-bottom:.75rem}
 .wb-integrations .wb-panel label{font-weight:600}
+.wb-integrations .wb-check{display:flex;align-items:center;gap:.5rem;font-weight:600}
+.wb-integrations .wb-check input{margin:0}
+.wb-integrations .wb-badge{display:inline-block;margin-left:.35rem;padding:.05rem .45rem;border-radius:.75rem;background:#e0f2fe;color:#075985;font-size:.75rem;font-weight:600}
+.wb-integrations .wb-off{margin:0 0 .75rem;padding:.6rem .85rem;border:1px solid #cbd5e1;border-radius:.5rem;background:#fff;color:#475569;font-size:.875rem;line-height:1.4}
+.wb-integrations .wb-off ul{margin:.4rem 0 0;padding-left:1.25rem}
 .wb-integrations .wb-hint{display:block;margin:-.25rem 0 .75rem;color:#475569;font-size:.875rem;line-height:1.4}
 </style>
 <section class="wb-integrations mx-auto mt-10 max-w-3xl px-4" data-wb-integrations>
@@ -50,9 +55,9 @@
         <p class="rounded border border-slate-300 bg-slate-50 p-3">{$view.issued.replaces}</p>
         {/if}
         <details class="wb-scopes">
-            <summary>{$view.t.scopes_title} ({$view.scopeCount})</summary>
+            <summary>{$view.t.scopes_title} ({$view.issued.scope_count})</summary>
             <ul>
-                {foreach $view.scopes as $scope}
+                {foreach $view.issued.scopes as $scope}
                 <li>{$scope}</li>
                 {/foreach}
             </ul>
@@ -93,9 +98,26 @@
                 <select class="rounded border border-slate-300 p-2" id="wb-replaces" name="replaces">
                     <option value="">{$view.t.replaces_none}</option>
                     {foreach $view.rotatable as $option}
-                    <option value="{$option.id}">{$option.label}</option>
+                    <option value="{$option.id}" data-analytics="{$option.analytics}">{$option.label}</option>
                     {/foreach}
                 </select>
+                {/if}
+                {if $view.analytics.available}
+                <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
+                {else}
+                <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" disabled aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
+                {/if}
+                <small class="wb-hint" id="wb-analytics-help">{$view.t.analytics_help}</small>
+                {if $view.analytics.off}
+                <div class="wb-off" role="note">
+                    {$view.t.analytics_off}
+                    <ul>
+                        {foreach $view.analytics.problems as $reason}
+                        <li>{$reason}</li>
+                        {/foreach}
+                    </ul>
+                    <a href="{$view.analytics.docs}" rel="noopener noreferrer">{$view.t.analytics_docs}</a>
+                </div>
                 {/if}
                 <label for="wb-password">{$view.t.password_label}</label>
                 <input type="password" class="rounded border border-slate-300 p-2" id="wb-password" name="password" autocomplete="current-password" required>
@@ -136,7 +158,7 @@
                     <td>{$row.created}</td>
                     <td>{$row.by}</td>
                     <td>{$row.last_used}</td>
-                    <td>{$row.scope_count}</td>
+                    <td>{$row.scope_count}{if $row.has_analytics} <span class="wb-badge">{$view.t.analytics_badge}</span>{/if}</td>
                     <td>
                         {if $row.active}
                         {if $view.canIssue}
@@ -161,6 +183,20 @@
         {/if}
     </div>
 </section>
+{if $view.canIssue}
+<script>
+(function () {
+    // Rotation: preset the Analytics choice from the key that is being replaced.
+    var select = document.getElementById('wb-replaces');
+    var box = document.getElementById('wb-analytics');
+    if (!select || !box) { return; }
+    select.addEventListener('change', function () {
+        var option = select.options[select.selectedIndex];
+        if (!box.disabled && option && option.value !== '') { box.checked = option.getAttribute('data-analytics') === '1'; }
+    });
+})();
+</script>
+{/if}
 {if $view.issued}
 <script>
 (function () {
