@@ -60,6 +60,21 @@ final class ConsoleCliTest extends TestCase
         self::assertSame(0, $code); $report = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
         self::assertCount(5, $report); self::assertNotContains('fail', array_column($report, 'status'));
     }
+    public function testMigrationStatusWithUnreachableDatabaseStaysCleanJson(): void
+    {
+        $config = json_decode(file_get_contents(dirname(__DIR__) . '/config/Settings.test.json'), true);
+        $config['dbAdapterDefinition']['hostname'] = 'unreachable.invalid';
+        $config['apiV2'] = ['enabled' => true];
+        $path = tempnam(sys_get_temp_dir(), 'wb-console-') . '.json';
+        file_put_contents($path, json_encode($config));
+        try {
+            [$code, $output] = $this->cli(['migration:status', '--config=' . $path]);
+            $report = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+            self::assertSame(1, $code);
+            self::assertSame('fail', $report['migration.007']['status']);
+            self::assertStringNotContainsString('Warning', $output);
+        } finally { unlink($path); unlink(substr($path, 0, -5)); }
+    }
     public function testUnknownOptionsFailAndHelpExplainsDeployment(): void
     {
         [$code] = $this->cli(['doctor','--password=SECRET']); self::assertSame(2, $code);

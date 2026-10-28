@@ -61,11 +61,15 @@ final class Doctor
             '005'=>[!empty($config['apiV2']['enabled']), ['cms_boxes'=>['api_settings'], 'cms_api_changes'=>['change_id','resource','resource_id','action','before_data','after_data','integration_id','central_actor','created_at'], 'cms_api_drafts'=>['article_id','source_etag','payload','revision_id'], 'cms_api_revisions'=>['revision_id','article_id','payload','action','integration_id','central_actor','created_at'], 'cms_api_images'=>['image_id','mime','size','sha256','integration_id','created_at']]],
             '007'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_INTEGRATIONS_LAST_USED],
         ];
+        $databaseDown = false;
         foreach ($requirements as $number => [$enabled, $schema]) {
             if (!$enabled && !$inspectOptional) { $report['migration.' . $number] = ['status'=>'skip','action'=>'Optional feature disabled.']; continue; }
             if (!$database) { $report['migration.' . $number] = ['status'=>'skip','action'=>'Run doctor or migration:status to check the database.']; continue; }
-            try { $ok = (new MigrationStatus())->inspect($schema, $number === '005'); }
-            catch (\Throwable) { $ok = false; }
+            // An unreachable server makes mysqli warn; the report must stay clean machine readable output.
+            set_error_handler(static fn (): bool => true);
+            try { $ok = !$databaseDown && (new MigrationStatus())->inspect($schema, $number === '005'); }
+            catch (\Throwable) { $ok = false; $databaseDown = true; }
+            finally { restore_error_handler(); }
             if (!$enabled && !$ok) { $report['migration.' . $number] = ['status'=>'skip', 'action'=>'Optional schema missing or DB unavailable; feature disabled. Apply only after backup when needed.']; continue; }
             $add('migration.' . $number, $ok, "Review and apply optional migrations/4.0.0/$number SQL manually after backup; verify DB connectivity. No DDL was executed.");
         }

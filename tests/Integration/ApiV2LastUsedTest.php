@@ -132,7 +132,7 @@ class ApiV2LastUsedTest extends TestCase
                 $this->assertTrue((new MigrationStatus())->inspect(Doctor::SCHEMA_INTEGRATIONS_LAST_USED), 'run ' . $run);
             }
             $column = Db::fetchAssoc('SELECT COLUMN_TYPE, IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['cms_api_integrations', 'last_used_at']);
-            $this->assertSame('bigint unsigned', strtolower($column['COLUMN_TYPE']));
+            $this->assertMatchesRegularExpression('/^bigint(\(20\))? unsigned$/', strtolower($column['COLUMN_TYPE']));
             $this->assertSame('YES', $column['IS_NULLABLE']);
             $row = Db::fetchAssoc('SELECT name, last_used_at FROM cms_api_integrations');
             $this->assertSame('Kept', $row['name']);
