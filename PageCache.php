@@ -22,9 +22,9 @@ use Wbengine\Application\Application;
  *    entries bounded by the number of sites;
  *  - the site does not require a login, and debug is off.
  *
- * Pages whose output depends on anything else (the device type, a language cookie,
- * the time of day) must not be cached this way: leave the page cache off, or extend
- * the key.
+ * The key varies by language (with i18n), host and device type (the boxes can be limited to
+ * devices). Pages whose output depends on anything else (a language cookie, the time of
+ * day) must not be cached this way: leave the page cache off, or extend the key.
  */
 class PageCache
 {
@@ -99,7 +99,7 @@ class PageCache
         }
 
         self::$_ttl = max(1, (int) ($pages['ttl'] ?? self::DEFAULT_TTL));
-        self::$_key = self::cacheKey($path);
+        self::$_key = self::cacheKey($path, (int) $app->getDeviceType());
         self::$_path = $path;
 
         $page = Cache::fetch(self::$_key, $found);
@@ -116,15 +116,16 @@ class PageCache
     /**
      * The cache key of a page. With i18n the locale is part of it: the same URL can be shown
      * in different languages (chosen by cookie or Accept-Language), and a page in one
-     * language must never be served to a visitor of another.
+     * language must never be served to a visitor of another. The device type is part of it when
+     * given, because boxes can be limited to devices (device_min, device_strict).
      */
-    public static function cacheKey($path)
+    public static function cacheKey($path, $device = null)
     {
         // The absolute hreflang links of a page contain its host, so without a configured
         // baseUrl a copy belongs to one host: a forged Host header cannot poison the copies of
         // the real one.
         $host = (I18n::originFollowsHost() && '' !== I18n::origin()) ? substr(md5(I18n::origin()), 0, 8) . ':' : '';
-        return 'page:' . (I18n::isEnabled() ? I18n::locale() . ':' : '') . $host . $path;
+        return 'page:' . (I18n::isEnabled() ? I18n::locale() . ':' : '') . $host . (null === $device ? '' : 'd' . (int) $device . ':') . $path;
     }
 
 

@@ -98,7 +98,12 @@ class Section implements ComponentParentInterface
     private function _getBoxes($callable)
     {
         try {
+            $parent = $this->getSite()->getParent();
+            // Unknown device (a parent without detection): do not filter.
+            $device = method_exists($parent, 'getDeviceType') ? (int) $parent->getDeviceType() : 0;
             foreach ($this->getModel()->getBoxes($this) as $b) {
+                // The cached rows are device independent: the filter runs here, and the page cache key varies by device.
+                if ($device > 0 && !Model::visibleOnDevice($b, $device)) { continue; }
                 $this->_createMethodName($b['method'], $this->_getModuleBox($b), function ($box, $method) {
                     if ($box instanceof Box\WbengineBoxAbstract) {
                         if (method_exists($box, $method)) {

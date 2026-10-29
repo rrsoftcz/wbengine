@@ -25,6 +25,20 @@ class Model extends ModelAbstract {
 
 
      /**
+     * Whether a box is shown on a device (DEVICE_TYPE_MOBILE 1, TABLET 2, DESKTOP 3).
+     * device_min 0 means any device; otherwise the device must be at least device_min,
+     * and with device_strict it must be exactly device_min. The stored default
+     * (device_min 1, not strict) therefore shows a box on every device.
+     */
+    public static function visibleOnDevice(array $box, int $device): bool
+    {
+        $min = (int) ($box['device_min'] ?? 0);
+        if ($min <= 0) { return true; }
+        if ($device < $min) { return false; }
+        return empty($box['device_strict']) || $device === $min;
+    }
+
+    /**
      * Return section boxes as assoc array.
      * @param Section $section
      * @return array

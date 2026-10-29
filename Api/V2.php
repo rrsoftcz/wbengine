@@ -175,7 +175,7 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
         $resources['preview'] = ['read' => true, 'write' => false];
         $resources['publish'] = ['read' => false, 'write' => true];
         $resources['analytics'] = ['read' => \Wbengine\Config::getAnalyticsSettings()['enabled'], 'write' => false];
-        return ['api_version' => '2.0', 'capabilities' => $resources, 'box_types' => $this->getContentModel()->boxTypes(), 'i18n' => ['default' => \Wbengine\I18n::translator()->getDefaultLocale(), 'locales' => array_values(\Wbengine\I18n::locales())], 'authentication' => ['type' => 'integration_bearer', 'https_required' => true], 'pagination' => ['type' => 'page', 'default_per_page' => 25, 'max_per_page' => 100]];
+        return ['api_version' => '2.0', 'capabilities' => $resources, 'box_types' => $this->getContentModel()->boxTypes(), 'i18n' => ['default' => \Wbengine\I18n::translator()->getDefaultLocale(), 'locales' => array_values(\Wbengine\I18n::locales())], 'authentication' => ['type' => 'integration_bearer', 'https_required' => true], 'pagination' => ['type' => 'page', 'default_per_page' => 25, 'max_per_page' => 100], 'search' => ['resources' => ['pages', 'boxes'], 'max_length' => 100]];
     }
 
     private function authorize(array $scopes, string $action, string $authorization, bool $secure, ?string $centralActor, ?string $clientIp): array

@@ -9,8 +9,12 @@ final class BoxRegistry
 
     public static function current(): self { return self::$current ??= new self(); }
 
+    /** Legacy boxes are unregistered, so the framework article renderer is recognised by its names. */
+    private const LEGACY_ARTICLE_METHOD = 'getArticleBox';
+    private const LEGACY_ARTICLE_MODULE = 'article';
+
     /** Settings are finite enum-valued configuration, never PHP names or source. */
-    public function register(string $type, string $module, string $method, array $settings = [], array $sections = ['central']): void
+    public function register(string $type, string $module, string $method, array $settings = [], array $sections = ['central'], array $metadata = []): void
     {
         foreach ([$type, $module, $method] as $identifier) {
             if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,44}$/D', $identifier)) {
@@ -27,14 +31,17 @@ final class BoxRegistry
         }
         if (!$sections || !array_is_list($sections)) { throw new \InvalidArgumentException('Allowed section keys are required.'); }
         foreach ($sections as $section) { if (!is_string($section) || !preg_match('/^[a-z][a-z0-9_]{0,44}$/D', $section)) { throw new \InvalidArgumentException('Invalid section key.'); } }
+        if (array_diff_key($metadata, ['renders' => true]) || (isset($metadata['renders']) && 'article' !== $metadata['renders'])) {
+            throw new \InvalidArgumentException('Box metadata allows only renders=article.');
+        }
         if (isset($this->types[$type])) { throw new \LogicException('Box type already registered.'); }
-        $this->types[$type] = ['module' => $module, 'method' => $method, 'settings' => $settings, 'sections' => $sections];
+        $this->types[$type] = ['module' => $module, 'method' => $method, 'settings' => $settings, 'sections' => $sections, 'renders' => $metadata['renders'] ?? null];
     }
 
     public function catalog(): array
     {
         $result = [];
-        foreach ($this->types as $id => $definition) { $result[] = ['type' => $id, 'settings' => $definition['settings'], 'sections' => $definition['sections']]; }
+        foreach ($this->types as $id => $definition) { $result[] = ['type' => $id, 'settings' => $definition['settings'], 'sections' => $definition['sections'], 'renders' => $definition['renders']]; }
         return $result;
     }
 
@@ -55,6 +62,17 @@ final class BoxRegistry
         if (!isset($this->types[$type]) || !in_array($section, $this->types[$type]['sections'], true)) {
             throw new Problem('invalid_box_section', 'This box type is not registered for this section.');
         }
+    }
+
+    /**
+     * Whether a box renders articles: its registered type says renders=article, or, for a legacy
+     * box that is not registered, its module/method are the framework article renderer.
+     */
+    public function rendersArticles(string $module, string $method): bool
+    {
+        $type = $this->typeFor($module, $method);
+        if (null !== $type) { return 'article' === $this->types[$type]['renders']; }
+        return 0 === strcasecmp($method, self::LEGACY_ARTICLE_METHOD) || 0 === strcasecmp($module, self::LEGACY_ARTICLE_MODULE);
     }
 
     public function typeFor(string $module, string $method): ?string

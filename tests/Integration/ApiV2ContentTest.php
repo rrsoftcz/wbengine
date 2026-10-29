@@ -40,7 +40,8 @@ class ApiV2ContentTest extends TestCase
         $this->key = $issued['key'];
         $this->actor = ['integration_id' => $issued['integration_id'], 'central_actor' => 'editor-9'];
         $registry = new BoxRegistry();
-        $registry->register('story', 'blog', 'story', ['variant' => ['full', 'compact']]);
+        $registry->register('story', 'blog', 'story', ['variant' => ['full', 'compact']], ['central'], ['renders' => 'article']);
+        $registry->register('promo', 'promo', 'show');
         $this->content = new ContentModel($registry, function (): void {
             // This SET is rejected while any transaction is active.
             Db::getConnection()->query('SET TRANSACTION READ WRITE');
@@ -342,6 +343,59 @@ class ApiV2ContentTest extends TestCase
         self::assertSame(['cs', 'de'], $byId[$with]);
         self::assertSame([], $byId[$without]);
         self::assertSame(['cs', 'de'], $this->content->read('pages', $with)['data']['translation_locales']);
+    }
+
+    public function testPagesAndBoxesCanBeSearchedWithEscapedWildcardsAndPagination(): void
+    {
+        Db::insert('cms_sites', ['link' => '/about/', 'title' => 'About us']);
+        Db::insert('cms_sites', ['link' => '/sale/', 'title' => '50% off']);
+        Db::insert('cms_sites', ['link' => '/other/', 'title' => '500 items']);
+        Db::insert('cms_sites', ['link' => '/a_b/', 'title' => 'Underscore']);
+        $titles = fn (string $search, array $extra = []) => array_column($this->content->collection('pages', ['search' => $search] + $extra)['data'], 'title');
+        self::assertSame(['About us'], $titles('about'));
+        self::assertSame(['50% off'], $titles('50%'));
+        self::assertSame(['Underscore'], $titles('a_b'));
+        self::assertSame(['Underscore'], $titles('/a_b/'));
+        self::assertSame([], $titles("x' OR '1'='1"));
+        $first = $this->content->collection('pages', ['search' => 'item', 'per_page' => 1]);
+        self::assertSame(['500 items'], array_column($first['data'], 'title'));
+        self::assertSame(1, $first['pagination']['total']);
+        $section = $this->content->create('sections', ['key' => 'central', 'title' => 'Central'], $this->actor)['data']['section_id'];
+        $this->content->create('boxes', ['name' => 'Story 100%', 'type' => 'story', 'section_id' => $section], $this->actor);
+        $this->content->create('boxes', ['name' => 'Promo banner', 'type' => 'promo', 'section_id' => $section], $this->actor);
+        $names = fn (string $search) => array_column($this->content->collection('boxes', ['search' => $search])['data'], 'name');
+        self::assertSame(['Promo banner'], $names('banner'));
+        self::assertSame(['Story 100%'], $names('100%'));
+        self::assertCount(2, $this->content->collection('boxes', [])['data']);
+        try { $this->content->collection('pages', ['search' => str_repeat('a', 101)]); self::fail('Long search accepted'); }
+        catch (Problem $e) { self::assertSame(400, $e->getCode()); }
+    }
+
+    public function testBoxesExposeReadOnlyRenderingMetadataAndPagesListTheirArticleBoxes(): void
+    {
+        $page = Db::insert('cms_sites', ['link' => '/p/', 'title' => 'P']);
+        $other = Db::insert('cms_sites', ['link' => '/q/', 'title' => 'Q']);
+        $section = $this->content->create('sections', ['key' => 'central', 'title' => 'Central'], $this->actor)['data']['section_id'];
+        $own = $this->content->create('boxes', ['name' => 'Own', 'type' => 'story', 'section_id' => $section, 'sites' => [$page]], $this->actor);
+        $shared = $this->content->create('boxes', ['name' => 'Shared', 'type' => 'story', 'section_id' => $section, 'shared' => 1], $this->actor);
+        $this->content->create('boxes', ['name' => 'Elsewhere', 'type' => 'story', 'section_id' => $section, 'sites' => [$other]], $this->actor);
+        $this->content->create('boxes', ['name' => 'Promo', 'type' => 'promo', 'section_id' => $section, 'sites' => [$page]], $this->actor);
+        Db::insert('cms_boxes', ['name' => 'Legacy', 'module' => 'Article', 'method' => 'getArticleBox', 'section_id' => $section, 'sites' => json_encode([(string) $page])]);
+        $legacy = (int) Db::fetchAssoc("SELECT id FROM cms_boxes WHERE name = 'Legacy'")['id'];
+        $read = $this->content->read('boxes', $own['data']['id'])['data'];
+        self::assertSame(['blog', 'story', true], [$read['module'], $read['method'], $read['renders_articles']]);
+        $rows = array_column($this->content->collection('boxes', [])['data'], null, 'name');
+        self::assertFalse($rows['Promo']['renders_articles']);
+        self::assertSame('promo', $rows['Promo']['module']);
+        self::assertTrue($rows['Legacy']['renders_articles']);
+        $ids = $this->content->read('pages', $page)['data']['article_box_ids'];
+        self::assertSame([(int) $own['data']['id'], (int) $shared['data']['id'], $legacy], $ids);
+        foreach (['module', 'method', 'renders_articles'] as $field) {
+            try { $this->content->update('boxes', $own['data']['id'], [$field => 'x'], $own['etag'], $this->actor); self::fail($field . ' accepted'); }
+            catch (Problem $e) { self::assertSame(400, $e->getCode()); }
+        }
+        try { $this->content->update('pages', $page, ['article_box_ids' => []], $this->content->read('pages', $page)['etag'], $this->actor); self::fail('article_box_ids accepted'); }
+        catch (Problem $e) { self::assertSame(400, $e->getCode()); }
     }
 
     public function testBoxCannotMoveToAnUnregisteredExecutionNamespace(): void
