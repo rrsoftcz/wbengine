@@ -32,6 +32,8 @@ class ApiV2Test extends TestCase
         self::assertSame('2.0', $response['body']['data']['api_version']);
         self::assertTrue($response['body']['data']['capabilities']['articles']['write']);
         self::assertFalse($response['body']['data']['capabilities']['templates']['write']);
+        self::assertIsString($response['body']['data']['i18n']['default']);
+        self::assertContains($response['body']['data']['i18n']['default'], $response['body']['data']['i18n']['locales']);
         self::assertArrayNotHasKey('php_version', $response['body']['data']);
         self::assertArrayNotHasKey('database', $response['body']['data']);
     }
