@@ -9,6 +9,10 @@ documented here, see the git tags.
 
 Target: **4.1.0**.
 
+### Changed
+
+- All documentation (plans, references, guides) is in English.
+
 ### Added
 
 - Pages, menu items and articles in API v2 lists and reads carry `translation_locales`, the languages
