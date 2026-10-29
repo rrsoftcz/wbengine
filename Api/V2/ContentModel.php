@@ -33,14 +33,38 @@ class ContentModel extends Model
             foreach ($items as &$item) { $item['has_draft'] = array_key_exists($item['id'], $titles); $item['draft_title'] = $titles[$item['id']] ?? null; }
             unset($item);
         }
+        if ($items && in_array($resource, ['articles', 'pages', 'menu'], true)) { $items = $this->withTranslationLocales($resource, $items, $def['id']); }
         return Contract::page($items, $query, $count);
+    }
+
+    /**
+     * Adds "translation_locales" (the languages that have a translation) to every item with one
+     * query, so a client can show "3 of 20 languages" without asking for each language.
+     * An article counts a language from its draft when a draft exists, as the editor does.
+     */
+    private function withTranslationLocales(string $resource, array $items, string $idField): array
+    {
+        [$table, $key] = match ($resource) { 'articles' => ['cms_article_translations', 'article_id'], 'pages' => ['cms_site_translations', 'site_id'], default => ['cms_menu_translations', 'menu_id'] };
+        $ids = array_column($items, $idField);
+        $found = [];
+        foreach (Db::fetchAllAssoc('SELECT ' . Db::identifier($key) . ' AS record_id, locale FROM ' . Db::identifier($table) . ' WHERE ' . Db::identifier($key) . ' IN (' . implode(',', array_fill(0, count($ids), '?')) . ') ORDER BY locale', $ids) as $row) { $found[(int) $row['record_id']][$row['locale']] = true; }
+        if ('articles' === $resource) {
+            foreach (Db::fetchAllAssoc('SELECT article_id, payload FROM cms_api_drafts WHERE article_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')', $ids) as $draft) {
+                $found[(int) $draft['article_id']] = array_fill_keys(array_keys((array) (json_decode($draft['payload'], true, 64, JSON_THROW_ON_ERROR)['translations'] ?? [])), true);
+            }
+        }
+        foreach ($items as &$item) { $locales = array_keys($found[(int) $item[$idField]] ?? []); sort($locales); $item['translation_locales'] = $locales; }
+        unset($item);
+        return $items;
     }
 
     public function read(string $resource, $id): array
     {
         if ('articles' === $resource) { return $this->articleResponse($this->articleState(Resources::id($id))); }
         $row = $this->row($resource, Resources::id($id));
-        return ['data' => $this->publicRow($resource, $row), 'etag' => Resources::etag($row)];
+        $data = $this->publicRow($resource, $row);
+        if (in_array($resource, ['pages', 'menu'], true)) { $data = $this->withTranslationLocales($resource, [$data], Resources::definition($resource)['id'])[0]; }
+        return ['data' => $data, 'etag' => Resources::etag($row)];
     }
 
     public function create(string $resource, array $data, array $actor): array
@@ -473,6 +497,8 @@ class ContentModel extends Model
     private function articleResponse(array $state): array
     {
         $data = $this->publicRow('articles', $state['published']);
+        $data['translation_locales'] = array_keys((array) $this->draftPayload($state)['translations']);
+        sort($data['translation_locales']);
         $data['translations'] = (object) $this->draftPayload(['draft' => null] + $state)['translations'];
         $data['draft'] = null === $state['draft'] ? null : $this->draftPayload($state) + ['revision_id' => $state['draft']['revision_id']];
         if (null !== $data['draft']) { $data['draft']['translations'] = (object) $data['draft']['translations']; }

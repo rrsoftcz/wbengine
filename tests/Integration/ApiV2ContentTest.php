@@ -331,6 +331,19 @@ class ApiV2ContentTest extends TestCase
         self::assertSame('New private draft', $list['data'][1]['draft_title']);
     }
 
+    public function testRecordsListTheLanguagesThatHaveATranslation(): void
+    {
+        $with = Db::insert('cms_sites', ['link' => '/translated/']);
+        $without = Db::insert('cms_sites', ['link' => '/plain/']);
+        Db::insert('cms_site_translations', ['site_id' => $with, 'locale' => 'de', 'title' => 'Titel']);
+        Db::insert('cms_site_translations', ['site_id' => $with, 'locale' => 'cs', 'title' => 'Nazev']);
+        $byId = [];
+        foreach ($this->content->collection('pages', [])['data'] as $row) { $byId[(int) $row['site_id']] = $row['translation_locales']; }
+        self::assertSame(['cs', 'de'], $byId[$with]);
+        self::assertSame([], $byId[$without]);
+        self::assertSame(['cs', 'de'], $this->content->read('pages', $with)['data']['translation_locales']);
+    }
+
     public function testBoxCannotMoveToAnUnregisteredExecutionNamespace(): void
     {
         $central = $this->content->create('sections', ['key' => 'central', 'title' => 'Central'], $this->actor);

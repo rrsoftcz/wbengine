@@ -11,6 +11,9 @@ Target: **4.1.0**.
 
 ### Added
 
+- Pages, menu items and articles in API v2 lists and reads carry `translation_locales`, the languages
+  that have a translation, computed with one query per page of results. A client can show "3 of 20
+  languages" without asking for every language of every record.
 - `GET /api/v2/capabilities` lists `i18n.default` and `i18n.locales` (the locales the site really
   serves), so a client can offer a fixed choice of translation languages instead of free text.
 - Optional "Analytics" choice when issuing an integration key: adds `analytics:read` to the
