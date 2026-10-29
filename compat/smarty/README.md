@@ -1,9 +1,9 @@
-# Volitelná kompatibilita Smarty
+# Optional Smarty compatibility
 
-Přechodný balíček `wbengine/smarty-compat` pro WBengine 4.0. Zachovává `Wbengine\Renderer\Adapter\SmartyRenderer` a výchozí escapování. Jádro tento balíček ani Smarty nevyžaduje.
+A transitional package `wbengine/smarty-compat` for WBengine 4.0. It preserves `Wbengine\Renderer\Adapter\SmartyRenderer` and the default escaping. The core requires neither this package nor Smarty.
 
-Po zpřístupnění balíčku ve vašem důvěryhodném Composer repository použijte `composer require wbengine/smarty-compat:^4.0` a nastavte `renderer.adapterName` na `SmartyRenderer`. Do té doby lze v lokálním projektu přidat Composer path repository ukazující na tento adresář s explicitní verzí balíčku 4.0.x-dev a `options.symlink: false`. Lokální kompatibilní balíček musí být zkopírovaný do vlastního vendor adresáře, aby jej exclusion classmap jádra pro /compat/ nevyřadilo při sdíleném symlink checkoutu. Nekopírujte soubory adaptéru do jádra.
+Once the package is available in your trusted Composer repository, use `composer require wbengine/smarty-compat:^4.0` and set `renderer.adapterName` to `SmartyRenderer`. Until then, a local project can add a Composer path repository pointing to this directory with an explicit package version 4.0.x-dev and `options.symlink: false`. The local compatibility package must be copied into its own vendor directory so that the core's classmap exclusion for /compat/ does not drop it in a shared symlink checkout. Do not copy the adapter files into the core.
 
-Pro cílový web inventarizujte pluginy a přímá Smarty API. Nativní set/t syntax není kompatibilní se Smarty. Návrat vyžaduje odpovídající původní šablony, konfiguraci a vyčištění kompilované, fragmentové, page i externí HTML cache.
+For the target site, inventory the plugins and direct Smarty APIs. The native set/t syntax is not compatible with Smarty. A rollback requires the matching original templates, configuration and clearing of the compiled, fragment, page and external HTML cache.
 
-Testujte z kořene jádra příkazem `sh compat/smarty/bin/test`. Runner instaluje vlastní dočasný vendor mimo checkout, spustí oddělené testy a odstraní pouze svůj adresář. Vyžaduje Composer, PHP 8.3+ a přístup k Composer repository. Nepouštějte instalaci vendor uvnitř tohoto adresáře s rekurzivním path symlinkem do jádra.
+Test from the core root with `sh compat/smarty/bin/test`. The runner installs its own temporary vendor outside the checkout, runs the separate tests and removes only its own directory. It requires Composer, PHP 8.3+ and access to a Composer repository. Do not run a vendor installation inside this directory with a recursive path symlink to the core.

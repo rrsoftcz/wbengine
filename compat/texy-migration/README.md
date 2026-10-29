@@ -1,10 +1,10 @@
-# Volitelný offline převod Texy
+# Optional offline Texy conversion
 
-Balíček `wbengine/texy-migration` slouží jen k řízenému převodu existujících Texy zdrojů přes bezpečnou HTML migrační bránu. Není runtime formatterem webu a jádro Texy neinstaluje. Staré DB řádky legacy_html zůstávají původním HTML, automaticky se nepřekládají.
+The package `wbengine/texy-migration` serves only for the controlled conversion of existing Texy sources through the safe HTML migration gate. It is not a runtime formatter of the site and the core does not install Texy. Old DB rows with legacy_html remain the original HTML and are not translated automatically.
 
-## Instalace v izolovaném migračním projektu
+## Installation in an isolated migration project
 
-Dokud balíček není publikovaný v Composer registru, použijte důvěryhodný lokální checkout:
+Until the package is published in the Composer registry, use a trusted local checkout:
 
 ```json
 {
@@ -18,12 +18,12 @@ Dokud balíček není publikovaný v Composer registru, použijte důvěryhodný
 }
 ```
 
-Po `composer install` použijte důvěryhodný autoload jako `--texy-autoload=/migration-project/vendor/autoload.php`. Pro spuštění CLI z nainstalované knihovny použijte její Composer bin proxy. Explicitní suchý běh:
+After `composer install`, use the trusted autoload as `--texy-autoload=/migration-project/vendor/autoload.php`. To run the CLI from the installed library, use its Composer bin proxy. Explicit dry run:
 
 ```sh
 php /trusted/wbengine/bin/migrate-content.php --config=/site/Config/Settings.json --article=42 --source-format=texy --texy-autoload=/migration-project/vendor/autoload.php
 ```
 
-Dále postupujte podle ref-markdown.md v jádru: chráněný report, kontrola původních textů i výsledného renderu, jeden schválený hash, záloha a konfliktní rollback. Manual issues se nesmí obcházet. Nelze předpokládat automatický bezeztrátový převod všech Texy rozšíření.
+Then follow ref-markdown.md in the core: a protected report, a check of the original texts and the resulting render, a single approved hash, a backup and a conflict-checked rollback. Manual issues must not be bypassed. Do not assume an automatic lossless conversion of all Texy extensions.
 
-Samostatné testování v checkoutu: `sh compat/texy-migration/bin/test`. Runner má dočasný vendor mimo checkout, vlastní mirror jádra a po sobě odstraní pouze své závislosti.
+Standalone testing in the checkout: `sh compat/texy-migration/bin/test`. The runner has a temporary vendor outside the checkout, its own mirror of the core and removes only its own dependencies afterwards.

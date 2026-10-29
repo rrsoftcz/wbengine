@@ -1,119 +1,119 @@
-# Návrh vlastní analytiky WBengine
+# WBengine In-House Analytics Design
 
-Stav k 2026-10-27: schválený plán; analytics API a úložiště jsou součástí frameworku `v4.1.0`. Čerstvá produkční databáze má migraci 006, ale sběr je vypnutý. Připojení lokální administrace a zapnutí měření zůstávají otevřené.
-Datum: 2026-10-27.
+Status as of 2026-10-27: approved plan; the analytics API and storage are part of framework `v4.1.0`. A fresh production database has migration 006, but collection is switched off. Connecting the local administration and enabling measurement remain open.
+Date: 2026-10-27.
 
-## Záměr
+## Purpose
 
-Nahradit Google Analytics pro základní přehled o provozu webů vlastní analytikou WBengine, kterou bude zobrazovat samostatná soukromá administrace. Měřit návštěvnost obsahu a trendy, nikoli identitu nebo chování jednotlivých návštěvníků.
+Replace Google Analytics for a basic overview of site traffic with WBengine's own analytics, displayed by a separate private administration. Measure content traffic and trends, not the identity or behavior of individual visitors.
 
-## Rozhodnutí a hranice
+## Decisions and boundaries
 
-- Celoživotní počty zobrazení článků se zachovají trvale. Stávající hodnoty `cms_articles.views` se při zavedení nezahodí.
-- Denní zobrazení článků budou dostupná nejméně jeden měsíc. Týdenní a měsíční údaje se budou počítat z denních agregátů. Starší denní agregáty lze odstranit, celoživotní součty zůstanou.
-- Analytické úložiště nebude zaznamenávat IP adresy, cookies, uživatelská ID, User-Agent, URL query parametry, referrer ani jednotlivé návštěvy.
-- Bez identifikátoru nelze přesně určit počet unikátních lidí. Rozhraní proto bude používat pojem "zobrazení", nikoli "unikátní návštěvníci".
-- Počítadlo boxu znamená, že box vygeneroval obsah zahrnutý do veřejné odpovědi. Neprokazuje, že návštěvník obsah skutečně viděl na obrazovce.
-- Souhrny nebudou při výmazu uživatelského účtu mazány, pokud nejsou spojitelné s konkrétní osobou.
-- Do dokončení a nasazení této funkce zůstává případné měření přes GA4 samostatnou provozní záležitostí. Jeho vypnutí ani odstranění historických reportů není součástí této fáze.
+- Lifetime article view counts are kept permanently. Existing `cms_articles.views` values are not discarded when this is introduced.
+- Daily article views will be available for at least one month. Weekly and monthly figures will be computed from daily aggregates. Older daily aggregates may be removed; lifetime totals remain.
+- The analytics storage will not record IP addresses, cookies, user IDs, User-Agent, URL query parameters, referrer or individual visits.
+- Without an identifier, the number of unique people cannot be determined exactly. The interface will therefore use the term "views", not "unique visitors".
+- A box counter means that the box generated content included in the public response. It does not prove that the visitor actually saw the content on screen.
+- Summaries will not be deleted when a user account is deleted, as long as they cannot be linked to a specific person.
+- Until this feature is finished and deployed, any measurement through GA4 remains a separate operational matter. Switching it off or removing historical reports is not part of this phase.
 
-## Zvažované přístupy
+## Approaches considered
 
-1. **Agregace ve WBengine s dávkovým zápisem:** framework zaznamená pouze čítače a denní součty. Existující `Wbengine\\Counter\\BatchCounter` omezuje počet databázových zápisů. Požaduje doplnit obsluhu cache HIT a spolehlivé vyprázdnění nízkoobjemových čítačů.
-2. **Zápis každého zobrazení přímo do databáze:** jednoduchý průběh a aktuální data, ale přidává databázovou operaci ke každému zobrazení a boxu.
-3. **Analýza webserverových logů:** zachytí cache HIT bez zásahu do renderování, ale zavádí závislost na formátu logů a jejich rotaci. Logy mohou obsahovat osobní či identifikující údaje a nepřinášejí spolehlivou vazbu mezi požadavkem a boxy.
+1. **Aggregation in WBengine with batched writes:** the framework records only counters and daily totals. The existing `Wbengine\\Counter\\BatchCounter` limits the number of database writes. It requires adding handling of cache HITs and reliable flushing of low-volume counters.
+2. **Writing every view directly to the database:** simple flow and current data, but it adds a database operation to every view and box.
+3. **Analysis of web server logs:** captures cache HITs without touching rendering, but introduces a dependency on the log format and rotation. Logs may contain personal or identifying data and do not provide a reliable link between a request and boxes.
 
-Doporučený směr je první přístup, protože odpovídá stromové architektuře WBengine a omezuje náklady na požadavek. Jeho implementace musí zahrnout pravidelné vyprázdnění dávek. Pouhé čekání na další návštěvu stejného obsahu by u málo navštěvovaných stránek mohlo odložit zápis příliš dlouho.
+The recommended direction is the first approach, because it matches the WBengine tree architecture and limits the cost per request. Its implementation must include regular flushing of batches. Merely waiting for the next visit to the same content could postpone the write for too long on rarely visited pages.
 
-## Navržené metriky MVP
+## Proposed MVP metrics
 
-- Zobrazení veřejné stránky podle `site_id`, po dnech a jako celoživotní součet.
-- Zobrazení článku podle `article_id`, po dnech, za týden, za kalendářní měsíc a jako celoživotní součet.
-- Výskyt boxu podle `box_id`, po dnech a jako celoživotní součet.
-- Celková návštěvnost webu podle dne, týdne a měsíce.
-- Řazení nejnavštěvovanějších stránek, článků a boxů za zvolené období.
+- Public page views by `site_id`, per day and as a lifetime total.
+- Article views by `article_id`, per day, per week, per calendar month and as a lifetime total.
+- Box appearances by `box_id`, per day and as a lifetime total.
+- Total site traffic by day, week and month.
+- Ranking of the most visited pages, articles and boxes for a selected period.
 
-MVP nebude vykazovat unikátní návštěvníky, čas na stránce, cesty mezi stránkami, demografii, kampaně ani zařízení. Metriky se nebudou rozlišovat podle jazyků, dokud nebude určeno, jak jazyk bezpečně a jednotně mapovat na obsahové ID.
+The MVP will not report unique visitors, time on page, paths between pages, demographics, campaigns or devices. Metrics will not be split by language until it is determined how to map a language to a content ID safely and consistently.
 
-## Pravidlo započítání
+## Counting rule
 
-- Započítat úspěšné veřejné požadavky `GET`, které vrátí HTML konkrétního webu. Cache HIT se započítá stejně jako dynamicky vykreslená odpověď. Odpověď 304 se počítá jako zobrazení požadovaného obsahu.
-- Nezapočítávat API, administraci, přihlášené či neveřejné stránky, náhledy, statické soubory, přesměrování a chybové odpovědi.
-- Jeden požadavek může zvýšit počet zobrazení stránky a článku a současně počet výskytů vykreslených boxů. Každá dimenze se bude ukládat samostatně.
-- Obsahové ID se získá v existujících vrstvách stromu: site ve `Wbengine\\Site`, boxy v `Wbengine\\Section` a článek v jeho box/modelu. Nevytvářet paralelní resolver rout ani samostatnou aplikační architekturu.
-- Výchozí započítávání bude zahrnovat i neznámé robotické požadavky, protože bez identifikace nelze bezpečně určit skutečného člověka. Případné vyloučení známých robotů lze přidat jako oddělenou volitelnou funkci a nebude ukládat User-Agent.
+- Count successful public `GET` requests that return the HTML of a specific site. A cache HIT is counted the same as a dynamically rendered response. A 304 response counts as a view of the requested content.
+- Do not count the API, administration, signed-in or non-public pages, previews, static files, redirects and error responses.
+- One request may increase the page and article view counts and, at the same time, the appearance counts of the rendered boxes. Each dimension will be stored separately.
+- The content ID is obtained in the existing layers of the tree: the site in `Wbengine\\Site`, boxes in `Wbengine\\Section` and the article in its box/model. Do not create a parallel route resolver or a separate application architecture.
+- By default, counting will also include unknown robot requests, because without identification a real human cannot be determined safely. Excluding known robots may be added as a separate optional feature and will not store the User-Agent.
 
-## Denní období a retence
+## Daily period and retention
 
-- Datové součty budou ukládány po kalendářních dnech v časové zóně nastavené pro web. Navržený konfigurační klíč je `analytics.timezone`, s výchozí hodnotou `UTC` a validací IANA názvu.
-- Doporučená retence denních řádků je 62 dní. To umožní zobrazit aktuální a předchozí kalendářní měsíc včetně denního průběhu. Jde o souhrnné čítače bez návštěvnických identifikátorů.
-- Týdenní součet se vypočítá za ISO týden od pondělí do neděle. Měsíční součet znamená kalendářní měsíc; API musí oznámit, pokud požadované období přesahuje uchovávanou denní historii.
-- Po uplynutí retence se denní řádky odstraní. Celoživotní součty zůstanou zachované.
-- Pravidelný CLI příkaz provede bezpečné dávkové vyprázdnění čekajících čítačů a promazání denních řádků po retenci. Provozní návod stanoví spouštění přes plánovač kontejneru. Přesný název příkazu se určí při implementaci podle registrace příkazů `bin/wbe`.
+- Data totals will be stored per calendar day in the time zone configured for the site. The proposed configuration key is `analytics.timezone`, with the default value `UTC` and validation of the IANA name.
+- The recommended retention of daily rows is 62 days. This makes it possible to display the current and previous calendar month including the daily course. These are aggregate counters without visitor identifiers.
+- The weekly total is computed per ISO week from Monday to Sunday. The monthly total means a calendar month; the API must report when the requested period exceeds the retained daily history.
+- After retention expires, daily rows are removed. Lifetime totals are kept.
+- A regular CLI command performs a safe batched flush of pending counters and pruning of daily rows past retention. The operations guide will define running it through the container scheduler. The exact command name will be determined during implementation according to the command registration in `bin/wbe`.
 
-## Ukládání a výkon
+## Storage and performance
 
-- Nové modely budou v namespace `Wbengine\\Analytics`; služba bude dostupná přes současný lazy přístup Application a navázaná na Site/Section/Box tam, kde vzniká obsahové ID.
-- Navržené databázové uložení oddělí krátkodobé denní součty od trvalých součtů. Denní klíč bude obsahovat datum, web, typ metriky a obsahové ID. Trvalá tabulka bude obsahovat jen tyto rozměry a celoživotní počet.
-- Pro článek bude zachována kompatibilita se stávajícím `cms_articles.views`. Historická hodnota bude výchozí celoživotní základnou; denní analytická série začne datem zapnutí nové funkce a nebude předstírat zpětně získaná historická data.
-- Dávkový čítač bude rozlišovat denní klíč, aby se pozdější flush nepřipsal do nesprávného dne. Současný `BatchCounter` ukládá pouze hash klíče a jeho callback žije jen v procesu požadavku, takže sám neumí čekající nízkoobjemové součty vyjmenovat pro pozdější CLI flush. Analytika proto potřebuje obnovitelný seznam čekajících agregačních klíčů nebo vlastní frontu s bezpečnými omezenými rozměry. Výmaz denních součtů nesmí odečíst celoživotní počet.
-- `PageCache` nyní obslouží HIT před spuštěním Site/Section/Box. Cacheovaný objekt proto bude potřebovat omezená metadata obsahových ID a po HIT předat pouze tato ID agregátoru. Metadata nebudou obsahovat URL, cookies ani data návštěvníka.
-- Požadavek nesmí provádět jeden synchronní SQL zápis za každý box. Akceptační měření stanoví horní mez práce při MISS i HIT a ověří, že obsluha HIT nevyvolá načítání databázové cache CMS.
-- Selhání analytiky nesmí způsobit chybu veřejné stránky. Chyby se zaznamenají provozně bez IP, URL query, User-Agent a obsahu požadavku; míra ztracených čekajících čítačů při pádu procesu bude zdokumentována.
+- New models will live in the `Wbengine\\Analytics` namespace; the service will be available through the current lazy Application access and tied to Site/Section/Box where the content ID arises.
+- The proposed database storage separates short-term daily totals from permanent totals. The daily key will contain the date, site, metric type and content ID. The permanent table will contain only these dimensions and the lifetime count.
+- For articles, compatibility with the existing `cms_articles.views` will be preserved. The historical value will be the default lifetime base; the daily analytics series will start on the date the new feature is enabled and will not pretend to contain retroactively obtained historical data.
+- The batch counter will distinguish the daily key so that a later flush is not credited to the wrong day. The current `BatchCounter` stores only the key hash and its callback lives only within the request process, so it cannot itself enumerate pending low-volume totals for a later CLI flush. Analytics therefore needs a recoverable list of pending aggregation keys or its own queue with safe, bounded dimensions. Pruning daily totals must not subtract from the lifetime count.
+- `PageCache` now serves a HIT before Site/Section/Box run. The cached object will therefore need bounded metadata of content IDs and, after a HIT, pass only these IDs to the aggregator. The metadata will not contain URLs, cookies or visitor data.
+- A request must not perform one synchronous SQL write per box. Acceptance measurement will set an upper bound on work for both MISS and HIT and verify that handling a HIT does not trigger loading the CMS database cache.
+- A failure of analytics must not cause an error on the public page. Errors are logged operationally without IP, URL query, User-Agent or request content; the rate of lost pending counters on a process crash will be documented.
 
-## API a administrace
+## API and administration
 
-- Rozšířit `Wbengine\\Api\\V2` o read-only scope `analytics:read`. Integrace bez tohoto scope nesmí získat žádná analytická data.
-- Doporučený první endpoint je `GET /api/v2/analytics/overview?from=YYYY-MM-DD&to=YYYY-MM-DD&granularity=day|week|month`. Vrátí webový souhrn a omezené seznamy nejnavštěvovanějších stránek, článků a boxů. Detailní endpointy podle entity mohou následovat, pokud se ukážou potřebné.
-- Odpověď přehledu bude mít `timezone`, `period` (`from`, `to`, `granularity`, `complete`), `totals` (`page_views`, `article_views`, `box_appearances`), `lifetime_totals` se stejnými klíči a `series` (`period_start` a stejné čítače) a `top_pages`, `top_articles`, `top_boxes`. Záznam top seznamu obsahuje stabilní ID, bezpečný zobrazovaný název a počet. `complete=false` označuje období začínající před prvním zaznamenaným veřejným zobrazením.
-- API přijme jen validní datum od/do v podporovaném rozsahu a granularitu `day`, `week` nebo `month`; maximální období omezí podle retence (výchozí nejvýše 62 kalendářních dnů včetně dnešního dne). Odpověď uvede časovou zónu, přesné hranice a informaci o chybějícím či částečném rozsahu. Nepřijímat libovolný SQL, název tabulky ani libovolnou metriku od klienta.
-- Soukromá SvelteKit administrace zobrazí přehled trendu, nejnavštěvovanější obsah a boxy a možnost přepnout denní, týdenní a měsíční souhrn. Nezavádět do administrace klientské měření webových návštěvníků.
-- Změna vyžaduje koordinované vydání frameworku, migrace vzorové aplikace a změny klienta administrace. Veřejné analytické endpointy ani veřejný dashboard nejsou cílem.
+- Extend `Wbengine\\Api\\V2` with a read-only scope `analytics:read`. An integration without this scope must not obtain any analytics data.
+- The recommended first endpoint is `GET /api/v2/analytics/overview?from=YYYY-MM-DD&to=YYYY-MM-DD&granularity=day|week|month`. It returns a site summary and bounded lists of the most visited pages, articles and boxes. Detailed per-entity endpoints may follow if they prove necessary.
+- The overview response will have `timezone`, `period` (`from`, `to`, `granularity`, `complete`), `totals` (`page_views`, `article_views`, `box_appearances`), `lifetime_totals` with the same keys, and `series` (`period_start` and the same counters), plus `top_pages`, `top_articles`, `top_boxes`. A top list record contains a stable ID, a safe display name and a count. `complete=false` marks a period that starts before the first recorded public view.
+- The API accepts only a valid from/to date in the supported range and the granularity `day`, `week` or `month`; the maximum period is limited by retention (by default at most 62 calendar days including today). The response states the time zone, the exact boundaries and information about a missing or partial range. It does not accept arbitrary SQL, a table name or an arbitrary metric from the client.
+- The private SvelteKit administration will display a trend overview, the most visited content and boxes, and the option to switch between daily, weekly and monthly summaries. Do not introduce client-side measurement of web visitors into the administration.
+- The change requires a coordinated release of the framework, migration of the sample application and changes to the administration client. Public analytics endpoints and a public dashboard are not goals.
 
-## Přechod z GA4
+## Transition from GA4
 
-1. Implementovat agregaci a API za vypnutou konfigurací.
-2. Ověřit počítání veřejného webu, cache MISS/HIT, denní hranice, dávkování, retenci a oprávnění v testovací aplikaci.
-3. Zobrazit metriky ve správní administraci a po omezenou dobu porovnat celkové trendy s GA4. Čísla nemusí být shodná, protože se liší definice, souhlas, roboti a zachycení cache.
-4. Po potvrzení funkčnosti vypnout GA tag a odstranit souhlasové úložiště používané výhradně pro GA. Aktualizovat zásady soukromí a cookies. Ověřit, zda web používá ještě jiná než nezbytná cookies.
-5. Historické GA reporty lze ponechat pro čtení nebo samostatně požádat o jejich vymazání. Vypnutí tagu je samo o sobě nemaže.
+1. Implement aggregation and the API behind a disabled configuration.
+2. Verify counting on the public site, cache MISS/HIT, day boundaries, batching, retention and permissions in a test application.
+3. Display the metrics in the management administration and, for a limited time, compare overall trends with GA4. The numbers need not match, because definitions, consent, robots and cache capture differ.
+4. After confirming it works, switch off the GA tag and remove the consent storage used exclusively for GA. Update the privacy and cookie policies. Verify whether the site uses any cookies other than the necessary ones.
+5. Historical GA reports may be kept for reading or a separate request for their deletion may be made. Switching off the tag does not delete them by itself.
 
-## Akceptační podmínky
+## Acceptance conditions
 
-- Počty pro článek jsou správné za jednotlivý den, sedmidenní interval, kalendářní měsíc a celoživotní období; týdenní a měsíční součty odpovídají denním datům.
-- Celoživotní `cms_articles.views` před migrací se zachovají a denní historie před zapnutím se nevymýšlí.
-- Jedna cache MISS a následné HIT požadavky zvýší všechny odpovídající agregáty přesně jednou za požadavek. 304, chybové odpovědi, API, statické soubory a neveřejné stránky dodrží uvedená pravidla.
-- Po 62 dnech zmizí pouze staré denní řádky; celoživotní počty zůstanou beze změny.
-- Databáze a analytické dávkové soubory neobsahují IP adresy, cookies, User-Agent, query parametry, referrer ani per-visit záznamy.
-- Chybějící nebo nedostatečný `analytics:read` scope vrací standardní API odmítnutí; existující API integrace bez nového scope zůstanou funkční.
-- Veřejná stránka zůstane dostupná i při chybě analytického úložiště. Měření výkonu zahrne MISS, HIT, stránku s mnoha boxy a dávkové vyprázdnění.
-- CLI údržba je opakovatelná, dávkovaná, bezpečná při souběhu s webovými požadavky a zdokumentovaná pro Docker nasazení.
+- Counts for an article are correct for a single day, a seven-day interval, a calendar month and the lifetime period; weekly and monthly totals match the daily data.
+- Lifetime `cms_articles.views` values before migration are preserved and daily history before enabling is not invented.
+- One cache MISS and the following HIT requests increase all corresponding aggregates exactly once per request. 304, error responses, the API, static files and non-public pages follow the stated rules.
+- After 62 days only old daily rows disappear; lifetime counts remain unchanged.
+- The database and analytics batch files contain no IP addresses, cookies, User-Agent, query parameters, referrer or per-visit records.
+- A missing or insufficient `analytics:read` scope returns the standard API rejection; existing API integrations without the new scope keep working.
+- The public page stays available even when the analytics storage fails. Performance measurement covers MISS, HIT, a page with many boxes and batch flushing.
+- CLI maintenance is repeatable, batched, safe under concurrency with web requests and documented for Docker deployment.
 
-## Implementační rozhodnutí
+## Implementation decisions
 
-- Uživatel schválil jako základ implementace vlastní dávkovanou agregaci, 62denní denní historii, trvalé celoživotní součty a započítávání neznámých robotických požadavků. Počet zobrazení se nebude označovat jako počet unikátních lidí.
-- Před implementací určit konkrétní bezpečný formát seznamu box ID v metadatech cache, jeho limit a chování při překročení limitu.
-- Dodržet navržený endpoint a JSON tvar v `Api/V2`; případnou změnu kontraktu koordinovat současně ve frameworku a administraci.
-- Právní a provozní kontrola musí před zapnutím potvrdit oznámení o agregované analytice, GA přechod, retenční nastavení a zacházení se serverovými logy. Tento návrh není právním stanoviskem.
+- The user approved as the basis of implementation our own batched aggregation, 62-day daily history, permanent lifetime totals and counting of unknown robot requests. The view count will not be labeled as a count of unique people.
+- Before implementation, determine the concrete safe format of the box ID list in the cache metadata, its limit and the behavior when the limit is exceeded.
+- Adhere to the proposed endpoint and JSON shape in `Api/V2`; coordinate any contract change simultaneously in the framework and the administration.
+- A legal and operational review must, before enabling, confirm the notice about aggregate analytics, the GA transition, the retention settings and the handling of server logs. This design is not a legal opinion.
 
-## Stav implementace
+## Implementation status
 
-- [x] Uživatel schválil vlastní agregovanou analytiku, 62denní retenci, trvalé počty a pokračování testováním administrace.
-- [x] Přidán scope `analytics:read` a endpoint `GET /api/v2/analytics/overview`.
-- [x] Endpoint vrací denní/týdenní/měsíční řadu, top obsah, součty období i celoživotní součty; stránkování se zatím nevyžaduje.
-- [x] Přidána migrace `006-analytics.sql` pro denní součty a trvalé počty stránek/boxů. Migraci je nutné ručně aplikovat před zapnutím.
-- [x] Přidána validace nastavení a rozsahu; analytika je ve výchozím stavu vypnutá.
-- [x] Integrační testy scope, odpovědi, lifetime součtů a chybných období procházejí.
-- [x] Zachytávání veřejných GET renderů, boxů s neprázdným výstupem a článků; metadata cache verze 3 počítají HIT i 304 bez návštěvnických údajů.
-- [x] Jedna request-local dávka se ukládá transakčně v omezeném počtu SQL operací; CLI `analytics:prune` maže nejvýše 1000 denních řádků na spuštění. Trvalá souborová fronta není použita, pád během právě zpracovávané odpovědi může ztratit její dávku.
-- [x] Zaznamenání článků a boxů vyžaduje potvrzený anonymní veřejný HTML požadavek. Cache metadata bez validního veřejného page eventu se ignorují.
-- [x] `cms_analytics_meta` ukládá datum prvního měřeného veřejného zobrazení; API tím rozliší nezměřenou historii od nulové návštěvnosti.
-- [x] Lokální dvouwebový Docker API pilot ověřil oddělení instalací, analytics dashboard, MFA/grant omezení a nezávislé HTTPS API. Po přidání měřicího metadata ověřila zálohovací kontrola 20 tabulek a 158 řádků se shodnými hashi.
-- [x] README a administrační návod popisují opt-in konfiguraci, migraci `006`, `analytics:read`, 62denní denní historii, celoživotní součty a CLI údržbu.
-- [x] Framework PHPUnit: 2007 testů, 5732 assertions; `composer lint` prošel a `composer audit` nenašel žádná bezpečnostní upozornění.
-- [x] Framework GitHub CI run [40570318253](https://github.com/rrsoftcz/wbengine/actions/runs/40570318253) prošel všemi sedmi úlohami. Admin GitHub CI run [40570331198](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40570331198) prošel testy i dvouwebovým API pilotem.
-- [x] Lokální checkpointy jsou pushnuté na `wbengine/master` a `wbengine-admin/main`: framework `4e46bc3`, `351a5e7`, `bc4b1f9`, `2ad8b78`; administrace `50c7487`, `34c9f68`.
-- [x] Framework `v4.1.0` a soukromá administrace `v0.2.0` jsou publikovány jako GitHub Releases. Tagy ukazují na otestované commity `cdf7b902` a `6e4a1253`.
-- [x] Skeleton App `main` zamyká `wbengine/wbengine` na `v4.1.0` (`5bcc949`). Smoke test nyní používá framework 4.1, ověřuje aktuálních 10 článků a jazykový přepínač; lokální Docker prošel a GitHub CI [40577284046](https://github.com/rrsoftcz/wbengine-skeleton-app/actions/runs/40577284046) prošlo.
-- [ ] Nasadit pouze veřejný Skeleton App na VPS; centrální administrace zůstává lokální na vývojovém Macu. Na VPS je SSH jako root a Docker Engine 29.9.2 s Compose 5.6.1, ověřený přes `hello-world`. DNS `www.wbengine.org` nyní míří na tento VPS, ale porty 80/443 zatím neposlouchají a web není dostupný. Apex stále přesměrovává na www ze starého hostu. Starý web je čitelný na původní IP a vrací API 2.0 bez `analytics.read`. Před vytvořením databáze na novém hostu je třeba rozhodnout, zda se přenese dosavadní DB, nebo se inicializuje aktuálním seedem.
-- [ ] GA4 vypnutí zůstává samostatným krokem po porovnání trendů a aktualizaci provozních/ochranářských informací.
+- [x] The user approved own aggregated analytics, 62-day retention, permanent counts and continuing with administration testing.
+- [x] Added the `analytics:read` scope and the endpoint `GET /api/v2/analytics/overview`.
+- [x] The endpoint returns a daily/weekly/monthly series, top content, period totals and lifetime totals; pagination is not required yet.
+- [x] Added migration `006-analytics.sql` for daily totals and permanent page/box counts. The migration must be applied manually before enabling.
+- [x] Added validation of settings and range; analytics is disabled by default.
+- [x] Integration tests of scope, response, lifetime totals and invalid periods pass.
+- [x] Capture of public GET renders, boxes with non-empty output and articles; cache metadata version 3 counts HIT and 304 without visitor data.
+- [x] One request-local batch is stored transactionally in a bounded number of SQL operations; the CLI `analytics:prune` deletes at most 1000 daily rows per run. A persistent file queue is not used; a crash during a response being processed may lose its batch.
+- [x] Recording articles and boxes requires a confirmed anonymous public HTML request. Cache metadata without a valid public page event are ignored.
+- [x] `cms_analytics_meta` stores the date of the first measured public view; the API thereby distinguishes unmeasured history from zero traffic.
+- [x] A local two-site Docker API pilot verified separation of installations, the analytics dashboard, MFA/grant restrictions and an independent HTTPS API. After adding the measurement metadata, the backup check verified 20 tables and 158 rows with matching hashes.
+- [x] The README and the administration guide describe the opt-in configuration, migration `006`, `analytics:read`, the 62-day daily history, lifetime totals and CLI maintenance.
+- [x] Framework PHPUnit: 2007 tests, 5732 assertions; `composer lint` passed and `composer audit` found no security advisories.
+- [x] Framework GitHub CI run [40570318253](https://github.com/rrsoftcz/wbengine/actions/runs/40570318253) passed all seven jobs. Admin GitHub CI run [40570331198](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40570331198) passed the tests and the two-site API pilot.
+- [x] Local checkpoints are pushed to `wbengine/master` and `wbengine-admin/main`: framework `4e46bc3`, `351a5e7`, `bc4b1f9`, `2ad8b78`; administration `50c7487`, `34c9f68`.
+- [x] Framework `v4.1.0` and the private administration `v0.2.0` are published as GitHub Releases. The tags point to the tested commits `cdf7b902` and `6e4a1253`.
+- [x] Skeleton App `main` locks `wbengine/wbengine` to `v4.1.0` (`5bcc949`). The smoke test now uses framework 4.1, verifies the current 10 articles and the language switcher; local Docker passed and GitHub CI [40577284046](https://github.com/rrsoftcz/wbengine-skeleton-app/actions/runs/40577284046) passed.
+- [ ] Deploy only the public Skeleton App to the VPS; the central administration stays local on the development Mac. The VPS has SSH as root and Docker Engine 29.9.2 with Compose 5.6.1, verified via `hello-world`. DNS `www.wbengine.org` now points to this VPS, but ports 80/443 are not listening yet and the site is not available. The apex still redirects to www from the old host. The old site is readable at the original IP and returns API 2.0 without `analytics.read`. Before creating the database on the new host, it must be decided whether the existing DB is transferred or initialized with the current seed.
+- [ ] Switching off GA4 remains a separate step after comparing trends and updating the operational/privacy information.

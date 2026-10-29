@@ -1,34 +1,34 @@
-# Integrace analytiky do WBengine Admin
+# Analytics Integration into WBengine Admin
 
-> **Pro implementaci:** postupovat po úkolech níže, u každého nejprve přidat regresní test, ověřit jeho selhání, implementovat změnu a test spustit znovu. Pracovat v samostatných větvích příslušných repozitářů a zachovat oddělené checkpoint commity.
+> **For implementation:** proceed through the tasks below; for each, first add a regression test, verify that it fails, implement the change and run the test again. Work in separate branches of the respective repositories and keep separate checkpoint commits.
 
-**Cíl:** Zobrazit agregované metriky vybraného WBengine webu v soukromé administraci a prokázat testy, že oprávnění, časová období, vzdálené chyby a oddělení webů fungují bezpečně.
+**Goal:** Display aggregate metrics of a selected WBengine site in the private administration and prove by tests that permissions, time periods, remote errors and site separation work safely.
 
-**Architektura:** Administrace zůstane server-rendered aplikací SvelteKit. Nová serverová analytics gateway použije existující HTTPS klient, připojení ke konkrétnímu webu, MFA session, grant uživatele a integrační scope `analytics:read`; přihlašovací klíč zůstane výhradně na serveru. Dashboard bude na `/analytics/[site]` a bude číst jediný verzovaný souhrnný endpoint.
+**Architecture:** The administration remains a server-rendered SvelteKit application. A new server-side analytics gateway uses the existing HTTPS client, the connection to the specific site, the MFA session, the user grant and the integration scope `analytics:read`; the sign-in key stays exclusively on the server. The dashboard will live at `/analytics/[site]` and will read a single versioned summary endpoint.
 
-**Technologie:** Node.js `>=22.18`, SvelteKit `3.1.0`, Svelte `5.57.2`, TypeScript `6.0.3`. Nepřidávat frontendové ani grafové balíčky.
+**Technology:** Node.js `>=22.18`, SvelteKit `3.1.0`, Svelte `5.57.2`, TypeScript `6.0.3`. Do not add frontend or chart packages.
 
-**Specifikace:** [plan-analytics.md](plan-analytics.md). Tento plán pokrývá integraci administrace a její testovací bránu. API a ukládání metrik musí dodat framework podle stejné specifikace.
+**Specification:** [plan-analytics.md](plan-analytics.md). This plan covers the administration integration and its test gate. The API and metric storage must be delivered by the framework according to the same specification.
 
-## Globální omezení
+## Global constraints
 
-- Vzdálená komunikace používá stávající HTTPS klient `src/lib/server/remote.ts`, kontrolu cílové adresy a limit odpovědi 1 MiB.
-- Soukromé route vyžadují existující autentizaci s MFA a oprávnění uživatele k danému webu.
-- Vzdálený klíč nesmí být součástí dat předaných komponentě, HTML, klientského JavaScriptu ani chybového hlášení.
-- Analytický scope je pouze `analytics:read`; dashboard nic nemění na vzdáleném webu.
-- Nepersistovat v administraci návštěvnické IP adresy, cookies, User-Agent, referrer ani individuální záznamy návštěv.
-- Žádná analytics route nesmí vracet data z cache sdílené mezi weby; globální hook již nastavuje `Cache-Control: no-store` a toto chování musí zůstat ověřené.
-- Chybějící scope, nepodporovaný endpoint, prázdná data a výpadek webu jsou odlišné stavy. Nesmí se všechny zobrazit jako nula návštěv.
+- Remote communication uses the existing HTTPS client `src/lib/server/remote.ts`, the target address check and the 1 MiB response limit.
+- Private routes require the existing authentication with MFA and the user's permission for the given site.
+- The remote key must not be part of the data passed to a component, the HTML, client JavaScript or an error message.
+- The only analytics scope is `analytics:read`; the dashboard changes nothing on the remote site.
+- Do not persist visitor IP addresses, cookies, User-Agent, referrer or individual visit records in the administration.
+- No analytics route may return data from a cache shared between sites; the global hook already sets `Cache-Control: no-store` and this behavior must remain verified.
+- A missing scope, an unsupported endpoint, empty data and a site outage are distinct states. They must not all be displayed as zero visits.
 
-## Rozhraní mezi API a administrací
+## Interface between the API and the administration
 
-Framework poskytne:
+The framework will provide:
 
 ```text
 GET /api/v2/analytics/overview?from=YYYY-MM-DD&to=YYYY-MM-DD&granularity=day|week|month
 ```
 
-Úspěšná odpověď `data` obsahuje:
+A successful response `data` contains:
 
 ```text
 timezone: IANA time-zone string
@@ -40,103 +40,103 @@ top_articles: [{ id, title, views }]
 top_boxes: [{ id, name, appearances }]
 ```
 
-Čítače jsou nezáporná bezpečná celá čísla. Pole `complete=false` znamená, že požadované období začíná před prvním zaznamenaným veřejným zobrazením. Rozsahy mimo retenci API odmítá. API vrací nejvýše 10 položek v každém top seznamu. Endpoint vyžaduje `analytics:read` a parametry nesmějí překročit retenci 62 dní.
+Counters are non-negative safe integers. The field `complete=false` means that the requested period starts before the first recorded public view. Ranges outside retention are rejected by the API. The API returns at most 10 items in each top list. The endpoint requires `analytics:read` and the parameters must not exceed the 62-day retention.
 
-## Přehled souborů
+## File overview
 
 ### WBengine Admin, checkout `/Users/roza/Sites/svelte/wbengine-admin`
 
-- `src/lib/server/api-contract.ts`: bezpečný typ a serializace analytics read požadavku.
-- `src/lib/server/analytics.ts`: parsování rozsahu, ověření odpovědi a scope gateway.
-- `src/routes/content/[site]/+page.server.ts` a `+page.svelte`: dostupnost a odkaz na analytics podle scope/capability.
-- `src/routes/analytics/[site]/+page.server.ts` a `+page.svelte`: chráněné načtení a zobrazení dashboardu.
-- `src/lib/components/AnalyticsChart.svelte`: lehký přístupný graf bez další závislosti, s tabulkovou alternativou.
-- `tests/analytics.test.ts`: validace rozsahu, oprávnění, tvaru dat a nulových/částečných výsledků.
-- `tests/analytics-transport.test.ts`: HTTP metoda, query, bearer scope a ochrana tajemství.
-- `tests/api-pilot.ts`: skutečný browser-like scénář proti odděleným PHP API webům.
-- `README.md`: instalace scope a používání dashboardu.
+- `src/lib/server/api-contract.ts`: safe type and serialization of the analytics read request.
+- `src/lib/server/analytics.ts`: range parsing, response validation and the scope gateway.
+- `src/routes/content/[site]/+page.server.ts` and `+page.svelte`: availability of and link to analytics according to scope/capability.
+- `src/routes/analytics/[site]/+page.server.ts` and `+page.svelte`: protected loading and display of the dashboard.
+- `src/lib/components/AnalyticsChart.svelte`: a lightweight accessible chart without an extra dependency, with a table alternative.
+- `tests/analytics.test.ts`: range validation, permissions, data shape and zero/partial results.
+- `tests/analytics-transport.test.ts`: HTTP method, query, bearer scope and secret protection.
+- `tests/api-pilot.ts`: a real browser-like scenario against separate PHP API sites.
+- `README.md`: scope installation and dashboard usage.
 
 ### WBengine framework, checkout `/Users/roza/Sites/php/wbengine`
 
-- `tests/pilot/seed-installation.php`: apply nové analytics migrace a deterministické testovací agregáty pro izolované pilotní weby.
-- `tests/pilot/ref-pilot.md`: pilotní předpoklady a cleanup, pokud se mění postup fixtures.
-- Stávající `.github/workflows/ci.yml` administrace již spouští dvouwebový PHP API pilot. Udržet test v tomto jobu, nevytvářet paralelní neizolovaný production test.
+- `tests/pilot/seed-installation.php`: apply the new analytics migration and deterministic test aggregates for the isolated pilot sites.
+- `tests/pilot/ref-pilot.md`: pilot prerequisites and cleanup, if the fixture procedure changes.
+- The existing administration `.github/workflows/ci.yml` already runs the two-site PHP API pilot. Keep the test in this job; do not create a parallel non-isolated production test.
 
 ## Review Focus
 
-- Uživatel má přístup k jednomu webu a zkouší jiný `site_id`: před vzdáleným voláním musí dojít k odmítnutí a nesmí se zobrazit cizí data. Pokrývá Task 2 a Task 4.
-- Integrační klíč postrádá `analytics:read`: dashboard musí vysvětlit chybějící oprávnění a nesmí zobrazit prázdné grafy jako skutečné nuly. Pokrývá Task 1 a Task 4.
-- Vzdálený web vrátí chybnou, příliš velkou, negativní či časově neslučitelnou odpověď: dashboard odmítne data bez částečného vykreslení a bez úniku klíče. Pokrývá Task 1 a Task 3.
-- Rozsah překročí retenci, má prohozené hranice nebo přechází přes časovou zónu: formulář rozsah odmítne nebo výslovně označí neúplnost, nikdy tiše nerozšíří data. Pokrývá Task 1 a Task 3.
-- API web je nedostupné nebo vrátí 403/404/503: stránka zobrazí srozumitelný stav oddělený od nulové návštěvnosti, zachová oddělení ostatních webů a nastaví `no-store`. Pokrývá Task 3 a Task 4.
+- A user has access to one site and tries a different `site_id`: rejection must happen before the remote call and no foreign data may be displayed. Covered by Task 2 and Task 4.
+- The integration key lacks `analytics:read`: the dashboard must explain the missing permission and must not display empty charts as real zeros. Covered by Task 1 and Task 4.
+- The remote site returns a malformed, oversized, negative or time-inconsistent response: the dashboard rejects the data without partial rendering and without leaking the key. Covered by Task 1 and Task 3.
+- The range exceeds retention, has swapped boundaries or crosses a time zone: the form rejects the range or explicitly marks incompleteness, and never silently widens the data. Covered by Task 1 and Task 3.
+- The API site is unavailable or returns 403/404/503: the page shows an understandable state separate from zero traffic, preserves separation of the other sites and sets `no-store`. Covered by Task 3 and Task 4.
 
 ---
 
 ### Framework prerequisite: Analytics API
 
-- [x] Scope `analytics:read`, `GET /api/v2/analytics/overview`, `lifetime_totals`, `capabilities.analytics.read` a validace hranic/retence jsou implementované ve framework worktree.
-- [x] Testy `ApiV2AnalyticsTest`: 4 testy, 14 assertions.
-- [x] Framework sbírá anonymní ID obsahu ze stromu a PageCache, transakčně ukládá součty a nabízí CLI úklid.
-- [x] Docker pilot aplikoval migraci a ověřil oddělené denní součty dvou nezávislých instalací.
-- [x] Veřejné renderování zaznamenává anonymní počty včetně cache metadata; analytický dashboard načetl data přes HTTPS.
-- [x] Editor s přístupem k prvnímu webu nedostal oprávnění k druhému webu.
+- [x] The scope `analytics:read`, `GET /api/v2/analytics/overview`, `lifetime_totals`, `capabilities.analytics.read` and validation of boundaries/retention are implemented in the framework worktree.
+- [x] `ApiV2AnalyticsTest` tests: 4 tests, 14 assertions.
+- [x] The framework collects anonymous content IDs from the tree and PageCache, stores totals transactionally and offers CLI cleanup.
+- [x] The Docker pilot applied the migration and verified separate daily totals of two independent installations.
+- [x] Public rendering records anonymous counts including cache metadata; the analytics dashboard loaded data over HTTPS.
+- [x] An editor with access to the first site did not receive permission for the second site.
 
-### Task 1: Analytics API kontrakt a bezpečný gateway
+### Task 1: Analytics API contract and safe gateway
 
-Stav: implementováno, unit testy, transport testy, typová kontrola a produkční build prošly.
+Status: implemented; unit tests, transport tests, type check and production build passed.
 
-**Soubory:**
+**Files:**
 
 - Admin Modify: `src/lib/server/api-contract.ts`
 - Admin Create: `src/lib/server/analytics.ts`
 - Admin Create: `tests/analytics.test.ts`
 - Admin Create: `tests/analytics-transport.test.ts`
 
-**Rozhraní:**
+**Interface:**
 
 - `AnalyticsGranularity = 'day' | 'week' | 'month'`.
 - `AnalyticsRange = { from: string; to: string; granularity: AnalyticsGranularity }`.
-- `parseAnalyticsRange(params: URLSearchParams, now: Date): AnalyticsRange` použije při chybějícím rozsahu 30 kalendářních dat končících předchozím dnem UTC, aby datum nebylo budoucí pro žádnou platnou časovou zónu cílového webu. Odmítne nevalidní datum, `from > to`, neplatnou granularitu a rozsah delší než 62 dní.
-- `validateAnalyticsOverview(value: unknown, expected: AnalyticsRange): AnalyticsOverview` ověří kontrakt, počty, hranice období, IANA timezone, nejvýše 10 top položek a shodu požadované granularity.
-- `canReadAnalytics(role: Role, scopes: string[], capabilities: Capabilities): boolean` vrátí true pouze s povoleným site read rolí, `analytics:read` scope a `capabilities.analytics.read === true`.
-- `createAnalyticsGateway({ role, scopes, capabilities, call }).overview(range): Promise<AnalyticsOverview>` odmítne chybějící oprávnění před sítí a volá pouze GET overview.
-- `ApiCall` dostane operation `analyticsOverview` a povinné `from`, `to`, `granularity`. `planApiCall()` vrátí přesnou cestu `/analytics/overview` a deterministicky zakódovaný query string.
+- `parseAnalyticsRange(params: URLSearchParams, now: Date): AnalyticsRange` uses, when the range is missing, 30 calendar dates ending on the previous UTC day, so that the date is not in the future for any valid time zone of the target site. It rejects an invalid date, `from > to`, an invalid granularity and a range longer than 62 days.
+- `validateAnalyticsOverview(value: unknown, expected: AnalyticsRange): AnalyticsOverview` verifies the contract, counts, period boundaries, IANA timezone, at most 10 top items and a match of the requested granularity.
+- `canReadAnalytics(role: Role, scopes: string[], capabilities: Capabilities): boolean` returns true only with a role allowed site read, the `analytics:read` scope and `capabilities.analytics.read === true`.
+- `createAnalyticsGateway({ role, scopes, capabilities, call }).overview(range): Promise<AnalyticsOverview>` rejects missing permission before the network and calls only the GET overview.
+- `ApiCall` gets the operation `analyticsOverview` and required `from`, `to`, `granularity`. `planApiCall()` returns the exact path `/analytics/overview` and a deterministically encoded query string.
 
-- [x] **Krok 1: Přidat regresní testy rozsahu a scope**
+- [x] **Step 1: Add regression tests of range and scope**
 
-  V `tests/analytics.test.ts` pokrýt výchozí posledních 30 dní, délku 62 dní, ISO datum, prohozené hranice, nepovolenou granularitu, neplatné timezone, záporný/necelý čítač, chybějící sérii, top seznam delší než 10, neúplný rozsah a zákaz volání vzdáleného callbacku bez `analytics:read` nebo capability.
+  In `tests/analytics.test.ts` cover the default of the last 30 days, the 62-day length, ISO date, swapped boundaries, a disallowed granularity, an invalid timezone, a negative/non-integer counter, a missing series, a top list longer than 10, an incomplete range and the ban on calling the remote callback without `analytics:read` or the capability.
 
-- [x] **Krok 2: Spustit nový unit test a potvrdit selhání**
+- [x] **Step 2: Run the new unit test and confirm failure**
 
   Run from admin repo: `node --experimental-strip-types --test tests/analytics.test.ts`
 
-  Expected: FAIL, protože analytics helper a operation zatím neexistují.
+  Expected: FAIL, because the analytics helper and operation do not exist yet.
 
-- [x] **Krok 3: Přidat typovaný read-only API operation a gateway**
+- [x] **Step 3: Add a typed read-only API operation and gateway**
 
-  Implementovat výše uvedené typy a funkce. Parametry validovat před serializací a neumožnit klientské předání cesty, HTTP metody, scope ani volných query parametrů.
+  Implement the types and functions above. Validate parameters before serialization and do not allow the client to pass a path, HTTP method, scope or free-form query parameters.
 
-- [x] **Krok 4: Ověřit unit test**
+- [x] **Step 4: Verify the unit test**
 
   Run: `node --experimental-strip-types --test tests/analytics.test.ts`
 
-  Expected: PASS pro všechny validní a chybné vstupy.
+  Expected: PASS for all valid and invalid inputs.
 
-- [x] **Krok 5: Testovat skutečný HTTPS transport s fixture serverem**
+- [x] **Step 5: Test the real HTTPS transport with a fixture server**
 
-  V `tests/analytics-transport.test.ts` ověřit `GET`, přesnou query cestu, `Authorization: Bearer`, limit odpovědi, neakceptování klíče v JSON odpovědi a že 403/404/503 skončí jako sanitizované `RemoteFailure`.
+  In `tests/analytics-transport.test.ts` verify `GET`, the exact query path, `Authorization: Bearer`, the response limit, not accepting the key in a JSON response and that 403/404/503 end as a sanitized `RemoteFailure`.
 
-- [x] **Krok 6: Spustit transport test a commitnout**
+- [x] **Step 6: Run the transport test and commit**
 
   Run: `node --experimental-strip-types --test tests/analytics-transport.test.ts`
 
-  Expected: PASS; commit v admin repozitáři `feat: add analytics API gateway`.
+  Expected: PASS; commit in the admin repository `feat: add analytics API gateway`.
 
-### Task 2: Chráněná stránka dashboardu a navigace
+### Task 2: Protected dashboard page and navigation
 
-Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystavuje integrační klíč. Produkční build prošel.
+Status: implemented, permissions stay in the server loader, the HTML does not expose the integration key. The production build passed.
 
-**Soubory:**
+**Files:**
 
 - Admin Modify: `src/routes/content/[site]/+page.server.ts`
 - Admin Modify: `src/routes/content/[site]/+page.svelte`
@@ -145,111 +145,111 @@ Stav: implementováno, oprávnění zůstávají v server loaderu, HTML nevystav
 - Admin Create: `src/lib/components/AnalyticsChart.svelte`
 - Admin Modify: `src/lib/server/analytics.ts`
 
-**Rozhraní:**
+**Interface:**
 
 - Route URL: `/analytics/{siteId}?from=YYYY-MM-DD&to=YYYY-MM-DD&granularity=day|week|month`.
-- Server loader nejprve použije `signedIn(e)`, následně `connectContent(session, siteId)` pro ověření MFA a site grantu. Pouze poté ověří scope/capability a požádá vzdálené API.
-- Server loader vrací pouze webové jméno, normalizovaný rozsah, timezone, agregované čítače a top seznamy. Nikdy nevrací `gateway`, callback ani integrační klíč.
-- Při absenci analytics podpory zobrazit stav "Analytika není pro tento web povolena". Nulové výsledky zobrazit jako prázdný stav, ne jako chybu.
-- Denní/týdenní/měsíční volba a data od/do budou odeslána jako GET query. Graf musí mít přístupný textový souhrn nebo tabulku.
+- The server loader first uses `signedIn(e)`, then `connectContent(session, siteId)` to verify MFA and the site grant. Only after that does it verify scope/capability and ask the remote API.
+- The server loader returns only the site name, the normalized range, timezone, aggregate counters and top lists. It never returns `gateway`, a callback or the integration key.
+- When analytics support is absent, show the state "Analytics is not enabled for this site". Zero results are shown as an empty state, not as an error.
+- The daily/weekly/monthly choice and the from/to dates will be submitted as a GET query. The chart must have an accessible text summary or table.
 
-- [x] **Krok 1: Přidat testy oprávnění a dashboard datového modelu**
+- [x] **Step 1: Add tests of permissions and the dashboard data model**
 
-  Rozšířit `tests/analytics.test.ts`: neprůchozí grant/scope nesmí zavolat remote callback; nula návštěv je validní; `complete=false` zachová upozornění na neúplnou historii; nebezpečné názvy z API zůstávají obyčejným textem.
+  Extend `tests/analytics.test.ts`: a failing grant/scope must not call the remote callback; zero visits is valid; `complete=false` keeps the warning about incomplete history; unsafe names from the API remain plain text.
 
-- [x] **Krok 2: Spustit unit test a potvrdit selhání**
+- [x] **Step 2: Run the unit test and confirm failure**
 
   Run from admin repo: `node --experimental-strip-types --test tests/analytics.test.ts`
 
-  Expected: FAIL pro nové dashboard oprávnění a partial/empty stavy.
+  Expected: FAIL for the new dashboard permissions and partial/empty states.
 
-- [x] **Krok 3: Přidat server loader a navigační odkaz**
+- [x] **Step 3: Add the server loader and navigation link**
 
-  Použít existující `contentLoad()` pro sanitizované HTTP chyby. Site hub zobrazí odkaz jen při `canReadAnalytics(...)`; přímé otevření route bez oprávnění skončí 403 nebo existující bezpečnou chybovou stránkou. Přidat `Cache-Control: no-store`, i když jej nastavuje globální hook.
+  Use the existing `contentLoad()` for sanitized HTTP errors. The site hub shows the link only when `canReadAnalytics(...)`; opening the route directly without permission ends in 403 or the existing safe error page. Add `Cache-Control: no-store`, even though the global hook sets it.
 
-- [x] **Krok 4: Přidat přístupné zobrazení**
+- [x] **Step 4: Add the accessible display**
 
-  Vykreslit souhrn page views, article views a box appearances, časovou osu a top seznamy. Svelte escapování musí zůstat aktivní pro názvy z API. Graf kreslit nativním SVG/CSS a zpřístupnit stejné hodnoty v tabulkové podobě.
+  Render a summary of page views, article views and box appearances, a timeline and top lists. Svelte escaping must stay active for names from the API. Draw the chart in native SVG/CSS and make the same values available in table form.
 
-- [x] **Krok 5: Ověřit typy a build**
+- [x] **Step 5: Verify types and build**
 
   Run: `npm run check && npm run build`
 
-  Expected: Svelte/TypeScript kontrola i produkční build projdou bez nových závislostí; commit `feat: add per-site analytics dashboard`.
+  Expected: the Svelte/TypeScript check and the production build pass without new dependencies; commit `feat: add per-site analytics dashboard`.
 
-### Task 3: Skutečný dvouwebový PHP API pilot
+### Task 3: Real two-site PHP API pilot
 
-**Soubory:**
+**Files:**
 
 - Admin Modify: `tests/api-pilot.ts`
 - Framework Modify: `tests/pilot/seed-installation.php`
-- Framework Modify: `tests/pilot/seed.php` pouze pokud je potřeba deterministický denní fixture.
-- Framework Modify: `tests/pilot/ref-pilot.md` pouze při změně spouštěcího nebo cleanup postupu.
+- Framework Modify: `tests/pilot/seed.php` only if a deterministic daily fixture is needed.
+- Framework Modify: `tests/pilot/ref-pilot.md` only when the startup or cleanup procedure changes.
 
-**Rozhraní:**
+**Interface:**
 
-- Obě izolované instalace dostanou vlastní `analytics:read` klíč a odlišný název seedované stránky, aby pilot prokázal oddělení dat. Chybějící scope ověřují framework API testy i Admin gateway test bez vzdáleného volání.
-- Administrace testuje skutečný MFA session, site grant, šifrovaný klíč na serveru, skutečné HTTPS API a serverem renderované HTML.
+- Both isolated installations get their own `analytics:read` key and a different name of the seeded page, so that the pilot proves data separation. A missing scope is verified by the framework API tests and the Admin gateway test without a remote call.
+- The administration tests a real MFA session, site grant, an encrypted key on the server, the real HTTPS API and server-rendered HTML.
 
-- [x] **Krok 1: Připravit izolované analytické fixture v pilotní DB**
+- [x] **Step 1: Prepare isolated analytics fixtures in the pilot DB**
 
-  Použít pevné datum v rámci retence a vytvořit známé denní součty pro stránky, články a boxy. Dodat migration před seedem. Test musí po cleanupu ponechat obě běžné DB beze změny.
+  Use a fixed date within retention and create known daily totals for pages, articles and boxes. Deliver the migration before the seed. After cleanup the test must leave both regular DBs unchanged.
 
-- [x] **Krok 2: Přidat end-to-end regresní scénáře**
+- [x] **Step 2: Add end-to-end regression scenarios**
 
-  V `tests/api-pilot.ts` po přihlášení MFA ověřit MFA session, dostupnost odkazu, platné i neplatné období, seedované hodnoty, oddělení dat druhého webu, `no-store`, absenci klíčů v HTML a odmítnutí druhého webu editorovi s grantem pouze na první web. Chybějící scope a výpadek se ověřují na gateway/transport testech a existujících outage scénářích.
+  In `tests/api-pilot.ts`, after MFA sign-in, verify the MFA session, link availability, valid and invalid periods, seeded values, separation of the second site's data, `no-store`, absence of keys in the HTML and rejection of the second site for an editor with a grant only for the first site. A missing scope and an outage are verified in the gateway/transport tests and existing outage scenarios.
 
-- [x] **Krok 3: Spustit všechny administrativní testy a dvouwebový pilot**
+- [x] **Step 3: Run all administration tests and the two-site pilot**
 
   Run from admin repo: `npm test && npm run check && npm run build`.
 
-  Run from framework repo: `sh tests/pilot/pilot.sh start`, `sh tests/pilot/pilot.sh probe`, `sh tests/pilot/pilot.sh consumer /Users/roza/Sites/svelte/wbengine-admin`, `sh tests/pilot/pilot.sh backup-check`, potom `sh tests/pilot/pilot.sh reset`.
+  Run from framework repo: `sh tests/pilot/pilot.sh start`, `sh tests/pilot/pilot.sh probe`, `sh tests/pilot/pilot.sh consumer /Users/roza/Sites/svelte/wbengine-admin`, `sh tests/pilot/pilot.sh backup-check`, then `sh tests/pilot/pilot.sh reset`.
 
-  Výsledek 2026-10-27: `npm test` prošel (43 testů), `npm run check` prošel bez chyb a varování, `npm run build`, `npm run test:mysql` a `npm audit --audit-level=high` prošly; npm audit nenašel zranitelnosti. Lokální Docker pilot obou samostatných HTTPS API prošel včetně centrálních formulářů, analytics dashboardu a oddělení dat. Po nové tabulce `cms_analytics_meta` ověřil `backup-check` 20 tabulek a 158 řádků se shodnými hashi schématu a dat; `reset` odstranil pouze pilotní kontejnery, síť a volume.
+  Result 2026-10-27: `npm test` passed (43 tests), `npm run check` passed without errors and warnings, `npm run build`, `npm run test:mysql` and `npm audit --audit-level=high` passed; npm audit found no vulnerabilities. The local Docker pilot of both separate HTTPS APIs passed, including the central forms, the analytics dashboard and data separation. After the new table `cms_analytics_meta`, `backup-check` verified 20 tables and 158 rows with matching schema and data hashes; `reset` removed only the pilot containers, network and volume.
 
-  Framework GitHub CI run [40570318253](https://github.com/rrsoftcz/wbengine/actions/runs/40570318253) prošel všemi 7 úlohami: PHP 8.3–8.5, MySQL 8.4, MariaDB 10.11/11.4, Texy migration a Smarty compatibility. Admin GitHub CI run [40570331198](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40570331198) prošel `test` i dvouwebovým API pilotem.
+  Framework GitHub CI run [40570318253](https://github.com/rrsoftcz/wbengine/actions/runs/40570318253) passed all 7 jobs: PHP 8.3–8.5, MySQL 8.4, MariaDB 10.11/11.4, Texy migration and Smarty compatibility. Admin GitHub CI run [40570331198](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40570331198) passed `test` and the two-site API pilot.
 
-  Po následné revizi se CI pilot připíná na framework commit `351a5e79b0061d69a1e714552ccdd4c07b675db0`, ne na starý tag `v4.0.0`. Tento commit obsahuje nové API, migration metadata, start měření i veřejný event guard. Po vydání frameworku se pin aktualizuje na stabilní release tag.
+  After the subsequent revision, the CI pilot is pinned to framework commit `351a5e79b0061d69a1e714552ccdd4c07b675db0`, not the old tag `v4.0.0`. This commit contains the new API, migration metadata, measurement start and the public event guard. After the framework is released, the pin is updated to the stable release tag.
 
-  Lokální checkpoint administrační změny je `34c9f6871c00358c96f04c8eda30055c4cf4bf4e` (`fix: align analytics CI with framework API`).
+  The local checkpoint of the administration change is `34c9f6871c00358c96f04c8eda30055c4cf4bf4e` (`fix: align analytics CI with framework API`).
 
-  Read-only review 2026-10-27 našel a následně byly opraveny: article/box události před veřejným HTML renderem a nepřesné `period.complete` před začátkem měření. Výchozí admin období také končí předchozím UTC dnem, aby nebylo budoucím datem na webu v západním časovém pásmu.
+  A read-only review on 2026-10-27 found, and the following were then fixed: article/box events before the public HTML render and an inaccurate `period.complete` before the start of measurement. The default admin period also ends on the previous UTC day, so that it is not a future date on a site in a western time zone.
 
-- [x] **Krok 4: Zaznamenat důkazy a commitnout oba repozitáře**
+- [x] **Step 4: Record evidence and commit both repositories**
 
-  Do plánu zapsat lokální i vzdálené CI důkazy. Samostatné commity jsou na cílových větvích framework `master` a admin `main`; zbývá vydání a nasazení.
+  Write both local and remote CI evidence into the plan. Separate commits are on the target branches framework `master` and admin `main`; release and deployment remain.
 
-### Task 4: Návod a připravenost k zapnutí
+### Task 4: Guide and readiness for enabling
 
-**Soubory:**
+**Files:**
 
 - Admin Modify: `README.md`
 - Framework Modify: `README.md`
 - Framework Modify: `plan-analytics.md`
 - Framework Modify: `plan-framework-improvements.md`
 
-- [x] **Krok 1: Dokumentovat konfiguraci a podporu webu**
+- [x] **Step 1: Document configuration and site support**
 
-  Vysvětlit nový `analytics:read` scope, 62denní dostupnost denních řádků, trvalé celoživotní součty, definici zobrazení, zahrnutí robotických požadavků, prázdný/částečný stav a Docker CLI údržbu.
+  Explain the new `analytics:read` scope, the 62-day availability of daily rows, permanent lifetime totals, the definition of a view, inclusion of robot requests, the empty/partial state and Docker CLI maintenance.
 
-- [x] **Krok 2: Aktualizovat rozhodovací tracker**
+- [x] **Step 2: Update the decision tracker**
 
-  Zapsat dokončenou implementaci, lokální testovací důkazy, migraci, retenční údržbu a otevřené nasazení. Obě CI sady prošly. GA4 zůstává aktivní do samostatného provozního porovnání.
+  Record the completed implementation, local test evidence, the migration, retention maintenance and the open deployment. Both CI suites passed. GA4 stays active until a separate operational comparison.
 
-- [x] **Krok 3: Ověřit změny dokumentace**
+- [x] **Step 3: Verify the documentation changes**
 
-  Run: `git diff --check` v obou repozitářích.
+  Run: `git diff --check` in both repositories.
 
-  Výsledek 2026-10-27: `git diff --check` prošel v obou worktree; README uvádějí ruční migraci a opt-in konfiguraci před zapnutím.
+  Result 2026-10-27: `git diff --check` passed in both worktrees; the READMEs state the manual migration and opt-in configuration before enabling.
 
-## Hranice dokončení
+## Completion boundary
 
-Administrace je připravená k vydání, když unit testy, HTTP testy, type-check/build a dvouwebový actual API pilot projdou; uživatel s omezeným grantem ani klíč bez analytics scope nezíská data; výpadky jsou srozumitelné; `no-store` a absence tajemství jsou ověřeny. GA4 se vypíná až v samostatném schváleném provozním kroku po nasazení frameworku i administrace.
+The administration is ready for release when the unit tests, HTTP tests, type-check/build and the two-site actual API pilot pass; a user with a limited grant or a key without the analytics scope gets no data; outages are understandable; and `no-store` and the absence of secrets are verified. GA4 is switched off only in a separate approved operational step after both the framework and the administration are deployed.
 
-Stav 2026-10-27: lokální ověření i GitHub CI release gate prošly. Změny jsou na `wbengine/master` a `wbengine-admin/main`. WBengine Admin zůstává lokální na vývojovém Macu. Veřejný Skeleton App byl čistě nasazen na nový VPS z commitu `fcaf38a`; nová databáze vznikla z aktuálních seed souborů bez přenosu staré databáze a migrace `002`, `005` a `006` byly aplikovány. Analytics zůstává vypnutá, veřejné capability zatím neobsahují `analytics.read`, GA4 zůstává aktivní. Ověření HTTPS, simulované obnovy certifikátu a zneplatnění demo účtu prošly. Ještě není vytvořen ani předán omezený integrační klíč a Admin není připojen k živému webu.
+Status 2026-10-27: local verification and the GitHub CI release gate passed. The changes are on `wbengine/master` and `wbengine-admin/main`. WBengine Admin stays local on the development Mac. The public Skeleton App was cleanly deployed to the new VPS from commit `fcaf38a`; the new database was created from the current seed files without transferring the old database, and migrations `002`, `005` and `006` were applied. Analytics stays disabled, the public capabilities do not yet contain `analytics.read`, GA4 stays active. Verification of HTTPS, simulated certificate renewal and invalidation of the demo account passed. A limited integration key has not yet been created or handed over, and Admin is not connected to the live site.
 
-Vydání 2026-10-27: framework `v4.1.0` a soukromý admin `v0.2.0` byly publikovány. Tagy ukazují na CI ověřené commity `cdf7b90287825af5d1d0f16445c43965a56c3231` a `6e4a1253c3154ae0d1bfb88bc67ea83ab8e9d74d`. CI běhy [framework](https://github.com/rrsoftcz/wbengine/actions/runs/40573908541) a [admin](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40573888645), včetně dvouwebového API pilotu, prošly. Skeleton App pin na `v4.1.0` a smoke opravy jsou v `main`: `5bcc949`, `49d7646`; nová [CI smoke brána](https://github.com/rrsoftcz/wbengine-skeleton-app/actions/runs/40577284046) prošla. Uživatel potvrdil, že WBengine Admin poběží lokálně na vývojovém Macu a nebude hostovaný. Dne 2026-10-27 byl veřejný web čistě nasazen na nový VPS; HTTPS, čtyři veřejné cesty, databázové kontejnery a zamítnutí demo přihlášení jsou ověřené. Nová databáze používá aktuální repo seed bez obnovy starých dat. Migrace `002`, `005` a `006` jsou aplikované, ale analytics je vypnutá a veřejná capability neobsahuje `analytics.read`. Starý server nebyl kopírován ani upravován. Další krok je připravit lokální Admin pro bezpečné napojení na tento web, vytvořit omezený klíč důvěryhodnou cestou a ověřit read-only API. GA4 zůstává aktivní do dokončení tohoto ověření.
+Release 2026-10-27: framework `v4.1.0` and the private admin `v0.2.0` were published. The tags point to the CI-verified commits `cdf7b90287825af5d1d0f16445c43965a56c3231` and `6e4a1253c3154ae0d1bfb88bc67ea83ab8e9d74d`. The CI runs for the [framework](https://github.com/rrsoftcz/wbengine/actions/runs/40573908541) and the [admin](https://github.com/rrsoftcz/wbengine-admin/actions/runs/40573888645), including the two-site API pilot, passed. The Skeleton App pin to `v4.1.0` and the smoke fixes are in `main`: `5bcc949`, `49d7646`; the new [CI smoke gate](https://github.com/rrsoftcz/wbengine-skeleton-app/actions/runs/40577284046) passed. The user confirmed that WBengine Admin will run locally on the development Mac and will not be hosted. On 2026-10-27 the public site was cleanly deployed to the new VPS; HTTPS, four public paths, the database containers and rejection of the demo sign-in are verified. The new database uses the current repo seed without restoring old data. Migrations `002`, `005` and `006` are applied, but analytics is disabled and the public capability does not contain `analytics.read`. The old server was neither copied nor modified. The next step is to prepare the local Admin for a safe connection to this site, create a limited key by a trusted path and verify the read-only API. GA4 stays active until this verification is complete.
 
-## Doporučené pořadí
+## Recommended order
 
-Nejprve dokončit frameworkovou analytics API a izolovaný pilot fixture. Poté navázat Task 1 a Task 2 v administraci. Task 3 a Task 4 tvoří release gate a mají proběhnout před vydáním. Task 5 uzavírá dokumentaci a kontrolní bod.
+First finish the framework analytics API and the isolated pilot fixture. Then follow with Task 1 and Task 2 in the administration. Task 3 and Task 4 form the release gate and should happen before release. Task 5 closes the documentation and the checkpoint.

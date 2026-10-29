@@ -1,72 +1,72 @@
-# Vlastní Markdown parser WBengine 4.0
+# WBengine 4.0 own Markdown parser
 
-Stav 2026-10-26: MD-01 a MD-02 dokončeny; konverze obsahu pokračuje v MD-03. Parser nemá závislost na dalším Markdown balíčku.
+Status 2026-10-26: MD-01 and MD-02 complete; content conversion continues in MD-03. The parser has no dependency on another Markdown package.
 
-## Rozhraní a strom
+## Interface and tree
 
-`Wbengine\Markdown` skládá `Markdown\Parser` a `Markdown\HtmlRenderer`. Block a inline parser sdílejí rozpočet práce a vytvářejí neměnný strom `Markdown\Node`; HTML renderer používá konečnou množinu elementů a escapuje jejich obsah a atributy. Vnitřní strom není Smarty ani PHP program.
+`Wbengine\Markdown` composes `Markdown\Parser` and `Markdown\HtmlRenderer`. The block and inline parsers share a work budget and produce an immutable `Markdown\Node` tree; the HTML renderer uses a finite set of elements and escapes their content and attributes. The internal tree is neither Smarty nor a PHP program.
 
 ```php
-$html = (new \Wbengine\Markdown())->render("# Titulek\n\nBěžný **text**.");
+$html = (new \Wbengine\Markdown())->render("# Title\n\nPlain **text**.");
 $tree = (new \Wbengine\Markdown\Parser())->parse($source);
 $html = (new \Wbengine\Markdown\HtmlRenderer())->render($tree);
 ```
 
-Markdown zůstává obsahem: proměnné šablon ani PHP se nevyhodnocují. Přímé `.md` zdroje v layoutu, Application lazy služba a explicitní DB formáty jsou zapojeny podle následující části. Tato etapa nepřepíná staré články a neodstraňuje Texy.
+Markdown stays content: template variables and PHP are not evaluated. Direct `.md` sources in the layout, the Application lazy service and explicit DB formats are wired in as described in the following section. This stage does not switch old articles and does not remove Texy.
 
-## Podporovaný formát a bezpečný výstup
+## Supported format and safe output
 
-Cíl je CommonMark 0.31.2 plus GFM tabulky, přeškrtnutí a seznamy úkolů. Jiné GFM rozšíření není touto smlouvou přislíbeno. Vložené HTML se vždy escapuje. URL mohou používat http, https, mailto nebo relativní cestu; ostatní schémata dostanou prázdný cíl. Výstup neobsahuje uživatelský PHP/template kód. Neexistuje produkční přepínač pro nebezpečný HTML režim.
+The target is CommonMark 0.31.2 plus GFM tables, strikethrough and task lists. No other GFM extension is promised by this contract. Embedded HTML is always escaped. URLs may use http, https, mailto or a relative path; other schemes get an empty target. The output contains no user PHP/template code. There is no production switch for an unsafe HTML mode.
 
-Výchozí limity: vstup 1 MiB, parser depth 64, 8 milionů pracovních jednotek, 100000 alokací uzlů, renderer depth 128 a výstup 8 MiB. Překročení vyvolá `LengthException`, ne částečné HTML. Čítače se obnovují mezi dokumenty. Limity lze nastavit konstruktory Parseru/HtmlRendereru; zvyšování musí odpovídat důvěryhodnosti obsahu a paměťovému profilu instalace. Výstupní limit zahrnuje opakované rozbalování referenčních URL.
+Default limits: input 1 MiB, parser depth 64, 8 million work units, 100000 node allocations, renderer depth 128 and output 8 MiB. Exceeding them raises `LengthException`, not partial HTML. The counters are reset between documents. The limits can be set through the Parser/HtmlRenderer constructors; raising them must match the trustworthiness of the content and the memory profile of the installation. The output limit includes repeated expansion of reference URLs.
 
-## Ověření a známé rozdíly
+## Verification and known differences
 
-`tests/fixtures/markdown/sources.json` uvádí zdroje, autory, licence, verze a SHA-256 korpusů. Kompletní oficiální CommonMark JSON má 652 příkladů, vybrané oficiální GFM příklady 12. Lokální sada MD-01: 695 testů / 1826 assertions na PHP 8.4.27.
+`tests/fixtures/markdown/sources.json` lists the sources, authors, licenses, versions and SHA-256 of the corpora. The complete official CommonMark JSON has 652 examples, the selected official GFM examples 12. The local MD-01 suite: 695 tests / 1826 assertions on PHP 8.4.27.
 
-U každého CommonMark příkladu se porovnává přesná syntaktická struktura výsledného HTML přes testovou projekci AST a současně přesný skutečný bezpečný výstup. Projekce pouze v testech vrací raw HTML uzly a zakázaná schémata, aby bezpečnostní profil nezakryl chyby ostatní syntaxe; není přístupná produkčnímu rendereru. Registr `safe-deviations.json` obsahuje 76 jednotlivých očekávaných výsledků: 72 kvůli escapování HTML a 4 kvůli URL allowlistu. Žádná celá skupina HTML příkladů se nepřeskakuje. Oba výstupy se ověřují pro všech 652 případů.
+For every CommonMark example, the exact syntactic structure of the resulting HTML is compared through a test-only AST projection, and at the same time the exact actual safe output. The test-only projection returns raw HTML nodes and forbidden schemes so that the security profile does not mask errors in the rest of the syntax; it is not accessible to the production renderer. The registry `safe-deviations.json` contains 76 individual expected results: 72 due to HTML escaping and 4 due to the URL allowlist. No whole group of HTML examples is skipped. Both outputs are verified for all 652 cases.
 
-Oficiální corpus není matematický důkaz shody pro všechny vstupy. Nezávislé review našlo další případy mimo něj: escapované delimitery v cíli a reference labelu, parentetické tituly, Unicode délku labelu, neplatné UTF-8 a násobení referenčních URL do velkého HTML. Každý případ má samostatnou RED/GREEN regresi. Amplifikace 24 kB zdroje na přibližně 20 MB HTML byla nahrazena kontrolovaným odmítnutím při nastaveném limitu. Běžných 1000 odkazů/code spans přitom projde pracovním rozpočtem.
+The official corpus is not a mathematical proof of conformance for all inputs. Independent review found further cases outside it: escaped delimiters in the target and the reference label, parenthesized titles, Unicode label length, invalid UTF-8 and the multiplication of reference URLs into large HTML. Each case has its own RED/GREEN regression. An amplification of a 24 kB source to roughly 20 MB of HTML was replaced by a controlled rejection at the configured limit. Meanwhile, an ordinary 1000 links/code spans passes the work budget.
 
-Doplňkový deterministický smoke nad 1000 krátkými poškozenými vstupy nevyvolal PHP warnings. Není to penetrační test ani záruka neexistence dalších parserových chyb. Budoucí nálezy rozšiřují tento corpus, nikoli výjimky z požadavků.
+A supplementary deterministic smoke test over 1000 short corrupted inputs raised no PHP warnings. It is not a penetration test or a guarantee that no other parser bugs exist. Future findings extend this corpus, not exceptions to the requirements.
 
 ```sh
 docker compose -p wbengine-modernization run --rm --no-deps php php vendor/bin/phpunit tests/Unit/MarkdownTest.php tests/Unit/MarkdownConformanceTest.php tests/Unit/MarkdownGfmTest.php
 ```
 
-Korpusy jsou převzaté testovací podklady s vlastní atribucí a licencí podle manifestu; implementace je vlastní. Produkční jádro pro Markdown nepřidává Composer závislost.
+The corpora are adopted test materials with their own attribution and license according to the manifest; the implementation is our own. The production core adds no Composer dependency for Markdown.
 
 
-## MD-02: zdroje, layout a uložený formát
+## MD-02: sources, layout and stored format
 
-Application poskytuje lazy `getMarkdown()`; callback se předává přes současný Renderer/Adapter/NativeRenderer do Engine. Parser nevzniká při běžném ne-Markdown renderu. Samostatný NativeRenderer má bezpečný vlastní lazy fallback. Engine nejprve ověří povolené kořeny a potom vyhodnotí příponu požadované i kanonické cesty, case-insensitive. `.md` nikdy nejde do Compileru, ani jako symlinkový alias. Soubor se načte s pevnou mezí 1MiB plus detekční bajt; nelze tak před kontrolou spolknout obrovský zdroj.
+Application provides a lazy `getMarkdown()`; the callback is passed through the current Renderer/Adapter/NativeRenderer into the Engine. The parser is not created during an ordinary non-Markdown render. A standalone NativeRenderer has a safe lazy fallback of its own. The Engine first verifies the allowed roots and then evaluates the extension of both the requested and the canonical path, case-insensitively. `.md` never goes into the Compiler, not even as a symlink alias. The file is read with a fixed limit of 1 MiB plus a detection byte; a huge source therefore cannot be swallowed before the check.
 
-`{include 'content.md'}` vloží bezpečně zformátovaný obsah do HTML layoutu. Text `{$variable}`, `{if ...}` a PHP zůstávají obsahem, i v důvěryhodném souboru. Stejný parser obsluhuje DB hodnoty.
+`{include 'content.md'}` inserts safely formatted content into the HTML layout. The text `{$variable}`, `{if ...}` and PHP remain content, even in a trusted file. The same parser serves DB values.
 
-Volitelná migrace `003-markdown-content.sql` přidává `content_format` článkům i překladům. Výchozí `legacy_html` zachová současné důvěryhodné HTML přesně; `markdown` výslovně zapíná nový renderer. Staré schéma je stále čitelné: používá SELECT * a legacy fallback, bez runtime DDL nebo schema-probe dotazů. Před novými formátovanými zápisy migraci aplikovat ručně běžným migračním postupem. Neznámý formát se odmítá.
+The optional migration `003-markdown-content.sql` adds `content_format` to articles and translations. The default `legacy_html` preserves the current trusted HTML exactly; `markdown` explicitly turns on the new renderer. The old schema is still readable: it uses SELECT * and a legacy fallback, with no runtime DDL or schema-probe queries. Before new formatted writes, apply the migration manually through the ordinary migration procedure. An unknown format is rejected.
 
-Článek může kombinovat přeložené Markdown body s původním legacy intro. Overlay proto předává formát samostatně pro každý vybraný field, nikoli slepě jeden formát poslední řádky. Null znamená fallback, prázdný text výslovně prázdný field. Změna formátu existujícího překladu vyžaduje předat oba textové fieldy k nahrazení či fallbacku. Podmíněný UPDATE navíc hlídá formát skutečně načtené verze; jinak souběžný save mohl vrátit starý formát nad novým textem. Stale zápis i kolize prvního INSERT jsou odmítnuty, legitimní no-op zůstává povolen. Metoda nezačíná ani neukončuje cizí transakci.
+An article can combine a translated Markdown body with the original legacy intro. The overlay therefore passes the format separately for each selected field, rather than blindly one format of the last row. Null means fallback, an empty text an explicitly empty field. Changing the format of an existing translation requires passing both text fields for replacement or fallback. A conditional UPDATE also guards the format of the version actually loaded; otherwise a concurrent save could have returned the old format over the new text. A stale write and a collision of the first INSERT are rejected, a legitimate no-op remains allowed. The method neither begins nor ends a foreign transaction.
 
-Deterministický RED/GREEN souběhový test použil dva procesy/spojení a row lock v izolované testovací DB. Druhý writer změnil oba texty i formát, zatímco první čekal; původní implementace data smíchala a nová ji odmítne. Temporary migrační testy pokrývají nový sloupec, legacy zachování i mixed fallback; běžné ContentTranslations/ContentReadPath regrese zůstávají zelené. Souběhová fixture po sobě odstraňuje vlastní řádky a pouze svůj přidaný testovací sloupec.
+A deterministic RED/GREEN concurrency test used two processes/connections and a row lock in an isolated test DB. The second writer changed both texts and the format while the first was waiting; the original implementation mixed the data and the new one rejects it. Temporary migration tests cover the new column, legacy preservation and mixed fallback; the ordinary ContentTranslations/ContentReadPath regressions stay green. The concurrency fixture removes its own rows afterwards and only its added test column.
 
 
-## Řízená migrace starého obsahu (MD-03)
+## Controlled migration of old content (MD-03)
 
-Články dříve předávaly již uložené HTML. Zdroj proto vždy určete explicitně: `html` nebo `texy`. Nedochází k automatickému odhadu ani hromadnému přepsání. Konvertor HTML používá DOM bez síťového přístupu, konečný seznam podporovaných uzlů a srovnání významu po bezpečném renderu. Nejednoznačné, nepodporované nebo ztrátové konstrukce mají manual issues a nelze je automaticky schválit. Vstup nejvýše1MiB, agregovaný plán8MiB, report16MiB, nejvýše256 locale. Report obsahuje původní texty a musí se chránit jako databázová záloha.
+Articles previously passed through already stored HTML. Always specify the source explicitly: `html` or `texy`. There is no automatic guessing or bulk overwrite. The HTML converter uses DOM with no network access, a finite list of supported nodes and a comparison of meaning after a safe render. Ambiguous, unsupported or lossy constructs produce manual issues and cannot be approved automatically. Input at most 1 MiB, aggregated plan 8 MiB, report 16 MiB, at most 256 locales. The report contains the original texts and must be protected like a database backup.
 
-Nejdříve na kopii databáze aplikujte volitelné SQL003 a004, zálohujte DB, ověřte InnoDB a write oprávnění důvěryhodného provozního CLI. Žádné runtimeDDL. Suchý běh nic nemění:
+First apply the optional SQL003 and 004 on a copy of the database, back up the DB, verify InnoDB and the write permissions of the trusted operational CLI. No runtime DDL. A dry run changes nothing:
 
 ```sh
 php bin/migrate-content.php --config=/site/Config/Settings.json --article=42 --source-format=html > /secure/report.json
 ```
 
-Report zahrnuje článek i překlady; `--locale=cs` vybere jediný překlad. Ručně porovnejte původní a výsledný obsah a render. Každý bezpečný záznam má vlastní approval_hash:
+The report covers the article and its translations; `--locale=cs` selects a single translation. Manually compare the original and resulting content and render. Each safe record has its own approval_hash:
 
 ```sh
 php bin/migrate-content.php --config=/site/Config/Settings.json --apply=/secure/report.json --approve=SHA256
 php bin/migrate-content.php --config=/site/Config/Settings.json --rollback=SHA256
 ```
 
-Apply schválí pouze jeden konkrétní plán, znovu ověří zdroj, konvertor, scopeDB a aktuální uzamčený řádek. Obsah i původní bajty v ledgeru zapisuje atomicky. Kontroluje skutečné post-write hashe, takže ani permissive MySQL nesmí tiše zkrátit obsah či zálohu. Opakování je idempotentní; změněný zdroj, cizí transakce nebo konfliktní rollback se odmítne. Rollback obnoví přesné původní hodnoty včetně formátu a null fallbacků; po pozdější úpravě nic nepřepíše. Po úspěšném commitu se invaliduje WBengine cache. Externí CDN cache musí provoz vyčistit zvlášť.
+Apply approves only one specific plan and re-verifies the source, the converter, the DB scope and the current locked row. It writes the content and the original bytes in the ledger atomically. It checks the actual post-write hashes, so even a permissive MySQL must not silently truncate the content or the backup. Repetition is idempotent; a changed source, a foreign transaction or a conflicting rollback is rejected. Rollback restores the exact original values including the format and null fallbacks; after a later edit it overwrites nothing. After a successful commit, the WBengine cache is invalidated. The external CDN cache must be purged separately by operations.
 
-Pro `--source-format=texy` je nutný volitelný `compat/texy-migration` se závislostí Texy. `--texy-autoload=/trusted/vendor/autoload.php` smí ukazovat jen na důvěryhodný lokální autoload. Převod jde přes stejnou bezpečnou HTML bránu, nemá nebezpečný automatický fallback. Balíček je v checkoutu, před Composer instalací potřebuje důvěryhodný repository nebo publikování.
+For `--source-format=texy`, the optional `compat/texy-migration` with the Texy dependency is required. `--texy-autoload=/trusted/vendor/autoload.php` may point only to a trusted local autoload. The conversion goes through the same safe HTML gate and has no unsafe automatic fallback. The package is in the checkout; before the Composer install it needs a trusted repository or publishing.

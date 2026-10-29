@@ -1,70 +1,70 @@
-# Inventura a migrační smlouva šablon WBengine 4.0
+# WBengine 4.0 template inventory and migration contract
 
-Stav k 2026-10-26: TPL-01 a TPL-02 dokončeny, TPL-03 ověřuje oddělený kompatibilní balíček. Cílem je vlastní kompilovaný renderer ve stávajícím stromu WBengine. TPL-01 zdokumentoval podporu a rozdíly, přidal corpus a inventurní nástroj. První část TPL-02 doplňuje diagnostiku v existujícím Compileru; výchozí adaptér ani Composer závislosti se nemění. TPL-02 dokončí migraci, TPL-03 odstraní Smarty z jádra.
+Status as of 2026-10-26: TPL-01 and TPL-02 are complete, TPL-03 verifies the separate compatibility package. The goal is an own compiled renderer in the existing WBengine tree. TPL-01 documented the support and the differences, and added a corpus and an inventory tool. The first part of TPL-02 adds diagnostics to the existing Compiler; the default adapter and the Composer dependencies do not change. TPL-02 completes the migration, TPL-03 removes Smarty from the core.
 
-## Rozsah a důkazy
+## Scope and evidence
 
-Framework: větev `codex/wbengine-4.0`, výchozí commit `b7cf3d4`. Vzorová aplikace: lokální `wbengine-skeleton-app`, čistý commit `d22281fc86e9efd63a333ac6668b9261f22777e9`, zdroje `src/View`. Aplikace byla pouze čtena; její konfigurace již vybírá NativeRenderer. Kompilované soubory, vendor, node_modules a testovací fixtures nejsou zdrojovou inventurou.
+Framework: branch `codex/wbengine-4.0`, base commit `b7cf3d4`. Sample application: local `wbengine-skeleton-app`, clean commit `d22281fc86e9efd63a333ac6668b9261f22777e9`, sources `src/View`. The application was only read; its configuration already selects NativeRenderer. Compiled files, vendor, node_modules and test fixtures are not the source inventory.
 
-Snapshot cest, SHA-256 a kompilace je v [inventory.json](tests/fixtures/template-migration/inventory.json). Jsou to identity zdrojů v okamžiku inventury, nikoli kopie externí aplikace ani náhrada jejího checkoutu. CI na externím adresáři nezávisí. [corpus.json](tests/fixtures/template-migration/corpus.json) obsahuje 17 pojmenovaných scénářů a 31 očekávaných výsledků podle adaptéru: 30 výstupů a jednu diagnostiku nepodporovaného tagu. Dalších pět testů porovnává skutečné frameworkové šablony, včetně obou větví CAPTCHA. Při místním ověření: PHP 8.4.27 a Smarty 5.8.5, požadavek Composeru zůstává `^5.5.2`.
+The snapshot of paths, SHA-256 and compilation is in [inventory.json](tests/fixtures/template-migration/inventory.json). These are the identities of the sources at the moment of the inventory, not a copy of the external application nor a replacement for its checkout. CI does not depend on the external directory. [corpus.json](tests/fixtures/template-migration/corpus.json) contains 17 named scenarios and 31 expected results by adapter: 30 outputs and one diagnostic of an unsupported tag. Another five tests compare the real framework templates, including both CAPTCHA branches. In the local verification: PHP 8.4.27 and Smarty 5.8.5, the Composer requirement stays `^5.5.2`.
 
-Knihovna obsahuje sedm `.tpl` souborů:
+The library contains seven `.tpl` files:
 
-- `Application/error.tpl`: renderer, data chyby a překlady.
-- `Box/Article/View/Article.tpl`: renderer, článek, explicitně důvěryhodné HTML z obsahového formátovače.
-- `Box/Login/View/Login.tpl`: renderer, formulář, CSRF a CAPTCHA.
-- `Box/Login/View/Logout.tpl`: renderer, POST odhlášení a CSRF.
-- `Application/exception.tpl`, `Exception/exception.tpl`, `Box/exception.tpl`: formátovací text pro `sprintf`, nikoli Smarty šablony. Zachovat jejich spotřebitele odděleně.
+- `Application/error.tpl`: renderer, error data and translations.
+- `Box/Article/View/Article.tpl`: renderer, article, explicitly trusted HTML from the content formatter.
+- `Box/Login/View/Login.tpl`: renderer, form, CSRF and CAPTCHA.
+- `Box/Login/View/Logout.tpl`: renderer, POST logout and CSRF.
+- `Application/exception.tpl`, `Exception/exception.tpl`, `Box/exception.tpl`: format text for `sprintf`, not Smarty templates. Keep their consumers separate.
 
-Všechny čtyři rendererové zdroje se kompilují a mají při dodaných testovacích datech shodný výstup obou adaptérů s escapováním zapnutým. Corpus ověřuje escapování uživatelských hodnot i zachování důvěryhodného HTML článku. Toto není audit obsahového formátovače ani důkaz kompatibility pro libovolná data.
+All four renderer sources compile and, with the supplied test data, have an identical output in both adapters with escaping on. The corpus verifies the escaping of user values and the preservation of the trusted article HTML. This is not an audit of the content formatter nor proof of compatibility for arbitrary data.
 
-Vzorová aplikace obsahuje 13 zdrojů: `site.tpl`, `404.tpl`, `Header/Jumbotron.tpl`, `Central/About.tpl`, `Central/Api.tpl`, `Central/Caching.tpl`, `Central/Features.tpl`, `Central/Languages.tpl`, `Central/LocalStoryBox.tpl`, `Central/Page.tpl`, `Central/Profile.tpl`, `Central/Structure.tpl`, `Central/Templates.tpl`. Všech 13 se nativně kompiluje. Toto samo nedokazuje vykreslení celého webu; služby, překlady, session a runtime data pokryje TPL-02 HTTP smoke test.
+The sample application contains 13 sources: `site.tpl`, `404.tpl`, `Header/Jumbotron.tpl`, `Central/About.tpl`, `Central/Api.tpl`, `Central/Caching.tpl`, `Central/Features.tpl`, `Central/Languages.tpl`, `Central/LocalStoryBox.tpl`, `Central/Page.tpl`, `Central/Profile.tpl`, `Central/Structure.tpl`, `Central/Templates.tpl`. All 13 compile natively. This alone does not prove the rendering of the whole site; services, translations, session and runtime data will be covered by the TPL-02 HTTP smoke test.
 
-## Používaná syntaxe a hranice kompatibility
+## Syntax in use and compatibility limits
 
-Frameworkové šablony používají výstup proměnných, pole přes tečku, vlastnosti objektů, if/else, komentáře a modifikátory escape, raw, default. Vzorová aplikace navíc používá foreach s klíčem, metody objektů, quoted literal s modifikátorem, set, t tag a modifikátory lurl, upper, number, ldate, t, truncate, join. Zdroj obsahuje také literálové ukázky syntaxe, které nejsou vykonávanými tagy.
+The framework templates use variable output, dot-notation arrays, object properties, if/else, comments and the modifiers escape, raw, default. The sample application additionally uses foreach with a key, object methods, a quoted literal with a modifier, set, the t tag and the modifiers lurl, upper, number, ldate, t, truncate, join. The source also contains literal syntax examples that are not executed tags.
 
-Nativní Compiler a ExpressionParser již zpracovávají:
+The native Compiler and ExpressionParser already handle:
 
-- Výstup, proměnné, pole, vlastnosti a volání metod přiřazených objektů; základní aritmetiku, porovnání, boolean operace a spojování pomocí `~`.
-- if/elseif/else, foreach a foreachelse, include jako výraz cesty, set jako přiřazení výrazu, komentáře a literal.
-- Nativní t tag, explicitní fragmenty cache s public/user scope a modifikátory uvedené v `ExpressionParser::MODIFIERS`.
-- HTML escapování ve výchozím stavu, raw/nofilter pro explicitně důvěryhodný celek, povolené kořeny souborů, omezenou hloubku include, kontrolu kompilované cache a oddělení politik escapování.
+- Output, variables, arrays, properties and method calls of assigned objects; basic arithmetic, comparison, boolean operations and concatenation with `~`.
+- if/elseif/else, foreach and foreachelse, include as a path expression, set as an expression assignment, comments and literal.
+- The native t tag, explicit cache fragments with public/user scope and the modifiers listed in `ExpressionParser::MODIFIERS`.
+- HTML escaping by default, raw/nofilter for an explicitly trusted whole, allowed file roots, limited include depth, a compiled cache check and the separation of escaping policies.
 
-To je omezený jazyk WBengine. Nejde o úplný Smarty ani bezpečnostní sandbox pro cizí autory: přiřazené objekty mohou mít metody s vedlejšími účinky. Šablony zůstávají důvěryhodným kódem vývojáře. Markdown bude samostatný obsahový formát bez této logiky, podle MD-01/02.
+This is a restricted WBengine language. It is not full Smarty nor a security sandbox for foreign authors: assigned objects can have methods with side effects. Templates remain the developer's trusted code. Markdown will be a separate content format without this logic, according to MD-01/02.
 
-Corpus zachycuje konkrétní migrační pravidla:
+The corpus captures concrete migration rules:
 
-1. `{assign var="name" value=$title}` převést na `{set $name = $title}`. Smarty attribute syntax se do nativního set nekopíruje.
-2. `{include file="partial.tpl"}` převést na `{include 'partial.tpl'}`. Pojmenované argumenty, assign a Smarty resource prefixy nejsou tímto podporovány. Rozdělení layoutu řešit explicitními partials a daty z Application/Site/Section/Box.
-3. Nativní `{t 'key'}` není funkcí registrovanou Smarty adaptérem. Společný je modifikátor `|t`; aplikace se set/t tagy již není obecně přepínatelná zpět na Smarty.
-4. Nativní default používá `empty()`, takže také nula dostane fallback. Smarty v měřeném scénáři nulu zachová. Data, kde je nula významná, připravit explicitně v PHP modelu/prezentačním objektu; nepřepínat slepě podle stejného názvu modifikátoru.
-5. Nativní truncate omezuje počet ponechaných znaků před suffixem. Smarty do limitu započítává suffix a může řešit hranice slov jinak. Corpus pro `abcdefgh|truncate:5` čeká `abcde...` nativně a `ab...` ve Smarty. Kontrolovat skutečné požadavky textového výstupu.
-6. Nativní nl2br escapuje vstup a vrátí HTML s `<br>`. Smarty při zapnutém automatickém escapování v tomto scénáři escapuje i vložené `<br />`. Nekopírovat raw na nedůvěryhodný vstup jako automatickou opravu; zkontrolovat celý pipeline.
-7. Výchozí escapování zachovat. Raw používat pro důvěryhodné sekce a obsah již zpracovaný bezpečným formátovačem, nikoli běžná data. Escapování HTML nevaliduje URL schémata ani neřeší libovolný JavaScript/CSS kontext.
+1. Convert `{assign var="name" value=$title}` to `{set $name = $title}`. The Smarty attribute syntax is not copied into the native set.
+2. Convert `{include file="partial.tpl"}` to `{include 'partial.tpl'}`. Named arguments, assign and Smarty resource prefixes are not supported by this. Solve the layout split with explicit partials and data from Application/Site/Section/Box.
+3. The native `{t 'key'}` is not a function registered by the Smarty adapter. The `|t` modifier is common; an application with set/t tags can no longer generally be switched back to Smarty.
+4. The native default uses `empty()`, so zero also gets the fallback. Smarty keeps zero in the measured scenario. Prepare data where zero is meaningful explicitly in the PHP model/presentation object; do not switch blindly based on the same modifier name.
+5. The native truncate limits the number of characters kept before the suffix. Smarty counts the suffix into the limit and may handle word boundaries differently. For `abcdefgh|truncate:5`, the corpus expects `abcde...` natively and `ab...` in Smarty. Check the actual requirements of the text output.
+6. The native nl2br escapes the input and returns HTML with `<br>`. With automatic escaping on, Smarty in this scenario also escapes the inserted `<br />`. Do not copy raw onto untrusted input as an automatic fix; check the whole pipeline.
+7. Keep the default escaping. Use raw for trusted sections and content already processed by a safe formatter, not for ordinary data. HTML escaping does not validate URL schemes nor address an arbitrary JavaScript/CSS context.
 
-## Nastavení a přímá API
+## Settings and direct APIs
 
-Cesta zůstává `Application -> Renderer -> Adapter -> NativeRenderer -> Template\Engine -> Compiler/ExpressionParser/Runtime`; fragmenty obsluhuje stávající FragmentCache. Nevznikne druhý template framework, globální preprocesor ani runtime shell skript.
+The path stays `Application -> Renderer -> Adapter -> NativeRenderer -> Template\Engine -> Compiler/ExpressionParser/Runtime`; fragments are handled by the existing FragmentCache. No second template framework, global preprocessor or runtime shell script is created.
 
-`assign`, `registerObject`, fetch/display, adresář šablon, kompilátů, compileCheck a autoEscape mají existující nativní implementaci. Přístup přes `getAdapter()` vrací Engine místo instance Smarty. Přímá volání Smarty API a vlastní pluginy je nutné inventarizovat v každé konkrétní aplikaci; generický seznam názvů funkcí není důkaz jejich absence.
+`assign`, `registerObject`, fetch/display, the template directory, the compiled directory, compileCheck and autoEscape have an existing native implementation. Access through `getAdapter()` returns the Engine instead of a Smarty instance. Direct Smarty API calls and custom plugins must be inventoried in every specific application; a generic list of function names is not proof of their absence.
 
-Aktuální rozdíly adaptéru musí migrace řešit explicitně:
+The migration must explicitly address the current differences of the adapter:
 
-- `setConfigDir`, `setCacheDir`, `enableCache`, `disableCache` jsou v NativeRenderer bez účinku. Smarty config soubory a jeho vlastní output cache nenahrazují nativní fragmenty a PageCache automaticky.
-- Parametry cache_id/compile_id u fetch/display a nocache u assign nativní adaptér nepoužívá. Cache klíče mají vznikat podle smlouvy WBengine, s identitou uživatele/locale a správnou invalidací.
-- Vlastní delimitery nativní adaptér odmítá výjimkou. Nezapínat je jako součást plošného přepnutí konfigurace.
-- Smarty inheritance, block/extends, capture, section, plugin functions, config_load a libovolné PHP modifikátory nejsou schváleným jazykem WBengine. V prohlédnutých aktivních zdrojích nebyly nalezeny. Externí instalace vyžadují vlastní kontrolu.
+- `setConfigDir`, `setCacheDir`, `enableCache`, `disableCache` have no effect in NativeRenderer. Smarty config files and its own output cache do not automatically replace the native fragments and PageCache.
+- The cache_id/compile_id parameters of fetch/display and nocache of assign are not used by the native adapter. Cache keys should be created according to the WBengine contract, with the user/locale identity and correct invalidation.
+- The native adapter rejects custom delimiters with an exception. Do not enable them as part of a blanket configuration switch.
+- Smarty inheritance, block/extends, capture, section, plugin functions, config_load and arbitrary PHP modifiers are not an approved WBengine language. They were not found in the inspected active sources. External installations require their own check.
 
-## Opakování inventury
+## Repeating the inventory
 
-Pouze framework, bez DB a bez renderování:
+Framework only, without DB and without rendering:
 
 ```sh
 docker compose -p wbengine-modernization run --rm --no-deps php php tests/tools/template-inventory.php
 ```
 
-S read-only připojenou vzorovou aplikací:
+With the sample application attached read-only:
 
 ```sh
 docker compose -p wbengine-modernization run --rm --no-deps \
@@ -72,51 +72,51 @@ docker compose -p wbengine-modernization run --rm --no-deps \
   php php tests/tools/template-inventory.php /inventory-skeleton
 ```
 
-Nástroj načte zdroje a sestaví PHP řetězec pomocí stávajícího Compileru; zdroje nevykonává a nezapisuje kompiláty. Nekonfiguruje aplikaci ani session/DB. Vypíše JSON na stdout, SHA-256, spotřebitele, výsledek kompilace a heuristické tag/modifier hints. Neprochází symlinky a vynechává vendor, node_modules, .git, Compiled a tests.
+The tool loads the sources and builds a PHP string with the existing Compiler; it does not execute the sources and does not write compiled files. It configures neither the application nor the session/DB. It prints JSON to stdout, SHA-256, consumers, the compilation result and heuristic tag/modifier hints. It does not follow symlinks and skips vendor, node_modules, .git, Compiled and tests.
 
-Status `compiled-only` znamená pouze úspěšnou kompilaci. Známé vyhrazené Smarty konstrukce, například assign, nyní vyvolají výjimku; jiné neznámé nebo dynamické pluginové tagy mohou stále zůstat textem. Status `review` a reviewHints vyžadují kontrolu člověkem. Hints ignorují comment/literal těla, ale nejsou plným lexerem, mohou zachytit text uvnitř řetězců a neodhalí všechny dynamické konstrukce, pluginy nebo externí resources. Nástroj není runtime bezpečnostní filtr ani automatický migrátor.
+The status `compiled-only` means only a successful compilation. Known reserved Smarty constructs, for example assign, now raise an exception; other unknown or dynamic plugin tags may still remain text. The status `review` and reviewHints require human review. The hints ignore comment/literal bodies, but are not a full lexer, may catch text inside strings and will not reveal all dynamic constructs, plugins or external resources. The tool is neither a runtime security filter nor an automatic migrator.
 
 ```sh
 docker compose -p wbengine-modernization run --rm --no-deps php php vendor/bin/phpunit --filter 'TemplateMigrationCorpusTest|TemplateInventoryTest'
 ```
 
-## Navazující provedení TPL-02 a brána TPL-03
+## Follow-up execution of TPL-02 and the TPL-03 gate
 
-1. První část dokončena: existující Compiler diagnostikuje níže vyjmenované vyhrazené Smarty konstrukce a uzavírací tagy s cestou a řádkem. Corpus assign-as-text byl záměrně změněn na test výjimky. Inventurní regex hints zůstávají pomocnou heuristikou, nikoli parserem.
-2. Rozhodnout a otestovat přesnou podporovanou smlouvu include/set a modifikátorů, zachovat explicitní rozdíly a ukázky přípravy dat. Přidat chybnou syntaxi, chybějící partial, traversal/symlink, výjimku v metodě a obnovu output bufferů. Využít stávající bezpečnostní a cache regresní sady.
-3. Provést celý vzorový web na NativeRenderer: menu a aktivní odkazy, oba stavy uživatele, login/CSRF/POST logout, 404, článek, locale, native fragmenty a page-cache HIT/BYPASS. Zkontrolovat odkazy GET logout ve vzorovém layoutu, produkční diagnostické proměnné a raw obsah; samotná kompilace je nezachytí. Změny oddělené aplikace verzovat v jejím vlastním repozitáři.
-4. Pro každou cílovou instalaci zazálohovat zdroje a konfiguraci, inventarizovat rozšíření, převést šablony po částech, porovnat výstupy a potom změnit adapterName. Vyčistit kompiláty, fragmenty, stránky i externí HTML cache. Při rollbacku obnovit konfiguraci, kompatibilní zdroje a znovu vyčistit cache; native-only set/t vyžadují obnovení původní verze šablon.
-5. Až po této bráně v TPL-03 změnit výchozí příklady a testovací infrastrukturu, určit podobu případného samostatného kompatibilního balíčku a odstranit Smarty adaptér/závislost z jádra. Paritní corpus přesunout na nativní očekávané výstupy a historické migrační fixtures, aby čisté jádro nevyžadovalo Smarty ani pro testy. Ověřit instalaci bez balíčku a celý release gate. Texy se řeší až v MD-01 až MD-04.
-
-
-## TPL-02, první kontrolní bod: diagnostika
-
-Compiler verze 4 vrací nepodporované tagy jako běžné tokeny a chybu vyvolá po započtení předcházejícího textu. Výjimka `TemplateException` obsahuje název zdroje, řádek a doporučení převést konstrukci nebo textový příklad obalit literal. Nejde o další preprocesor nebo změnu stromu služeb. CRLF se počítá po stávající normalizaci na LF.
-
-Vyhrazené tvary zahrnují assign, append, extends, block, capture, section/sectionelse, config_load, eval, fetch, insert, php/include_php, strip, nocache, ldelim/rdelim, call a forelse; rozeznávají se také jejich uzavírací tvary. Názvy jsou case-sensitive, za jménem musí být whitespace nebo `}`, takže například `{blockade}` ani CSS `block-size` není tento tag. Komentáře a literal těla se netestují jako vykonávaná syntaxe.
-
-U function, for a while se rozpoznává Smarty podoba hlavičky: function s atributem `name=` či jiným pojmenovaným atributem, for s `$` proměnnou, while s neparentetickým výrazem. Zachovávají se běžné JavaScriptové deklarace funkcí, `for (...)`, `while (ready)` i `while ($ready)` a objektové vlastnosti s dvojtečkou. Není to obecná detekce celého Smarty jazyka: while s libovolným parentetickým výrazem může zůstat textem, protože se jeho hlavička shoduje s JavaScriptem. Další dynamické konstrukce vyžadují inventuru a ruční převod.
-
-Přesné kolize syntaxe jsou vyhrazené šablonovému jazyku: například JS objekt shorthand `{capture}` má stejný zápis jako detekovaná Smarty konstrukce. Pro takový doslovný CSS/JS/textový úsek použít `{literal}...{/literal}`. Kompilátor neparsuje HTML/JS kontexty a neslibuje automatické rozlišení totožných bajtů. Neznámý plugin může stále projít jako text; úspěch kompilace není obecná migrační záruka.
-
-Verze kompilátů se mění z 3 na 4. Starý soubor s verze-3 identitou se nepoužije ani s `compileCheck: false`; test to ověřuje se skutečně předpřipraveným starým kompilátem. Při nasazení nadále vyčistit page/fragment/kompilované a externí HTML cache podle migračního postupu, aby stará uložená odpověď nezakryla novou diagnostiku.
-
-TPL-02 zůstává rozpracován: následuje dokončení smlouvy include/set/modifikátorů a HTTP smoke test vzorového webu s jeho aplikačními daty a autentizací. Tento checkpoint nedeklaruje odstranění Smarty ani kompletní migraci externí aplikace.
+1. First part complete: the existing Compiler diagnoses the reserved Smarty constructs listed below and closing tags with a path and line. The assign-as-text corpus was deliberately changed into an exception test. The inventory regex hints remain an auxiliary heuristic, not a parser.
+2. Decide and test the exact supported contract of include/set and modifiers, keep the explicit differences and examples of data preparation. Add invalid syntax, a missing partial, traversal/symlink, an exception in a method and output buffer recovery. Use the existing security and cache regression suites.
+3. Run the whole sample site on NativeRenderer: menu and active links, both user states, login/CSRF/POST logout, 404, article, locale, native fragments and page-cache HIT/BYPASS. Check the GET logout links in the sample layout, production diagnostic variables and raw content; compilation alone will not catch them. Version the changes of the separate application in its own repository.
+4. For each target installation, back up the sources and configuration, inventory the extensions, convert the templates in parts, compare the outputs and only then change adapterName. Clear the compiled files, fragments, pages and the external HTML cache. On rollback, restore the configuration, the compatible sources and clear the cache again; native-only set/t require restoring the original version of the templates.
+5. Only after this gate, in TPL-03, change the default examples and the test infrastructure, decide the form of a possible separate compatibility package and remove the Smarty adapter/dependency from the core. Move the parity corpus to native expected outputs and historical migration fixtures so that the clean core requires Smarty not even for tests. Verify the installation without the package and the entire release gate. Texy is dealt with only in MD-01 to MD-04.
 
 
-## TPL-02B: include/set a vlastnictví výstupu
+## TPL-02, first checkpoint: diagnostics
 
-Ověřená smlouva: relativní include se vyhodnocuje od templatesDir, nikoli od adresáře právě vykreslované partial. Dynamická cesta zůstává pod kontrolou povolených kořenů. Partial dědí aktuální hodnoty včetně set; její lokální set nezmění volající šablonu ani přiřazené hodnoty příštího fetch. Pole jsou lokální kopie, reference objektů zůstávají sdílené a jejich metody jsou důvěryhodný aplikační kód. Existující testy odmítají neplatnou syntaxi, chybějící soubory, traversal, symlink mimo root a příliš hluboké include.
+The version 4 Compiler returns unsupported tags as ordinary tokens and raises the error after accounting for the preceding text. The `TemplateException` contains the source name, the line and a recommendation to convert the construct or wrap a text example in literal. It is not another preprocessor or a change of the service tree. CRLF is counted after the existing normalization to LF.
 
-Nové regrese prokázaly ztrátu prefixu a únik bufferu, pokud metoda služby otevřela vlastní buffer. Engine nyní používá společné `capture()` pro celý render, partials i callbacky cache bloků. Na úspěchu se vnořené odstranitelné buffery sesbírají ve správném pořadí, při výjimce se zahodí až k původní hranici. Hloubka include se obnoví i po chybě. Regrese cache ověřuje celý cold i warm fragment a jedinou invokaci služby. Výjimka nepersistuje částečný fragment.
+The reserved forms include assign, append, extends, block, capture, section/sectionelse, config_load, eval, fetch, insert, php/include_php, strip, nocache, ldelim/rdelim, call and forelse; their closing forms are recognized as well. The names are case-sensitive and the name must be followed by whitespace or `}`, so for example `{blockade}` or the CSS `block-size` is not this tag. Comment and literal bodies are not tested as executed syntax.
 
-Generované cache callbacky se změnily, proto Compiler verze 5 odděluje jejich identitu od verzí 3/4. Po nasazení stále platí čištění všech výstupních cache. Metody služeb nesmějí rušit buffery rendereru nebo otevírat neodstranitelné buffery: PHP tyto vedlejší účinky plně napravit neumí; ochranné smyčky v takovém případě alespoň neuvíznou. Nejde o sandbox nedůvěryhodného kódu.
+For function, for and while, the Smarty form of the header is recognized: function with a `name=` attribute or another named attribute, for with a `$` variable, while with a non-parenthesized expression. Ordinary JavaScript function declarations, `for (...)`, `while (ready)` and `while ($ready)` and object properties with a colon are preserved. This is not a general detection of the whole Smarty language: a while with an arbitrary parenthesized expression may remain text because its header matches JavaScript. Other dynamic constructs require an inventory and manual conversion.
 
-TPL-02C: vzorová aplikace převedena v samostatném PR rrsoftcz/wbengine-skeleton-app#1, commit 35d2d54. Všech 20 HTTP kontrol a její CI prošlo. Čistá instalace po odstranění Smarty také prošla všemi 20 kontrolami. Historické záznamy výše zachycují původní stav inventury.
+Exact syntax collisions are reserved to the template language: for example the JS object shorthand `{capture}` has the same notation as a detected Smarty construct. For such a literal CSS/JS/text section, use `{literal}...{/literal}`. The compiler does not parse HTML/JS contexts and does not promise automatic distinction of identical bytes. An unknown plugin may still pass as text; compilation success is not a general migration guarantee.
+
+The compiled file version changes from 3 to 4. An old file with a version-3 identity is not used even with `compileCheck: false`; a test verifies this with a really pre-prepared old compiled file. On deployment, keep clearing the page/fragment/compiled and external HTML cache according to the migration procedure so that an old stored response does not mask the new diagnostics.
+
+TPL-02 remains in progress: the completion of the include/set/modifier contract and an HTTP smoke test of the sample site with its application data and authentication follow. This checkpoint declares neither the removal of Smarty nor a complete migration of the external application.
 
 
-## TPL-03: samostatný kompatibilní profil
+## TPL-02B: include/set and output ownership
 
-Jádro neinstaluje Smarty a neobsahuje jeho adaptér. NativeRenderer zůstává ve stávajícím stromu. Historické Smarty očekávané výsledky v JSON slouží jako reference; základní testy vykonávají jen nativní očekávání. Volitelný balíček v `compat/smarty` zachovává původní FQCN adaptéru přes Composer classmap a obsahuje oddělené testy parity. Chybějící balíček při výběru SmartyRenderer vyvolá konkrétní instalační doporučení.
+Verified contract: a relative include is evaluated from templatesDir, not from the directory of the partial being rendered. A dynamic path stays under the control of the allowed roots. A partial inherits the current values including set; its local set changes neither the calling template nor the assigned values of the next fetch. Arrays are local copies, object references stay shared and their methods are trusted application code. Existing tests reject invalid syntax, missing files, traversal, a symlink outside the root and an excessively deep include.
 
-Testovací runner kompatibility instaluje vendor do vlastního dočasného adresáře mimo checkout, aby path repository nevytvořila rekurzivní vendor strom při optimalizaci autoloadu. CI jej spouští samostatně; základní pětice PHP/DB kontrol běží bez Smarty. Před vydáním je nutné balíček zveřejnit v Composer registru nebo připojit důvěryhodný vlastní Composer repository. Samotný adresář v checkoutu jej automaticky neinstaluje. U lokální path instalace nastavte options.symlink=false, aby classmap exclusion jádra pro /compat/ neodstranilo symlinkovaný volitelný adaptér.
+New regressions proved a loss of prefix and a buffer leak when a service method opened its own buffer. The Engine now uses a common `capture()` for the whole render, partials and cache block callbacks. On success, nested removable buffers are collected in the correct order; on an exception they are discarded down to the original boundary. The include depth is restored even after an error. A cache regression verifies the whole cold and warm fragment and a single invocation of the service. An exception does not persist a partial fragment.
+
+The generated cache callbacks changed, so Compiler version 5 separates their identity from versions 3/4. After deployment, clearing all output caches still applies. Service methods must not cancel the renderer's buffers or open non-removable buffers: PHP cannot fully remedy these side effects; the protective loops at least do not get stuck in such a case. This is not a sandbox for untrusted code.
+
+TPL-02C: the sample application was converted in a separate PR rrsoftcz/wbengine-skeleton-app#1, commit 35d2d54. All 20 HTTP checks and its CI passed. A clean installation after removing Smarty also passed all 20 checks. The historical records above capture the original state of the inventory.
+
+
+## TPL-03: separate compatibility profile
+
+The core does not install Smarty and does not contain its adapter. NativeRenderer stays in the existing tree. The historical Smarty expected results in JSON serve as a reference; the base tests execute only the native expectations. The optional package in `compat/smarty` preserves the original adapter FQCN through a Composer classmap and contains separate parity tests. A missing package, when SmartyRenderer is selected, raises a concrete installation recommendation.
+
+The compatibility test runner installs vendor into its own temporary directory outside the checkout so that the path repository does not create a recursive vendor tree when optimizing the autoloader. CI runs it separately; the basic five PHP/DB checks run without Smarty. Before release, the package must be published in the Composer registry or a trusted own Composer repository attached. The directory in the checkout alone does not install it automatically. For a local path installation, set options.symlink=false so that the core's classmap exclusion for /compat/ does not remove the symlinked optional adapter.

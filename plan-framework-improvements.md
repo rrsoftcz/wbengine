@@ -1,858 +1,858 @@
-# Plán zlepšení WBengine
-
-Zahájeno: 2026-10-25
-Aktuální kontrolní bod: 2026-10-27
+# WBengine Improvement Plan
+
+Started: 2026-10-25
+Current checkpoint: 2026-10-27
 
-## Účel a stav
+## Purpose and status
 
-Cílové vydání **4.0.0**, nová hlavní verze po 3.5.0, bylo zveřejněno po dokončení release gate. Aktuální vydání frameworku je `v4.1.0`.
+The target release **4.0.0**, a new major version after 3.5.0, was published after the release gate was completed. The current framework release is `v4.1.0`.
 
-Trvalý společný seznam návrhů z rozboru frameworku a jejich následného doplnění uživatelem. Uživatel chce návrhy realizovat. Tento dokument zachycuje směr, priority a podmínky ověření; implementace byla zahájena v odděleném worktree `/private/tmp/wbengine-modernization`. Konkrétní návrh rozhraní a migrační postup se dopracují před jednotlivými zásahy.
-
-Hlavní cíl: zachovat snadnou tvorbu webů a rychlé zpracování požadavků. Zachovat model Application, Site, Section a Box, malé komponenty, odloženou inicializaci služeb, parametrizované SQL a kompilované šablony. Každá nová abstrakce musí mít konkrétní přínos.
+A permanent shared list of proposals from the framework analysis and the user's subsequent additions. The user wants to implement the proposals. This document records the direction, priorities and verification conditions; implementation was started in a separate worktree `/private/tmp/wbengine-modernization`. The specific interface design and migration procedure are worked out before each individual change.
+
+Main goal: keep website creation easy and request processing fast. Keep the Application, Site, Section and Box model, small components, deferred service initialization, parameterized SQL and compiled templates. Every new abstraction must have a concrete benefit.
 
-Závazné architektonické pravidlo uživatele: nové funkce PHP jádra musí zachovat stromovou OOP architekturu WBengine, odpovídající namespaces, parent vazby a současné modelové/adapterové vzory. Služby zapojovat přes stávající lazy přístup aplikace, obsah přes Site/Section/Box, databázové operace přes modely a Db, API moduly přes současné namespace a route/controller vzory. Nevytvářet paralelní framework ani volné produkční skripty obcházející strom. Existující statické fasády lze zachovat jako vstupní rozhraní. Samostatná SvelteKit administrace zůstává odděleným API klientem podle schváleného návrhu; PHP konektor respektuje architekturu WBengine.
+Binding architectural rule from the user: new PHP core features must preserve the WBengine tree OOP architecture, the corresponding namespaces, parent links and the current model/adapter patterns. Wire services through the existing lazy application access, content through Site/Section/Box, database operations through models and Db, API modules through the current namespaces and route/controller patterns. Do not create a parallel framework or loose production scripts bypassing the tree. Existing static facades may be kept as the entry interface. The separate SvelteKit administration remains a detached API client according to the approved design; the PHP connector respects the WBengine architecture.
 
-Priority níže jsou doporučením z rozboru. P1 znamená bezpečnost a správnost, P2 běžný výkon a předvídatelnost, P3 pohodlí vývoje nebo optimalizaci podmíněnou měřením. Stav jednotlivých položek je uveden v registru níže. Při navázání práce vždy nejprve přečíst tento registr a záznam postupu.
+The priorities below are a recommendation from the analysis. P1 means security and correctness, P2 ordinary performance and predictability, P3 development convenience or optimization conditional on measurement. The status of individual items is given in the register below. When resuming work, always read this register and the progress log first.
 
-## Pracovní registr
+## Working register
 
-Aktuální stav k 2026-10-27: framework `v4.1.0` a privátní WBengine Admin `v0.2.0` jsou vydané; veřejný Skeleton App je čistě nasazen z aktuální větve `main` na novém VPS. Aplikace běží přes HTTPS s hostitelským Nginxem a PHP 8.4/MySQL 8.4 v Dockeru. Nová databáze byla naplněna verzovaným schématem a obsahem aplikace, stará produkční databáze se nepřenášela. Tabulky API a analytiky byly vytvořeny migracemi frameworku. Analytika je zatím vypnutá, takže API neoznamuje `analytics.read`; GA4 na webu zůstává podle schváleného plánu aktivní do dokončení a ověření vlastní analytiky. Původní demo heslo bylo zneplatněno a ověřeno neúspěšným HTTP 403. WBengine Admin se na VPS nehostuje, jeho lokální připojení k webu a vytvoření omezeného integračního klíče zůstává dalším krokem. Ruční převod deseti historických HTML položek je nepovinný, protože vyžaduje redakční rozhodnutí. Tento kontrolní bod přepisuje starší poznámky níže, které uvádějí, že live nasazení neproběhlo.
+Current status as of 2026-10-27: framework `v4.1.0` and the private WBengine Admin `v0.2.0` are released; the public Skeleton App is cleanly deployed from the current `main` branch on a new VPS. The application runs over HTTPS with a host Nginx and PHP 8.4/MySQL 8.4 in Docker. The new database was filled with the versioned schema and content of the application; the old production database was not transferred. The API and analytics tables were created by framework migrations. Analytics is disabled for now, so the API does not announce `analytics.read`; GA4 on the site stays active according to the approved plan until our own analytics is finished and verified. The original demo password was invalidated and verified by a failed HTTP 403. WBengine Admin is not hosted on the VPS; its local connection to the site and creation of a limited integration key remains the next step. Manual conversion of ten historical HTML items is optional, because it requires an editorial decision. This checkpoint overrides older notes below stating that the live deployment did not take place.
 
-### 2026-10-27: čisté nasazení Skeleton App na nový VPS
+### 2026-10-27: clean deployment of Skeleton App to a new VPS
 
-- `www.wbengine.org` ukazuje na nový server. Nginx 1.24 a Certbot 2.9 obsluhují HTTP/HTTPS; certifikát Let's Encrypt je vydán, automatický timer je aktivní. `certbot renew --dry-run --no-random-sleep-on-renew` prošel.
-- Skeleton App commit `fcaf38a` běží v Docker Compose pod `/opt/wbengine-skeleton-app`; framework v kontejneru je `v4.1.0`. Docker Engine 29.9.2 a Compose 5.6.1. MySQL 8.4 je dostupný pouze uvnitř Docker sítě, webový port 8080 je publikován jen na loopbacku.
-- Databáze vznikla z prázdného svazku z aktuálních souborů `schemas/`; nebyla provedena záloha ani obnova staré databáze. Migrace frameworku `002-api-v2-integrations.sql`, `005-api-content.sql` a `006-analytics.sql` byly aplikovány. Analytics nastavení zůstává `enabled: false`.
-- Produkční `.env` má práva 0600, `Settings.json` 0640 `root:www-data`. Apache může nastavení číst, ale ostatní uživatelé na hostu nikoli. Výchozí demo heslo bylo nahrazeno náhodným bcrypt hashem; test původního přihlášení vrátil 403.
-- Ověřeno veřejně přes HTTPS: `/`, `/cs/`, `/docs/` a `/cs/docs/` vracejí 200. Healthcheck webu i databáze je healthy. Nasazení Skeleton používá commity `2416ddf` a opravu oprávnění `fcaf38a`.
-- Další krok: připravit lokální WBengine Admin pro připojení k API tohoto webu a provést neinvazivní ověření. Administrace nebude hostovaná na VPS; veřejný integrační klíč se nevytváří a analytics sběr se nepovoluje bez dalšího řízeného kroku.
+- `www.wbengine.org` points to the new server. Nginx 1.24 and Certbot 2.9 serve HTTP/HTTPS; the Let's Encrypt certificate is issued, the automatic timer is active. `certbot renew --dry-run --no-random-sleep-on-renew` passed.
+- Skeleton App commit `fcaf38a` runs in Docker Compose under `/opt/wbengine-skeleton-app`; the framework in the container is `v4.1.0`. Docker Engine 29.9.2 and Compose 5.6.1. MySQL 8.4 is reachable only inside the Docker network, web port 8080 is published only on loopback.
+- The database was created from an empty volume from the current `schemas/` files; no backup or restore of the old database was performed. The framework migrations `002-api-v2-integrations.sql`, `005-api-content.sql` and `006-analytics.sql` were applied. The analytics setting stays `enabled: false`.
+- The production `.env` has permissions 0600, `Settings.json` 0640 `root:www-data`. Apache can read the settings, but other users on the host cannot. The default demo password was replaced with a random bcrypt hash; a test of the original sign-in returned 403.
+- Verified publicly over HTTPS: `/`, `/cs/`, `/docs/` and `/cs/docs/` return 200. The healthcheck of the web and the database is healthy. The Skeleton deployment uses commits `2416ddf` and the permissions fix `fcaf38a`.
+- Next step: prepare the local WBengine Admin for connection to this site's API and perform a non-invasive verification. The administration will not be hosted on the VPS; a public integration key is not created and analytics collection is not enabled without a further controlled step.
 
-Nejbližší navazující krok: dokončit místní provoz administrace dle `plan-analytics-administration.md`, bezpečně jí nakonfigurovat přístup k veřejnému webu a ověřit capability/discovery a autentizaci. Vlastní analytika je implementována ve frameworku, ale její produkční sběr i zobrazení v administraci zůstávají vypnuté/nepřipojené. GA4 se vypne až po ověření vlastních metrik podle `plan-analytics.md`. Návrh nástroje pro výmaz zůstává před implementací; rozhodnutí CLI nejdřív zůstává platné.
+Nearest follow-up step: finish the local operation of the administration per `plan-analytics-administration.md`, configure its access to the public site safely and verify capability/discovery and authentication. Our own analytics is implemented in the framework, but its production collection and display in the administration remain disabled/unconnected. GA4 is switched off only after verifying our own metrics according to `plan-analytics.md`. The design of the deletion tool remains before implementation; the decision "CLI first" remains valid.
 
-Stavy: `čeká`, `připraveno`, `rozpracováno`, `blokováno`, `hotovo`, `odloženo`.
+Statuses: `waiting`, `ready`, `in progress`, `blocked`, `done`, `deferred`.
 
-Každý úkol musí mít účel, odpovědnost, závislosti, postup, migrační dopad, akceptační testy, datum poslední změny a důkazy dokončení. `Připraveno` znamená vyřešené rozhraní a testovací scénáře. `Hotovo` znamená implementováno, ověřeno a zdokumentováno. Rozpracovaná práce musí uvádět další konkrétní krok. Důkazy a commity jsou v záznamu postupu.
+Every task must have a purpose, responsibility, dependencies, procedure, migration impact, acceptance tests, date of last change and evidence of completion. `Ready` means the interface and test scenarios are resolved. `Done` means implemented, verified and documented. Work in progress must state the next concrete step. Evidence and commits are in the progress log.
 
-### Závazné verzování a bezpečné pokračování
+### Binding versioning and safe continuation
 
-Po každé větší samostatné změně a na konci každé fáze vytvořit kontrolní bod:
+After each larger standalone change and at the end of each phase, create a checkpoint:
 
-1. Spustit kontroly odpovídající změně a zaznamenat skutečný výsledek.
-2. Aktualizovat tento plán: hotové a rozpracované úkoly, zbývající práci, rozhodnutí, případné blokace, migrace a nejbližší konkrétní krok.
-3. Commitnout související kód společně s aktuálním stavem plánu. Čistě dokumentační změny mohou mít samostatný commit.
-4. Provést push do pracovní větve `codex/wbengine-4.0` a ověřit, že vzdálená větev obsahuje vytvořený commit. Aktuální PR musí odpovídat skutečnému rozsahu změn.
-5. Teprve potom pokračovat další větší změnou nebo fází. Odeslání commitu není samo o sobě merge, tag ani vydání nové verze.
+1. Run the checks matching the change and record the actual result.
+2. Update this plan: completed and in-progress tasks, remaining work, decisions, any blockers, migrations and the nearest concrete step.
+3. Commit the related code together with the current state of the plan. Purely documentation changes may have a separate commit.
+4. Push to the working branch `codex/wbengine-4.0` and verify that the remote branch contains the created commit. The current PR must match the actual scope of changes.
+5. Only then continue with the next larger change or phase. Pushing a commit is not by itself a merge, tag or release of a new version.
 
-Při přerušení uprostřed změny uložit dosažený stav jako výslovně rozpracovaný kontrolní bod, uvést neúspěšné či neprovedené kontroly a přesný další krok. Takový commit se nesmí vydávat za dokončený nebo připravený k nasazení. Pokud push selže, výslovně uvést, že kontrolní bod je pouze lokální, a vzdálené uložení dokončit před další větší změnou.
+When interrupted in the middle of a change, save the reached state as an explicitly in-progress checkpoint, list failed or unperformed checks and the exact next step. Such a commit must not be passed off as finished or ready for deployment. If the push fails, state explicitly that the checkpoint is local only and complete the remote storage before the next larger change.
 
-Při navázání nejprve přečíst tento plán, ověřit větev, poslední commity, pracovní změny a stav vzdálené větve. Dokončené kroky neopakovat; pokračovat od zaznamenaného dalšího kroku a zachovat cizí změny.
+When resuming, first read this plan, verify the branch, the latest commits, working changes and the state of the remote branch. Do not repeat completed steps; continue from the recorded next step and preserve others' changes.
 
-- [x] SEC-01: hotovo (Codex,2026-10-26), veřejné/osobní odpovědi a postcommit invalidace všech nových obsahových API/publish/migration cest; externí SQL a CDN vyžadují vlastní purge.
-- [x] SEC-02: hotovo (Codex, 2026-10-25). Žádný nový MD5 fallback, kontrola skutečné délky hashe, ověřeno i na reálném varchar(32) se zachovaným legacy přihlášením.
-- [x] SEC-03: hotovo (Codex, 2026-10-25). Oba adaptéry escapují defaultně, native metadata a fallbacky opraveny, režimy cache odděleny, migrační a kontextová pravidla zdokumentována.
-- [x] SEC-04: hotovo (Codex, 2026-10-25), nezměněné vstupy, řetězcové helpery, validace autentizačních polí a migrační dokumentace.
-- [x] SEC-05: hotovo (Codex, 2026-10-25), explicitní důvěryhodné proxy IPv4/IPv6, společná detekce IP/HTTPS a cookie flags včetně I18n.
-- [x] SEC-06: hotovo (Codex, 2026-10-25), session CSRF služba, účely formulářů, POST logout, ochrana cache a stateless cookie API hranice.
-- [x] FIX-01: hotovo (Codex, 2026-10-25). iat setter zachovává iss, regresní test RED a GREEN.
-- [x] FIX-02: hotovo (Codex, 2026-10-26), jednotný parametrizovaný SQL výběr i při cache, ověřena skutečná collation/padding/strict/visible/duplicity na MySQL a MariaDB.
-- [x] CACHE-01: hotovo (Codex, 2026-10-25). Veřejný/osobní scope, lazy identita, locale, anonymní bypass a ochrana public obalů ověřeny včetně HTTP. Jiné obsahové varianty vyžadují explicitní klíče.
-- [x] PERF-01: hotovo (Codex, 2026-10-25), diagnostika pouze v debug nebo přes Site::assignDiagnostics; ověřeno odstranění jednoho zbytečného spojení při cache HIT.
-- [x] PERF-02: hotovo (Codex, 2026-10-25), requestová množina aktivních ID a jeden dávkový SQL statement pro prefixy, zachované hidden/strict/collation a opravené koncové lomítko rodičů.
-- [x] PERF-03: hotovo (Codex, 2026-10-25), explicitní Session::close/Application::closeSession, zápis pod zámkem a následný snapshot bez dalších persistentních změn, měření a testy nezávislých procesů.
-- [x] PERF-04: uzavřeno rozhodnutím po měření (Codex,2026-10-26). URL mapa se v4.0 nezavádí: bez doloženého přínosu pro jediný lookup a s rizikem odlišné collation. FIX-02 má přesný jeden SQL lookup, údaje a důvody níže.
-- [x] PERF-05: hotovo (Codex, 2026-10-25), měření MySQL/MariaDB, společná section podmínka a volitelná migrace indexu (section_id, order), zachování výsledků a rollback ověřeny. Relační redesign odložen bez doložené potřeby.
-- [x] PERF-06: hotovo (Codex, 2026-10-25), jeden průchod parserem na volání Json, raw/decoded kontrakt a nativní chyby zachovány včetně NUL-leading klíčů.
-- [x] PERF-07: hotovo (Codex, 2026-10-25), odstraněn globální whitespace regex, dispatch zachovává výstup obou adaptérů a ignoruje legacy minimizeHtml.
-- [x] ARCH-01: hotovo (Codex, 2026-10-25), constructor bez CMS, deferred Application routy před cache/CMS, jediné vykreslení a migrační smlouva.
-- [x] DX-01: hotovo (Codex,2026-10-26), explicitní class/template/SQL scaffold preview, bezpečné atomické --write a skutečný parent tree test.
-- [x] DX-02: hotovo (Codex,2026-10-26), instalované Composer CLI, read-only doctor/config/schema a produkční profil/secret redakce.
-- [x] DX-03: hotovo (Codex,2026-10-26), skutečná CMS matice15kohort/300requestů bezchyb, CSRF login/DBsessions, měřené SQL/spojení/paměť, výsledek a runner ve skeleton d0b1e79.
+- [x] SEC-01: done (Codex, 2026-10-26), public/personal responses and post-commit invalidation of all new content API/publish/migration paths; external SQL and CDN require their own purge.
+- [x] SEC-02: done (Codex, 2026-10-25). No new MD5 fallback, check of the actual hash length, verified also on a real varchar(32) with legacy sign-in preserved.
+- [x] SEC-03: done (Codex, 2026-10-25). Both adapters escape by default, native metadata and fallbacks fixed, cache modes separated, migration and context rules documented.
+- [x] SEC-04: done (Codex, 2026-10-25), unchanged inputs, string helpers, validation of authentication fields and migration documentation.
+- [x] SEC-05: done (Codex, 2026-10-25), explicit trusted proxy IPv4/IPv6, shared IP/HTTPS detection and cookie flags including I18n.
+- [x] SEC-06: done (Codex, 2026-10-25), session CSRF service, form purposes, POST logout, cache protection and the stateless cookie API boundary.
+- [x] FIX-01: done (Codex, 2026-10-25). The iat setter preserves iss, regression test RED and GREEN.
+- [x] FIX-02: done (Codex, 2026-10-26), a single parameterized SQL lookup even with cache, actual collation/padding/strict/visible/duplicates verified on MySQL and MariaDB.
+- [x] CACHE-01: done (Codex, 2026-10-25). Public/personal scope, lazy identity, locale, anonymous bypass and protection of public wrappers verified including HTTP. Other content variants require explicit keys.
+- [x] PERF-01: done (Codex, 2026-10-25), diagnostics only in debug or via Site::assignDiagnostics; removal of one unnecessary connection on a cache HIT verified.
+- [x] PERF-02: done (Codex, 2026-10-25), a request-level set of active IDs and a single batch SQL statement for prefixes, preserved hidden/strict/collation and fixed trailing slash of parents.
+- [x] PERF-03: done (Codex, 2026-10-25), explicit Session::close/Application::closeSession, write under lock and a subsequent snapshot without further persistent changes, measurements and tests of independent processes.
+- [x] PERF-04: closed by decision after measurement (Codex, 2026-10-26). The URL map is not introduced in v4.0: no demonstrated benefit for a single lookup and with the risk of different collation. FIX-02 has exactly one SQL lookup, data and reasons below.
+- [x] PERF-05: done (Codex, 2026-10-25), MySQL/MariaDB measurement, shared section condition and an optional (section_id, order) index migration, preservation of results and rollback verified. Relational redesign deferred without demonstrated need.
+- [x] PERF-06: done (Codex, 2026-10-25), one parser pass per Json call, the raw/decoded contract and native errors preserved including NUL-leading keys.
+- [x] PERF-07: done (Codex, 2026-10-25), global whitespace regex removed, dispatch preserves the output of both adapters and ignores legacy minimizeHtml.
+- [x] ARCH-01: done (Codex, 2026-10-25), constructor without CMS, deferred Application routes before cache/CMS, a single render and the migration contract.
+- [x] DX-01: done (Codex, 2026-10-26), explicit class/template/SQL scaffold preview, safe atomic --write and a real parent tree test.
+- [x] DX-02: done (Codex, 2026-10-26), installed Composer CLI, read-only doctor/config/schema and the production profile/secret redaction.
+- [x] DX-03: done (Codex, 2026-10-26), a real CMS matrix of 15 cohorts/300 requests without errors, CSRF login/DB sessions, measured SQL/connections/memory, result and runner in skeleton d0b1e79.
 
-- [x] PLAN-01: hotovo, schválená rozhodnutí a etapový plán zapsány, 2026-10-25.
-- [x] BASE-01: hotovo, výchozí sada 802 testů / 1534 assertions v odděleném Docker prostředí, 2026-10-25.
-- [x] TPL-01: hotovo (Codex, 2026-10-26), inventura 7 frameworkových a 13 vzorových zdrojů, read-only compile report, corpus očekávaných výstupů a rozdílů a ref-template-migration.md.
-- [x] TPL-02: hotovo (Codex, 2026-10-26), diagnostika, include/set/buffery a izolovaná aplikační migrace včetně 20 HTTP kontrol a zelené CI skeleton PR #1, commit 35d2d54.
-- [x] TPL-03: hotovo (Codex, 2026-10-26), Smarty mimo jádro ve volitelném compat/smarty, samostatná sada 86/123, čisté jádro 1888/5101 a fresh skeleton HTTP 20 kontrol.
-- [x] MD-01: hotovo (Codex, 2026-10-26), vlastní AST parser a bezpečný renderer, všechny oficiální CommonMark/GFM příklady a explicitní bezpečnostní odchylky, limity práce/vstupu/výstupu.
-- [x] MD-02: hotovo (Codex, 2026-10-26), lazy App Markdown, bezpečné .md zdroje/layout, explicitní legacy_html/markdown v DB, mixed překlady a souběhový format guard.
-- [x] MD-03: hotovo (Codex,2026-10-26), explicitní HTML/Texy dry-run, ručně schválený hash, atomické přesné zálohy/překlady a konfliktní rollback,38testů/138assertions.
-- [x] MD-04: hotovo (Codex,2026-10-26), Texy mimo jádro, lazy Markdown formatter, offline bridge se samostatným testem/CI; čistá vzorová instalace a20HTTPgreen.
-- [x] API-01: hotovo (Codex, 2026-10-26), Api/V2 tree, veřejné minimální discovery a skutečné capability flags, jednotný JSON/error/pagination kontrakt.
-- [x] API-02: hotovo (Codex,2026-10-26), scoped CRUD, registrované boxy, strukturální obnova/překlady a veřejná bezpečná média.
-- [x] API-03: hotovo (Codex,2026-10-26), privátní draft, neměnné revize, atomický publish/překlady, bezpečný preview a ETag konflikty.
-- [x] API-04: hotovo (Codex,2026-10-26), scopes/revoke, audit, limiter neúspěšné auth, ADMIN bounded retence, vlastnictví transakcí a postcommit invalidace.
-- [x] ADM-01: hotovo, samostatný privátní rrsoftcz/wbengine-admin, MySQL/Docker, základ533f0e7.
-- [x] ADM-02: hotovo, pozvánky/MFA/sessions/role po webech a souběhové regrese, CIgreen.
-- [x] ADM-03: hotovo, šifrované klíče, CLI provisioning a pinnedHTTPS/SSRF/deadline.
-- [x] ADM-04: hotovo, editor/struktura/překlady/boxy/obrázky,357d410, skutečnýPHPpilot.
-- [x] ADM-05: hotovo, sandboxpreview/draft/publish/revize/recovery/konflikty a oprava browserrequired,33testůgreen.
-- [x] REL-01: hotovo 2026-10-26. Dualweb/revokace/výpadky/DBobnova a migračnínávod ověřeny; PR jádra #2, skeletonu #1 a administrace #1 sloučeny, tag i GitHub release v4.0.0 zveřejněny. Merge commity: cf710e5, 19fde66, a74892a. Produkční nasazení není součástí této fáze.
+- [x] PLAN-01: done, approved decisions and the staged plan recorded, 2026-10-25.
+- [x] BASE-01: done, baseline suite of 802 tests / 1534 assertions in a separate Docker environment, 2026-10-25.
+- [x] TPL-01: done (Codex, 2026-10-26), inventory of 7 framework and 13 sample sources, read-only compile report, a corpus of expected outputs and differences and ref-template-migration.md.
+- [x] TPL-02: done (Codex, 2026-10-26), diagnostics, include/set/buffers and an isolated application migration including 20 HTTP checks and green CI of skeleton PR #1, commit 35d2d54.
+- [x] TPL-03: done (Codex, 2026-10-26), Smarty outside the core in the optional compat/smarty, a separate suite 86/123, clean core 1888/5101 and fresh skeleton HTTP 20 checks.
+- [x] MD-01: done (Codex, 2026-10-26), own AST parser and safe renderer, all official CommonMark/GFM examples and explicit security deviations, limits of work/input/output.
+- [x] MD-02: done (Codex, 2026-10-26), lazy App Markdown, safe .md sources/layout, explicit legacy_html/markdown in the DB, mixed translations and a concurrency format guard.
+- [x] MD-03: done (Codex, 2026-10-26), explicit HTML/Texy dry-run, manually approved hash, atomic exact backups/translations and conflict rollback, 38 tests/138 assertions.
+- [x] MD-04: done (Codex, 2026-10-26), Texy outside the core, lazy Markdown formatter, offline bridge with a separate test/CI; clean sample installation and 20 HTTP green.
+- [x] API-01: done (Codex, 2026-10-26), Api/V2 tree, public minimal discovery and real capability flags, a unified JSON/error/pagination contract.
+- [x] API-02: done (Codex, 2026-10-26), scoped CRUD, registered boxes, structural restore/translations and public safe media.
+- [x] API-03: done (Codex, 2026-10-26), private draft, immutable revisions, atomic publish/translations, safe preview and ETag conflicts.
+- [x] API-04: done (Codex, 2026-10-26), scopes/revoke, audit, failed-auth limiter, ADMIN bounded retention, transaction ownership and post-commit invalidation.
+- [x] ADM-01: done, separate private rrsoftcz/wbengine-admin, MySQL/Docker, base 533f0e7.
+- [x] ADM-02: done, invitations/MFA/sessions/per-site roles and concurrency regressions, CI green.
+- [x] ADM-03: done, encrypted keys, CLI provisioning and pinned HTTPS/SSRF/deadline.
+- [x] ADM-04: done, editor/structure/translations/boxes/images, 357d410, real PHP pilot.
+- [x] ADM-05: done, sandbox preview/draft/publish/revisions/recovery/conflicts and a fix for browser required, 33 tests green.
+- [x] REL-01: done 2026-10-26. Dual-site/revocation/outages/DB restore and the migration guide verified; core PR #2, skeleton #1 and administration #1 merged, tag and GitHub release v4.0.0 published. Merge commits: cf710e5, 19fde66, a74892a. Production deployment is not part of this phase.
 
-## Výchozí ověření
+## Baseline verification
 
-- Při předchozím rozboru prošlo v Dockeru na PHP 8.4.27 všech 802 testů s 1 534 assertions. Composer audit nenahlásil známé zranitelnosti nainstalovaných závislostí. Jde o stav při tomto rozboru, nikoli záruku budoucího stavu.
-- Doplňkový izolovaný skript ověřil ukládání stránky s `Cache-Control: no-store`, `Cache-Control: private` i `Set-Cookie`, sdílení fragmentu mezi českým a anglickým locale a tvorbu MD5 při úzkém sloupci pro heslo.
-- Ostatní níže uvedená zjištění vycházejí ze čtení aktuálního kódu, pokud není uvedeno jinak. Nové měření propustnosti ani produkční penetrační test nebyly provedeny.
-- Existující `ref-inventory.md` a README obsahují historická měření a nálezy; jejich seznamy otevřených úkolů se částečně rozcházejí s aktuálním kódem. Před realizací ověřit skutečný stav.
+- In the previous analysis, all 802 tests with 1,534 assertions passed in Docker on PHP 8.4.27. Composer audit reported no known vulnerabilities of the installed dependencies. This is the state at that analysis, not a guarantee of future state.
+- A supplementary isolated script verified storing a page with `Cache-Control: no-store`, `Cache-Control: private` and `Set-Cookie`, sharing a fragment between the Czech and English locale and creating MD5 with a narrow password column.
+- The other findings below are based on reading the current code unless stated otherwise. No new throughput measurement or production penetration test was performed.
+- The existing `ref-inventory.md` and the README contain historical measurements and findings; their lists of open tasks partly diverge from the current code. Verify the real state before implementation.
 
-## Bezpečnost a správnost
+## Security and correctness
 
-### SEC-01: Pravidla a řízení cache celých stránek, P1
+### SEC-01: Rules and control of full-page cache, P1
 
-Zdroj: `PageCache.php`, zejména `_mayStore()`, `capture()` a `_serve()`.
+Source: `PageCache.php`, especially `_mayStore()`, `capture()` and `_serve()`.
 
-- Respektovat `Cache-Control: private` a `no-store`; stanovit chování pro `no-cache` a `Vary`.
-- Výchozí bezpečná politika má obejít ukládání při `Set-Cookie`, s případnými explicitně podporovanými výjimkami. Samotné `Set-Cookie` není podle HTTP automatickým zákazem cache.
-- Přidat snadné řízení cache po stránkách a možnost explicitního bypassu z aplikačního kódu. Rozhodnutí o bypassu musí ovlivnit i čtení staré položky, nejen uložení nové.
-- Zohlednit vlastní cookies, varianty zařízení a jiné zdroje personalizace. Locale již cache celé stránky odděluje; tuto ochranu zachovat.
-- Při zásahu zachovat potřebné bezpečnostní a obsahové hlavičky, včetně konzistence CSP a případných nonce. Neukládat ani nepřehrávat cizí cookies.
-- Zpřehlednit invalidaci při změně článků, stránek, menu, sekcí a boxů. Existující invalidaci sekcí a překladů zachovat; pro přímé SQL změny popsat explicitní invalidaci nebo TTL.
+- Respect `Cache-Control: private` and `no-store`; define the behavior for `no-cache` and `Vary`.
+- The default safe policy should bypass storing on `Set-Cookie`, with possible explicitly supported exceptions. `Set-Cookie` alone is not an automatic ban on caching under HTTP.
+- Add easy per-page cache control and the possibility of an explicit bypass from application code. The bypass decision must affect also reading an old entry, not only storing a new one.
+- Take into account custom cookies, device variants and other sources of personalization. The locale already separates the full-page cache; keep this protection.
+- On a hit, preserve the necessary security and content headers, including CSP consistency and any nonces. Do not store or replay foreign cookies.
+- Make invalidation clearer on changes of articles, pages, menus, sections and boxes. Keep the existing invalidation of sections and translations; for direct SQL changes describe explicit invalidation or a TTL.
 
-Ověření: osobní odpověď se nesdílí mezi návštěvníky, zákaz ukládání funguje, hlavičky jsou konzistentní při MISS i HIT, změny obsahu nevracejí nepřiměřeně stará data.
+Verification: a personal response is not shared between visitors, the storing ban works, headers are consistent on MISS and HIT, content changes do not return unreasonably old data.
 
-### SEC-02: Zrušit tvorbu nových MD5 hesel, P1
+### SEC-02: Stop creating new MD5 passwords, P1
 
-Zdroj: `User/Password.php::hash()` a `canStoreModernHash()`.
+Source: `User/Password.php::hash()` and `canStoreModernHash()`.
 
-- Zachovat dočasné ověřování starých MD5 a převod po úspěšném přihlášení.
-- Pro nová a měněná hesla používat moderní hash; při neprovedené migraci schématu vrátit bezpečnou a srozumitelnou chybu místo fallbacku na MD5.
-- Požadovat sloupec odpovídající doporučenému `varchar(255)` a kontrolovat jej při instalaci či nasazení.
+- Keep temporary verification of old MD5 and conversion after a successful sign-in.
+- For new and changed passwords use a modern hash; when the schema migration was not performed, return a safe and understandable error instead of a fallback to MD5.
+- Require a column matching the recommended `varchar(255)` and check it at installation or deployment.
 
-Ověření: nově uložené heslo nikdy není MD5, nedojde ke zkrácení hashe a migrace starých účtů zůstává funkční.
+Verification: a newly stored password is never MD5, the hash is not truncated and migration of old accounts stays functional.
 
-### SEC-03: Bezpečné výchozí escapování a důvěra šablon, P1
+### SEC-03: Safe default escaping and template trust, P1
 
-Zdroj: `Renderer/Adapter/SmartyRenderer.php`, `Renderer/Adapter.php`, `Template/Runtime.php`.
+Source: `Renderer/Adapter/SmartyRenderer.php`, `Renderer/Adapter.php`, `Template/Runtime.php`.
 
-- Pro nové weby zavést automatické HTML escapování. NativeRenderer ho již podporuje, Smarty adaptér ho sám nezapíná.
-- Migrovat existující šablony s rozlišením důvěryhodného HTML a běžných dat, zabránit dvojímu escapování a zachovat obsah sekcí.
-- Dokumentovat kontexty HTML, atributů, URL a JavaScriptu; obecné HTML escapování neřeší všechny kontexty ani povolená URL schémata.
-- Dokumentovat, že šablony jsou důvěryhodný kód: NativeRenderer dovoluje volat veřejné metody předaných objektů. Před případným zpřístupněním šablon nedůvěryhodným editorům navrhnout omezené datové rozhraní.
+- Introduce automatic HTML escaping for new sites. NativeRenderer already supports it, the Smarty adapter does not enable it by itself.
+- Migrate existing templates with a distinction between trusted HTML and ordinary data, prevent double escaping and preserve section content.
+- Document the HTML, attribute, URL and JavaScript contexts; general HTML escaping does not solve all contexts or the allowed URL schemes.
+- Document that templates are trusted code: NativeRenderer allows calling public methods of passed objects. Before making templates available to untrusted editors, design a restricted data interface.
 
-Ověření: XSS payloady v podporovaných kontextech, kompatibilita obou rendererů a vědomé použití `raw` pro důvěryhodný obsah.
+Verification: XSS payloads in the supported contexts, compatibility of both renderers and a conscious use of `raw` for trusted content.
 
-### SEC-04: Nahradit předběžné čištění vstupů, P1
+### SEC-04: Replace preliminary input cleaning, P1
 
-Zdroj: `Application/Env/Http.php::secureClean()`, `Post()`, `Get()` a související helpery.
+Source: `Application/Env/Http.php::secureClean()`, `Post()`, `Get()` and related helpers.
 
-- Oddělit nezměněné vstupní hodnoty, validaci typu a významu, SQL parametry a escapování výstupu.
-- Odstranit závislost nového kódu na kombinaci `stripslashes`, `htmlspecialchars`, `strip_tags` a `addslashes`.
-- Změnu existujících helperů zavést s migračním postupem a kontrolou volajících. Prosté odstranění čištění může odhalit dosud maskované XSS ve starých šablonách.
-- Definovat chybějící hodnotu, pole místo řetězce a neplatné kódování. Prověřit také `getCookie()`, které dnes HTML escapuje už při čtení.
+- Separate unchanged input values, validation of type and meaning, SQL parameters and output escaping.
+- Remove the new code's dependence on the combination of `stripslashes`, `htmlspecialchars`, `strip_tags` and `addslashes`.
+- Introduce the change of existing helpers with a migration procedure and a check of callers. Simply removing the cleaning may expose XSS so far masked in old templates.
+- Define a missing value, an array instead of a string and invalid encoding. Also examine `getCookie()`, which today HTML-escapes already on reading.
 
-Ověření: apostrofy, zpětná lomítka, HTML a hesla se uchovají beze změny; databázové operace používají parametry a výstup se escapuje v odpovídajícím kontextu.
+Verification: apostrophes, backslashes, HTML and passwords are preserved unchanged; database operations use parameters and output is escaped in the corresponding context.
 
-### SEC-05: Důvěryhodné proxy a detekce HTTPS, P1
+### SEC-05: Trusted proxies and HTTPS detection, P1
 
-Zdroj: `Application/Env/Stac/Utils.php::getUserIp()`, nastavení session cookies a API cookies.
+Source: `Application/Env/Stac/Utils.php::getUserIp()`, setting of session cookies and API cookies.
 
-- Zavést explicitní seznam důvěryhodných proxy IP nebo CIDR a podporovaných hlaviček. Ve výchozím stavu věřit pouze přímému spojení.
-- Předané adresy přijímat jen od důvěryhodného bezprostředního proxy; řetězec adres vyhodnotit od důvěryhodného konce, validovat IPv4 i IPv6.
-- Odstranit nedůvěryhodný fallback na `X-Forwarded-For` a `Client-IP` při chybějícím `REMOTE_ADDR`.
-- Sjednotit také detekci původního HTTPS pro `Secure` cookies za TLS terminací. Podvržené forwarded hlavičky nesmějí měnit IP ani schéma.
-- Současný kód upřednostňuje `REMOTE_ADDR`; běžný klient jej tedy samotným podvrženým `X-Forwarded-For` nepřepíše. Problém za proxy je především společná IP pro rate limit a sessions.
+- Introduce an explicit list of trusted proxy IPs or CIDRs and supported headers. By default trust only the direct connection.
+- Accept forwarded addresses only from the trusted immediate proxy; evaluate the address chain from the trusted end, validate IPv4 and IPv6.
+- Remove the untrusted fallback to `X-Forwarded-For` and `Client-IP` when `REMOTE_ADDR` is missing.
+- Also unify detection of the original HTTPS for `Secure` cookies behind TLS termination. Forged forwarded headers must not change the IP or scheme.
+- The current code prefers `REMOTE_ADDR`; an ordinary client therefore cannot override it with a forged `X-Forwarded-For` alone. The problem behind a proxy is mainly the shared IP for rate limiting and sessions.
 
-Ověření: přímé spojení, jeden i více proxy, podvržený levý konec řetězce, IPv6, neplatné hodnoty a správné cookie flags za TLS terminací.
+Verification: direct connection, one and several proxies, a forged left end of the chain, IPv6, invalid values and correct cookie flags behind TLS termination.
 
-### SEC-06: Obecná CSRF ochrana, P1
+### SEC-06: General CSRF protection, P1
 
-Zdroj: privátní tokenová ochrana v `Box/Auth.php`.
+Source: the private token protection in `Box/Auth.php`.
 
-- Vytvořit malý znovupoužitelný helper pro vydání a ověření tokenu, formuláře a AJAX, navázaný na session a případně účel formuláře.
-- Chránit operace měnící stav autentizované cookies, včetně POST, PUT, PATCH a DELETE podle použití. API s explicitním bearer tokenem posuzovat podle jeho skutečného autentizačního mechanismu.
-- Převést webové odhlášení přes GET parametr `a=logout` na operaci měnící stav s odpovídající ochranou.
-- Nezakládat session globálně při každém veřejném GET. Stránky s tokeny nesmějí sdílet osobní token přes page cache ani fragmentovou cache.
-- Zajistit funkčnost více formulářů a otevřených panelů. Samotné SameSite nebo captcha nejsou náhradou obecného řešení.
+- Create a small reusable helper for issuing and verifying a token, forms and AJAX, tied to the session and optionally the form purpose.
+- Protect operations changing state of authenticated cookies, including POST, PUT, PATCH and DELETE according to use. Judge an API with an explicit bearer token by its actual authentication mechanism.
+- Convert the web logout via the GET parameter `a=logout` to a state-changing operation with corresponding protection.
+- Do not create a session globally on every public GET. Pages with tokens must not share a personal token through the page cache or the fragment cache.
+- Ensure that multiple forms and open panels work. SameSite or captcha alone are not a substitute for a general solution.
 
-Ověření: chybějící, chybný a cizí token se odmítne, legitimní formuláře fungují, veřejná stránka bez formuláře nezíská nový session zápis.
+Verification: a missing, wrong and foreign token is rejected, legitimate forms work, a public page without a form does not get a new session write.
 
-### FIX-01: Opravit JWT issued-at setter, P1
+### FIX-01: Fix the JWT issued-at setter, P1
 
-Zdroj: `Auth.php::setIssuedTime()` zapisuje do `iss` místo `iat`.
+Source: `Auth.php::setIssuedTime()` writes to `iss` instead of `iat`.
 
-- Zapisovat čas do `iat`, zachovat issuer a otestovat význam jednotlivých setterů. Konstruktor již počáteční `iat` nastavuje správně; jde konkrétně o setter.
-- Samotná chyba setteru nedokazuje obejití autentizace. Popsat ji jako chybu správnosti JWT s možným dopadem na integrace a časovou validaci.
+- Write the time to `iat`, preserve the issuer and test the meaning of individual setters. The constructor already sets the initial `iat` correctly; the problem is specifically the setter.
+- The setter bug alone does not prove an authentication bypass. Describe it as a JWT correctness bug with possible impact on integrations and time validation.
 
-Ověření: dekódovaný token obsahuje požadované `iat`, nezměněné `iss` a správné `exp`.
+Verification: the decoded token contains the required `iat`, unchanged `iss` and correct `exp`.
 
-## Cache a výkon
+## Cache and performance
 
-### CACHE-01: Oddělit fragmenty podle locale a rozsahu sdílení, P1
+### CACHE-01: Separate fragments by locale and sharing scope, P1
 
-Zdroj: `Template/Runtime.php::cache()`.
+Source: `Template/Runtime.php::cache()`.
 
-- Automaticky oddělit locale. Definovat veřejný a osobní rozsah fragmentu a pravidla klíčů pro ostatní varianty.
-- Zabránit tomu, aby autor musel na locale pamatovat u každého běžného překládáného fragmentu.
+- Separate the locale automatically. Define the public and personal scope of a fragment and key rules for other variants.
+- Prevent the author from having to remember the locale for every ordinary translated fragment.
 
-Ověření: stejný název fragmentu vrací správný český i anglický obsah; případné osobní fragmenty se nesdílejí mezi uživateli.
+Verification: the same fragment name returns the correct Czech and English content; any personal fragments are not shared between users.
 
-### PERF-01: Diagnostické údaje pouze podle potřeby, P2
+### PERF-01: Diagnostic data only as needed, P2
 
-Zdroj: `Site.php::initialize()` a `Site/SiteModel.php::getDBVersion()`.
+Source: `Site.php::initialize()` and `Site/SiteModel.php::getDBVersion()`.
 
-- Připravovat verze DB, PHP a serveru pouze pro debug nebo explicitní požadavek.
-- Odstranit otevření DB spojení pouze kvůli `dbinfo` na stránce obsloužené datovou cache.
+- Prepare DB, PHP and server versions only for debug or an explicit request.
+- Remove opening a DB connection solely for `dbinfo` on a page served by the data cache.
 
-Ověření: zahřátá veřejná stránka pokrytá datovou cache nepotřebuje spojení jen pro diagnostiku; měřit spojení i SQL dotazy zvlášť.
+Verification: a warmed public page covered by the data cache does not need a connection just for diagnostics; measure connections and SQL queries separately.
 
-### PERF-02: Odstranit N+1 dotazy menu, P2
+### PERF-02: Remove N+1 menu queries, P2
 
-Zdroj: `Site.php::isMenuSelected()`, `getUrlPairsWithSiteId()`, `Site/SiteModel.php::getSiteIdByUrl()`.
+Source: `Site.php::isMenuSelected()`, `getUrlPairsWithSiteId()`, `Site/SiteModel.php::getSiteIdByUrl()`.
 
-- Aktivní množinu ID spočítat jednou na požadavek a opakovaně používat.
-- Využít mapu již načtených stránek nebo jediný dávkový dotaz při vypnuté cache.
-- Prověřit sémantiku: cache `sites:visible` obsahuje jen viditelné stránky, zatímco současný lookup podle URL viditelností nefiltruje. Zachovat nebo vědomě sjednotit práci se skrytými stránkami, duplicitními URL a collation.
+- Compute the active ID set once per request and reuse it.
+- Use the map of already loaded pages or a single batch query when the cache is off.
+- Examine the semantics: the cache `sites:visible` contains only visible pages, whereas the current lookup by URL does not filter by visibility. Preserve or consciously unify the handling of hidden pages, duplicate URLs and collation.
 
-Ověření: počet lookup dotazů neroste s počtem položek menu; aktivní položky a rodiče odpovídají původnímu zamýšlenému chování.
+Verification: the number of lookup queries does not grow with the number of menu items; active items and parents match the originally intended behavior.
 
-### PERF-03: Délka zámku sessions, P2
+### PERF-03: Session lock duration, P2
 
-Zdroj: `Session/SessionAbstract.php::sessionStart()`, `Session.php::flush()` a regenerace ID.
+Source: `Session/SessionAbstract.php::sessionStart()`, `Session.php::flush()` and ID regeneration.
 
-- Změřit paralelní požadavky se stejnou cookie při používaném session handleru.
-- Navrhnout dřívější bezpečné uvolnění PHP session zámku. Zachovat regeneraci ID a správnost odložených databázových zápisů; zabránit ztraceným aktualizacím a obnovení odhlášené session.
+- Measure parallel requests with the same cookie under the session handler in use.
+- Propose an earlier safe release of the PHP session lock. Preserve ID regeneration and correctness of deferred database writes; prevent lost updates and restoration of a logged-out session.
 
-Ověření: porovnat paralelní latence a souběžné zápisy, přihlášení i odhlášení. Bez měření neslibovat konkrétní zrychlení.
+Verification: compare parallel latencies and concurrent writes, sign-in and sign-out. Do not promise a specific speedup without measurement.
 
-### PERF-04: Index URL pro rozsáhlejší weby, P3
+### PERF-04: URL index for larger sites, P3
 
-Zdroj: `Site/SiteModel.php::_findVisibleSite()`.
+Source: `Site/SiteModel.php::_findVisibleSite()`.
 
-- Zvážit mapu podle normalizované URL místo procházení všech viditelných stránek.
-- Zachovat striktní a prefixové hledání, současnou prioritu výsledků a kompatibilitu s databázovým porovnáváním.
+- Consider a map by normalized URL instead of iterating over all visible pages.
+- Preserve strict and prefix search, the current result priority and compatibility with database comparison.
 
-Ověření: shoda cache a DB větve a náklady při rostoucím počtu stránek; u malých webů nepřidávat složitost bez přínosu.
+Verification: match of the cache and DB branches and cost with a growing number of pages; for small sites do not add complexity without benefit.
 
-### PERF-05: Indexy boxů a případná relační vazba, P3
+### PERF-05: Box indexes and a possible relational link, P3
 
-Zdroj: `Section/Model.php::getBoxes()`, tabulka `cms_boxes`.
+Source: `Section/Model.php::getBoxes()`, table `cms_boxes`.
 
-- Kandidáta `(section_id, shared, order)` porovnat zejména s `(section_id, order)` a se skutečnými existujícími indexy cílového schématu.
-- Podmínku přepsat podle potřeby do tvaru se společným `section_id`, při zachování výsledků a parametrů.
-- Současná kombinace `JSON_SEARCH` a `OR` neumožňuje předem zaručit odstranění skenu nebo řazení. Kandidát s `shared` mezi sekcí a pořadím nemusí pokrýt globální řazení obou větví.
-- Pro rozsáhlejší instalace zvážit relační vazební tabulku boxů a stránek s indexy. Zachovat pohodlné ovládání při tvorbě webu.
+- Compare the candidate `(section_id, shared, order)` mainly with `(section_id, order)` and with the actual existing indexes of the target schema.
+- Rewrite the condition as needed to a form with a shared `section_id`, preserving results and parameters.
+- The current combination of `JSON_SEARCH` and `OR` does not allow guaranteeing in advance the removal of a scan or sort. A candidate with `shared` between section and order may not cover the global ordering of both branches.
+- For larger installations consider a relational link table of boxes and pages with indexes. Preserve convenient control when building a site.
 
-Ověření: plány pomocí `EXPLAIN` a běhových statistik podle možností MySQL a MariaDB, realistický počet boxů a poměr shared, studená i zahřátá cache, dopad na zápisy a shoda výsledků.
+Verification: plans via `EXPLAIN` and runtime statistics as MySQL and MariaDB allow, a realistic number of boxes and shared ratio, cold and warm cache, impact on writes and match of results.
 
-### PERF-06: Jediné dekódování JSON, P2
+### PERF-06: Single JSON decoding, P2
 
-Zdroj: `Application/Env/Http.php::Json()` a `isJson()`.
+Source: `Application/Env/Http.php::Json()` and `isJson()`.
 
-- Při `Json(true)` dekódovat jednou a vyhodnotit chybu stejného dekódování. Dnes `isJson()` dekóduje a `Json()` dekóduje znovu.
-- Zachovat zdokumentovanou smlouvu `Json(false)` a určit rozdíl mezi neplatným JSON a platným JSON `null`.
-- Otestovat skaláry, prázdné tělo, pole, objekty, neplatné kódování a limit hloubky. Nové chování chyb zavádět vědomě vůči existujícím controllerům.
+- With `Json(true)` decode once and evaluate the error of the same decoding. Today `isJson()` decodes and `Json()` decodes again.
+- Preserve the documented contract of `Json(false)` and determine the difference between invalid JSON and valid JSON `null`.
+- Test scalars, an empty body, arrays, objects, invalid encoding and the depth limit. Introduce the new error behavior consciously with respect to existing controllers.
 
-Ověření: jedno parsování dekódovaného vstupu, regresní testy návratových hodnot. Přínos považovat za malou lokální optimalizaci, ne hlavní zrychlení webu.
+Verification: a single parse of the decoded input, regression tests of return values. Treat the benefit as a small local optimization, not a main site speedup.
 
-### PERF-07: Bezpečná práce s HTML a přenosovou kompresí, P2
+### PERF-07: Safe handling of HTML and transfer compression, P2
 
-Zdroj: `Renderer.php::dispatch()`.
+Source: `Renderer.php::dispatch()`.
 
-- Vypnout nebo nahradit globální slučování bílých znaků regulárním výrazem.
-- Pro přenos využít kompresi webserveru; případnou minifikaci obsahu provádět nástrojem rozumějícím jeho syntaxi.
+- Turn off or replace the global merging of whitespace by a regular expression.
+- For transfer use web server compression; perform any content minification with a tool that understands its syntax.
 
-Ověření: beze změny významu `pre`, `textarea`, inline JavaScriptu, CSS a textových mezer.
+Verification: no change in the meaning of `pre`, `textarea`, inline JavaScript, CSS and text spaces.
 
-## Architektura a pohodlí vývoje
+## Architecture and development convenience
 
-### ARCH-01: Odložit zpracování požadavku, P2
+### ARCH-01: Defer request processing, P2
 
-Zdroj: `Application/Application.php::__construct()`, `get()`, `run()` a integrace API boxů.
+Source: `Application/Application.php::__construct()`, `get()`, `run()` and API box integration.
 
-- Oddělit přípravu aplikace, registraci a vyhodnocení rout, inicializaci CMS a vykreslení.
-- Přesunout vykonávání boxů ze stavby objektu do explicitní fáze obsluhy požadavku. Umožnit nastavení služeb a proměnných před renderováním.
-- Ukončená vlastní API route má obejít CMS dotazy, sekce a boxy. Samotný přesun `initialize()` bez definice pořadí rout a cache nestačí.
-- Page cache nesmí ukončit požadavek před vlastními routami a jejich politikami. Zachovat časnou i18n normalizaci potřebnou pro routy.
-- Zajistit migraci existujících aplikací a API registrace uvnitř boxů, správné 404 a jediné vykreslení.
+- Separate application preparation, registration and evaluation of routes, CMS initialization and rendering.
+- Move the execution of boxes from object construction to an explicit request handling phase. Allow setting services and variables before rendering.
+- A terminated custom API route should bypass CMS queries, sections and boxes. Merely moving `initialize()` without defining the order of routes and cache is not enough.
+- The page cache must not terminate the request before the custom routes and their policies. Keep the early i18n normalization needed for routes.
+- Ensure migration of existing applications and API registration inside boxes, a correct 404 and a single render.
 
-Ověření: vlastní route funguje bez CMS inicializace, běžné stránky zachovávají chování, HIT nepřeskočí požadované aplikační nastavení.
+Verification: a custom route works without CMS initialization, ordinary pages keep their behavior, a HIT does not skip the required application setup.
 
-### DX-01: Vytvoření stránky a boxu jedním příkazem, P3
+### DX-01: Creating a page and box with one command, P3
 
-- Navrhnout malý generátor třídy, šablony a potřebné konfigurace nebo databázové migrace.
-- Respektovat namespace a adresářové konvence aplikace, nepřepisovat existující práci a nabídnout náhled změn.
+- Design a small generator of the class, template and necessary configuration or database migration.
+- Respect the namespace and directory conventions of the application, do not overwrite existing work and offer a preview of changes.
 
-Ověření: nový jednoduchý webový obsah vznikne krátkým a opakovatelným postupem bez ručního hledání vazeb.
+Verification: new simple web content arises through a short and repeatable procedure without manually searching for links.
 
-### DX-02: Kontrola instalace a produkční profil, P2
+### DX-02: Installation check and production profile, P2
 
-- Přidat příkaz pro kontrolu konfigurace, migrací, zapisovatelných adresářů, tajných klíčů a dostupnosti zvoleného cache driveru.
-- Doplnit doporučené produkční nastavení: debug vypnutý, správná proxy a HTTPS konfigurace, OPcache, optimalizovaný Composer autoload, vypnutá kontrola změn šablon a jasné čištění kompilátové cache při deployi.
-- Kontrola má být explicitní při setupu nebo deployi, nikoli drahá kontrola na každém požadavku.
+- Add a command to check configuration, migrations, writable directories, secret keys and availability of the chosen cache driver.
+- Add recommended production settings: debug off, correct proxy and HTTPS configuration, OPcache, optimized Composer autoload, template change checking off and clear clearing of the compiler cache on deploy.
+- The check should be explicit during setup or deploy, not an expensive check on every request.
 
-Ověření: vadná instalace má konkrétní návod k opravě; zdravý produkční požadavek nenese dodatečnou režii kontrol.
+Verification: a faulty installation has a concrete repair guide; a healthy production request carries no additional check overhead.
 
-### DX-03: Opakovatelné měření výkonu, P2
+### DX-03: Repeatable performance measurement, P2
 
-- Odděleně měřit cache vypnutou, zahřátou datovou cache a cache celé stránky.
-- Pokrýt návštěvníka bez cookie, anonymního se session, přihlášeného a vlastní API route; měřit i paralelní požadavky stejné session.
-- Zaznamenat p50 a p95 latenci, propustnost, chyby, paměť, SQL dotazy a připojení k DB. Uvést PHP, server, DB, OPcache, data a souběžnost.
-- Tvrzení o téměř okamžité odpovědi nebo minimální paměti považovat za hypotézu do měření. Historické výsledky nepřevádět na garance.
+- Measure separately with cache off, warmed data cache and full-page cache.
+- Cover a visitor without a cookie, an anonymous one with a session, a signed-in one and a custom API route; also measure parallel requests of the same session.
+- Record p50 and p95 latency, throughput, errors, memory, SQL queries and DB connections. State PHP, server, DB, OPcache, data and concurrency.
+- Treat claims of a nearly instant response or minimal memory as a hypothesis until measured. Do not convert historical results into guarantees.
 
-## Doporučené pořadí a závislosti
+## Recommended order and dependencies
 
-1. Opravit pravidla page cache, fallback MD5, locale fragmentů a JWT setter. Jde o potvrzené a poměrně ohraničené problémy.
-2. Navrhnout a realizovat společně bezpečné šablony a migraci vstupních helperů; přidat obecnou CSRF ochranu a důvěryhodné proxy.
-3. Odstranit diagnostické DB připojení a opakované menu lookupy, zjednodušit JSON a vyřadit nebezpečnou minifikaci.
-4. Refaktorovat životní cyklus aplikace a session locking s integračními testy a migračním postupem.
-5. Změřit výkon; podle výsledků vybrat indexy boxů, mapu URL a případnou relační vazbu. Doplnit produkční kontrolu a generátor.
+1. Fix the page cache rules, the MD5 fallback, fragment locale and the JWT setter. These are confirmed and fairly bounded problems.
+2. Design and implement together safe templates and migration of the input helpers; add general CSRF protection and trusted proxies.
+3. Remove the diagnostic DB connection and repeated menu lookups, simplify JSON and retire dangerous minification.
+4. Refactor the application lifecycle and session locking with integration tests and a migration procedure.
+5. Measure performance; according to results select box indexes, the URL map and a possible relational link. Add the production check and the generator.
 
-Časový odhad zatím není stanoven. Změny dělit na malé kontrolovatelné celky; bezpečnostní změny doplnit regresními testy konkrétního scénáře. Rozsáhlejší změny zachovat kompatibilní nebo opatřit jasnou migrační cestou. Před každým celkem ověřit aktuální stav kódu a testů.
+No time estimate has been set yet. Split changes into small, reviewable units; supplement security changes with regression tests of the concrete scenario. Keep larger changes compatible or provide them with a clear migration path. Before each unit, verify the current state of the code and tests.
 
-## Referenční zdroje
+## Reference sources
 
 - [RFC 9111: HTTP caching](https://www.rfc-editor.org/rfc/rfc9111.html)
 - [OWASP: Password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 - [OWASP: CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
-- [Symfony: Trusted proxies](https://symfony.com/doc/current/deployment/proxies.html), referenční princip důvěry v proxy, bez požadavku přidávat závislost.
+- [Symfony: Trusted proxies](https://symfony.com/doc/current/deployment/proxies.html), a reference principle of trust in proxies, without a requirement to add a dependency.
 - [MySQL 8.4: Multiple-column indexes](https://dev.mysql.com/doc/refman/8.4/en/multiple-column-indexes.html)
 - [MySQL 8.4: ORDER BY optimization](https://dev.mysql.com/doc/refman/8.4/en/order-by-optimization.html)
 - [RFC 7519: JWT claims](https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6)
 - [PHP: session_write_close](https://www.php.net/session-write-close)
 
-## Schválená cílová architektura 4.0.0
+## Approved target architecture 4.0.0
 
-### Vlastní šablony a Markdown
+### Own templates and Markdown
 
-Rozvíjet existující NativeRenderer s kompilací do PHP a OPcache. Zachovat podporovanou syntaxi; neslibovat úplnou náhradu všech konstrukcí Smarty. Automatické escapování běžných dat a explicitní důvěryhodné HTML. Smarty zůstává pouze dočasnou kompatibilní vrstvou během migrace.
+Develop the existing NativeRenderer with compilation to PHP and OPcache. Keep the supported syntax; do not promise a complete replacement of all Smarty constructs. Automatic escaping of ordinary data and explicit trusted HTML. Smarty remains only a temporary compatibility layer during the migration.
 
-Vlastní parser: CommonMark 0.31.2 plus tabulky, přeškrtnutí a seznamy úkolů podle příslušných GFM pravidel. Blokový a inline parser s interním stromem, oddělený bezpečný HTML renderer, limity velikosti a vnoření, kontrola URL schémat. Vložené HTML se v bezpečném profilu escapuje. Parser musí projít standardními příklady; vědomé rozdíly bezpečného renderu se evidují.
+Own parser: CommonMark 0.31.2 plus tables, strikethrough and task lists according to the relevant GFM rules. Block and inline parser with an internal tree, a separate safe HTML renderer, limits of size and nesting, checking of URL schemes. Embedded HTML is escaped in the safe profile. The parser must pass the standard examples; conscious differences of the safe render are recorded.
 
-Stejný parser pro DB i .md soubory v povoleném obsahovém adresáři. Markdown je obsah vložený do běžného HTML layoutu; žádné proměnné, PHP, cykly ani šablonová logika, a to ani v důvěryhodných .md souborech. Náhled používá parser cílového webu. Formát uloženého textu je explicitní, neodhadovaný. Migrace Texy má dry-run, originály, překlady, report ručních oprav a kontrolu výstupů. Zachovat firebase/php-jwt a vývojové nástroje.
+The same parser for the DB and for .md files in the allowed content directory. Markdown is content embedded in an ordinary HTML layout; no variables, PHP, loops or template logic, even in trusted .md files. The preview uses the parser of the target site. The format of stored text is explicit, not guessed. The Texy migration has a dry-run, originals, translations, a report of manual fixes and output checks. Keep firebase/php-jwt and the development tools.
 
-### Samostatná centrální administrace
+### Separate central administration
 
-Samostatný projekt `wbengine-admin`, SvelteKit + TypeScript se serverem, vlastní MySQL 8.4 a Docker. Prohlížeč komunikuje jen se serverem centrály; ten po kontrole oprávnění volá API webu. Integrační klíče neputují do prohlížeče. Weby vlastní obsah, koncepty a revize; centrála vlastní účty, připojení, přístupová práva a audit. Výpadek centrály nesmí vyřadit weby. Žádný přímý přístup do vzdálených DB/FTP a žádná automatická aktualizace webu.
+A separate project `wbengine-admin`, SvelteKit + TypeScript with a server, its own MySQL 8.4 and Docker. The browser communicates only with the central server; after checking permissions it calls the site's API. Integration keys do not travel to the browser. The sites own content, drafts and revisions; the central server owns accounts, connections, access rights and audit. An outage of the central server must not take the sites down. No direct access to remote DBs/FTP and no automatic site update.
 
-Lokální účty na pozvánku, obnova přístupu, TOTP a záložní kódy; MFA povinné pro správce. Globální správce připojuje weby a přiděluje práva, editor spravuje obsah přidělených webů, správce webu i jeho strukturu. Každý web vydá odvolatelný integrační klíč s omezenými scopes, hash klíče na webu a šifrovaný klíč v centrále se šifrovacím tajemstvím mimo DB. Audit rozlišuje integrační identitu a uživatele centrály.
+Local accounts by invitation, access recovery, TOTP and backup codes; MFA mandatory for administrators. The global administrator connects sites and assigns rights, an editor manages content of assigned sites, a site administrator also its structure. Each site issues a revocable integration key with limited scopes, the key hash on the site and the encrypted key in the central server with the encryption secret outside the DB. The audit distinguishes the integration identity and the central user.
 
-Veřejné HTTPS weby standardně; intranet/VPN jen s provozním allowlistem a dostupnou síťovou cestou. Ochrana proti SSRF, přesměrováním a DNS rebindingu. První verze spravuje články, stránky, menu, sekce, registrované boxy, překlady a obrázky, náhled a publikování. Žádná vzdálená editace PHP ani šablon, žádné multi-organizační SaaS, schvalovací workflow nebo plánované publikování v první verzi.
+Public HTTPS sites by default; intranet/VPN only with an operational allowlist and an available network path. Protection against SSRF, redirects and DNS rebinding. The first version manages articles, pages, menus, sections, registered boxes, translations and images, preview and publishing. No remote editing of PHP or templates, no multi-organization SaaS, approval workflow or scheduled publishing in the first version.
 
-### API v2 a publikování
+### API v2 and publishing
 
-`/api/v2` vedle zachovaného API v1. Capability discovery, verze API a katalog povolených boxů s validovaným nastavením. CRUD zdrojů, jednotné chyby a stránkování, ETag/If-Match pro ochranu proti přepsání cizí změny. Zastaralý zápis odmítnout, po commit invalidovat související cache. API nepřijímá libovolnou PHP třídu/metodu. Starší instalace vyžaduje explicitní upgrade API a schématu před připojením.
+`/api/v2` alongside the preserved API v1. Capability discovery, API version and a catalog of allowed boxes with validated settings. CRUD of resources, unified errors and pagination, ETag/If-Match as protection against overwriting someone else's change. Reject a stale write, invalidate related caches after commit. The API does not accept an arbitrary PHP class/method. An older installation requires an explicit upgrade of the API and schema before connecting.
 
-Koncepty a revize se týkají článků a jejich překladů. Uložení konceptu nemění publikovaný obsah; obnova revize vytvoří koncept. Struktura se mění přímo po explicitním potvrzení, s auditem a obnovou. Atomické publikování celého webu není součástí první verze. Osobní náhledy nesmějí do veřejné cache.
+Drafts and revisions concern articles and their translations. Saving a draft does not change published content; restoring a revision creates a draft. The structure changes directly after explicit confirmation, with audit and recovery. Atomic publishing of the whole site is not part of the first version. Personal previews must not enter the public cache.
 
-## Etapy a postup realizace
+## Stages and implementation procedure
 
-1. Etapa 0: uložit tracker a rozhodnutí; zaznamenat výchozí testy; připravit DX-03 opakovatelný benchmark. Baseline testů je hotový, benchmark zůstává otevřený.
-2. Etapa 1: SEC-01, SEC-02, CACHE-01, FIX-01, každá chyba s regresním scénářem před opravou.
-3. Etapa 2: SEC-03 až SEC-06 společně s migračním návodem vstupů a šablon.
-4. Etapa 3: PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01 a PERF-03; PERF-04/PERF-05 pouze podle měření.
-5. Etapa 4: TPL-01 až TPL-03, inventura, kompatibilita, migrace a oddělení Smarty.
-6. Etapa 5: MD-01 až MD-04, parser, .md/DB, převod a odstranění Texy.
-7. Etapa 6: API-01 až API-04, kontrakt, zdroje, publikování, klíče a audit.
-8. Etapa 7: ADM-01 až ADM-05, centrální server, identity, weby, editor a publikování.
-9. Etapa 8: DX-01, DX-02, REL-01, pilot a postupné nasazení 4.0.0.
+1. Stage 0: store the tracker and decisions; record baseline tests; prepare the DX-03 repeatable benchmark. The test baseline is done, the benchmark remains open.
+2. Stage 1: SEC-01, SEC-02, CACHE-01, FIX-01, each bug with a regression scenario before the fix.
+3. Stage 2: SEC-03 to SEC-06 together with the migration guide for inputs and templates.
+4. Stage 3: PERF-01, PERF-02, PERF-06, PERF-07, ARCH-01 and PERF-03; PERF-04/PERF-05 only according to measurement.
+5. Stage 4: TPL-01 to TPL-03, inventory, compatibility, migration and separation of Smarty.
+6. Stage 5: MD-01 to MD-04, parser, .md/DB, conversion and removal of Texy.
+7. Stage 6: API-01 to API-04, contract, resources, publishing, keys and audit.
+8. Stage 7: ADM-01 to ADM-05, central server, identities, sites, editor and publishing.
+9. Stage 8: DX-01, DX-02, REL-01, pilot and gradual deployment of 4.0.0.
 
-Před každým úkolem: ověřit stav, dopsat konkrétní rozhraní a migrační postup, určit regresní testy, převzít odpovědnost. Pak test selhávající před změnou, implementace, cílené testy, celá potřebná sada a dokumentace. Po dokončení zapsat skutečné výsledky a commit, aktualizovat registr. Neoznačovat celý SEC-01 jako hotový, pokud je dokončena jen část pravidel cache.
+Before each task: verify the state, write down the concrete interface and migration procedure, determine regression tests, take responsibility. Then a test failing before the change, implementation, targeted tests, the whole necessary suite and documentation. After completion record the actual results and the commit, update the register. Do not mark the whole SEC-01 as done if only part of the cache rules is finished.
 
-Release gate: vzorová aplikace a jeden pilot, funkční záloha a návrat, ověřené originály obsahu, dokončené ruční migrační opravy, žádná povinná Smarty/Texy závislost, koncové testy dvou webů a omezeného uživatele, souběžné editace, odvolaný klíč, výpadky webu/centrály, bezpečné preview, SSRF a obnovy. Tag a GitHub release až po splnění brány; průběžný draft PR není hotový release.
+Release gate: a sample application and one pilot, a working backup and rollback, verified content originals, completed manual migration fixes, no mandatory Smarty/Texy dependency, end-to-end tests of two sites and a limited user, concurrent edits, a revoked key, site/central outages, safe preview, SSRF and recoveries. Tag and GitHub release only after the gate is met; an ongoing draft PR is not a finished release.
 
-## Záznam postupu
+## Progress log
 
-### 2026-10-27: rozhodnutí o vlastní analytice
+### 2026-10-27: decision on own analytics
 
-- Schválený produktový směr: WBengine bude směřovat k vlastní souhrnné analytice dostupné přes samostatnou administraci. Metriky mají odpovídat počtu zobrazení a trendům, nikoli identitě konkrétních návštěvníků.
-- Celoživotní počty zobrazení stránek/článků se zachovávají i při žádosti o výmaz uživatelského účtu, pokud nejsou spojitelné s konkrétní osobou. Žádost o výmaz se nesmí stát důvodem ke smazání globálních agregátů.
-- Navržené hranice ukládání: žádná IP adresa, analytické cookie, uživatelský identifikátor ani individuální návštěvní profil v analytickém úložišti. Případné dočasné technické údaje dostanou samostatnou nezbytnou retenční dobu. Přesný právní režim a anonymizační vlastnosti je nutné posoudit podle konkrétní implementace.
-- Počet zobrazení se nesmí označovat za počet unikátních lidí. Přesná deduplikace unikátních návštěvníků bez identifikátoru není možná. Počítání výskytu boxu znamená výskyt ve vykreslené stránce, nikoli důkaz, že jej návštěvník viděl na obrazovce.
-- Technické požadavky k návrhu: zahrnout požadavky obsloužené full-page cache HIT, aby měření nepodhodnocovalo návštěvy; vyhodnotit existující `Wbengine\\Counter\\BatchCounter`; omezit práci na požadavek a nemít synchronní databázový zápis pro každé zobrazení; zpřístupnit agregáty přes úzce oprávněné API administraci.
-- Přechod: dokud vlastní metriky nebudou implementovány a ověřeny, stávající GA4 zůstává provozní záležitostí. Její případné vypnutí bude samostatný krok; vypnutí měření samo nevymaže historické reporty Google Analytics.
-- Stav: uživatel schválil technický návrh analytiky. Implementace čeká. Schválená výchozí hranice je 62denní retence denních součtů, trvalé celoživotní součty a započítávání známých i neznámých robotických požadavků.
-- Podrobné metriky, období, API kontrakt, retence a migrace jsou v `plan-analytics.md`. Strategie cache HIT, dávkové vyprázdnění a výkonu je podmínkou implementace.
-- 2026-10-27: uživatel schválil návrh analytiky. Admin integration/test implementation plan je v `plan-analytics-administration.md`; jde zatím o plán, žádná část analytiky ani administrace se v této fázi nemění.
+- Approved product direction: WBengine will move toward its own aggregate analytics available through a separate administration. The metrics should correspond to the number of views and trends, not the identity of specific visitors.
+- Lifetime view counts of pages/articles are preserved even on a request to delete a user account, as long as they cannot be linked to a specific person. A deletion request must not become a reason to delete global aggregates.
+- Proposed storage boundaries: no IP address, analytics cookie, user identifier or individual visit profile in the analytics storage. Any temporary technical data get a separate necessary retention period. The exact legal regime and anonymization properties must be assessed according to the concrete implementation.
+- The view count must not be labeled as a count of unique people. Exact deduplication of unique visitors without an identifier is not possible. Counting a box appearance means an appearance in the rendered page, not proof that the visitor saw it on screen.
+- Technical requirements for the design: include requests served by a full-page cache HIT so that the measurement does not undercount visits; evaluate the existing `Wbengine\\Counter\\BatchCounter`; limit work per request and avoid a synchronous database write for every view; expose aggregates through a narrowly authorized API to the administration.
+- Transition: until our own metrics are implemented and verified, the existing GA4 remains an operational matter. Its possible switch-off will be a separate step; switching off measurement does not by itself delete historical Google Analytics reports.
+- Status: the user approved the technical analytics design. Implementation is waiting. The approved default boundary is 62-day retention of daily totals, permanent lifetime totals and counting of known and unknown robot requests.
+- Detailed metrics, periods, API contract, retention and migrations are in `plan-analytics.md`. The strategy for cache HIT, batch flushing and performance is a condition of implementation.
+- 2026-10-27: the user approved the analytics design. The admin integration/test implementation plan is in `plan-analytics-administration.md`; it is only a plan for now, no part of analytics or the administration changes in this phase.
 
-### 2026-10-25: Zahájení 4.0.0
+### 2026-10-25: Start of 4.0.0
 
-- Worktree `/private/tmp/wbengine-modernization`, větev `codex/wbengine-4.0`, výchozí commit `9149fef`, poslední vydání `v3.5.0`.
-- Výchozí ověření: `docker compose -p wbengine-modernization run --rm php composer test`: 802 testů, 1534 assertions, úspěch na PHP 8.4.27.
-- Rozhodnutí: nová major verze 4.0.0, kompatibilita se starými instalacemi přes explicitní migraci. Existující podrobné nálezy a ID zůstávají zachovány.
-- Rozhodnutí: první implementační balík opravuje potvrzené chyby; rozšíření SEC-01 bude vykazováno po částech, dokud nejsou splněna všechna kritéria.
+- Worktree `/private/tmp/wbengine-modernization`, branch `codex/wbengine-4.0`, base commit `9149fef`, last release `v3.5.0`.
+- Baseline verification: `docker compose -p wbengine-modernization run --rm php composer test`: 802 tests, 1534 assertions, success on PHP 8.4.27.
+- Decision: new major version 4.0.0, compatibility with old installations through explicit migration. Existing detailed findings and IDs are preserved.
+- Decision: the first implementation package fixes confirmed bugs; the extension of SEC-01 will be reported in parts until all criteria are met.
 
-- 2026-10-25: uživatel doplnil závazné zachování stromové OOP architektury a namespaces pro nové funkce jádra. Pravidlo doplněno do globálních omezení plánu.
-- 2026-10-25: 14 nových regresních scénářů před změnou selhalo z očekávaných příčin; po změně cílená sada 171 testů / 252 assertions prošla. Finální ověření a review ještě zbývají.
+- 2026-10-25: the user added the binding preservation of the tree OOP architecture and namespaces for new core features. The rule was added to the global constraints of the plan.
+- 2026-10-25: 14 new regression scenarios failed before the change for the expected reasons; after the change the targeted suite of 171 tests / 252 assertions passed. Final verification and review remain.
 
-### 2026-10-25: První ověřený implementační balík 4.0.0
+### 2026-10-25: First verified implementation package of 4.0.0
 
-- Implementováno: JWT iat setter; odmítnutí nových hesel při úzkém sloupci bez MD5 fallbacku; oddělení fragmentů podle locale; přísnější page cache, ignorování starých položek, allowPaths/denyPaths a request-wide bypass.
-- Cache zachovává standardní bezpečnostní hlavičky včetně cross-origin politik na HIT a 304. Aktuální deployment politika má přednost před uloženou. CSP nonce, soukromé odpovědi, libovolné aplikační cookies a anonymní session s osobními daty sdílenou cache obcházejí.
-- Rozhodnutí: vlastní cookies konzervativně znamenají bypass, což může snížit podíl HIT u webů s analytickými cookies. Bez explicitního schématu variant má přednost oddělení osobních dat; případné bezpečné výjimky řešit samostatně.
-- Rozhodnutí: `PageCache::bypass()` volaný před konstrukcí Application chrání čtení i zápis; volání v boxu chrání pouze zápis aktuální odpovědi. Tato hranice je výslovně v README.
-- Review: nezávislý čtecí reviewer našel chybějící cross-origin hlavičky; nový HTTP test selhal, hlavičky byly doplněny a test prošel. Doplněn integrační test skutečného varchar(32) včetně legacy autentizace; původní schéma se obnovuje ve finally.
-- Jeden standardní Composer běh timeoutoval; následující kompletní diagnostický běh a dva standardní běhy prošly. Finální výsledek: `docker compose -p wbengine-modernization run --rm php composer test`, **835 testů / 1603 assertions**, 9.913 s, PHP 8.4.27, MySQL 8.4.
-- `docker compose -p wbengine-modernization run --rm php composer lint`: úspěch. `git diff --check`: úspěch.
-- Změny zůstávají ve stávajících produkčních třídách a namespaces. Nové samostatné PHP soubory v tomto balíku jsou pouze HTTP test a jeho fixture; nevznikl paralelní produkční framework.
-- Neimplementováno: vlastní Markdown, odstranění Smarty/Texy, API v2 ani centrální administrace. Jejich úkoly zůstávají otevřené.
-- Další krok: dokončit explicitní scope fragmentů a návrh obsahové invalidace, poté SEC-03 až SEC-06. Pro GitHub připravit draft PR 4.0.0, bez tagu/release a bez merge do master.
+- Implemented: the JWT iat setter; rejection of new passwords with a narrow column without an MD5 fallback; separation of fragments by locale; stricter page cache, ignoring old entries, allowPaths/denyPaths and a request-wide bypass.
+- The cache preserves standard security headers including cross-origin policies on HIT and 304. The current deployment policy takes precedence over the stored one. CSP nonce, private responses, arbitrary application cookies and an anonymous session with personal data bypass the shared cache.
+- Decision: custom cookies conservatively mean a bypass, which may reduce the HIT share on sites with analytics cookies. Without an explicit variant scheme, separating personal data takes precedence; any safe exceptions are to be solved separately.
+- Decision: `PageCache::bypass()` called before the Application is constructed protects both reading and writing; a call in a box protects only the writing of the current response. This boundary is explicit in the README.
+- Review: an independent read-only reviewer found missing cross-origin headers; a new HTTP test failed, the headers were added and the test passed. Added an integration test of a real varchar(32) including legacy authentication; the original schema is restored in finally.
+- One standard Composer run timed out; the following complete diagnostic run and two standard runs passed. Final result: `docker compose -p wbengine-modernization run --rm php composer test`, **835 tests / 1603 assertions**, 9.913 s, PHP 8.4.27, MySQL 8.4.
+- `docker compose -p wbengine-modernization run --rm php composer lint`: success. `git diff --check`: success.
+- The changes stay in the existing production classes and namespaces. The only new standalone PHP files in this package are the HTTP test and its fixture; no parallel production framework was created.
+- Not implemented: own Markdown, removal of Smarty/Texy, API v2 or the central administration. Their tasks remain open.
+- Next step: finish the explicit fragment scope and the content invalidation design, then SEC-03 to SEC-06. Prepare a draft PR 4.0.0 for GitHub, without a tag/release and without a merge to master.
 
-- Git commit prvního balíku: `6e799ed`. Historický záznam pracovního PR #2, nyní sloučeného jako `cf710e5`. Lokální testovací databáze byla po ověření zastavena.
+- Git commit of the first package: `6e799ed`. A historical record of working PR #2, now merged as `cf710e5`. The local test database was stopped after verification.
 
-- GitHub CI pro commit `6e799ed`: všech 5 jobs úspěšných, PHP 8.3/8.4/8.5 s MySQL 8.4 a PHP 8.4 s MariaDB 10.11/11.4. Výsledky jsou dostupné v draft PR #2.
+- GitHub CI for commit `6e799ed`: all 5 jobs successful, PHP 8.3/8.4/8.5 with MySQL 8.4 and PHP 8.4 with MariaDB 10.11/11.4. The results are available in draft PR #2.
 
-- 2026-10-25: na žádost uživatele doplněno závazné pravidlo commitovat a pushovat po každé větší změně nebo fázi také aktuální stav plánu, včetně pravidel rozpracovaných kontrolních bodů a bezpečného navázání. Před změnou ověřena shoda lokálního HEAD a upstreamu na `1d98025`.
+- 2026-10-25: at the user's request, a binding rule was added to commit and push after each larger change or phase also the current state of the plan, including the rules of in-progress checkpoints and safe continuation. Before the change, the match of the local HEAD and upstream at `1d98025` was verified.
 
-### CACHE-01: Navazující implementační postup
+### CACHE-01: Follow-up implementation procedure
 
-Stav: rozpracováno, Codex. Výchozí kontrolní bod `b3a7116`, lokální a vzdálená větev shodná.
+Status: in progress, Codex. Base checkpoint `b3a7116`, local and remote branch identical.
 
-- Rozšířit blok `{cache}` o literální `scope='public'` (výchozí) a `scope='user'`, volitelně s `ttl`. Neznámý nebo duplicitní parametr odmítnout.
-- Přidat objekt `Wbengine\Template\FragmentCache` jako lazy potomka `Template\Engine`. Kompilátor volá engine, renderer adapter předává resolver uživatele a `Renderer` jej napojuje přes Application na aktuální User. Veřejný scope resolver nevolá.
-- Rozhraní: `Engine::setCacheUserResolver(?callable)`, `Engine::cache($key, $ttl, callable $render, $scope = 'public')`; NativeRenderer a Renderer\Adapter zprostředkují nastavení resolveru.
-- Osobní klíč obsahuje platné kladné user ID, locale a název fragmentu; veřejný a osobní klíč mají různé jmenné prostory. Chybějící nebo neplatná identita nesmí spadnout do veřejné cache. Resolver se vyhodnotí při použití, ne při konstrukci.
-- Osobní scope vyvolá page-cache bypass i při vypnuté cache nebo anonymním návštěvníkovi. Veřejný obal, který při renderování použil osobní fragment, se nesmí sdíleně uložit. Public blok musí mít obsah nezávislý na uživateli; jiné varianty patří do explicitních klíčů.
-- Zachovat původní syntaxi cache bloků a Runtime::cache pro přímé veřejné volání; změnit verzi kompilátoru a namespace fragmentových klíčů, aby se nepoužily staré obaly.
-- Testy před implementací: oddělení dvou uživatelů a locale, veřejný versus osobní scope, anonymní/neplatná identita, odložený resolver, nested/private obal, neplatná syntaxe, předání přes NativeRenderer a Renderer\Adapter, page-cache bypass přes skutečné HTTP.
-- Po cílených testech spustit celou sadu, lint, nezávislé review a zapsat výsledky. Commit a push kódu i aktualizovaného plánu před dalším větším úkolem.
+- Extend the `{cache}` block with a literal `scope='public'` (default) and `scope='user'`, optionally with `ttl`. Reject an unknown or duplicate parameter.
+- Add the object `Wbengine\Template\FragmentCache` as a lazy descendant of `Template\Engine`. The compiler calls the engine, the renderer adapter passes the user resolver and `Renderer` connects it through Application to the current User. The public scope does not call the resolver.
+- Interface: `Engine::setCacheUserResolver(?callable)`, `Engine::cache($key, $ttl, callable $render, $scope = 'public')`; NativeRenderer and Renderer\Adapter mediate setting the resolver.
+- A personal key contains a valid positive user ID, the locale and the fragment name; public and personal keys have different namespaces. A missing or invalid identity must not fall into the public cache. The resolver is evaluated at use, not at construction.
+- A personal scope triggers a page-cache bypass even with the cache off or an anonymous visitor. A public wrapper that used a personal fragment during rendering must not be stored in the shared cache. A public block must have content independent of the user; other variants belong to explicit keys.
+- Keep the original syntax of cache blocks and Runtime::cache for a direct public call; change the compiler version and the namespace of fragment keys so that old wrappers are not used.
+- Tests before implementation: separation of two users and locales, public versus personal scope, anonymous/invalid identity, a deferred resolver, nested/private wrapper, invalid syntax, passing through NativeRenderer and Renderer\Adapter, page-cache bypass through real HTTP.
+- After the targeted tests run the whole suite, lint, independent review and record the results. Commit and push the code and the updated plan before the next larger task.
 
-### 2026-10-25: CACHE-01 dokončen
+### 2026-10-25: CACHE-01 completed
 
-- Nová služba `Template\FragmentCache` je lazy potomkem Engine. Kompilátor volá engine; NativeRenderer a Renderer\Adapter předávají resolver napojený na Application. Veřejný scope nevyvolává autentizaci ani session lookup.
-- Scope user odděluje klíče podle aktuální autentizované session a locale. Neplatná nebo chybějící identita ani chyba resolveru nepoužijí veřejnou cache. Při změně identity se nepoužije zastaralé ID z User resource.
-- Osobní fragmenty vypínají page cache; veřejný obal s vykonaným osobním fragmentem se neuloží. Stejná ochrana platí přes kompatibilní Runtime helper. Chyba renderování uklidí vnořené buffery.
-- Rozhodnutí: po osobním scope se konzervativně obchází i ostatní veřejné fragmenty do konce požadavku. Může to snížit počet HIT u přihlášených, ale zabrání sdílenému uložení osobního obalu. Public blok musí být nezávislý na návštěvníkovi i na větvích, které při cache hitu neběží.
-- Rozhodnutí: zachován public-only Runtime helper, vnitřně deleguje stejnému OOP cache mechanismu. Compiler VERSION=2 a prefix tpl:v3 brání použití starých sdílených obalů.
-- Před implementací 17 scénářů chybělo (neexistující resolver/syntaxe); další regresní test zachytil stale User ID. Po opravě celá sada: **862 testů, 1676 assertions**, 10.126 s, PHP 8.4.27 / MySQL 8.4. Lint a git diff --check prošly. Nezávislé review bez konkrétních nálezů.
-- Další krok po push: SEC-03, sjednotit automatické escapování obou rendererů a dokumentovat bezpečné výstupní kontexty; změny vstupních helperů ponechat na následující samostatný balík SEC-04.
-
-### SEC-03: Navazující implementační postup
-
-- Nastavit automatické HTML escapování také ve Smarty adaptéru a přidat setAutoEscape do stejného adapterového rozhraní jako NativeRenderer. Explicitní false zachovat jako dočasnou migrační volbu.
-- Zachovat explicitní raw a escape v bundlovaných šablonách. Historický ekvivalenční corpus porovnává explicitně legacy režim obou rendererů, nikoli nové bezpečné defaulty.
-- Opravit native pipeline: bezpečnost výstupu určuje poslední modifier, nikoli libovolný dřívější safe modifier. Například escape|default:$fallback musí escapovat nový fallback. Změnit compiler version a navázat fragmentové klíče na tuto verzi.
-- Dokumentovat důvěryhodnost šablon a rozdíly HTML textu, atributů, URL a script/JSON kontextu. Zatím neměnit vstupní helpery (SEC-04).
-- Testy: XSS payload výchozím Smarty výpisem, true/false přes adaptéry, žádné dvojí escapování u explicitního escape, raw jen explicitně, unsafe fallback po safe modifieru v native.
-
-- SEC-03, upřesnění z regresních testů: parser musí sledovat pouze modifikátory výsledného výrazu. Escapovaný operand, argument metody ani index pole nesmí označit jiný obsah za bezpečný. Příslušné XSS scénáře před opravou selhaly.
-- SEC-03, rozhodnutí: Smarty compile ID obsahuje režim autoEscape, protože jinak jeho paměťová cache po přepnutí true/false může znovu použít starý template objekt. Původní uživatelské compile ID zůstává součástí výsledného ID.
-- SEC-03, rozhodnutí: testy zachytily starý problém compileCheck, kdy stejná velikost a timestamp neodhalily změnu zdroje. Doplněn SHA-256 podpis při zapnutém compileCheck; produkční zásah s compileCheck=false checksum nepočítá. Cena je další čtení zdroje ve vývojovém režimu, přínosem spolehlivá obnova šablon a bezpečnostních úprav.
-
-- SEC-03, review: žádné nové nálezy v dosavadním diffu. Reviewer navíc reprodukoval starší kolizi fragmentů mezi autoEscape=false a true. Zahrnuta do tohoto bezpečnostního balíku: oba scope ji potvrdily RED testem, klíč nově obsahuje také režim escapování. Ruční vyčištění cache tak není jedinou ochranou proti převzetí raw HTML z migračního režimu.
-
-### 2026-10-25: SEC-03 dokončen
-
-- Hotovo: automatické escapování obou rendererů, explicitní migrační autoEscape=false, oprava modifikátorů finálního výrazu v native parseru a zachování raw/escape pro explicitně určené kontexty.
-- Výchozí 8 scénářů XSS/defaultů před opravou selhalo; další 3 scénáře potvrdily přenos nesprávné důvěry z operandu, argumentu metody a indexu pole. Opraveno bez rozšiřování gramatiky template tagů.
-- Samostatný RED test potvrdil zastaralou kompilaci při stejném timestampu a délce. SHA-256 freshness se nyní počítá jen při compileCheck=true; podpis při kompilaci vychází ze stejného zdrojového snapshotu.
-- Review dosavadního diffu bez nových nálezů. Starší kolize mezi raw a escaped fragmenty navíc opravena podle 2 RED testů; režim escapování a compiler version jsou součástí klíče veřejných i osobních fragmentů.
-- Finální ověření: **878 testů / 1703 assertions**, 9.859 s, PHP 8.4.27 / MySQL 8.4; composer lint a git diff --check prošly.
-- Dokumentace popisuje bezpečný HTML text, quoted atributy, validaci URL schémat, script-safe JSON a důvěryhodnost šablon. Smarty je stále dočasný adaptér; odstranění z runtime závislostí patří do TPL-03.
-- CACHE-01 je uložen a pushnut jako `f998303`. Tento následující kontrolní bod zahrnuje kód SEC-03 i stav plánu; přesný hash je v git log pracovní větve.
-- Další konkrétní krok: SEC-04, inventarizace volání Http::Post/Get/getCookie/secureClean, zavedení nezměněných vstupů a explicitní validace, regresní testy apostrofů, lomítek, polí a chybějících hodnot. Neměnit současně autentizační model nebo routování. SEC-01 obsahová invalidace navazuje na nové write API v pozdější etapě.
-
-### SEC-04: Postup a smlouva vstupních helperů
-
-Výchozí kontrolní bod `4ae723f`, lokální i vzdálená větev shodná. Pracovní větev `codex/wbengine-4.0`, odpovědnost Codex.
-
-- Inventura: interní secureClean používají pouze Post/Get. Box\Auth používá Post pro CSRF a CAPTCHA; přihlášení již používá PostRaw. Další runtime volající v knihovně ani ve zdrojích vzorové aplikace nebyli nalezeni. API JSON příjem se v tomto balíku nemění.
-- Post($name=null) a Get($name=null) vracejí beze změny hodnotu z PHP superglobálu, při null celý odpovídající vstupní map; chybějící klíč vrací null bez warningu. Platné názvy jsou string a int, včetně 0 a prázdného řetězce. Jiný typ názvu vrací null.
-- PostString($name), GetString($name) a getCookie(string $name) vracejí pouze nezměněný string nebo null, nikdy nepřevádějí pole/objekt/scalar na text. PostRaw zůstává kompatibilní alias PostString.
-- Rozhodnutí: raw znamená hodnoty po standardním zpracování HTTP v PHP, ne původní wire bytes. Bez trimování, HTML entit a přidávání/odstraňování lomítek. I neplatné UTF-8 bajty zůstávají nezměněné; textová pole musí validovat typ, UTF-8, délku a význam ve své aplikační vrstvě. Řetězcový helper řeší pouze tvar hodnoty, ne její důvěryhodnost.
-- Rozhodnutí pro major 4.0: secureClean odstranit, nevracet pod jeho bezpečnostně zavádějícím názvem tiše raw hodnoty. Migraci přímých externích volání výslovně popsat v README a CHANGELOG. Staré již znečištěné DB hodnoty automaticky neodkódovávat.
-- Box\Auth převede token a CAPTCHA na PostString. Neřetězcový CSRF token odmítne před hash_equals. SQL se nadále parametruje v Db, výstup escapuje renderer (SEC-03 hotovo).
-- Postup: nejprve RED testy apostrofů, lomítek, HTML, prázdných/zero hodnot, nested polí, chybějících klíčů, neplatného UTF-8 a malformed tokenů. Pak minimální změna helperů a volajících; integrační průchod raw -> parametrizované SQL -> escaped HTML v obou adaptérech.
-- Akceptace: žádná změna hodnot v DB, žádné dvojí escapování ve výsledku, neplatné tvary protokolových vstupů bez TypeError. Cílené testy, plná sada, lint a nezávislé review; poté commit+push kódu i plánu před další větší změnou.
-
-- SEC-04 review: bez runtime nálezů. Reviewer upozornil, že původní CAPTCHA test s prázdným secretem neprokazuje odmítnutí před sítí. Rozhodnutí: zpřesnit požadovaný důkaz, neodkládat jej jako kosmetickou změnu. Síťový kód zůstává stejný, pouze vyčleněn do protected verifyCaptcha v témže Box\Auth. Mockovaný ověřovač s nakonfigurovaným testovacím secretem musí mít nulové volání pro malformed vstup v běžném i AJAX POST; platné řetězce se předávají beze změny. Žádné skutečné CAPTCHA požadavky se při testech neposílají.
-
-### 2026-10-25: SEC-04 dokončen
-
-- Post/Get zachovávají původní PHP-parsed hodnoty a při vynechání názvu vracejí celou mapu. PostString/GetString, kompatibilní PostRaw a getCookie přijímají pouze řetězce. Chybějící hodnoty vracejí null bez warningů. secureClean je v major 4.0 odstraněn.
-- Box\Auth odmítá neplatné tvary CSRF a CAPTCHA polí. Stávající síťové ověření CAPTCHA je vyčleněno do protected metody v téže třídě; nevznikla další produkční služba ani závislost. Architektura a namespaces zůstávají zachovány.
-- TDD: původních 42 cílených testů ukázalo 14 errors a 7 failures. Dva integrační průchody přes parametrizovanou DB a oba renderery před změnou selhaly na změněných hodnotách. Nové testy hranice CAPTCHA před implementací selhaly kvůli chybějícímu ověřovači; po doplnění prokazují odmítnutí před sítí i přesné předání platných řetězců v běžném a AJAX požadavku.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **933 testů / 1876 assertions**, 10.049 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review bez runtime nálezů; upozornění na slabší test CAPTCHA bylo zapracováno.
-- README a CHANGELOG popisují major změnu, explicitní validaci, parametrizaci SQL a escapování výstupu. Historická data se automaticky nepřepisují. API JSON a autentizační model se v tomto balíku nemění.
-- Kontrolní bod zahrnuje kód, testy i tento plán; přesný hash je v historii pracovní větve. Push a shoda upstreamu se ověřují před navazující fází.
-- Další konkrétní krok: SEC-05, inventura detekce IP/HTTPS a všech cookie flags, návrh lazy služby v existující stromové architektuře a testy explicitně důvěryhodných proxy IPv4/IPv6. Výchozí konfigurace bude důvěřovat pouze přímému spojení.
-
-### SEC-05: Implementační postup a rozhodnutí
-
-- Výchozí checkpoint d1e319a, izolovaný worktree /private/tmp/wbengine-modernization. Stávající Utils používají REMOTE_ADDR a nebezpečný fallback hlaviček při chybějícím peeru. SessionAbstract a Api detekují HTTPS samostatně. API refresh issuance i vymazání používají společné cookie options.
-- Zavést Application\Env\RequestContext jako lazy potomka Application s getParent. Pro stávající samostatné API a statické Http/Utils zůstane dostupná stejná služba bez Application rodiče. Resolver nemá cache uživatelských dat, aktuální server/config čte při použití, takže nezmění bootstrap ani session inicializaci.
-- Rozhodnutí: explicitní http.trustedProxies (IP/CIDR IPv4/IPv6) a http.forwardedHeaders (pouze x-forwarded-for, x-forwarded-proto); výchozí oba seznamy prázdné. Chybná konfigurace vyvolá výjimku, nikoli rozšíření důvěry. Nepoužívat starý IPv4-only ipInRange pro bezpečnostní hranici.
-- XFF: ověřit přímého peera, projít řetězec zprava přes povolené proxy a zastavit na prvním nedůvěryhodném klientovi. Chybějící/neplatný peer vrací prázdnou IP, nikdy fallback na Client-IP nebo jinou hlavičku. Neplatný procházený hop nebo nadlimitní hlavička použije přímého peera. IPv6 výstup kanonizovat, žádné porty, zone ID ani obfuscated adresy.
-- XFP: podporovat pouze jedinou hodnotu http/https od povoleného přímého peera a jen při explicitním povolení této hlavičky. Proxy ji musí přepsat podle skutečného původního schématu, ne připojit klientský text. Seznamy a alternativní hlavičky se ignorují. Platné http může přepsat backend TLS. Bez důvěryhodné hodnoty použít pouze lokální HTTPS on/1. Explicitní API override Secure zachovat.
-- Postup: RED testy spoofingu, chybějícího peera, řetězců, IPv6/CIDR hranic a konfigurace; minimální implementace; integrační test skutečných session/API cookie flags; cílené a plné testy, lint a nezávislé review. Pak aktualizace plánu, commit a push.
-- Zdroj pravidel pro řetězce a schéma: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For a https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-Proto. Žádné automatické načítání Cloudflare/AWS rozsahů ani univerzální trust všech proxy.
-
-- SEC-05 review: nezávislé čtecí review bez bezpečnostních/regresních nálezů. Doplněny dvě drobné mezery v důkazech: neplatný peer pro XFP a změna metadat i konfigurace u dlouho žijící statické fasády.
-- Diagnostika plné sady: 988 testů, jedno starší kolísavé selhání testARequestWithoutACookieCostsNoSessionQuery. Session::_load před lookupem s pravděpodobností 1/100 spouští úklid. Izolovaný diagnostický proces s vynuceným GC prokázal přesně jeden DELETE FROM cms_sessions WHERE session_expire < ?, bez SELECT. Tentýž proces se setAutoClean(false) prokázal nula dotazů. Rozhodnutí: v testu lookupu vypnout GC existujícím setterem; produkční úklid se nemění. Dočasný diagnostický soubor byl v ignorované .phpunit.cache a po ověření odstraněn.
-
-- Závěrečná globální inventura nalezla také I18n::_remember a I18n::origin se samostatnou HTTPS detekcí. Zahrnuty do SEC-05: isSecure přijímá volitelný server snapshot, aby zůstalo zachováno existující explicitní rozhraní I18n::boot/origin. Nejprve dvě RED selhání cookie flags, po propojení cookie další dvě RED selhání schématu origin. Test záměrně nastavuje opačné ambientní HTTPS, aby prokázal použití předaného požadavku. Hreflang page-cache klíče již vycházejí z I18n::origin, tedy budou rozlišovat původní schéma; host z forwarded hlaviček se nepřijímá.
-
-### 2026-10-25: SEC-05 dokončen
-
-- Hotovo: lazy Application::getRequestContext, parent vazba a společný resolver pro Http/Utils, session, API i I18n. Žádné další balíčky, DB dotazy nebo session start při samotném vyhodnocení spojení. Cache obsahuje pouze validovanou deployment politiku, nikoli údaje požadavků.
-- Ve výchozím stavu žádná důvěra ve forwarded hlavičky. Explicitní proxy IP/CIDR i hlavičky, IPv4/IPv6, validace peera, XFF zprava, kanonizace IPv6, limity délky/hopů, odmítnutí neplatné konfigurace. XFP pouze jedna hodnota od důvěryhodného přímého peera; nedůvěryhodné a alternativní hlavičky se ignorují. API Secure override zůstává.
-- TDD: počáteční 51testová sada ukázala 26 failures a chybějící getRequestContext. Dva integrační RED scénáře doložily chybné Secure za TLS terminací. Další RED scénáře potvrdily vlastní chyby I18n cookie a origin; všechny byly následně opraveny a ověřeny. Session integrace ověřuje také skutečně uloženou IP v DB; API integrace vydání i smazání refresh cookie.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **993 testů / 1993 assertions**, 10.061 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review i navazující review I18n změny bez nálezů.
-- Dokumentace obsahuje nasazovací konfiguraci, požadavek na přepsání XFP a správné sestavení XFF na proxy, oddělení adresních rodin a dopad změny IP na sessions/rate limit. Při nasazení vyčistit page cache; absolutní locale odkazy nově respektují důvěryhodné původní schéma. Žádné změny skutečných produkčních proxy ani deploymentu nebyly provedeny.
-- Kontrolní bod zahrnuje kód, testy, dokumentaci i stav plánu. Přesný hash je v git historii; commit a push před dalším větším krokem.
-- Další konkrétní krok: SEC-06, inventarizace formulářů a operací autentizovaných cookies; lazy CSRF služba navázaná na session ve stromu Application, ochrana formulářů/AJAX a odstranění odhlašování přes GET. Zachovat veřejné GET bez session zápisu a zabránit sdílení tokenů přes cache.
-
-### SEC-06: Postup a smlouva ochrany
-
-- Výchozí checkpoint 4025119, větev codex/wbengine-4.0, izolovaný worktree /private/tmp/wbengine-modernization. Jediný dodávaný POST formulář je Box\Auth. Dosavadní token se přepisuje při každém renderu, AJAX větev nebývá omezena metodou a GET a=logout mění stav. Vlastní projektové formuláře musí ochranu použít explicitně.
-- Session\Csrf bude lazy potomkem Session (getParent); Application::getCsrf pouze deleguje přes existující session. Bez explicitního použití CSRF služby se veřejný GET nemění. Token je HMAC-SHA256 účelu z náhodného 32bajtového session secretu; účel má 1 až 128 bajtů, token je 64 hex znaků. Jediný secret místo neomezené mapy formulářů. Tokeny stejného účelu jsou stabilní pro více panelů, cizí session/účel se odmítají. Ověření nikdy nevytváří secret. Při regeneraci session ID po přihlášení secret invalidovat.
-- Služba token/verify/validateRequest podporuje pole token nebo hlavičku X-CSRF-Token. validateRequest přijímá jen POST/PUT/PATCH/DELETE, nikdy query token. Přítomná neplatná hlavička nesmí spadnout na platný POST. Neplatné tvary tokenů se necastují.
-- Tokenové odpovědi explicitně private,no-store a PageCache bypass. Nový request-wide bypass fragmentů musí zastavit HIT i ukládání veřejných i user fragmentů, včetně obalů, které token vydají během renderu. Token získat před vstupem do cachovaného renderu; vlastní Smarty output cache nepatří do podporovaného cache mechanismu.
-- Box\Auth přejde na účel auth.login; stávající name=token zůstává pro template/AJAX kompatibilitu. GET logout odmítnout 405 bez změny session. POST a=logout vyžaduje auth.logout token, chyba 403; přidat veřejný getLogoutBox s dodávanou POST šablonou. CSRF ověřit před CAPTCHA a autentizací, AJAX jen POST.
-- Rozhodnutí pro cookie API login/refresh/logout: povinné POST, application/json a X-WBengine-CSRF: 1. Nejde o synchronizer token, ale o vynucení nesimple požadavku a preflight/CORS hranice. Povolit tuto hlavičku v existující CORS konfiguraci; operátor smí povolit jen důvěryhodné originy pro credentialed požadavky. Refresh zůstává bez PHP session. Ostatní API mutace s explicitním ověřeným bearer tokenem nepřebírají session CSRF. Zdroj: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html.
-- Akceptace: RED/GREEN účely, cizí session, typy, metody, více panelů, opakované vydání bez zápisu, odmítnutý GET logout bez změny identity, platné POST logout, login/AJAX před autentizací, tokeny mimo oba cache scope a skutečné HTTP no-store; API odmítne simple požadavek před změnou DB/cookie. Kompletní testy, lint, nezávislé review; pak commit a push kódu i plánu.
-
-- SEC-06 TDD průběh: 25 nových unit scénářů nejprve selhalo na chybějící službě; po implementaci 25/70 assertions prošlo. HTTP RED prokázal změnu tokenu mezi panely a GET logout s 302 místo 405. Po propojení služby 3 HTTP scénáře prošly. API RED prokázal chybějící preflight hranici; nová kontrola ověřuje odmítnutí všech tří cookie operací bez DB/cookie/session vedlejších efektů.
-- Lifecycle RED prokázal zachování tokenu po regeneraci ID; reset doplněn do Session::regenerateId. Další RED prokázal, že po destroy zůstával secret v interních datech Session v témže požadavku; discardPendingWrites jej nyní odstraňuje přímo, aniž by obnovil dirty stav nebo zápis zničené session.
-- Nezávislé review bez konkrétních bezpečnostních/regresních nálezů, cílené unit ověření reviewerem 57/122 assertions. Doplňující HTTP scénáře pokrývají AJAX GET 405, platný AJAX login s X-CSRF-Token a cizí session. CORS politika je provozní důvěryhodnost originů; tato fáze nezavádí browserovou end-to-end automatizaci.
-
-### 2026-10-25: SEC-06 dokončen
-
-- Session\Csrf je lazy potomek Session s getParent; Application deleguje na stejnou instanci. Stabilní purpose tokeny, ověření bez vytvoření secretu, pole token i X-CSRF-Token, pouze unsafe metody pro validateRequest. Root secret se invaliduje při regeneraci ID i zničení session včetně aktuálního požadavku.
-- Dodávaný login a AJAX používají auth.login, logout auth.logout. GET logout a AJAX GET vracejí 405, neplatné tokeny 403 před CAPTCHA/login. Přidán getLogoutBox a escapovaná POST šablona s českým/anglickým popiskem. Legacy template name=token zůstává, historický session token se již nepřijímá.
-- Private,no-store a request-wide bypass page cache i obou native fragment scope; obaly, které vydaly token během renderu, se neukládají. Helper volat před cachovaným renderem. Vlastní aplikace musí chránit své cookie formuláře explicitně a v bootstrapu vyloučit personalizované form routes z dřívější page cache.
-- Cookie API login/refresh/logout vyžadují POST, application/json (charset povolen) a X-WBengine-CSRF: 1. HTTP 405/415/403 před DB, rotací tokenu nebo změnou cookies. Header povolen v dosavadní CORS konfiguraci, credentialed originy jsou explicitní provozní hranice důvěry. Refresh dál bez PHP session. Bearer-authorized mutace nadále používají role/token, bez session CSRF.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1025 testů / 2164 assertions**, 11.005 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review celé fáze i doplňující lifecycle změny bez nálezů.
-- HTTP testy: více panelů, cizí session, invalidní/platný AJAX, GET a POST logout s různými účely, no-store i při opakovaném tokenu, veřejný GET jako cache HIT bez session cookie a DB zápisu. Integrační test ověřuje invalidaci/přetrvání po rotaci ID i nemožnost obnovit zničenou session přes flush. Unit test dokládá odmítnutí tvarů a vyloučení již cachovaných user/public fragmentů i nového tokenového obalu.
-- README a CHANGELOG obsahují rozhraní, použití v šabloně/AJAX, cache a upgrade API klientů. Tato major změna není nasazena ani releasována. Kontrolní bod obsahuje kód i plán; hash je v historii a push se ověřuje před další fází.
-- Další konkrétní krok: PERF-01, diagnostické dbinfo ve Site::initialize/getDBVersion pouze v debug nebo na explicitní žádost. Nejprve změřit SQL dotazy a otevření DB spojení pro zahřátou stránku s datovou cache, poté odstranit pouze zbytečný diagnostický přístup. Následují PERF-02 menu N+1 a PERF-06 jediné dekódování JSON podle závislostí plánu.
-
-### PERF-01: Postup a smlouva diagnostiky
-
-- Výchozí checkpoint dd352b8, větev codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization. Lokální HEAD a upstream shodné. Site::initialize vždy přiřazuje server, dbinfo a phpversion; SiteModel::getDBVersion přes Mysqli::getDbVersion otevírá skutečné spojení bez SQL dotazu. Db::isConnected znamená pouze vytvořený adapter, nikoli potvrzený socket.
-- Rozhodnutí: stávající diagnostické proměnné automaticky přiřadit pouze podle Application::isDebugOn. Pro explicitní použití přidat Site::assignDiagnostics vracející Site, s původními názvy proměnných. Zůstává ve stávajícím stromu Site -> model -> Db, bez nové služby, konfigurace nebo balíčku. Chybějící SERVER_SOFTWARE má bezpečný prázdný výsledek.
-- Produkční inicializace diagnostické klíče nově nepřipravuje; šablony, které je potřebují, musí požádat explicitně. Diagnostika může otevřít DB spojení a neslouží pro veřejné stránky. Neměnit routing/lifecycle ani cache identitu v tomto balíku.
-- Testy: zahřát lookup skutečného SiteModel do file cache, provést initialize v novém PHP procesu s odděleným adapterem a bez menu/sekčního obsahu, měřit rozdíl SQL statistik a mysqlnd connect_success. Porovnat produkci bez diagnostiky, debug, explicitní žádost a chybějící server metadata; ověřit zachování site/metadat. Toto měření izoluje diagnostickou cenu, neslibuje nula spojení pro libovolný obsah nebo custom boxy.
-- RED musí prokázat jedno spojení při nule SQL dotazů v původní produkční inicializaci. Po opravě produkce 0/0, debug/explicitní žádost jedno spojení a stejné diagnostické údaje. Pak kompletní sada, lint, nezávislé review, záznam výsledků, commit a push kódu i plánu.
-
-### 2026-10-25: PERF-01 dokončen
-
-- Site::initialize automaticky přiřazuje server/dbinfo/phpversion jen v debug. Explicitní Site::assignDiagnostics zachovává původní názvy, modelovou cestu i přiřazení do Vars a vrací Site. Bez nové runtime třídy nebo závislosti. SERVER_SOFTWARE při chybějící hodnotě vrací prázdný text.
-- RED: ze čtyř integračních scénářů tři selhaly, produkční warm lookup otevřel jedno spojení při nule SQL; explicitní metoda chyběla a chybějící server metadata vyvolala warning. Po opravě čtyři scénáře / 36 assertions prošly. Nové PHP procesy nezdědí adapter ani socket z PHPUnit, mysqlnd connect_success ověřuje skutečné spojení odděleně od SQL statistik.
-- Výsledek izolované inicializace s warm site-data cache: produkce 0 spojení / 0 SQL, debug a explicitní diagnostika 1 spojení / 0 SQL; zachované site resource a meta title. Menu, sekční obsah a custom boxy jsou z měření vyjmuty, proto se tento výsledek nevydává za univerzální počet spojení kompletního webu ani za měření latence.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1029 testů / 2200 assertions**, 11.207 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé read-only review bez nálezů.
-- README a CHANGELOG popisují změnu výchozích template proměnných v major 4.0 a explicitní použití diagnostiky. Kód i tento plán tvoří jeden checkpoint; přesný hash je v git historii. Push a shoda upstreamu se ověřují před další fází.
-- Další konkrétní krok: PERF-02, odstranění N+1 lookupů menu. Před změnou ověřit selekci rodičů, skryté stránky, duplicitní URL, strict stránky a DB collation; sdílet jednou vyhodnocenou sadu aktivních ID bez změny zamýšlené navigace. Při vypnuté cache použít dávkový lookup. PERF-06 a další etapy zůstávají otevřené.
-
-### PERF-02: Postup a rozhodnutí o sémantice
-
-- Výchozí checkpoint 2047280, větev codex/wbengine-4.0, izolovaný worktree /private/tmp/wbengine-modernization; HEAD i upstream shodné. Site::isMenuSelected pro každou neaktuální položku znovu vyhodnocuje všechny URL prefixy přes SQL getSiteIdByUrl. Menu::selected má vlastní přímé porovnání aktuální stránky, které se v tomto balíku nemění.
-- Rozhodnutí: requestová memoizace výsledných dvojic prefix -> ID a množina existujících aktivních ID v Site. Jedna metoda SiteModel::getSiteIdsByUrls provede všechny indexové lookupy v jednom parametrizovaném SQL statementu, výstup je zarovnaný s původním pořadím včetně opakovaných/chybějících prefixů. Prázdná/neplatná kolekce prefixů bez SQL a bez foreach warningu. Aktuální kladné site ID zůstává aktivní bez lookupu.
-- Ruling: dávkový SQL lookup použít také při zapnuté cache. Pouhá sites:visible mapa vynechává skryté rodiče a její PHP lowercase porovnávání nereprodukuje databázovou collation (accent/case/binary pravidla). Úplnou DB sémantiku bez spojení by vyžadoval nový canonical URL kontrakt nebo další kolacionální index. Cena tohoto konzervativního rozhodnutí: při potřebě rodičů nejvýše jeden SQL statement i s warm cache, nikoli slib nuly SQL. Přínos: počet dotazů nezávislý na počtu menu položek a hloubce URL, bez neomezené persistentní cache pro náhodné URL.
-- Ruling: duplicitní DB linky deterministicky vybírají nejnižší site_id, místo dosavadního LIMIT 1 bez ORDER BY; stejné pravidlo použije jednopoložkový helper. Viditelnost a strict režim se pro výběr prefixového rodiče nadále nefiltrují. Site ID 0 a záporné hodnoty nejsou aktivní položky, chybějící lookup vrací 0 pouze ve veřejných dvojicích prefixů.
-- Zachovat SQL porovnávání link = ? přímo nad sloupcem, bez PHP napodobování collation a bez JOIN mezi dvěma implicitními odlišnými collations. SQL UNION ALL scalar lookupů vrací pozice a minimum ID; parametry zůstávají daty. Strom Site -> SiteModel -> Db, bez dalšího produkčního subsystému.
-- Testy nejprve RED: mnoho menu položek a několik prefixů s cache i bez ní, skrytí a strict rodiče, duplicity, neexistující prefix, case/accent citlivost a binary collation, apostrofy/injection vstup, opakování a změna prefixů, prázdné URL a ID0. Akceptace: 0 dotazů pro samotné aktuální ID, nejvýše1 pro celou další selekci nad stejnými prefixy; skutečná shoda s DB lookupem. Poté celá sada, lint, nezávislé review, plán+commit+push.
-
-- Inventura skutečného Url::_setUrlPairs navíc odhalila prefixy bez koncového lomítka (/blog), zatímco standardní DB link je /blog/. Původní helper proto takového rodiče vůbec neoznačí. Ruling: Site zachová původní URL v returned dvojicích, nejprve hledá přesný prefix a teprve při miss variantu s jedním koncovým lomítkem. SiteModel batch zůstává exact-URL kontrakt; obě varianty předá Site v jednom statementu. Přesné odkazy bez lomítka mají přednost, takže existující takto uložené weby fungují dál. Test musí zahrnovat skutečný Url parser, nikoli pouze ručně zkonstruované prefixy s lomítkem.
-
-### 2026-10-25: PERF-02 dokončen
-
-- Site ukládá výsledné dvojice URL/ID a množinu aktivních kladných ID pro aktuální seznam prefixů. Změna prefixů a initialize snapshot invalidují. Aktuální ID bez SQL; ostatní selekce sdílejí jeden batch. SiteModel::getSiteIdsByUrls zachovává pořadí, opakování, miss=0, parametrizaci a skutečnou collation; jedno-URL helper používá stejnou cestu.
-- Záměrné major změny: duplicity deterministicky nejnižší site_id; prefix nejprve přesný a až při miss s koncovým lomítkem; nula/záporné ID neoznačují aktivní položku. Skrytí a strict rodiče dál povolení. Menu::selected zůstává přímou selekcí aktuální stránky.
-- Ruling platí: i s warm cache nejvýše jeden statement, protože sites:visible není ekvivalent starého SQL. Nulový warm lookup z této fáze neslibujeme; žádný neomezený persistentní cache klíč podle URL. DB indexových vyhledání je stále úměrně prefixům, ale síťových round trips není úměrně položkám menu. Není to benchmark latence celého webu.
-- RED: 7 scénářů, 2 errors kvůli chybějícímu batch API, 4 failures a foreach warning. Opakované menu kontroly + veřejný getter původně provedly 244 SQL statementů při cache off i warm cache. Nově v obou případech **1 statement**, stejné očekávané výběry, opravený skutečný parser/slash případ. Cílené testy 7 / 156 assertions prošly.
-- Collation test na skutečné DB střídá utf8mb4_unicode_ci a utf8mb4_bin, ověřuje case i accent shody a původní schéma obnovuje ve finally. Další scénáře: hidden/strict, přesný bare link versus slash, nejnižší ID duplicity, apostrof/injection, prázdné prefixy/ID0, změna seznamu. Nezávislé review bez nálezů.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1036 testů / 2356 assertions**, 11.198 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. OOP strom Site -> model -> Db zachován; bez nového runtime subsystému a závislosti.
-- README, CHANGELOG a ref-inventory popisují chování i cenu jednoho dotazu s cache. Tento checkpoint zahrnuje kód, testy a plán; přesný hash je v git historii. Push a shoda upstreamu se ověřují před další etapou.
-- Další konkrétní krok podle pořadí etapy 3: PERF-06, jedno dekódování JSON. Nejprve popsat dosavadní Json(true/false) pro validní null, skaláry, objekty/pole, prázdné a neplatné tělo, UTF-8 a hloubku; pak odstranit duplicitní json_decode bez nechtěné změny controller kontraktu. Následuje PERF-07 a ARCH-01, ostatní položky zůstávají v registru otevřené.
-
-### PERF-06: Postup a smlouva JSON vstupu
-
-- Výchozí checkpoint dbda94e, větev codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization; HEAD a upstream shodné. Http::Json čte php://input, validuje přes isJson (json_decode) a při decode === true znovu dekóduje asociativně. API auth/user/section/translation routes očekávají tuto smlouvu.
-- Rozhodnutí: jeden json_decode na volání Json, chybu vyhodnotit ihned z téhož parsování; běžný decoded vstup přímo asociativně, kompatibilní NUL/object cesta je popsána níže. Žádná změna signatury ani controllerů, žádná výjimka, payload cache nebo nový runtime objekt. isJson zůstává samostatně volatelný validátor s původním chováním.
-- Zachovat strict decode === true: pouze boolean true vrací dekódované PHP pole/skalár/null; false a další dosud podporované ne-true hodnoty vracejí původní platný text včetně whitespace. Neplatný JSON vrací null v obou režimech. Platné null má JSON_ERROR_NONE, chyba jiný json_last_error; kód musí přečíst stav ihned před dalším JSON voláním. Zachovat výchozí hloubku512, UTF-8 validaci i číselnou politiku PHP.
-- Testy přes skutečný HTTP POST a php://input. Fixture počítá namespaced json_decode, který vždy deleguje native PHP parseru; count se vynuluje pro každý požadavek. Není to produkční injekční rozhraní ani časový benchmark. Nejdříve RED pro validní decoded payload, který původně parsuje2x; ostatní scénáře charakterizují kompatibilitu. raw a isJson nadále validují jedním parsováním.
-- Scénáře: null/bool/čísla/řetězce/pole/objekty, whitespace a prázdné tělo, vadná syntaxe/UTF-8/hloubka, opakovaná volání nad stejným tělem a strict režim. Po minimální změně plná sada, lint, nezávislé review, aktualizace plánu, commit a push.
-
-- Review P2 reprodukovalo rozdíl mezi object a associative decode pro klíč začínající escaped NUL: původní validace vracela JSON_ERROR_INVALID_PROPERTY_NAME, prostý assoc decode jej přijal. Regresní testy nejprve potvrdily dvě chyby; výstupní kontrakt proto zachovat, ne rozšířit v lokální optimalizaci.
-- Ruling: raw režim parsuje jako původní object validace. Decoded režim pro běžný text používá přímo asociativní decode; pouze při možné sekvenci \u0000 použije jeden object decode a rekurzivní převod výsledku na asociativní pole. Chyba NUL-leading klíče tak zůstává nativní error9. Cena: rychlý substring scan běžného raw textu, u vzácných NUL hodnot navíc PHP převod objektů/polí. Počet průchodů JSON parserem stále přesně1; žádné nové výjimky a žádná dodatečná runtime závislost.
-
-### 2026-10-25: PERF-06 dokončen
-
-- Http::Json provede právě jeden json_decode a vyhodnotí chybu téhož parsování. Jen boolean true vrací decoded pole/skalár/null; raw a legacy ne-true režim vrací původní validní text. isJson zůstává samostatný validátor. Nezměněna rozhraní API controllerů, výchozí hloubka512, UTF-8/číselná pravidla ani json_last_error kontrakt.
-- Review P2 opraveno: JSON s NUL-leading klíčem se nadále odmítá s nativním JSON_ERROR_INVALID_PROPERTY_NAME. Pro běžné decoded tělo přímé assoc parsování; konzervativně detekovaný NUL escape vede k jednomu object parsování a následnému převodu. NUL hodnoty, numerické klíče, escaped backslash text a platná hloubka510 mají regresní pokrytí. Cena kompatibility je substring scan a vzácný PHP převod, nikoli druhý průchod parserem.
-- TDD: původních23 HTTP scénářů ukázalo15 failures, vždy2parsy místo1 u validního decoded těla a4místo2 při dvou voláních. Po minimální změně23/188 assertions prošlo. Review reprodukce přidala dvě RED selhání NUL klíčů; po opravě rozšířených28/228 assertions prošlo, následně přidán i hluboký platný NUL případ. Finální HTTP corpus má29 scénářů a měří skutečný php://input přes namespaced wrapper nativního parseru pouze v oddělené fixture.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1065 testů / 2592 assertions**, 12.173 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review nalezlo výše uvedenou kompatibilitní chybu, reprodukovanou a opravenou RED/GREEN testy; žádné další nálezy. Reviewer sám HTTP testy nespustil kvůli svému socket sandboxu, finální ověření provedeno zde v Dockeru.
-- README a CHANGELOG popisují návratové hodnoty, okamžité čtení error state, validní null a legacy NUL klíče. Jde o lokální snížení počtu parserových průchodů, nikoli benchmark latence/memory celého webu. Stávající Http facade a namespaces zachovány, žádný nový runtime subsystém či balíček.
-- Kód, testy a plán patří do stejného checkpointu; hash je v git historii. Push a shoda upstreamu se ověřují před pokračováním.
-- Další konkrétní krok: PERF-07, Renderer::dispatch a globální slučování whitespace. Nejprve regresní corpus pre/textarea/inline JS/CSS a významových textových mezer, potom bezpečný výchozí výstup a migrační pravidla pro dosavadní minimizeHtml. Přenosovou kompresi ponechat webserveru. Po této etapě ARCH-01 odložený lifecycle podle schválených závislostí.
-
-### PERF-07: Postup a smlouva HTML výstupu
-
-- Výchozí checkpoint ef28474, větev codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization; HEAD a upstream shodné. Renderer::dispatch při minimizeHtml=true provádí preg_replace na celém fetch výsledku, jinak display. Regex mění pre/textarea, JS line comments i whitespace ve string literals/atributech.
-- Rozhodnutí: dispatch vždy přiřadí aplikační proměnné a vypíše site template přes stávající display adaptér bez globální úpravy obsahu. Zachovat strom Application -> Renderer -> adapter a stávající escapování. Bez HTML parseru, závislosti nebo alternativního nebezpečného legacy režimu.
-- minimizeHtml zůstává kompatibilní čitelná konfigurační položka/getter pro externí kód, ale v core dispatch je od major4.0 ignorována; getter označit deprecated v dokumentaci bez runtime warningů. minimizeCss/minimizeJs se v této fázi nemění. Přenosovou kompresi konfiguruje webserver/reverse proxy, ne runtime PHP frameworku.
-- Testy nejprve RED přes skutečný Renderer::dispatch s NativeRenderer i SmartyRenderer a s oběma hodnotami flagu; byte-exact výstup předaného důvěryhodného obsahu a escapování běžných proměnných. Pre, textarea, JS line comment a multiline string, CSS string, významové inline mezery/atributy a script JSON. Chybějící minimizeHtml nesmí vyvolat warning.
-- Akceptace: oba adaptéry zobrazí stejný beze změny emitovaný obsah při true/false/missing config. Nezavádět produkční kompresi nebo deployment změny. Dokumentace výslovně vyžaduje při upgradu vyčistit dřívější HTML page cache, která mohla obsahovat poškozený výstup. Poté plná sada, lint, nezávislé review, plán+commit+push.
-
-### 2026-10-25: PERF-07 dokončen
-
-- Renderer::dispatch vždy přiřadí aplikační proměnné a vypíše site template stávajícím adapter display. Celoplošné preg_replace odstraněno. OOP strom a výstupní escapování zachovány, žádná nová runtime třída/dependency ani kompresní handler.
-- minimizeHtml v core dispatch ignorováno i při true; Config::minimizeHtml getter zachován a označen deprecated bez runtime warningů. Změna zapadá do major4.0. Cena bezpečného výstupu: nekomprimované HTML může být větší; gzip/Brotli patří do deployment konfigurace webserveru/proxy. Žádné skutečné serverové nastavení v této fázi změněno nebylo.
-- TDD: 30 scénářů pro NativeRenderer a SmartyRenderer, true/false/missing konfiguraci. RED ukázal14 poškozených výstupů a jeden PHP warning vyvolaný ve dvou missing případech. GREEN **30 testů / 30 assertions**: byte-exact pre/textarea, JS line comment/template literal, CSS string, inline mezery/atributy a JSON script; běžný suffix nadále escapovaný.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1095 testů / 2622 assertions**, 12.719 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Nezávislé review bez nálezů; reviewer také samostatně spustil cílené30/30 unit ověření.
-- README/CHANGELOG/ref-inventory aktualizovány. Při nasazení vyčistit page/external HTML cache, protože dříve uložené poškozené tělo nelze opravit pouhou změnou dispatch. Kompilace šablon a minimizeCss/minimizeJs zůstávají mimo rozsah.
-- Tento checkpoint zahrnuje implementaci, testy i plán; hash je v git historii. Push a shoda upstreamu se ověřují před další fází.
-- Další konkrétní krok: ARCH-01, inventura constructor/get/run/Router a i18n/page-cache pořadí. Vypracovat konkrétní lifecycle ve stávajícím Application stromu: konfigurace služeb a registrace vlastních rout před CMS/boxy, vlastní ukončená route bez CMS dotazů, page cache až po routách a správných politikách. Nejprve regresní testy pořadí a kompatibility, nepřesouvat pouze Site::initialize bez definovaného řízení požadavku.
-
-### ARCH-01: Konkrétní lifecycle a migrační smlouva
-
-- Výchozí checkpoint c80907d, větev codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization; HEAD a upstream shodné. Constructor dnes připraví konfiguraci a i18n, ale také může exitnout redirectem/cache HIT, inicializuje Site a spustí boxy. Application::get vykonává callback hned a až potom zapisuje matched route. display volá neexistující init; run může vykreslit opakovaně. Statický Router vykonává match ihned a používají jej i API boxy.
-- Constructor bude pouze příprava konfigurace, namespaces/path, error handler/timezone a časná i18n normalizace + bootstrap locale proměnné. Redirect se uloží, neodešle. Žádné CMS dotazy, boxy, page-cache HIT ani běžné vykreslení. Gettery Site/Vars mohou vytvořit prázdné lazy objekty bez načtení dat.
-- Application::get bude registrovat deferred GET přes novou Application::route(method,path,callable), obě vracejí Application pro chaining. Route podporuje běžné GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS a deleguje matching stávajícímu Router/Route. Chybný pattern typ nebo callback odmítnout při registraci. Statický Router zůstane immediate kvůli existujícím API modulům uvnitř boxů.
-- Ruling: callback se v run volá s (route,app). Boolean true znamená hotovou odpověď (callback již nastavil hlavičky/vypsal tělo), bez CMS a layoutu. Boolean false pokračuje další routou a případně CMS. Ostatní návraty zachovají HTML callback model: nastavit proměnné/central a vykreslit layout. První přijatá route vyhrává. Cena nového explicitního terminal kontraktu: vlastní API callbacky musí vrátit true nebo jako dosud exitnout; samotné echo s null by vedlo k layoutu.
-- run: ochrana před duplicitní/reentrantní obsluhou -> deferred vlastní routy -> neobsloužený i18n canonical redirect -> cache gate -> případná CMS inicializace -> 404/410 -> debug -> jediný dispatch. Matched vlastní route a explicitní central obcházejí sdílenou page cache. Odpověď 410 nesmí být přepsána starým 200 HIT ani 404.
-- Cache gate porovná Vars s bootstrap snapshotem, takže pre-run/dřívější declined route změny přímo přes Vars také zabrání HIT. Předčasný přístup k rendereru (před cache gate) konzervativně obchází page cache pro jeho přímé assign/config zásahy. Cena: takto přizpůsobený požadavek ztrácí page HIT, dokud aplikace nerozhodne o bezpečné samostatné cache politice.
-- display(content) sjednotit s lifecycle, uvnitř route umožnit explicitní jediné vykreslení bez rekurze. Prázdný string i "0" jsou explicitní obsah. central nastavený před run se nemá přepsat CMS obsahem. Debug objekt až po obsluze CMS/route, ne v constructoru.
-- Časný i18n boot normalizuje prefix i při pending default-language redirectu; vlastní route tak uvidí kanonickou cestu a může požadavek obsloužit před redirectem. Bez vlastní obsluhy zůstává301 s původním query stringem. Při 404 musí Site inicializace bez resource skončit před sekcemi; prázdné sections musí být platná prázdná kolekce, ne sizeof(null).
-- Testy: skutečný constructor + žádné SQL/socket/boxy; deferred callback, priorita/decline/true terminal a generic POST; pre-run Vars/renderer nastavení a CMS box pozorující hodnotu; opakované run/display bez druhého renderu; explicitní0/empty obsah; původní API box; 404/410; i18n route před redirectem; existující page-cache HIT předběhnutý routou či privátní politikou a zachovaný anonymní HIT. Ověřit HTTP i interní stavy, plnou sadu/lint/review; potom plán+commit+push.
-
-- TDD první HTTP corpus po korekci testovacího rewrite vstupu: 15 scénářů,14 RED selhání. Constructor původně4SQL/1spojení/1box, v novém lifecycle0/0/0. Původní display volal neexistující init a run zobrazoval layout vícekrát. První GREEN téměř kompletní: "0" zakrýval default modifier pouze v testovací šabloně, odstraněn z fixture, produkční template gramatika se neměnila.
-- Doplněna bezpečná cache gate pro dřívější výstup a status. RED prokázal převzetí starého HIT při declined handleru se403. Ověřeno také standardní MISS/HIT, privátní politika, pre-run Vars/direct renderer assign a legacy API router uvnitř skutečného CMS boxu.
-- Nezávislé review: P2 pro spodní output buffer s prázdným horním bufferem a druhé vykreslení při display volaném z CMS boxu. Oba nálezy zařazeny do oprav, protože garance jediné odpovědi a respektování outputu platí pro celý lifecycle. Dva HTTP RED testy chyby reprodukovaly. Oprava: kontrolovat buffer_used všech ob_get_status(true) vrstev a po CMS inicializaci znovu ověřit requestFinished. Bez ukládání/čtení obsahu bufferů a bez dalšího request subsystému.
-
-### 2026-10-25: ARCH-01 dokončen
-
-- Constructor připravuje konfiguraci, cestu/namespace, error handler/timezone a časné i18n. Nespouští CMS, boxy ani page-cache HIT a neukončuje redirectem. I18n normalizuje i kanonický default prefix před uloženým redirectem. Vytvoření lazy Site/Vars je bez načtení resource.
-- Deferred Application::get/route (běžné HTTP metody, validační registrace a chaining). Při run první accepted route: true ukončí obsluhu bez layoutu, false pokračuje, ostatní návraty připravují layout proměnnými. Statický Router zůstává immediate a skutečný legacy API box v testu funguje. Nový terminal kontrakt je major migrační pravidlo, ne změna existujícího API controlleru.
-- run/display idempotent, včetně přímého display z callbacku a obranného reentrantního display z boxu. Explicitní "0" a prázdný obsah nevyvolají CMS. 404 nenatáhne sdílené boxy; prázdné sections vrací[]; explicitní410 zachová status a vynechá CMS/cache. Debug vzniká při obsluze, ne v constructoru.
-- Cache gate následuje vlastní routy a jejich politiku. Změněné Vars oproti bootstrapu, renderer použitý před gate, přijaté routy, předchozí výstup v libovolném bufferu/odeslané hlavičky a nestandardní HTTP status konzervativně vypínají sdílenou cache. Společný PageCache bypass ovlivní i public native fragmenty. Cena: takto přizpůsobené požadavky mohou mít méně HIT; běžná anonymní stránka MISS/HIT stále funguje. Globální cacheable nastavení dávat do Settings, dynamické personalizace explicitně obsluhovat.
-- HTTP měření: constructor původně4 SQL / 1 spojení / 1 box, nyní0/0/0. Deferred terminální GET i POST taktéž0/0/0, callback se nespustí při registraci. 18 cílených scénářů / 55 assertions prošlo: locale/pending redirect, route priorita a decline, pre-run Vars/renderer/central, starýHIT versus route/private/status/output, jedno renderování, 404/410, legacy API box a emptysections.
-- Review: potvrzený P2 nested-buffer cache konflikt a reentrantní dvojí dispatch z boxu, oba reprodukovány dvěma HTTP RED testy a opraveny v jednom průchodu. Žádné další nálezy. Reviewer nespouštěl sdílené DB testy; všechny runtime kontroly provedeny zde v Dockeru.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1113 testů / 2677 assertions**, 12.953 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly. Stávající Application/Site/Section/Box/Renderer/Router namespaces a lazy služby zachovány, žádný další runtime balíček nebo middleware stack.
-- README obsahuje nový lifecycle, návratové hodnoty callbacků, povinné run/display, konzervativní cache chování a migraci API bootstrapu před CMS se zachováním boxové varianty. CHANGELOG a inventory aktualizovány. Při nasazení vyčistit staré page cache. Tento checkpoint obsahuje kód/testy/plán; přesný hash v git historii, push ověřit před další fází.
-- Další konkrétní krok podle etapy3: PERF-03, délka PHP session locku. Změřit paralelní požadavky jedné session, inventarizovat regenerateId/destroy/CSRF/shutdown flush a přístup k nativnímu session stavu. Navrhnout explicitní bezpečnou release/read-only fázi bez předčasného zavření, ztracených zápisů nebo rozbití přihlášení. Nespouštět refaktor bez regresí a měření. Ostatní položky registru včetně obsahové invalidace SEC-01 zůstávají otevřené.
-
-
-### 2026-10-25: PERF-03 dokončen
-
-- Inventura: data WBengine nejsou uložena v `$_SESSION`; vlastní model zapisuje odloženě přes shutdown `flush`. Nativní PHP session drží synchronizační zámek. Samotné `session_write_close()` by uvolnilo zámek před WBengine zápisem. Login regeneruje ID a resetuje CSRF, logout ruší DB řádek a další persistentní zápisy.
-- Rozhodnutí: explicitní `Session::close(): void`, `isClosed(): bool` a lazy delegace `Application::closeSession(): void`. Žádné automatické zavírání po prvním čtení ani implicitní znovuotevírání. Nový stav zůstává v existujícím Session stromu a namespace, DB operace používají současný Model/Db. Zavření aplikace bez session ji nevytvoří.
-- Postup close: ověřit shodu aktivního nativního ID, načíst DB snapshot ještě pod zámkem, uložit odložené změny, uzavřít objekt pro persistentní změny a zavolat nativní close. Opakované close je bez účinku. Chyba INSERT/UPDATE ponechá dirty stav a zámek, vyvolá SessionException s příčinou; opakování uloží změny. Selhání lazy načtení neoznačí snapshot za načtený. Zavření již zničené session nevytvoří řádek.
-- Po close: getValue a CSRF verify pracují se snapshotem; existující secret může bez zápisu odvodit token i pro další účel. Vytvoření chybějícího secretu, setter včetně user_id, magic setter, save, unsetKey, regenerateId, destroy a sessionStart vyvolají SessionException. Reference objektů mohou měnit lokální snapshot, ale flush uzavřeného objektu nic neuloží. Snapshot není nová autorizační kontrola po souběžném logoutu. Přihlášení, autorizaci a změny stavu dokončit před close.
-- Měření: PHP 8.4.27 / MySQL 8.4, nativní files handler, dvě samostatná CLI PHP se stejnou cookie; první požadavek má po bodu zavření 250 ms simulované práce. Pět čekání druhého procesu při drženém zámku: 246.028, 246.789, 246.779, 247.315, 248.017 ms, medián 246.789 ms. Po časném close: 1.074, 1.210, 1.007, 1.061, 1.168 ms, medián 1.074 ms. Nejde o propustnost webu ani slib pro jiné handlery. Opakovatelný postup: `docker compose -p wbengine-modernization run --rm php php tests/benchmarks/session-lock.php`; používá pouze testovací konfiguraci, vlastní session ID a dočasný adresář, vlastní řádky odhlašuje.
-- Souběhový test přes proc_open a IPC ověřuje skutečné blokování druhého procesu před close, průchod po close ještě za běhu prvního procesu, zachování změn obou writerů, ignorování lokálních změn uzavřeného snapshotu a žádné obnovení řádku po logoutu druhého požadavku a pozdějším shutdown prvního. Nejde o sekvenční simulaci requestů ani jednovláknový HTTP server.
-- TDD: 12 počátečních RED případů pro chybějící close/closeSession; následně zelené integrační scénáře persistence, čtení nedotčené session po close, změny práv/rotace ID a CSRF, zákaz pozdějších mutací, no-op bez session, žádný INSERT pro nepoužitou/zničenou session a odmítnutí zavření po ručním nativním unlock. Failure coverage zahrnuje INSERT i UPDATE, výjimku i false a následné opakování.
-- Nezávislé read-only review bez blokujících nálezů. Upřesněna smlouva CSRF odvozování a lokálně měnitelných referencí; doplněny failure scénáře UPDATE/false. Žádný nový runtime balíček, rozhraní ani automatická změna lifecycle běžných webů.
-- Omezení: záruka serializace vyžaduje locking handler. Nativní chyby handleru mají PHP sémantiku; jakmile začne nativní close, objekt zůstává uzavřený i při výjimce. Žádné globální zavírání před renderem, zpožděný login/CSRF zápis by tím přestal fungovat.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1132 testů / 2765 assertions**, 14.275 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint`, `git diff --check` a uložený benchmark prošly. Opakované měření uloženým skriptem: mediány 249.531 ms / 1.265 ms. Následuje commit a push této etapy společně s plánem a ověření CI v draft PR #2.
-- Další konkrétní krok: posoudit PERF-04/PERF-05 měřením rostoucího počtu stránek a EXPLAIN nad realistickými boxy v MySQL/MariaDB. Zachovat collation, pořadí a shared semantiku, bez prokázaného přínosu nepřidávat indexy/mapy. Poté TPL-01: inventura Smarty konstrukcí, kompatibilitní corpus a migrační smlouva pro vlastní renderer. SEC-01 obsahová invalidace čeká na write API.
-
-
-### 2026-10-25: PERF-04 změřen, PERF-05 dokončen
-
-- Odpovědnost: Codex. Testovací nástroj `tests/benchmarks/content-lookup.php` používá `SHOW CREATE TABLE` a connection-local TEMPORARY tabulky stínící pouze v daném spojení cms_sites/cms_boxes. Žádné trvalé DDL nebo mazání dat. Dočasná data a vlastní file cache se odstraňují ve finally. První pokus CREATE TEMPORARY ... LIKE se stejným jménem MySQL odmítl jako duplicitní alias; přepis načteného CREATE TABLE zachovává skutečné schéma a indexy bez tohoto problému.
-- Postup: PHP 8.4.27, MySQL 8.4.13 a MariaDB 11.4.13; 100/1000/10000 viditelných stránek, jeden lookup na instanci Site, 15 opakování a medián. SQL s existujícím indexem link; memory kontrola bez serializace a skutečný FileCache, cold i warm. Výsledky lookupů pro základní corpus musí být shodné. Map build se měří odděleně, není vydáván za implementovanou URL mapu ani za APCu výsledek.
-- PERF-04, MySQL pro 100/1000/10000 stránek: SQL 0.2120/0.0612/0.1468 ms, warm memory scan 0.0113/0.0962/0.9076 ms, warm FileCache 0.2320/1.8920/20.0181 ms, samotný map build 0.0073/0.0848/0.7137 ms. MariaDB pro 10000: SQL 0.1380 ms, memory 0.8522 ms, FileCache 19.7163 ms, map build 0.7115 ms. Cold FileCache pro 10000: MySQL 22.1060 ms a MariaDB 20.2981 ms. Nejde o cold disk, end-to-end ani produkční benchmark.
-- Ruling: nepřidávat nyní URL mapu. Jediný lookup na request stále platí O(n) sestavení nebo přenos/dekódování celé cache; indexovaný SQL byl v rozsáhlejším vzorku levnější. Přetrvávající sdílenou mapu a její invalidaci má smysl znovu vyhodnotit až po FIX-02 a měření paměti/serializace. Cena případného chybného odkladu: zůstane lineární scan stávající cache na velkých webech; změna runtime API se neprovádí.
-- FIX-02: benchmark prokázal existující neshody SiteModel::_findVisibleSite a SQL. Při uloženém /café/ a unicode_ci najde SQL /cafe/, cache nikoli; u bin najde cache /CAFÉ/, SQL nikoli. Tato fáze porovnávání URL nemění. Před URL mapou a release 4.0 definovat a implementovat shodnou smlouvu DB/cache pro case, diakritiku, Unicode, padding, strict/prefix, hidden, duplicity a prioritu nejvyššího site_id. Ověřit MySQL/MariaDB a alespoň unicode_ci/bin, nulový růst cache pro náhodné URL, invalidaci a skutečné SQL/connection náklady. Nepředpokládat, že mb_strtolower reprodukuje libovolnou collation.
-- PERF-05 dataset: 30000 boxů, 100 sekcí po 300, 20 procent shared v každé sekci, třetina site membership 42, ostatní 99; 140 výsledků pro section1/site42. Porovnány žádný sekundární index, (section_id, order) a (section_id, shared, order), původní i společná section podmínka. Každá varianta musí vrátit stejné řádky/pořadí. EXPLAIN je uložen ve výstupu benchmarku. Bez indexu odhad asi 30000 řádků/ALL; s oběma kandidáty 300/ref či range.
-- MySQL medián původní/no-index 5.3782 ms, společná/no-index 5.1404 ms, původní/section_order 0.4216 ms, společná/section_order 0.3839 ms, společná/section_shared_order 0.3949 ms. Původní dotaz na MySQL řadí i s section_order; společná podmínka s section_order eliminuje filesort. Kandidát se shared filesort zachovává.
-- MariaDB medián původní/no-index 6.6089 ms, společná/no-index 4.4199 ms, původní/section_order 0.3543 ms, společná/section_order 0.3637 ms, společná/section_shared_order 0.4070 ms. S section_order zde filesort nemá ani původní podmínka. Neprezentovat drobné rozdíly jako univerzální zrychlení, hlavní efekt je omezení řádků sekcí.
-- Zápisy měřeny samostatně: 5 batchů po 1000 INSERT, cleanup mimo měřený interval. MySQL mediány bez indexu/section_order/section_shared_order 2.4174/2.9838/3.0217 ms, MariaDB 2.1693/2.7339/2.8832 ms. Index není zdarma. Zahřátý box FileCache i memory driver mají 0 SQL v 15 lookupech, cold cache čte DB. Vzorek není důkazem přínosu pro malé tabulky nebo libovolný poměr shared.
-- Implementace: Section\Model::getBoxes má společné b.section_id a parametrizovaný JSON_SEARCH/shared OR; SELECT, cache klíče a strom beze změn. Volitelná migrace `migrations/4.0.0/001-boxes-section-order.sql` přidává (section_id, order). Bez runtime DDL, nových balíčků nebo změny JSON schématu. Instalační postup: SHOW INDEX, nepřidávat ekvivalentní index, upravit prefix, použít běžný migrační postup a EXPLAIN; rollback DROP INDEX wb_boxes_section_order pouze pro index přidaný touto migrací. Relační vazbu box/site zatím nezavádět bez prokázané potřeby.
-- TDD: integrační RED nejprve chybějící migrace, následně filesort na skutečném dotazu MySQL i s indexem. Po úpravě SQL GREEN, zachované výsledky před/po migraci i po rollbacku. Nezávislé review upozornilo na čištění trvalých testovacích tabulek zděděným DbTestCase a na měření INSERT včetně DELETE; test nyní dědí přímo TestCase a ověřuje jen spojení, INSERT timing cleanup nezahrnuje. Benchmark i nový test manipulují pouze dočasnými tabulkami.
-- Finální ověření: kompletní MySQL sada `composer test`, **1133 testů / 2771 assertions**, 14.188 s, 34 MB. MariaDB 11.4 BoxIndexTest/BoxLookupTest **7 testů / 16 assertions**. Oba benchmarky prošly. `composer lint` a `git diff --check` prošly. Následuje společný commit/push a CI draft PR #2.
-- Opakování MySQL: `docker compose -p wbengine-modernization run --rm php php tests/benchmarks/content-lookup.php`. MariaDB spustit v samostatném Compose projektu s DB_IMAGE=mariadb:11.4 a stejným PHP image, po měření zastavit pouze jeho DB. Nevyměňovat image běžícího projektu s cizími daty.
-- Další konkrétní krok: TPL-01, inventura Smarty konstrukcí v jádře i vzorové aplikaci, identifikace kompatibilních nativních konstrukcí, testovací corpus a migrační smlouva. FIX-02 musí být vyřešen před návratem k URL mapě a před release. SEC-01 obsahová invalidace navazuje na write API; žádný merge/tag/deployment se neprovádí.
-
-
-### 2026-10-26: TPL-01 dokončen
-
-- Odpovědnost: Codex. Referenční inventura a migrační smlouva uložena v `ref-template-migration.md` podle prefixového systému; zdrojové identity v `tests/fixtures/template-migration/inventory.json`. Framework vychází z b7cf3d4. Vzorová aplikace src/View pouze čtena, čistý commit d22281fc86e9efd63a333ac6668b9261f22777e9; žádné změny tohoto druhého repozitáře.
-- Inventura knihovny: 7 `.tpl`, z toho 4 rendererové zdroje (Application/error, Article, Login, Logout) a 3 sprintf šablony výjimek. Vzorová aplikace: 13 zdrojů, již nastaven NativeRenderer. Všechny rendererové zdroje se nativně kompilují; nejde o důkaz vykreslení celého webu. Příklady používají navíc nativní set/t, foreach, objektové metody a i18n/formátovací modifikátory.
-- Read-only nástroj `tests/tools/template-inventory.php [application-template-dir]` vypisuje JSON se SHA-256, consumer, compile stavem a heuristickými reviewHints. Pouze volá stávající Compiler::compile, nikdy nevykonává zdroj ani nevytváří kompiláty, nespouští DB/session. Ignoruje symlinky a vendor/node_modules/.git/Compiled/tests. Úspěšná kompilace je jen compiled-only; neznámé Smarty tagy mohou být textem. Hints nejsou lexer, runtime validace ani záruka kompatibility.
-- Nový verzovaný corpus: 17 pojmenovaných scénářů / 31 konkrétních výstupů native/Smarty, explicitní očekávané výstupy místo pouhé rovnosti adaptérů. Dalších 5 scénářů vykresluje přímo skutečné frameworkové šablony s automatickým escapováním, obě větve CAPTCHA a zachování důvěryhodného HTML článku. Integrační souběh s API/session/cache dosavadní sady zachován.
-- Potvrzené rozdíly: native default nahrazuje i nulu, Smarty ji zachová; truncate native počítá délku před suffixem, Smarty včetně suffixu; native nl2br vydává escapovaný vstup a HTML break, Smarty se zapnutým autoescape escapuje i vložený break. Include a přiřazení vyžadují převod syntaxe. Tag t/set je native-only, přímé Smarty API a pluginy vyžadují aplikační migraci. Změny runtime modifikátorů nejsou součástí TPL-01.
-- Rozhodnutí: neopakovat slib úplné Smarty kompatibility, zachovat malý kompilovaný jazyk a stávající Application/Renderer/Adapter/Template strom. README již netvrdí, že libovolné legacy stránky nebo aktuální skeleton jsou automaticky shodné po pouhém přepnutí adaptéru. Šablony jsou důvěryhodný kód vývojáře, protože mohou volat metody přiřazených objektů; Markdown bude samostatný obsah bez této logiky.
-- Migrační smlouva zachycuje také no-op config/cache API a ignorované cache_id/compile_id/nocache v NativeRenderer, odmítnutí delimiterů, vyčištění všech cache při nasazení a rollback kompatibilních zdrojů/config. Návrat na Smarty nestačí změnou adaptéru u native-only set/t. Composer a produkční renderery beze změny.
-- TDD: RED chybějící inventurní nástroj a RED chybějící corpus; GREEN po dodání implementace/fixtures. Kalibrace očekávaných výstupů odhalila Smarty autoescape u nl2br, zaznamenáno jako vědomý rozdíl, nikoli skrytá úprava produkčního renderu. Izolovaná sada **37 testů / 87 assertions**. Celá MySQL sada **1170 testů / 2858 assertions**, 14.367 s, 34 MB, PHP 8.4.27 / MySQL 8.4. Smarty lokálně 5.8.5. `composer lint` a `git diff --check` prošly.
-- Nezávislé read-only review bez důležitých nálezů nebo blokací; ověřena read-only povaha nástroje, nezávislost CI na externím checkoutu a shoda dokumentace s adaptéry. Následuje společný commit/push této etapy včetně plánu a CI draft PR #2. Referenční dokument obsahuje přesné příkazy opakování inventury a corpus testů; CI nepotřebuje sousední checkout.
-- Další konkrétní krok: TPL-02, nejprve diagnostika známých nepodporovaných Smarty řídicích tagů v existujícím Compileru (včetně uzavíracích tagů, cesta/řádek), zachovat CSS/JS/literal. Současný assign-as-text charakterizační test změnit na očekávanou výjimku. Potom migrační corpus include/set/modifikátorů a HTTP smoke vzorového webu (login/POST logout, locale, 404, články, fragmenty/page cache); zohlednit jeho starý GET logout odkaz a debug-only diagnostické proměnné. Balíček Smarty odstranit až v TPL-03 po těchto branách. FIX-02 a SEC-01 zůstávají otevřené release podmínky.
-
-
-### 2026-10-26: TPL-02A, diagnostika kompilátoru dokončena
-
-- Rozsah kontrolního bodu: první část TPL-02, nikoli dokončení celé migrace nebo odstranění Smarty. Výchozí commit 4719bb0. Odpovědnost Codex. Registry ponechává TPL-02 rozpracovaný, další krok je uveden níže.
-- Implementace ve stávajícím Wbengine\Template\Compiler: známá nepodporovaná Smarty syntaxe se vrací jako token a zpracovává běžným průchodem. Před výjimkou se započítá předcházející text, takže TemplateException uvádí skutečnou cestu a řádek včetně CRLF, odsazení a native control flow. Bez nového preprocesoru, závislosti, frameworku nebo změny Application/Renderer stromu.
-- Konkrétní tvary: assign/append, extends/block, capture, section/sectionelse, config_load, eval/fetch/insert, php/include_php, strip/nocache, ldelim/rdelim, call/forelse, Smarty hlavičky function/for/while a uzavírací tvary. Finite pravidla a omezení jsou v ref-template-migration.md. Function rozpozná pojmenované atributy i při odlišném pořadí a dlouhých mezerách; for vyžaduje Smarty $ proměnnou; while nerozpoznává parentetické hlavičky, aby nekolidoval s JavaScriptem. Není to plná detekce Smarty nebo pluginů.
-- Zachována obyčejná CSS pravidla, objektové JS vlastnosti s dvojtečkou, běžné deklarace a cykly včetně $ready, podobně pojmenované identifikátory a neznámé pluginy. Literal a komentáře chrání doslovné příklady. Přesně vyhrazené zápisy jako JS shorthand {capture} musí být uvnitř literal; kompilátor neparsuje kontext HTML/JS.
-- Compiler::VERSION zvýšen 3 -> 4. Test vkládá skutečný starý kompilát pod verze-3 identitou a prokazuje, že s compileCheck=false nemůže obejít novou diagnostiku. Fragmentové identity závislé na verzi se oddělí; při deployi nadále vyčistit kompilované/page/fragment/externí HTML cache dle migrační smlouvy.
-- Corpus TPL-01 záměrně aktualizován: místo assign-as-text se očekává výjimka. Má stále 17 scénářů / 31 očekávaných výsledků, nyní 30 výstupů a jednu diagnostiku. Inventurní test ověřuje, že assign má failed compile a konkrétní chybovou zprávu. Opakovaná read-only inventura knihovny i 13 externích šablon se shoduje s uloženým snapshotem; vzorový checkout nebyl změněn.
-- TDD: počáteční 33 RED (32 unsupported hlaviček/uzavření a dlouhé mezery), další RED starý kompilát, následně RED pořadí atributů function a while true. Vše GREEN po úpravách. Testuje se cesta/řádek, hranice názvu a zachování CSS/JS/literal, nikoli pouze hledání textu ve zdrojovém kódu.
-- Review našlo kolizi validního JS function run() {while ($ready) ...}. Vlastní RED regresní test ji potvrdil, detekce while byla zúžena a běžný JS zachován. Ruling: parentetické while hlavičky nezakazovat, protože stejné bajty mohou být platný JavaScript; cena rozhodnutí je, že odpovídající Smarty while(...) může zůstat textem a vyžaduje inventuru/ruční převod. Přesná kolize {capture} zůstává rezervovanou syntaxí s explicitním literal řešením. Druhé review se neopakovalo, fix kryje regrese a finální sada.
-- Finální ověření: `docker compose -p wbengine-modernization run --rm php composer test`, **1215 testů / 2975 assertions**, 14.580 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` a `git diff --check` prošly; opakovaná inventura se shoduje s původním snapshotem. TPL-02A je připraven jako samostatný verzovaný checkpoint; následuje commit/push s tímto stavem a ověření CI draft PR #2.
-- Další konkrétní krok: TPL-02B, uzavřít testovanou smlouvu include/set a modifikátorů pro aplikační migraci, včetně neplatných/chybějících partials, předávání a izolace dat, cest a obnovy bufferů. Potom TPL-02C: samostatný izolovaný checkout vzorové aplikace, převod starého GET logout odkazu a diagnostických proměnných, HTTP smoke menu/login/CSRF/POST logout/404/článků/locale/fragmentů/page HIT/BYPASS. Smarty odstranit až po těchto branách v TPL-03. FIX-02/SEC-01 a ostatní release úkoly zůstávají otevřené.
-
-
-### 2026-10-26: TPL-02B dokončen, průběžná samostatná etapa
-
-- Ověřena smlouva kořenových/dynamických include cest, dědění lokálních set hodnot, izolace partials i příštího fetch. Stávající sada pokrývá syntaktické chyby, neexistující soubory, traversal/symlink, rekurzi a modifikátory. Významy modifikátorů z migračního corpusu se nemění, nepřidává se úplná Smarty emulace.
-- RED testy prokázaly dva skutečné problémy běžných metod otevírajících vlastní buffer: úspěšný render ztratil prefix a nested partial výjimka nechala otevřený buffer. Opraveno společným Engine::capture v původním Template stromu; postup se používá i uvnitř cache callbacků. Hloubka renderu a výstupní buffery se obnovují bez úniku částečného HTML.
-- Nezávislé review zachytilo stejný problém v generovaném cache callbacku, kde zůstalo původní ob_get_clean. Vlastní RED cold/warm test prokázal chybějící prefix a následně GREEN ověřuje celý fragment, jedinou invokaci služby a původní úroveň bufferů. Compiler::VERSION 5 invaliduje staré callbacky. FragmentCache cleanup má ochranu proti nekonečné smyčce při neodstranitelném bufferu.
-- Omezení: služba je důvěryhodný kód; nemá rušit buffery rendereru ani vytvářet neodstranitelné buffery. Takové vedlejší účinky PHP nedokáže plně obnovit. Změny se drží stávajících Engine/Compiler/FragmentCache namespaces a bez balíčků.
-- Ověření: explicitní TemplateEngineTest **170 testů / 265 assertions**. Integrační pracovní sada se souběžně dokončeným FIX-02 **1222 testů / 3142 assertions**, 14.385 s, 36 MB. Použita úplná množina dosud verzovaných testů plus nový SiteLookupCollationTest, aby se nenačítaly rozpracované testy nezávislých Markdown/API workerů. Následuje oddělený commit/push TPL-02B a FIX-02, poté CI přesného vzdáleného stavu.
-- Kontinuální práce podle nového pokynu uživatele: mezi fázemi se již nečeká na další souhlas. Pro nezávislé MD-01 a API-01/04 se používají odděleně vlastněné moduly a subagent-driven-development. Root zajišťuje review, společný plán a verzování; pracovní soubory dalších etap se nepřimíchají do tohoto commitu.
-- Další krok: TPL-02C, izolovaný checkout vzorové aplikace, úprava lifecycle a POST logout/layout diagnostik, HTTP smoke v samostatném Docker projektu. FIX-02 se samostatně zapisuje hned následujícím kontrolním bodem. Smarty se odstraňuje až po ověření TPL-02C.
-
-
-### 2026-10-26: FIX-02 dokončen
-
-- Odpovědnost Codex + samostatný worker, nezávislé read-only review bez blokujících nálezů. Odstraněno PHP mb_strtolower porovnávání celé tabulky sites:visible. SiteModel používá původní parametrizovaný indexovaný SQL resolver bez závislosti na cache driveru. Nevzniká cache pro náhodná URL ani paměťový přenos celé tabulky.
-- Ruling: správnost přesného DB porovnávání má přednost před dřívějším slibem 0 SQL na zahřáté datové cache. Výběr stránky nyní stojí jeden dotaz/spojení, vrací čerstvé řádky a respektuje konkrétní collation včetně padding a hodnot strict=0/1; úspěšný whole-page HIT a terminal route dál mohou CMS přeskočit. Cena změny je jeden skutečný SQL lookup i při zahřáté datové cache. Překladové/menu/box cache zůstávají a potřebují svou invalidaci.
-- TDD RED na MySQL prokázal chybějící unicode_ci accent shodu a chybnou bin case shodu; GREEN pokrývá unicode_ci/bin, složený/dekomponovaný Unicode, trailing spaces, strict/prefix/null/-1/2, hidden, nejvyšší ID duplicity, quote/injection a missing. MySQL 8.4 i MariaDB 11.4 **14 testů / 179 assertions**, vždy právě jeden SQL lookup pro každou variantu driveru. Cache test již nevyžaduje falešnou nulu, ověřuje okamžitou změnu title/visibility a nulové URL cache soubory.
-- Diagnostický test upraven věcně: nutný výběr stránky má 1 SQL/1 spojení, debug či explicitní server-version přístup nepřidá další SQL. Diagnostické proměnné nadále chybějí v běžném produkčním renderu. Aktualizován benchmark a README; historické časy staré full-table cache zůstávají výslovně historické.
-- Aktuální benchmark MySQL 8.4.13: SQL mediány pro 100/1000/10000 stránek 0.2309/0.1297/0.0873 ms. Zapnutý memory či file driver nyní také měří SQL, nikoli starou cache cestu. Syntetické sestavení mapy mimo fetch tabulky 0.0089/0.0696/0.7497 ms. Žádný slib produkční latence a žádná nová URL mapa.
-- Společná ověřená sada dosud verzovaných testů a nového SiteLookupCollationTest: **1222 testů / 3142 assertions**, 14.385 s, 36 MB, PHP 8.4.27/MySQL 8.4; TPL-02B již samostatně commitnut a pushnut jako 06818d7. Lint a git diff --check prošly. Práce dalších workerů Markdown/API není součástí tohoto checkpointu. Následuje samostatný commit/push FIX-02 s tímto plánem a CI přesného commitu.
-- Další krok: pokračuje TPL-02C a paralelně MD-01/API-01/04 podle přidělených souborů. SEC-01 obsahová invalidace zůstává otevřená, budoucí URL mapa PERF-04 odložena bez potřeby. Mezi kontrolními body se již nečeká na zprávu uživatele.
-
-
-### 2026-10-26: MD-01 dokončen
-
-- Vlastní Wbengine\Markdown facade skládá oddělené Parser/InlineParser/readonly Node/HtmlRenderer a sdílený Budget, bez dalšího runtime balíčku. Jde o strom obsahu ve stejných namespaces; žádná spuštěná template/PHP logika z Markdownu. Přímé zdroje a App/DB vazba pokračují v MD-02.
-- CommonMark 0.31.2: všech 652 oficiálních příkladů má přesný syntaktický test přes pouze testovou projekci AST i přesný produkční bezpečný výstup. 76 explicitních výsledků v safe-deviations.json: 72 escapované HTML a 4 zakázaná URL schémata. 12 oficiálních příkladů GFM tabulek/task/strikethrough také přesně prochází. zdroje/autoři/licence/SHA jsou v sources.json, veřejná smlouva v ref-markdown.md. Nejde o tvrzení shody pro všechny možné řetězce.
-- Limity: 1MiB vstup, parser64/renderer128 depth, 8M work, 100k alokací uzlů, 8MiB rozbalený HTML výstup. Překročení LengthException. HTML vždy escapováno, URL http/https/mailto/relative, bez nebezpečného přepínače. Čítače se resetují mezi dokumenty.
-- Nezávislé review přineslo konkrétní případy mimo oficiální corpus. RED/GREEN: escaped less-than v angle destination, nepovolená závorka v title, escaped closing label, 999 Unicode znaků versus bajty, invalid UTF8 bez PHP deprecation a amplifikace krátkého referenčního zdroje do obrovského výstupu. Výstupní limit ji zastaví; běžné 1000 odkazy/code spans nezamítá příliš konzervativní suffix-accounting. Další regrese pro hloubku image alt/inline/bloků, počet uzlů a adversariální delimiter reduction.
-- Izolované Docker ověření PHP8.4.27 **695 testů / 1826 assertions**. Doplňkový deterministický malformed-input smoke 1000 vstupů bez PHP warnings. Integrační sada všech dosud verzovaných testů + Markdown souborů **1917 testů / 4968 assertions**, 14.607 s, 46 MB; rozpracované API/MD-02 testy byly záměrně oddělené. composer lint a git diff --check prošly. TPL-02B/FIX-02 předchozí checkpoint má všech 5 CI zelených.
-- Review fixy ověřeny regresními testy a společnou sadou; další review kolo není podmínkou čekání. Následuje samostatný commit/push MD-01 s tímto plánem a CI přesného vzdáleného commitu. Texy/Smarty závislosti se v tomto checkpointu nemění.
-- Další krok: MD-02 worker provádí lazy App službu, .md source dispatch v Engine, explicitní formát článků/překladů. Pozor: skutečný starý Article getter dnes nevolá Texy formatter, může již obsahovat HTML. Zachovat existující bajty jako legacy_html, zdroj pro MD-03 požadovat explicitně (HTML/Texy), neodhadovat syntax. Root pokračuje v samostatném checkoutu vzorové aplikace a API foundation po review opravuje vlastnictví transakcí.
+- The new service `Template\FragmentCache` is a lazy descendant of Engine. The compiler calls the engine; NativeRenderer and Renderer\Adapter pass a resolver connected to Application. The public scope does not trigger authentication or a session lookup.
+- The user scope separates keys by the current authenticated session and locale. An invalid or missing identity or a resolver error does not use the public cache. When the identity changes, a stale ID from the User resource is not used.
+- Personal fragments switch off the page cache; a public wrapper with an executed personal fragment is not stored. The same protection applies through the compatible Runtime helper. A rendering error cleans up nested buffers.
+- Decision: after a personal scope, other public fragments are conservatively bypassed until the end of the request. This may reduce the number of HITs for signed-in users, but prevents shared storage of a personal wrapper. A public block must be independent of the visitor and of branches that do not run on a cache hit.
+- Decision: the public-only Runtime helper is kept, internally delegating to the same OOP cache mechanism. Compiler VERSION=2 and the prefix tpl:v3 prevent use of old shared wrappers.
+- Before implementation 17 scenarios were missing (a non-existent resolver/syntax); another regression test caught a stale User ID. After the fix the whole suite: **862 tests, 1676 assertions**, 10.126 s, PHP 8.4.27 / MySQL 8.4. Lint and git diff --check passed. Independent review without specific findings.
+- Next step after the push: SEC-03, unify automatic escaping of both renderers and document safe output contexts; leave changes of input helpers for the following separate package SEC-04.
+
+### SEC-03: Follow-up implementation procedure
+
+- Set automatic HTML escaping also in the Smarty adapter and add setAutoEscape to the same adapter interface as NativeRenderer. Keep an explicit false as a temporary migration option.
+- Keep explicit raw and escape in the bundled templates. The historical equivalence corpus compares explicitly the legacy mode of both renderers, not the new safe defaults.
+- Fix the native pipeline: output safety is determined by the last modifier, not by any earlier safe modifier. For example escape|default:$fallback must escape the new fallback. Change the compiler version and tie fragment keys to this version.
+- Document the trustworthiness of templates and the differences between HTML text, attribute, URL and script/JSON contexts. Do not change the input helpers yet (SEC-04).
+- Tests: an XSS payload through the default Smarty output, true/false through the adapters, no double escaping with an explicit escape, raw only explicitly, an unsafe fallback after a safe modifier in native.
+
+- SEC-03, clarification from regression tests: the parser must track only the modifiers of the resulting expression. An escaped operand, a method argument or an array index must not mark other content as safe. The corresponding XSS scenarios failed before the fix.
+- SEC-03, decision: the Smarty compile ID contains the autoEscape mode, because otherwise its memory cache, after switching true/false, may reuse an old template object. The original user compile ID remains part of the resulting ID.
+- SEC-03, decision: the tests caught an old compileCheck problem, where the same size and timestamp did not reveal a source change. An SHA-256 signature was added with compileCheck enabled; a production deployment with compileCheck=false does not compute the checksum. The cost is an additional source read in development mode, the benefit is reliable refresh of templates and security fixes.
+
+- SEC-03, review: no new findings in the diff so far. The reviewer additionally reproduced an older fragment collision between autoEscape=false and true. Included in this security package: both scopes confirmed it with a RED test, the key now also contains the escaping mode. Manual cache cleanup is thus not the only protection against taking over raw HTML from the migration mode.
+
+### 2026-10-25: SEC-03 completed
+
+- Done: automatic escaping of both renderers, an explicit migration autoEscape=false, a fix of the modifiers of the final expression in the native parser and preservation of raw/escape for explicitly determined contexts.
+- The initial 8 XSS/default scenarios failed before the fix; another 3 scenarios confirmed the transfer of incorrect trust from an operand, a method argument and an array index. Fixed without extending the grammar of template tags.
+- A separate RED test confirmed stale compilation at the same timestamp and length. The SHA-256 freshness is now computed only with compileCheck=true; the signature at compile time comes from the same source snapshot.
+- Review of the diff so far without new findings. An older collision between raw and escaped fragments was additionally fixed according to 2 RED tests; the escaping mode and compiler version are part of the key of public and personal fragments.
+- Final verification: **878 tests / 1703 assertions**, 9.859 s, PHP 8.4.27 / MySQL 8.4; composer lint and git diff --check passed.
+- The documentation describes safe HTML text, quoted attributes, validation of URL schemes, script-safe JSON and template trustworthiness. Smarty is still a temporary adapter; removal from the runtime dependencies belongs to TPL-03.
+- CACHE-01 is saved and pushed as `f998303`. This following checkpoint includes the SEC-03 code and the plan state; the exact hash is in the git log of the working branch.
+- Next concrete step: SEC-04, inventory of calls of Http::Post/Get/getCookie/secureClean, introduction of unchanged inputs and explicit validation, regression tests of apostrophes, slashes, arrays and missing values. Do not change the authentication model or routing at the same time. The SEC-01 content invalidation follows the new write API in a later stage.
+
+### SEC-04: Procedure and contract of the input helpers
+
+Base checkpoint `4ae723f`, local and remote branch identical. Working branch `codex/wbengine-4.0`, responsibility Codex.
+
+- Inventory: the internal secureClean is used only by Post/Get. Box\Auth uses Post for CSRF and CAPTCHA; sign-in already uses PostRaw. No other runtime callers were found in the library or in the sources of the sample application. API JSON input is not changed in this package.
+- Post($name=null) and Get($name=null) return unchanged the value from the PHP superglobal, and with null the whole corresponding input map; a missing key returns null without a warning. Valid names are string and int, including 0 and an empty string. Any other type of name returns null.
+- PostString($name), GetString($name) and getCookie(string $name) return only an unchanged string or null, never converting an array/object/scalar to text. PostRaw remains a compatible alias of PostString.
+- Decision: raw means values after standard HTTP processing in PHP, not the original wire bytes. No trimming, HTML entities or adding/removing slashes. Even invalid UTF-8 bytes remain unchanged; text fields must validate type, UTF-8, length and meaning in their application layer. The string helper solves only the shape of the value, not its trustworthiness.
+- Decision for major 4.0: remove secureClean, do not silently return raw values under its security-misleading name. Explicitly describe the migration of direct external calls in the README and CHANGELOG. Do not automatically decode old already polluted DB values.
+- Box\Auth converts the token and CAPTCHA to PostString. A non-string CSRF token is rejected before hash_equals. SQL stays parameterized in Db, output is escaped by the renderer (SEC-03 done).
+- Procedure: first RED tests of apostrophes, slashes, HTML, empty/zero values, nested arrays, missing keys, invalid UTF-8 and malformed tokens. Then a minimal change of helpers and callers; an integration pass raw -> parameterized SQL -> escaped HTML in both adapters.
+- Acceptance: no change of values in the DB, no double escaping in the result, invalid shapes of protocol inputs without a TypeError. Targeted tests, the full suite, lint and independent review; then commit+push of the code and the plan before the next larger change.
+
+- SEC-04 review: no runtime findings. The reviewer pointed out that the original CAPTCHA test with an empty secret does not prove rejection before the network. Decision: sharpen the required evidence, do not defer it as a cosmetic change. The network code stays the same, only extracted into a protected verifyCaptcha in the same Box\Auth. A mocked verifier with a configured test secret must have zero calls for malformed input in both a normal and an AJAX POST; valid strings are passed unchanged. No real CAPTCHA requests are sent during tests.
+
+### 2026-10-25: SEC-04 completed
+
+- Post/Get preserve the original PHP-parsed values and, when the name is omitted, return the whole map. PostString/GetString, the compatible PostRaw and getCookie accept only strings. Missing values return null without warnings. secureClean is removed in major 4.0.
+- Box\Auth rejects invalid shapes of the CSRF and CAPTCHA fields. The existing network verification of CAPTCHA is extracted into a protected method in the same class; no further production service or dependency was created. Architecture and namespaces are preserved.
+- TDD: the original 42 targeted tests showed 14 errors and 7 failures. Two integration passes through the parameterized DB and both renderers failed before the change on changed values. The new CAPTCHA boundary tests failed before implementation due to a missing verifier; after adding it they prove rejection before the network and exact passing of valid strings in a normal and an AJAX request.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **933 tests / 1876 assertions**, 10.049 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed. Independent review without runtime findings; the note about the weaker CAPTCHA test was incorporated.
+- The README and CHANGELOG describe the major change, explicit validation, SQL parameterization and output escaping. Historical data are not automatically rewritten. API JSON and the authentication model do not change in this package.
+- The checkpoint includes code, tests and this plan; the exact hash is in the history of the working branch. Push and upstream match are verified before the following phase.
+- Next concrete step: SEC-05, inventory of IP/HTTPS detection and all cookie flags, design of a lazy service in the existing tree architecture and tests of explicitly trusted proxy IPv4/IPv6. The default configuration will trust only the direct connection.
+
+### SEC-05: Implementation procedure and decisions
+
+- Base checkpoint d1e319a, isolated worktree /private/tmp/wbengine-modernization. The existing Utils use REMOTE_ADDR and an unsafe header fallback when the peer is missing. SessionAbstract and Api detect HTTPS separately. API refresh issuance and deletion both use common cookie options.
+- Introduce Application\Env\RequestContext as a lazy descendant of Application with getParent. For the existing standalone API and the static Http/Utils the same service remains available without an Application parent. The resolver has no cache of user data, reads the current server/config at use, so it does not change the bootstrap or session initialization.
+- Decision: explicit http.trustedProxies (IP/CIDR IPv4/IPv6) and http.forwardedHeaders (only x-forwarded-for, x-forwarded-proto); both lists empty by default. A wrong configuration raises an exception, it does not widen trust. Do not use the old IPv4-only ipInRange for a security boundary.
+- XFF: verify the direct peer, walk the chain from the right through the allowed proxies and stop at the first untrusted client. A missing/invalid peer returns an empty IP, never a fallback to Client-IP or another header. An invalid walked hop or an over-limit header uses the direct peer. Canonicalize IPv6 output, no ports, zone IDs or obfuscated addresses.
+- XFP: support only a single http/https value from the allowed direct peer and only with explicit enabling of this header. The proxy must overwrite it according to the real original scheme, not append client text. Lists and alternative headers are ignored. A valid http may override backend TLS. Without a trusted value use only local HTTPS on/1. Keep the explicit API override of Secure.
+- Procedure: RED tests of spoofing, a missing peer, chains, IPv6/CIDR boundaries and configuration; minimal implementation; an integration test of real session/API cookie flags; targeted and full tests, lint and independent review. Then update the plan, commit and push.
+- Source of the rules for chains and scheme: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For and https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-Proto. No automatic loading of Cloudflare/AWS ranges or universal trust of all proxies.
+
+- SEC-05 review: an independent read-only review without security/regression findings. Two minor gaps in evidence were filled: an invalid peer for XFP and a change of both metadata and configuration in a long-lived static facade.
+- Diagnostics of the full suite: 988 tests, one older flaky failure testARequestWithoutACookieCostsNoSessionQuery. Session::_load triggers cleanup with a probability of 1/100 before the lookup. An isolated diagnostic process with forced GC proved exactly one DELETE FROM cms_sessions WHERE session_expire < ?, without a SELECT. The same process with setAutoClean(false) proved zero queries. Decision: in the lookup test turn off GC with the existing setter; production cleanup does not change. The temporary diagnostic file was in the ignored .phpunit.cache and was removed after verification.
+
+- The final global inventory also found I18n::_remember and I18n::origin with separate HTTPS detection. Included in SEC-05: isSecure accepts an optional server snapshot, so that the existing explicit interface I18n::boot/origin is preserved. First two RED failures of cookie flags, after wiring the cookie another two RED failures of the origin scheme. The test deliberately sets the opposite ambient HTTPS to prove use of the passed request. Hreflang page-cache keys already derive from I18n::origin, so they will distinguish the original scheme; a host from forwarded headers is not accepted.
+
+### 2026-10-25: SEC-05 completed
+
+- Done: lazy Application::getRequestContext, parent link and a common resolver for Http/Utils, session, API and I18n. No further packages, DB queries or session start on the mere evaluation of the connection. The cache contains only the validated deployment policy, not request data.
+- By default no trust in forwarded headers. Explicit proxy IP/CIDR and headers, IPv4/IPv6, peer validation, XFF from the right, IPv6 canonicalization, length/hop limits, rejection of invalid configuration. XFP only a single value from a trusted direct peer; untrusted and alternative headers are ignored. The API Secure override remains.
+- TDD: the initial 51-test suite showed 26 failures and a missing getRequestContext. Two integration RED scenarios proved incorrect Secure behind TLS termination. Further RED scenarios confirmed own I18n cookie and origin bugs; all were subsequently fixed and verified. The session integration also verifies the actually stored IP in the DB; the API integration both issuance and deletion of the refresh cookie.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **993 tests / 1993 assertions**, 10.061 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed. Independent review and the follow-up review of the I18n change without findings.
+- The documentation contains the deployment configuration, the requirement to overwrite XFP and correctly build XFF on the proxy, separation of address families and the impact of an IP change on sessions/rate limit. Clean the page cache on deployment; absolute locale links now respect the trusted original scheme. No changes of real production proxies or deployment were made.
+- The checkpoint includes code, tests, documentation and the plan state. The exact hash is in the git history; commit and push before the next larger step.
+- Next concrete step: SEC-06, inventory of forms and operations of authenticated cookies; a lazy CSRF service tied to the session in the Application tree, protection of forms/AJAX and removal of logout via GET. Keep public GET without a session write and prevent sharing tokens through the cache.
+
+### SEC-06: Procedure and protection contract
+
+- Base checkpoint 4025119, branch codex/wbengine-4.0, isolated worktree /private/tmp/wbengine-modernization. The only supplied POST form is Box\Auth. The existing token is overwritten on every render, the AJAX branch is not restricted by method and GET a=logout changes state. Custom project forms must use the protection explicitly.
+- Session\Csrf will be a lazy descendant of Session (getParent); Application::getCsrf only delegates through the existing session. Without explicit use of the CSRF service a public GET does not change. The token is an HMAC-SHA256 of the purpose from a random 32-byte session secret; the purpose has 1 to 128 bytes, the token is 64 hex characters. A single secret instead of an unbounded map of forms. Tokens of the same purpose are stable across multiple panels, a foreign session/purpose is rejected. Verification never creates the secret. On session ID regeneration after sign-in, invalidate the secret.
+- The token/verify/validateRequest service supports the field token or the header X-CSRF-Token. validateRequest accepts only POST/PUT/PATCH/DELETE, never a query token. A present invalid header must not fall back to a valid POST. Invalid token shapes are not cast.
+- Token responses explicitly private,no-store and PageCache bypass. The new request-wide fragment bypass must stop HIT and storing of both public and user fragments, including wrappers that issue the token during render. Obtain the token before entering a cached render; Smarty's own output cache is not part of the supported cache mechanism.
+- Box\Auth moves to the purpose auth.login; the existing name=token remains for template/AJAX compatibility. Reject GET logout with 405 without changing the session. POST a=logout requires an auth.logout token, an error is 403; add a public getLogoutBox with a supplied POST template. Verify CSRF before CAPTCHA and authentication, AJAX only POST.
+- Decision for cookie API login/refresh/logout: POST mandatory, application/json and X-WBengine-CSRF: 1. This is not a synchronizer token, but enforcement of a non-simple request and the preflight/CORS boundary. Allow this header in the existing CORS configuration; the operator may allow only trusted origins for credentialed requests. Refresh stays without a PHP session. Other API mutations with an explicit verified bearer token do not take over session CSRF. Source: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html.
+- Acceptance: RED/GREEN purposes, a foreign session, types, methods, multiple panels, repeated issuance without a write, a rejected GET logout without change of identity, a valid POST logout, login/AJAX before authentication, tokens outside both cache scopes and real HTTP no-store; the API rejects a simple request before changing the DB/cookie. Complete tests, lint, independent review; then commit and push of the code and the plan.
+
+- SEC-06 TDD course: 25 new unit scenarios first failed on the missing service; after implementation 25/70 assertions passed. HTTP RED proved a token change between panels and GET logout with 302 instead of 405. After wiring the service 3 HTTP scenarios passed. API RED proved a missing preflight boundary; the new check verifies rejection of all three cookie operations without DB/cookie/session side effects.
+- Lifecycle RED proved preservation of the token after ID regeneration; a reset was added to Session::regenerateId. Another RED proved that after destroy the secret stayed in the internal Session data within the same request; discardPendingWrites now removes it directly, without restoring the dirty state or writing the destroyed session.
+- Independent review without specific security/regression findings, targeted unit verification by the reviewer 57/122 assertions. Supplementary HTTP scenarios cover AJAX GET 405, a valid AJAX login with X-CSRF-Token and a foreign session. The CORS policy is operational trust in origins; this phase does not introduce browser end-to-end automation.
+
+### 2026-10-25: SEC-06 completed
+
+- Session\Csrf is a lazy descendant of Session with getParent; Application delegates to the same instance. Stable purpose tokens, verification without creating the secret, the field token and X-CSRF-Token, only unsafe methods for validateRequest. The root secret is invalidated on ID regeneration and on destruction of the session, including the current request.
+- The supplied login and AJAX use auth.login, logout auth.logout. GET logout and AJAX GET return 405, invalid tokens 403 before CAPTCHA/login. Added getLogoutBox and an escaped POST template with a Czech/English label. The legacy template name=token remains, the historical session token is no longer accepted.
+- Private,no-store and a request-wide page cache bypass of both native fragment scopes; wrappers that issued a token during render are not stored. Call the helper before a cached render. Custom applications must protect their own cookie forms explicitly and exclude personalized form routes from the earlier page cache in the bootstrap.
+- Cookie API login/refresh/logout require POST, application/json (charset allowed) and X-WBengine-CSRF: 1. HTTP 405/415/403 before the DB, token rotation or cookie change. The header is allowed in the existing CORS configuration, credentialed origins are an explicit operational trust boundary. Refresh stays without a PHP session. Bearer-authorized mutations keep using role/token, without session CSRF.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **1025 tests / 2164 assertions**, 11.005 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed. Independent review of the whole phase and of the supplementary lifecycle change without findings.
+- HTTP tests: multiple panels, a foreign session, invalid/valid AJAX, GET and POST logout with different purposes, no-store even with a repeated token, a public GET as a cache HIT without a session cookie and DB write. The integration test verifies invalidation/persistence after ID rotation and the impossibility of restoring a destroyed session through flush. The unit test documents rejection of shapes and exclusion of already cached user/public fragments and of the new token wrapper.
+- The README and CHANGELOG contain the interface, use in a template/AJAX, the cache and the upgrade of API clients. This major change is neither deployed nor released. The checkpoint contains code and plan; the hash is in the history and the push is verified before the next phase.
+- Next concrete step: PERF-01, the diagnostic dbinfo in Site::initialize/getDBVersion only in debug or on an explicit request. First measure SQL queries and opening of DB connections for a warmed page with the data cache, then remove only the unnecessary diagnostic access. PERF-02 menu N+1 and PERF-06 single JSON decoding follow according to the plan dependencies.
+
+### PERF-01: Procedure and diagnostics contract
+
+- Base checkpoint dd352b8, branch codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization. Local HEAD and upstream identical. Site::initialize always assigns server, dbinfo and phpversion; SiteModel::getDBVersion through Mysqli::getDbVersion opens a real connection without an SQL query. Db::isConnected means only a created adapter, not a confirmed socket.
+- Decision: automatically assign the existing diagnostic variables only according to Application::isDebugOn. For explicit use add Site::assignDiagnostics returning Site, with the original variable names. It stays in the existing tree Site -> model -> Db, without a new service, configuration or package. A missing SERVER_SOFTWARE has a safe empty result.
+- Production initialization no longer prepares the diagnostic keys; templates that need them must ask explicitly. Diagnostics may open a DB connection and are not for public pages. Do not change routing/lifecycle or cache identity in this package.
+- Tests: warm the lookup of a real SiteModel into the file cache, run initialize in a new PHP process with a separate adapter and without menu/section content, measure the difference of SQL statistics and mysqlnd connect_success. Compare production without diagnostics, debug, an explicit request and missing server metadata; verify preservation of site/metadata. This measurement isolates the diagnostic cost, it does not promise zero connections for arbitrary content or custom boxes.
+- RED must prove one connection with zero SQL queries in the original production initialization. After the fix production 0/0, debug/explicit request one connection and the same diagnostic data. Then the complete suite, lint, independent review, recording of results, commit and push of the code and the plan.
+
+### 2026-10-25: PERF-01 completed
+
+- Site::initialize automatically assigns server/dbinfo/phpversion only in debug. The explicit Site::assignDiagnostics preserves the original names, the model path and the assignment to Vars and returns Site. No new runtime class or dependency. SERVER_SOFTWARE returns an empty text when the value is missing.
+- RED: of four integration scenarios three failed, the production warm lookup opened one connection with zero SQL; the explicit method was missing and missing server metadata raised a warning. After the fix four scenarios / 36 assertions passed. New PHP processes do not inherit the adapter or socket from PHPUnit, mysqlnd connect_success verifies the real connection separately from SQL statistics.
+- Result of the isolated initialization with a warm site-data cache: production 0 connections / 0 SQL, debug and explicit diagnostics 1 connection / 0 SQL; the site resource and meta title preserved. Menu, section content and custom boxes are excluded from the measurement, so this result is not presented as a universal connection count of a complete site or as a latency measurement.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **1029 tests / 2200 assertions**, 11.207 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed. Independent read-only review without findings.
+- The README and CHANGELOG describe the change of default template variables in major 4.0 and the explicit use of diagnostics. Code and this plan form one checkpoint; the exact hash is in the git history. Push and upstream match are verified before the next phase.
+- Next concrete step: PERF-02, removal of N+1 menu lookups. Before the change verify the selection of parents, hidden pages, duplicate URLs, strict pages and DB collation; share a once-evaluated set of active IDs without changing the intended navigation. With the cache off use a batch lookup. PERF-06 and further stages remain open.
+
+### PERF-02: Procedure and decision on semantics
+
+- Base checkpoint 2047280, branch codex/wbengine-4.0, isolated worktree /private/tmp/wbengine-modernization; HEAD and upstream identical. Site::isMenuSelected re-evaluates all URL prefixes through SQL getSiteIdByUrl for every non-current item. Menu::selected has its own direct comparison of the current page, which is not changed in this package.
+- Decision: request memoization of the resulting prefix -> ID pairs and the set of existing active IDs in Site. A single method SiteModel::getSiteIdsByUrls performs all index lookups in one parameterized SQL statement, the output aligned with the original order including repeated/missing prefixes. An empty/invalid collection of prefixes without SQL and without a foreach warning. The current positive site ID stays active without a lookup.
+- Ruling: use the batch SQL lookup also with the cache on. The mere sites:visible map omits hidden parents and its PHP lowercase comparison does not reproduce the database collation (accent/case/binary rules). Full DB semantics without a connection would require a new canonical URL contract or another collation index. The cost of this conservative decision: when parents are needed, at most one SQL statement even with a warm cache, not a promise of zero SQL. The benefit: a query count independent of the number of menu items and URL depth, without an unbounded persistent cache for random URLs.
+- Ruling: duplicate DB links deterministically select the lowest site_id, instead of the existing LIMIT 1 without ORDER BY; the single-item helper uses the same rule. Visibility and strict mode are still not filtered for selecting a prefix parent. Site ID 0 and negative values are not active items, a missing lookup returns 0 only in public prefix pairs.
+- Keep the SQL comparison link = ? directly over the column, without PHP imitating collation and without a JOIN between two implicitly different collations. An SQL UNION ALL of scalar lookups returns positions and the minimum ID; parameters stay data. Tree Site -> SiteModel -> Db, without another production subsystem.
+- Tests first RED: many menu items and several prefixes with and without the cache, hidden and strict parents, duplicates, a non-existent prefix, case/accent sensitivity and binary collation, apostrophe/injection input, repetition and change of prefixes, empty URL and ID 0. Acceptance: 0 queries for the current ID alone, at most 1 for the whole other selection over the same prefixes; real match with the DB lookup. Then the whole suite, lint, independent review, plan+commit+push.
+
+- The inventory of the real Url::_setUrlPairs additionally revealed prefixes without a trailing slash (/blog), whereas the standard DB link is /blog/. The original helper therefore does not mark such a parent at all. Ruling: Site preserves the original URL in the returned pairs, first looks for the exact prefix and only on a miss the variant with one trailing slash. The SiteModel batch remains an exact-URL contract; Site passes both variants in one statement. Exact links without a slash take precedence, so existing sites stored this way keep working. The test must include the real Url parser, not just manually constructed prefixes with a slash.
+
+### 2026-10-25: PERF-02 completed
+
+- Site stores the resulting URL/ID pairs and the set of active positive IDs for the current list of prefixes. A change of prefixes and the initialize snapshot invalidate. The current ID without SQL; other selections share one batch. SiteModel::getSiteIdsByUrls preserves order, repetition, miss=0, parameterization and real collation; the single-URL helper uses the same path.
+- Intentional major changes: duplicates deterministically the lowest site_id; the prefix first exact and only on a miss with a trailing slash; zero/negative IDs do not mark an active item. Hidden and strict parents are still allowed. Menu::selected remains a direct selection of the current page.
+- The ruling stands: even with a warm cache at most one statement, because sites:visible is not equivalent to the old SQL. We do not promise a zero warm lookup from this phase; no unbounded persistent cache key by URL. The DB index lookups are still proportional to prefixes, but network round trips are not proportional to menu items. It is not a latency benchmark of the whole site.
+- RED: 7 scenarios, 2 errors due to the missing batch API, 4 failures and a foreach warning. Repeated menu checks + the public getter originally performed 244 SQL statements with the cache off and with a warm cache. Now in both cases **1 statement**, the same expected selections, the real parser/slash case fixed. Targeted tests 7 / 156 assertions passed.
+- The collation test on a real DB alternates utf8mb4_unicode_ci and utf8mb4_bin, verifies case and accent matches and restores the original schema in finally. Further scenarios: hidden/strict, exact bare link versus slash, lowest ID of duplicates, apostrophe/injection, empty prefixes/ID 0, change of the list. Independent review without findings.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **1036 tests / 2356 assertions**, 11.198 s, 32 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed. The OOP tree Site -> model -> Db preserved; no new runtime subsystem or dependency.
+- The README, CHANGELOG and ref-inventory describe the behavior and the cost of one query with the cache. This checkpoint includes code, tests and the plan; the exact hash is in the git history. Push and upstream match are verified before the next stage.
+- Next concrete step according to the order of stage 3: PERF-06, single JSON decoding. First describe the existing Json(true/false) for a valid null, scalars, objects/arrays, empty and invalid body, UTF-8 and depth; then remove the duplicate json_decode without an unintended change of the controller contract. PERF-07 and ARCH-01 follow, the other items remain open in the register.
+
+### PERF-06: Procedure and JSON input contract
+
+- Base checkpoint dbda94e, branch codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization; HEAD and upstream identical. Http::Json reads php://input, validates through isJson (json_decode) and, with decode === true, decodes again associatively. The API auth/user/section/translation routes expect this contract.
+- Decision: one json_decode per Json call, evaluate the error immediately from the same parse; ordinary decoded input directly associatively, the compatible NUL/object path is described below. No change of signature or controllers, no exception, payload cache or new runtime object. isJson remains a separately callable validator with the original behavior.
+- Keep strict decode === true: only boolean true returns the decoded PHP array/scalar/null; false and other so far supported non-true values return the original valid text including whitespace. Invalid JSON returns null in both modes. A valid null has JSON_ERROR_NONE, an error another json_last_error; the code must read the state immediately before the next JSON call. Keep the default depth 512, UTF-8 validation and PHP's numeric policy.
+- Tests through a real HTTP POST and php://input. The fixture counts a namespaced json_decode that always delegates to the native PHP parser; the count is reset for each request. It is not a production injection interface or a timing benchmark. First RED for a valid decoded payload, which originally parses 2x; other scenarios characterize compatibility. raw and isJson continue to validate with one parse.
+- Scenarios: null/bool/numbers/strings/arrays/objects, whitespace and an empty body, bad syntax/UTF-8/depth, repeated calls over the same body and strict mode. After the minimal change the full suite, lint, independent review, update of the plan, commit and push.
+
+- Review P2 reproduced a difference between object and associative decode for a key beginning with an escaped NUL: the original validation returned JSON_ERROR_INVALID_PROPERTY_NAME, a plain assoc decode accepted it. Regression tests first confirmed two errors; the output contract is therefore preserved, not extended in a local optimization.
+- Ruling: raw mode parses like the original object validation. Decoded mode for ordinary text uses a direct associative decode; only with a possible sequence \u0000 does it use one object decode and a recursive conversion of the result to an associative array. The NUL-leading key error thus remains native error 9. Cost: a fast substring scan of ordinary raw text, and for rare NUL values an additional PHP conversion of objects/arrays. The number of JSON parser passes is still exactly 1; no new exceptions and no additional runtime dependency.
+
+### 2026-10-25: PERF-06 completed
+
+- Http::Json performs exactly one json_decode and evaluates the error of the same parse. Only boolean true returns a decoded array/scalar/null; raw and the legacy non-true mode return the original valid text. isJson remains a separate validator. The interfaces of API controllers, the default depth 512, UTF-8/numeric rules and the json_last_error contract are unchanged.
+- Review P2 fixed: JSON with a NUL-leading key is still rejected with the native JSON_ERROR_INVALID_PROPERTY_NAME. For an ordinary decoded body a direct assoc parse; a conservatively detected NUL escape leads to one object parse and a subsequent conversion. NUL values, numeric keys, escaped backslash text and a valid depth 510 have regression coverage. The cost of compatibility is a substring scan and a rare PHP conversion, not a second parser pass.
+- TDD: the original 23 HTTP scenarios showed 15 failures, always 2 parses instead of 1 for a valid decoded body and 4 instead of 2 on two calls. After the minimal change 23/188 assertions passed. The review reproduction added two RED failures of NUL keys; after the fix the extended 28/228 assertions passed, then a deep valid NUL case was added. The final HTTP corpus has 29 scenarios and measures the real php://input through a namespaced wrapper of the native parser only in the separate fixture.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **1065 tests / 2592 assertions**, 12.173 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed. The independent review found the compatibility bug above, reproduced and fixed by RED/GREEN tests; no further findings. The reviewer did not run the HTTP tests itself because of its socket sandbox, the final verification was done here in Docker.
+- The README and CHANGELOG describe return values, immediate reading of the error state, a valid null and legacy NUL keys. It is a local reduction of the number of parser passes, not a latency/memory benchmark of the whole site. The existing Http facade and namespaces preserved, no new runtime subsystem or package.
+- Code, tests and the plan belong to the same checkpoint; the hash is in the git history. Push and upstream match are verified before continuing.
+- Next concrete step: PERF-07, Renderer::dispatch and the global whitespace merging. First a regression corpus of pre/textarea/inline JS/CSS and meaningful text spaces, then a safe default output and migration rules for the existing minimizeHtml. Leave transfer compression to the web server. After this stage ARCH-01, the deferred lifecycle, according to the approved dependencies.
+
+### PERF-07: Procedure and HTML output contract
+
+- Base checkpoint ef28474, branch codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization; HEAD and upstream identical. With minimizeHtml=true, Renderer::dispatch performs preg_replace on the whole fetch result, otherwise display. The regex changes pre/textarea, JS line comments and whitespace in string literals/attributes.
+- Decision: dispatch always assigns the application variables and outputs the site template through the existing display adapter without global modification of the content. Keep the tree Application -> Renderer -> adapter and the existing escaping. No HTML parser, dependency or alternative unsafe legacy mode.
+- minimizeHtml remains a compatible readable configuration item/getter for external code, but in the core dispatch it is ignored from major 4.0; mark the getter deprecated in the documentation without runtime warnings. minimizeCss/minimizeJs do not change in this phase. Transfer compression is configured by the web server/reverse proxy, not by the PHP framework runtime.
+- Tests first RED through a real Renderer::dispatch with both NativeRenderer and SmartyRenderer and with both values of the flag; byte-exact output of the passed trusted content and escaping of ordinary variables. Pre, textarea, JS line comment and multiline string, CSS string, meaningful inline spaces/attributes and script JSON. A missing minimizeHtml must not raise a warning.
+- Acceptance: both adapters display the same unchanged emitted content with true/false/missing config. Do not introduce production compression or deployment changes. The documentation explicitly requires, on upgrade, clearing the earlier HTML page cache, which may have contained corrupted output. Then the full suite, lint, independent review, plan+commit+push.
+
+### 2026-10-25: PERF-07 completed
+
+- Renderer::dispatch always assigns the application variables and outputs the site template through the existing adapter display. The site-wide preg_replace was removed. The OOP tree and output escaping preserved, no new runtime class/dependency or compression handler.
+- minimizeHtml is ignored in the core dispatch even with true; the Config::minimizeHtml getter is kept and marked deprecated without runtime warnings. The change fits major 4.0. The cost of safe output: uncompressed HTML may be larger; gzip/Brotli belongs to the deployment configuration of the web server/proxy. No real server setting was changed in this phase.
+- TDD: 30 scenarios for NativeRenderer and SmartyRenderer, true/false/missing configuration. RED showed 14 corrupted outputs and one PHP warning raised in two missing cases. GREEN **30 tests / 30 assertions**: byte-exact pre/textarea, JS line comment/template literal, CSS string, inline spaces/attributes and JSON script; an ordinary suffix is still escaped.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **1095 tests / 2622 assertions**, 12.719 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed. Independent review without findings; the reviewer also separately ran the targeted 30/30 unit verification.
+- README/CHANGELOG/ref-inventory updated. On deployment clear the page/external HTML cache, because a previously stored corrupted body cannot be repaired by merely changing dispatch. Template compilation and minimizeCss/minimizeJs stay out of scope.
+- This checkpoint includes the implementation, tests and the plan; the hash is in the git history. Push and upstream match are verified before the next phase.
+- Next concrete step: ARCH-01, inventory of constructor/get/run/Router and the i18n/page-cache order. Work out a concrete lifecycle in the existing Application tree: configuration of services and registration of custom routes before CMS/boxes, a custom terminated route without CMS queries, the page cache only after routes and correct policies. First regression tests of order and compatibility, do not move only Site::initialize without defined request control.
+
+### ARCH-01: Concrete lifecycle and migration contract
+
+- Base checkpoint c80907d, branch codex/wbengine-4.0, worktree /private/tmp/wbengine-modernization; HEAD and upstream identical. Today the constructor prepares the configuration and i18n, but may also exit with a redirect/cache HIT, initializes Site and runs boxes. Application::get executes the callback immediately and only then writes the matched route. display calls a non-existent init; run may render repeatedly. The static Router performs the match immediately and API boxes use it too.
+- The constructor will be only preparation of configuration, namespaces/path, error handler/timezone and early i18n normalization + bootstrap locale variable. A redirect is stored, not sent. No CMS queries, boxes, page-cache HIT or ordinary rendering. The Site/Vars getters may create empty lazy objects without loading data.
+- Application::get will register a deferred GET through a new Application::route(method,path,callable), both returning Application for chaining. A route supports ordinary GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS and delegates matching to the existing Router/Route. An invalid pattern type or callback is rejected at registration. The static Router stays immediate because of existing API modules inside boxes.
+- Ruling: the callback is called in run with (route,app). Boolean true means a finished response (the callback already set the headers/printed the body), without CMS and layout. Boolean false continues to the next route and possibly CMS. Other returns preserve the HTML callback model: set variables/central and render the layout. The first accepted route wins. The cost of the new explicit terminal contract: custom API callbacks must return true or exit as before; echo with null alone would lead to the layout.
+- run: protection against duplicate/reentrant handling -> deferred custom routes -> unhandled i18n canonical redirect -> cache gate -> possible CMS initialization -> 404/410 -> debug -> a single dispatch. A matched custom route and an explicit central bypass the shared page cache. A 410 response must not be overwritten by an old 200 HIT or 404.
+- The cache gate compares Vars with the bootstrap snapshot, so pre-run/earlier declined route changes made directly through Vars also prevent a HIT. Early access to the renderer (before the cache gate) conservatively bypasses the page cache for its direct assign/config interventions. Cost: a request adapted this way loses the page HIT until the application decides on a safe separate cache policy.
+- Unify display(content) with the lifecycle, inside a route allow an explicit single render without recursion. An empty string and "0" are explicit content. central set before run must not be overwritten by CMS content. The debug object only after handling CMS/route, not in the constructor.
+- The early i18n boot normalizes the prefix even with a pending default-language redirect; a custom route thus sees the canonical path and may handle the request before the redirect. Without custom handling the 301 with the original query string stays. On 404 the Site initialization without a resource must end before sections; empty sections must be a valid empty collection, not sizeof(null).
+- Tests: a real constructor + no SQL/socket/boxes; a deferred callback, priority/decline/true terminal and generic POST; pre-run Vars/renderer setting and a CMS box observing the value; repeated run/display without a second render; explicit 0/empty content; the original API box; 404/410; an i18n route before the redirect; an existing page-cache HIT preempted by a route or private policy and a preserved anonymous HIT. Verify HTTP and internal states, the full suite/lint/review; then plan+commit+push.
+
+- TDD first HTTP corpus after correcting the test rewrite input: 15 scenarios, 14 RED failures. The constructor originally did 4 SQL / 1 connection / 1 box, in the new lifecycle 0/0/0. The original display called a non-existent init and run displayed the layout multiple times. First GREEN almost complete: "0" masked the default modifier only in the test template, removed from the fixture, the production template grammar did not change.
+- Added a safe cache gate for earlier output and status. RED proved taking over an old HIT with a declined handler with 403. Also verified the standard MISS/HIT, a private policy, pre-run Vars/direct renderer assign and the legacy API router inside a real CMS box.
+- Independent review: P2 for a lower output buffer with an empty upper buffer and a second render when display is called from a CMS box. Both findings were included in the fixes, because the guarantee of a single response and respecting output applies to the whole lifecycle. Two HTTP RED tests reproduced the bugs. Fix: check buffer_used of all layers of ob_get_status(true) and after CMS initialization verify requestFinished again. Without storing/reading the contents of the buffers and without another request subsystem.
+
+### 2026-10-25: ARCH-01 completed
+
+- The constructor prepares configuration, path/namespace, error handler/timezone and early i18n. It does not run CMS, boxes or a page-cache HIT and does not terminate with a redirect. I18n normalizes also the canonical default prefix before the stored redirect. Creating a lazy Site/Vars is without loading the resource.
+- Deferred Application::get/route (ordinary HTTP methods, validating registration and chaining). In run the first accepted route: true terminates handling without a layout, false continues, other returns prepare the layout with variables. The static Router stays immediate and a real legacy API box works in the test. The new terminal contract is a major migration rule, not a change of an existing API controller.
+- run/display idempotent, including a direct display from a callback and a defensive reentrant display from a box. An explicit "0" and empty content do not trigger CMS. 404 does not pull shared boxes; empty sections return []; an explicit 410 preserves the status and skips CMS/cache. Debug is created at handling, not in the constructor.
+- The cache gate follows custom routes and their policy. Changed Vars versus the bootstrap, a renderer used before the gate, accepted routes, earlier output in any buffer/sent headers and a non-standard HTTP status conservatively switch off the shared cache. The common PageCache bypass also affects public native fragments. Cost: requests adapted this way may have fewer HITs; an ordinary anonymous page MISS/HIT still works. Put globally cacheable settings into Settings, handle dynamic personalization explicitly.
+- HTTP measurement: the constructor originally 4 SQL / 1 connection / 1 box, now 0/0/0. A deferred terminal GET and POST likewise 0/0/0, the callback does not run at registration. 18 targeted scenarios / 55 assertions passed: locale/pending redirect, route priority and decline, pre-run Vars/renderer/central, an old HIT versus route/private/status/output, a single render, 404/410, a legacy API box and empty sections.
+- Review: a confirmed P2 nested-buffer cache conflict and a reentrant double dispatch from a box, both reproduced by two HTTP RED tests and fixed in one pass. No further findings. The reviewer did not run the shared DB tests; all runtime checks were done here in Docker.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **1113 tests / 2677 assertions**, 12.953 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed. The existing Application/Site/Section/Box/Renderer/Router namespaces and lazy services preserved, no additional runtime package or middleware stack.
+- The README contains the new lifecycle, callback return values, mandatory run/display, conservative cache behavior and migration of API bootstrap before CMS while keeping the box variant. CHANGELOG and inventory updated. On deployment clear the old page caches. This checkpoint contains code/tests/plan; the exact hash in the git history, verify the push before the next phase.
+- Next concrete step according to stage 3: PERF-03, the duration of the PHP session lock. Measure parallel requests of one session, inventory regenerateId/destroy/CSRF/shutdown flush and access to the native session state. Propose an explicit safe release/read-only phase without premature closing, lost writes or breaking sign-in. Do not start a refactor without regressions and measurement. The other register items including the SEC-01 content invalidation remain open.
+
+
+### 2026-10-25: PERF-03 completed
+
+- Inventory: WBengine data are not stored in `$_SESSION`; its own model writes deferred through the shutdown `flush`. The native PHP session holds a synchronization lock. `session_write_close()` alone would release the lock before the WBengine write. Login regenerates the ID and resets CSRF, logout deletes the DB row and further persistent writes.
+- Decision: explicit `Session::close(): void`, `isClosed(): bool` and a lazy delegation `Application::closeSession(): void`. No automatic closing after the first read and no implicit reopening. The new state stays in the existing Session tree and namespace, DB operations use the current Model/Db. Closing the application without a session does not create it.
+- Close procedure: verify the match of the active native ID, load the DB snapshot while still under the lock, store the deferred changes, close the object for persistent changes and call the native close. A repeated close has no effect. An INSERT/UPDATE failure keeps the dirty state and the lock, raises a SessionException with the cause; a retry stores the changes. A failure of the lazy load does not mark the snapshot as loaded. Closing an already destroyed session does not create a row.
+- After close: getValue and CSRF verify work with the snapshot; an existing secret may derive a token without a write even for another purpose. Creating a missing secret, a setter including user_id, a magic setter, save, unsetKey, regenerateId, destroy and sessionStart raise a SessionException. Object references may change the local snapshot, but flush of a closed object stores nothing. The snapshot is not a new authorization check after a concurrent logout. Complete sign-in, authorization and state changes before close.
+- Measurement: PHP 8.4.27 / MySQL 8.4, native files handler, two separate CLI PHP processes with the same cookie; the first request has 250 ms of simulated work after the close point. Five waits of the second process with the lock held: 246.028, 246.789, 246.779, 247.315, 248.017 ms, median 246.789 ms. After an early close: 1.074, 1.210, 1.007, 1.061, 1.168 ms, median 1.074 ms. This is not site throughput or a promise for other handlers. Repeatable procedure: `docker compose -p wbengine-modernization run --rm php php tests/benchmarks/session-lock.php`; it uses only the test configuration, its own session ID and a temporary directory, and signs out its own rows.
+- The concurrency test through proc_open and IPC verifies the real blocking of the second process before close, passing after close while the first process is still running, preservation of the changes of both writers, ignoring local changes of the closed snapshot and no restoration of the row after the second request's logout and the later shutdown of the first. It is not a sequential simulation of requests or a single-threaded HTTP server.
+- TDD: 12 initial RED cases for the missing close/closeSession; then green integration scenarios of persistence, reading an untouched session after close, changes of rights/ID rotation and CSRF, a ban on later mutations, a no-op without a session, no INSERT for an unused/destroyed session and rejection of closing after a manual native unlock. Failure coverage includes INSERT and UPDATE, exception and false and a subsequent retry.
+- Independent read-only review without blocking findings. The contract of CSRF derivation and locally mutable references clarified; UPDATE/false failure scenarios added. No new runtime package, interface or automatic change of the lifecycle of ordinary sites.
+- Limitation: the serialization guarantee requires a locking handler. Native handler errors have PHP semantics; once the native close starts, the object stays closed even on an exception. No global closing before render, a delayed login/CSRF write would stop working.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **1132 tests / 2765 assertions**, 14.275 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint`, `git diff --check` and the stored benchmark passed. Repeated measurement with the stored script: medians 249.531 ms / 1.265 ms. A commit and push of this stage together with the plan and CI verification in draft PR #2 follow.
+- Next concrete step: assess PERF-04/PERF-05 by measuring a growing number of pages and EXPLAIN over realistic boxes in MySQL/MariaDB. Preserve collation, order and shared semantics, without a demonstrated benefit do not add indexes/maps. Then TPL-01: inventory of Smarty constructs, a compatibility corpus and a migration contract for the own renderer. The SEC-01 content invalidation waits for the write API.
+
+
+### 2026-10-25: PERF-04 measured, PERF-05 completed
+
+- Responsibility: Codex. The test tool `tests/benchmarks/content-lookup.php` uses `SHOW CREATE TABLE` and connection-local TEMPORARY tables shadowing cms_sites/cms_boxes only in the given connection. No permanent DDL or deletion of data. Temporary data and its own file cache are removed in finally. The first attempt CREATE TEMPORARY ... LIKE with the same name was rejected by MySQL as a duplicate alias; rewriting the loaded CREATE TABLE preserves the real schema and indexes without this problem.
+- Procedure: PHP 8.4.27, MySQL 8.4.13 and MariaDB 11.4.13; 100/1000/10000 visible pages, one lookup per Site instance, 15 repetitions and the median. SQL with the existing link index; a memory check without serialization and a real FileCache, cold and warm. Lookup results for the base corpus must be identical. The map build is measured separately, not presented as an implemented URL map or as an APCu result.
+- PERF-04, MySQL for 100/1000/10000 pages: SQL 0.2120/0.0612/0.1468 ms, warm memory scan 0.0113/0.0962/0.9076 ms, warm FileCache 0.2320/1.8920/20.0181 ms, the map build alone 0.0073/0.0848/0.7137 ms. MariaDB for 10000: SQL 0.1380 ms, memory 0.8522 ms, FileCache 19.7163 ms, map build 0.7115 ms. Cold FileCache for 10000: MySQL 22.1060 ms and MariaDB 20.2981 ms. This is not a cold-disk, end-to-end or production benchmark.
+- Ruling: do not add a URL map now. A single lookup per request still costs O(n) to build or to transfer/decode the whole cache; the indexed SQL was cheaper in the larger sample. A persistent shared map and its invalidation are worth re-evaluating only after FIX-02 and a measurement of memory/serialization. The cost of a possibly wrong deferral: the linear scan of the existing cache remains on large sites; no change of the runtime API is made.
+- FIX-02: the benchmark proved existing mismatches between SiteModel::_findVisibleSite and SQL. With a stored /café/ and unicode_ci SQL finds /cafe/, the cache does not; with bin the cache finds /CAFÉ/, SQL does not. This phase does not change the URL comparison. Before the URL map and release 4.0, define and implement a matching DB/cache contract for case, diacritics, Unicode, padding, strict/prefix, hidden, duplicates and the priority of the highest site_id. Verify MySQL/MariaDB and at least unicode_ci/bin, zero cache growth for random URLs, invalidation and real SQL/connection costs. Do not assume that mb_strtolower reproduces an arbitrary collation.
+- PERF-05 dataset: 30000 boxes, 100 sections of 300, 20 percent shared in each section, a third of site membership 42, the rest 99; 140 results for section 1/site 42. Compared: no secondary index, (section_id, order) and (section_id, shared, order), the original and the shared section condition. Each variant must return the same rows/order. EXPLAIN is stored in the benchmark output. Without an index an estimate of about 30000 rows/ALL; with both candidates 300/ref or range.
+- MySQL median original/no-index 5.3782 ms, shared/no-index 5.1404 ms, original/section_order 0.4216 ms, shared/section_order 0.3839 ms, shared/section_shared_order 0.3949 ms. The original query on MySQL sorts even with section_order; the shared condition with section_order eliminates the filesort. The candidate with shared keeps the filesort.
+- MariaDB median original/no-index 6.6089 ms, shared/no-index 4.4199 ms, original/section_order 0.3543 ms, shared/section_order 0.3637 ms, shared/section_shared_order 0.4070 ms. With section_order, here even the original condition has no filesort. Do not present small differences as a universal speedup, the main effect is restricting the section rows.
+- Writes measured separately: 5 batches of 1000 INSERT, cleanup outside the measured interval. MySQL medians without index/section_order/section_shared_order 2.4174/2.9838/3.0217 ms, MariaDB 2.1693/2.7339/2.8832 ms. The index is not free. A warmed box FileCache and the memory driver have 0 SQL in 15 lookups, a cold cache reads the DB. The sample is not proof of benefit for small tables or an arbitrary shared ratio.
+- Implementation: Section\Model::getBoxes has a shared b.section_id and a parameterized JSON_SEARCH/shared OR; SELECT, cache keys and the tree unchanged. The optional migration `migrations/4.0.0/001-boxes-section-order.sql` adds (section_id, order). Without runtime DDL, new packages or a change of the JSON schema. Installation procedure: SHOW INDEX, do not add an equivalent index, adjust the prefix, use the ordinary migration procedure and EXPLAIN; rollback DROP INDEX wb_boxes_section_order only for an index added by this migration. Do not introduce a box/site relational link yet without a demonstrated need.
+- TDD: integration RED first the missing migration, then a filesort on the real MySQL query even with the index. After the SQL change GREEN, results preserved before/after the migration and after the rollback. The independent review pointed out cleaning of permanent test tables by the inherited DbTestCase and measuring INSERT including DELETE; the test now inherits directly TestCase and verifies only the connection, the INSERT timing does not include cleanup. The benchmark and the new test manipulate only temporary tables.
+- Final verification: the complete MySQL suite `composer test`, **1133 tests / 2771 assertions**, 14.188 s, 34 MB. MariaDB 11.4 BoxIndexTest/BoxLookupTest **7 tests / 16 assertions**. Both benchmarks passed. `composer lint` and `git diff --check` passed. A common commit/push and CI of draft PR #2 follow.
+- Repeating on MySQL: `docker compose -p wbengine-modernization run --rm php php tests/benchmarks/content-lookup.php`. Run MariaDB in a separate Compose project with DB_IMAGE=mariadb:11.4 and the same PHP image, after the measurement stop only its DB. Do not swap the image of a running project with foreign data.
+- Next concrete step: TPL-01, inventory of Smarty constructs in the core and the sample application, identification of compatible native constructs, a test corpus and a migration contract. FIX-02 must be resolved before returning to the URL map and before release. The SEC-01 content invalidation follows the write API; no merge/tag/deployment is performed.
+
+
+### 2026-10-26: TPL-01 completed
+
+- Responsibility: Codex. The reference inventory and migration contract are stored in `ref-template-migration.md` according to the prefix system; source identities in `tests/fixtures/template-migration/inventory.json`. The framework is based on b7cf3d4. The sample application src/View only read, clean commit d22281fc86e9efd63a333ac6668b9261f22777e9; no changes of this second repository.
+- Library inventory: 7 `.tpl`, of which 4 renderer sources (Application/error, Article, Login, Logout) and 3 sprintf exception templates. Sample application: 13 sources, NativeRenderer already set. All renderer sources compile natively; this is not proof of rendering the whole site. The examples additionally use native set/t, foreach, object methods and i18n/formatting modifiers.
+- The read-only tool `tests/tools/template-inventory.php [application-template-dir]` prints JSON with SHA-256, consumer, compile state and heuristic reviewHints. It only calls the existing Compiler::compile, never executes a source or creates compiled files, does not start the DB/session. It ignores symlinks and vendor/node_modules/.git/Compiled/tests. A successful compilation is only compiled-only; unknown Smarty tags may be text. The hints are not a lexer, runtime validation or a compatibility guarantee.
+- A new versioned corpus: 17 named scenarios / 31 concrete native/Smarty outputs, explicit expected outputs instead of mere equality of adapters. Another 5 scenarios render directly the real framework templates with automatic escaping, both CAPTCHA branches and preservation of the trusted article HTML. The integration concurrency with API/session/cache of the existing suite preserved.
+- Confirmed differences: the native default replaces even zero, Smarty preserves it; truncate native counts the length before the suffix, Smarty including the suffix; native nl2br emits escaped input and an HTML break, Smarty with autoescape on also escapes the inserted break. Include and assignment require a syntax conversion. The tag t/set is native-only, the direct Smarty API and plugins require an application migration. Changes of runtime modifiers are not part of TPL-01.
+- Decision: do not repeat the promise of full Smarty compatibility, keep a small compiled language and the existing Application/Renderer/Adapter/Template tree. The README no longer claims that arbitrary legacy pages or the current skeleton are automatically identical after merely switching the adapter. Templates are the developer's trusted code, because they may call methods of assigned objects; Markdown will be standalone content without this logic.
+- The migration contract also captures the no-op config/cache API and the ignored cache_id/compile_id/nocache in NativeRenderer, rejection of delimiters, clearing of all caches on deployment and rollback of compatible sources/config. Returning to Smarty is not enough by changing the adapter for native-only set/t. Composer and production renderers unchanged.
+- TDD: RED missing inventory tool and RED missing corpus; GREEN after delivering the implementation/fixtures. Calibration of the expected outputs revealed Smarty autoescape for nl2br, recorded as a conscious difference, not a hidden modification of the production render. The isolated suite **37 tests / 87 assertions**. The whole MySQL suite **1170 tests / 2858 assertions**, 14.367 s, 34 MB, PHP 8.4.27 / MySQL 8.4. Smarty locally 5.8.5. `composer lint` and `git diff --check` passed.
+- Independent read-only review without important findings or blockers; the read-only nature of the tool, the independence of CI from an external checkout and the match of the documentation with the adapters were verified. A common commit/push of this stage including the plan and CI of draft PR #2 follow. The reference document contains exact commands for repeating the inventory and the corpus tests; CI does not need a neighboring checkout.
+- Next concrete step: TPL-02, first diagnostics of known unsupported Smarty control tags in the existing Compiler (including closing tags, path/line), preserve CSS/JS/literal. Change the current assign-as-text characterization test to an expected exception. Then a migration corpus of include/set/modifiers and an HTTP smoke of the sample site (login/POST logout, locale, 404, articles, fragments/page cache); take into account its old GET logout link and the debug-only diagnostic variables. Remove the Smarty package only in TPL-03 after these gates. FIX-02 and SEC-01 remain open release conditions.
+
+
+### 2026-10-26: TPL-02A, compiler diagnostics completed
+
+- Scope of the checkpoint: the first part of TPL-02, not completion of the whole migration or removal of Smarty. Base commit 4719bb0. Responsibility Codex. The register keeps TPL-02 in progress, the next step is given below.
+- Implementation in the existing Wbengine\Template\Compiler: known unsupported Smarty syntax is returned as a token and processed in the ordinary pass. Before the exception the preceding text is counted, so the TemplateException states the real path and line including CRLF, indentation and native control flow. Without a new preprocessor, dependency, framework or change of the Application/Renderer tree.
+- Concrete forms: assign/append, extends/block, capture, section/sectionelse, config_load, eval/fetch/insert, php/include_php, strip/nocache, ldelim/rdelim, call/forelse, Smarty headers function/for/while and closing forms. Finite rules and limitations are in ref-template-migration.md. Function recognizes named attributes even with a different order and long spaces; for requires a Smarty $ variable; while does not recognize parenthesized headers, so as not to collide with JavaScript. It is not full detection of Smarty or plugins.
+- Preserved ordinary CSS rules, JS object properties with a colon, ordinary declarations and loops including $ready, similarly named identifiers and unknown plugins. Literal and comments protect literal examples. Exactly reserved notations such as JS shorthand {capture} must be inside literal; the compiler does not parse the HTML/JS context.
+- Compiler::VERSION raised 3 -> 4. The test inserts a real old compiled file under the version-3 identity and proves that with compileCheck=false it cannot bypass the new diagnostics. Version-dependent fragment identities are separated; on deployment keep clearing the compiled/page/fragment/external HTML cache according to the migration contract.
+- The TPL-01 corpus intentionally updated: instead of assign-as-text an exception is expected. It still has 17 scenarios / 31 expected results, now 30 outputs and one diagnostic. The inventory test verifies that assign has a failed compile and a concrete error message. The repeated read-only inventory of the library and 13 external templates matches the stored snapshot; the sample checkout was not changed.
+- TDD: initial 33 RED (32 unsupported headers/closings and long spaces), another RED old compiled file, then RED order of function attributes and while true. All GREEN after the changes. Tested are path/line, name boundary and preservation of CSS/JS/literal, not just searching text in the source.
+- Review found a collision of valid JS function run() {while ($ready) ...}. A dedicated RED regression test confirmed it, the while detection was narrowed and ordinary JS preserved. Ruling: do not forbid parenthesized while headers, because the same bytes may be valid JavaScript; the cost of the decision is that a corresponding Smarty while(...) may remain text and requires an inventory/manual conversion. The exact collision {capture} remains reserved syntax with an explicit literal solution. A second review was not repeated, the fix is covered by regressions and the final suite.
+- Final verification: `docker compose -p wbengine-modernization run --rm php composer test`, **1215 tests / 2975 assertions**, 14.580 s, 34 MB, PHP 8.4.27 / MySQL 8.4. `composer lint` and `git diff --check` passed; the repeated inventory matches the original snapshot. TPL-02A is prepared as a separate versioned checkpoint; a commit/push with this state and verification of CI of draft PR #2 follow.
+- Next concrete step: TPL-02B, close the tested contract of include/set and modifiers for application migration, including invalid/missing partials, passing and isolation of data, paths and buffer recovery. Then TPL-02C: a separate isolated checkout of the sample application, conversion of the old GET logout link and diagnostic variables, HTTP smoke of menu/login/CSRF/POST logout/404/articles/locale/fragments/page HIT/BYPASS. Remove Smarty only after these gates in TPL-03. FIX-02/SEC-01 and other release tasks remain open.
+
+
+### 2026-10-26: TPL-02B completed, an ongoing separate stage
+
+- Verified the contract of root/dynamic include paths, inheritance of local set values, isolation of partials and of the next fetch. The existing suite covers syntax errors, non-existent files, traversal/symlink, recursion and modifiers. The meanings of modifiers from the migration corpus do not change, a full Smarty emulation is not added.
+- RED tests proved two real problems of ordinary methods opening their own buffer: a successful render lost the prefix and a nested partial exception left an open buffer. Fixed by the common Engine::capture in the original Template tree; the procedure is also used inside cache callbacks. Render depth and output buffers are restored without leaking partial HTML.
+- The independent review caught the same problem in the generated cache callback, where the original ob_get_clean remained. A dedicated RED cold/warm test proved the missing prefix and then GREEN verifies the whole fragment, a single invocation of the service and the original buffer level. Compiler::VERSION 5 invalidates old callbacks. FragmentCache cleanup has protection against an infinite loop with an unremovable buffer.
+- Limitation: the service is trusted code; it must not cancel renderer buffers or create unremovable buffers. PHP cannot fully recover such side effects. The changes keep to the existing Engine/Compiler/FragmentCache namespaces and without packages.
+- Verification: explicit TemplateEngineTest **170 tests / 265 assertions**. The integration working suite with the concurrently completed FIX-02 **1222 tests / 3142 assertions**, 14.385 s, 36 MB. The full set of so far versioned tests plus the new SiteLookupCollationTest was used, so as not to load in-progress tests of independent Markdown/API workers. A separate commit/push of TPL-02B and FIX-02 follows, then CI of the exact remote state.
+- Continuous work according to the user's new instruction: between phases we no longer wait for further approval. For the independent MD-01 and API-01/04 separately owned modules and subagent-driven-development are used. The root ensures review, the common plan and versioning; working files of other stages are not mixed into this commit.
+- Next step: TPL-02C, an isolated checkout of the sample application, adjusting the lifecycle and POST logout/layout diagnostics, HTTP smoke in a separate Docker project. FIX-02 is recorded separately in the immediately following checkpoint. Smarty is removed only after verifying TPL-02C.
+
+
+### 2026-10-26: FIX-02 completed
+
+- Responsibility Codex + a separate worker, independent read-only review without blocking findings. Removed the PHP mb_strtolower comparison over the whole sites:visible table. SiteModel uses the original parameterized indexed SQL resolver without dependence on the cache driver. No cache for random URLs and no memory transfer of the whole table is created.
+- Ruling: the correctness of exact DB comparison takes precedence over the earlier promise of 0 SQL on a warmed data cache. Page selection now costs one query/connection, returns fresh rows and respects the concrete collation including padding and strict=0/1 values; a successful whole-page HIT and a terminal route may still skip CMS. The cost of the change is one real SQL lookup even with a warmed data cache. The translation/menu/box caches remain and need their own invalidation.
+- TDD RED on MySQL proved a missing unicode_ci accent match and an incorrect bin case match; GREEN covers unicode_ci/bin, composed/decomposed Unicode, trailing spaces, strict/prefix/null/-1/2, hidden, the highest ID of duplicates, quote/injection and missing. MySQL 8.4 and MariaDB 11.4 **14 tests / 179 assertions**, always exactly one SQL lookup for each driver variant. The cache test no longer requires a false zero, it verifies immediate change of title/visibility and zero URL cache files.
+- The diagnostic test adjusted substantively: the necessary page selection has 1 SQL/1 connection, debug or explicit server-version access adds no further SQL. Diagnostic variables are still missing in an ordinary production render. The benchmark and README updated; historical times of the old full-table cache remain explicitly historical.
+- Current benchmark MySQL 8.4.13: SQL medians for 100/1000/10000 pages 0.2309/0.1297/0.0873 ms. An enabled memory or file driver now also measures SQL, not the old cache path. Synthetic map building outside the table fetch 0.0089/0.0696/0.7497 ms. No promise of production latency and no new URL map.
+- The common verified suite of so far versioned tests and the new SiteLookupCollationTest: **1222 tests / 3142 assertions**, 14.385 s, 36 MB, PHP 8.4.27/MySQL 8.4; TPL-02B already separately committed and pushed as 06818d7. Lint and git diff --check passed. The work of the other Markdown/API workers is not part of this checkpoint. A separate commit/push of FIX-02 with this plan and CI of the exact commit follow.
+- Next step: TPL-02C continues and in parallel MD-01/API-01/04 according to the assigned files. The SEC-01 content invalidation remains open, the future URL map PERF-04 deferred without need. Between checkpoints we no longer wait for a user message.
+
+
+### 2026-10-26: MD-01 completed
+
+- The own Wbengine\Markdown facade composes the separate Parser/InlineParser/readonly Node/HtmlRenderer and a shared Budget, without another runtime package. It is a content tree in the same namespaces; no executed template/PHP logic from Markdown. Direct sources and the App/DB link continue in MD-02.
+- CommonMark 0.31.2: all 652 official examples have an exact syntactic test through a test-only AST projection and the exact production safe output. 76 explicit results in safe-deviations.json: 72 escaped HTML and 4 forbidden URL schemes. 12 official GFM examples of tables/task/strikethrough also pass exactly. Sources/authors/licenses/SHA are in sources.json, the public contract in ref-markdown.md. This is not a claim of conformance for all possible strings.
+- Limits: 1 MiB input, parser 64/renderer 128 depth, 8M work, 100k node allocations, 8 MiB expanded HTML output. Exceeding raises a LengthException. HTML is always escaped, URL http/https/mailto/relative, without an unsafe switch. Counters are reset between documents.
+- The independent review brought concrete cases outside the official corpus. RED/GREEN: escaped less-than in an angle destination, a disallowed parenthesis in a title, an escaped closing label, 999 Unicode characters versus bytes, invalid UTF-8 without a PHP deprecation and amplification of a short reference source into a huge output. The output limit stops it; ordinary 1000 links/code spans are not rejected by an overly conservative suffix accounting. Further regressions for the depth of image alt/inline/blocks, the node count and adversarial delimiter reduction.
+- Isolated Docker verification PHP 8.4.27 **695 tests / 1826 assertions**. A supplementary deterministic malformed-input smoke of 1000 inputs without PHP warnings. The integration suite of all so far versioned tests + the Markdown files **1917 tests / 4968 assertions**, 14.607 s, 46 MB; in-progress API/MD-02 tests were deliberately separated. composer lint and git diff --check passed. The previous checkpoint TPL-02B/FIX-02 has all 5 CI green.
+- The review fixes verified by regression tests and the common suite; another review round is not a condition of waiting. A separate commit/push of MD-01 with this plan and CI of the exact remote commit follow. Texy/Smarty dependencies are not changed in this checkpoint.
+- Next step: the MD-02 worker implements the lazy App service, .md source dispatch in Engine, explicit format of articles/translations. Note: the real old Article getter today does not call the Texy formatter, it may already contain HTML. Preserve existing bytes as legacy_html, require the source for MD-03 explicitly (HTML/Texy), do not guess the syntax. The root continues in a separate checkout of the sample application and the API foundation, after review fixing transaction ownership.
 
 
-### 2026-10-26: MD-02 dokončen
+### 2026-10-26: MD-02 completed
 
-- Zapojení lazy App->Renderer->Adapter->NativeRenderer->Engine resolver, bez parseru na běžném HTML renderu. `.md` požadovaná či kanonická přípona, case-insensitive, vždy jako obsah bez PHP/proměnných/template logiky; kořeny kontrolovány před dispatch a čtení omezené na1MiB. Povoleno i uvnitř standardního HTML layoutu. NativeRenderer bez App má vlastní bezpečný lazy fallback.
-- Volitelná003 migrace přidává legacy_html/markdown formát. Article getter skutečně dříve jen předával DB HTML, proto se staré řádky nereinterpretují jako Texy. Zachované bajty/nezměněné staré schéma bez probe dotazů; formát je explicitní. Překlady předávají per-field formát, takže fallback nesmíchá HTML a Markdown. Komentář Article.tpl opraven podle skutečného chování.
-- Nezávislé review našlo souběhovou chybu čtení/validace formátu před UPDATE. Deterministický fork/two-connection RED ji prokázal pod FOR UPDATE zámkem; conditional UPDATE hlídá původní formát, stale změna a initial-INSERT kolize odmítnuty, legitimní no-op povolen. Nemění transakční hranice volajícího. Změna existujícího formátu vyžaduje oba textové fieldy (nahradit/nebo null fallback).
-- Izolované první770testové ověření zdrojů/parseru/obsahu/regresí **770/2064**; finální zaměřená DB regrese po souběhovém fixu **65testů/221assertions**. Společná sada dosud verzovaných testů + MD02 + dokončené API foundation a UrlRequest **1966testů/5178assertions**,14.825s,46MB,PHP8.4.27/MySQL8.4. composer lint a git diff --check prošly. API/URL soubory budou mít následující samostatné checkpointy, nejsou přimíchány do MD02commitu. MD01 má všech5CIzelených.
-- Nová ref-markdown.md sekce popisuje formáty, null/empty, limity a migrační postup. Žádné nové závislosti, runtimeDDL ani přepsání aplikačních dat. Migraceobsahu MD03 již vzniká ve zvlášť vlastněných nových souborech, se zálohami/dryrun/rollback a explicitním HTML čiTexy zdrojem. Následuje MD02 commit/push a CI; Root dál pokračuje appTPL02C a API foundation.
+- Wiring of the lazy App->Renderer->Adapter->NativeRenderer->Engine resolver, without a parser on an ordinary HTML render. `.md` as the requested or canonical extension, case-insensitive, always as content without PHP/variables/template logic; roots checked before dispatch and reading limited to 1 MiB. Also allowed inside a standard HTML layout. NativeRenderer without App has its own safe lazy fallback.
+- The optional 003 migration adds the legacy_html/markdown format. The Article getter really only passed DB HTML before, so old rows are not reinterpreted as Texy. Preserved bytes/unchanged old schema without probe queries; the format is explicit. Translations pass the per-field format, so a fallback does not mix HTML and Markdown. The comment of Article.tpl corrected according to the real behavior.
+- The independent review found a concurrency bug of reading/validating the format before UPDATE. A deterministic fork/two-connection RED proved it under the FOR UPDATE lock; a conditional UPDATE guards the original format, a stale change and an initial-INSERT collision are rejected, a legitimate no-op allowed. It does not change the caller's transaction boundaries. Changing an existing format requires both text fields (replace/or null fallback).
+- The isolated first 770-test verification of sources/parser/content/regressions **770/2064**; the final focused DB regression after the concurrency fix **65 tests/221 assertions**. The common suite of so far versioned tests + MD02 + the completed API foundation and UrlRequest **1966 tests/5178 assertions**, 14.825 s, 46 MB, PHP 8.4.27/MySQL 8.4. composer lint and git diff --check passed. The API/URL files will have following separate checkpoints, they are not mixed into the MD02 commit. MD01 has all 5 CI green.
+- The new ref-markdown.md section describes formats, null/empty, limits and the migration procedure. No new dependencies, runtime DDL or rewriting of application data. The MD03 content migration is already arising in separately owned new files, with backups/dry-run/rollback and an explicit HTML or Texy source. The MD02 commit/push and CI follow; the root keeps going with app TPL02C and the API foundation.
 
 
-### 2026-10-26: API-01 a základ API-04 dokončen
+### 2026-10-26: API-01 and the base of API-04 completed
 
-- Současný Api controller registruje Wbengine\Api\V2 a jeho lazy Routes/Model/Contract/Problem, Model dědí ModelAbstract. Minimální veřejné GET discovery bez DB, HTTPS identity s discovery:read scope. Jednotné JSON chyby/stránkovací a object-body helpery. Capability flags CRUD/preview/publish jsou false, nepředstírají hotové funkce. V1 zachováno; V2 server-to-server bez CORS, OPTIONS405.
-- Lokální důvěryhodný Model provision/revoke kontroluje aktuální DB ADMIN roli, vrací raw náhodný klíč jen jednou, DB hashSHA256 a konečný scope whitelist. Každý request čte active/revoked stav; audit rozlišuje integrationID, lokální adminID a omezený nedůvěryhodný actor popisek bez vlivu na autorizaci. Optional002 SQL bez runtimeDDL, bez veřejného provisioning endpointu.
-- Nezávislé review bez auth bypassu našlo vlastnictví transakcí. RED pro provision/revoke x BEGIN/autocommit(false) prokázal nechtěný commit caller dat; SET TRANSACTION READ WRITE guard odmítne active txn před begin a jeho rollback zůstane volajícímu. MySQL errno1568 mapováno na409nested_transaction, jiné chyby se nepolykají. Regrese revocation auditfailure potvrzuje rollback revokace a dále platný klíč.
-- API focused Docker **22testů/126assertions**, PHP8.4.27/MySQL8.4, nové integrační fixture pouzeTEMP tabulky. Společná ověřená sada včetně MD02 a UrlRequest **1966/5178**,14.825s46MB; tyto další změny mají vlastní commity. composer lint a git diff --check prošly, po drobném doplnění dědičnosti ModelAbstract znovu všech22/126green. HTTP smoke vzorové aplikace potvrzuje v2discovery a v1unauth401. Ref-api-v2.md dokumentuje instalaci/kontrakty/omezení.
-- API-04 zůstává rozpracován pro rate limiting, retenci auditu a obsahovou invalidaci. Následuje API-02/03 obsahová tree API, ETag, revize/publish, bezpečné obrázky a připojení centrální administrace. Nejsou implementované ani vzdáleně spouštěné libovolné PHPmetody/template editory. Další samostatný checkpoint je UrlRequest/TPL02C a app repo HTTP migrace.
+- The current Api controller registers Wbengine\Api\V2 and its lazy Routes/Model/Contract/Problem, Model inherits ModelAbstract. Minimal public GET discovery without DB, HTTPS identity with the discovery:read scope. Unified JSON errors/pagination and object-body helpers. The capability flags CRUD/preview/publish are false, they do not pretend finished features. V1 preserved; V2 server-to-server without CORS, OPTIONS 405.
+- The local trusted Model provision/revoke checks the current DB ADMIN role, returns the raw random key only once, DB hash SHA256 and a final scope whitelist. Every request reads the active/revoked state; the audit distinguishes the integration ID, the local admin ID and a bounded untrusted actor label without influence on authorization. Optional 002 SQL without runtime DDL, without a public provisioning endpoint.
+- The independent review, without an auth bypass, found transaction ownership. RED for provision/revoke x BEGIN/autocommit(false) proved an unwanted commit of the caller's data; a SET TRANSACTION READ WRITE guard rejects an active txn before begin and its rollback stays with the caller. MySQL errno 1568 is mapped to 409 nested_transaction, other errors are not swallowed. A regression of revocation audit failure confirms rollback of the revocation and the key remaining valid.
+- API focused Docker **22 tests/126 assertions**, PHP 8.4.27/MySQL 8.4, the new integration fixture only TEMP tables. The common verified suite including MD02 and UrlRequest **1966/5178**, 14.825 s 46 MB; these further changes have their own commits. composer lint and git diff --check passed, after a small addition of ModelAbstract inheritance all 22/126 green again. The HTTP smoke of the sample application confirms v2 discovery and v1 unauth 401. Ref-api-v2.md documents installation/contracts/limitations.
+- API-04 remains in progress for rate limiting, audit retention and content invalidation. API-02/03 follow: the content tree API, ETag, revisions/publish, safe images and connecting the central administration. Arbitrary remotely executed PHP methods/template editors are not implemented. The next separate checkpoint is UrlRequest/TPL02C and the app repo HTTP migration.
 
 
-### 2026-10-26: TPL-02C, oprava Url pro přímé/FPM požadavky
+### 2026-10-26: TPL-02C, a fix of Url for direct/FPM requests
 
-- HTTP smoke v izolované vzorové aplikaci našel příčinu selhání loginu: bez Apache rewrite parametru link měl Url::_link null, trim vypsal PHPdeprecation dříve než session cookie/redirect. Root Url nyní používá skutečnou REQUEST_URI cestu, pokud chybí řetězcový rewrite alias. Staré link=front se zachovává, pole/null nevytvoří string-conversion warning. Extension se připojí pouze jako řetězec.
-- TDD: 3 RED (missing/null/array alias) a 1 zachované legacy chování; po opravě **4testy/8assertions GREEN**. Smokerouter žádnou Apache manipulaci nemusí simulovat; skutečný GET/POST login již prochází. Další HTTP test pak nezávisle prokázal chybějící POST logout v layoutu a opravuje se v app repozitáři.
-- Společná aktuální sada **1966testů/5178assertions**,14.825s,46MB; API+MD02 už mají vlastní kontrolní body fb479e0/a3fff96. Vzorová aplikace v odděleném checkoutu nyní **20 HTTP kontrol GREEN**, včetně v2discovery/v1unauth401. Změny App\Application/Site a layoutu se verzují zvlášť, ne přimícháním do knihovny. Root Url fix se nyní samostatně commituje/pushuje s plánem.
-- Další krok: dokončit app CI/referenční migrační plán, zapsat jeho commit do tohoto trackeru a označit TPL02C. Poté TPL03 přesun Smarty do volitelného kompatibilního balíčku a ověření čistého jádra bez jeho instalace. Práce na MD03 a centrální administraci pokračují samostatnými vlastníky.
+- The HTTP smoke in the isolated sample application found the cause of the login failure: without the Apache rewrite parameter link, Url::_link was null, trim printed a PHP deprecation before the session cookie/redirect. Root Url now uses the real REQUEST_URI path if the string rewrite alias is missing. The old link=front is preserved, an array/null does not create a string-conversion warning. The extension is appended only as a string.
+- TDD: 3 RED (missing/null/array alias) and 1 preserved legacy behavior; after the fix **4 tests/8 assertions GREEN**. The smoke router does not have to simulate any Apache manipulation; a real GET/POST login already passes. Another HTTP test then independently proved the missing POST logout in the layout and it is being fixed in the app repository.
+- The common current suite **1966 tests/5178 assertions**, 14.825 s, 46 MB; API+MD02 already have their own checkpoints fb479e0/a3fff96. The sample application in a separate checkout now **20 HTTP checks GREEN**, including v2 discovery/v1 unauth 401. Changes of App\Application/Site and the layout are versioned separately, not mixed into the library. The root Url fix is now committed/pushed separately with the plan.
+- Next step: finish the app CI/reference migration plan, record its commit in this tracker and mark TPL02C. Then TPL03, moving Smarty to an optional compatibility package and verifying a clean core without its installation. Work on MD03 and the central administration continues with separate owners.
 
 
-### 2026-10-26: TPL-02C a TPL-03 dokončeny
+### 2026-10-26: TPL-02C and TPL-03 completed
 
-- Vzorový web má vlastní větev a draft PR rrsoftcz/wbengine-skeleton-app#1, commit35d2d54, CI green. Native layout, deferred lifecycle, přihlášení/POST logout/CSRF, anonymní a přihlášený uživatel, locale, článek,404,fragmenty/page HIT i API ověřeny 20 HTTP kontrolami. Čerstvá instalace bez Smarty po vyčištění cache prochází stejnými kontrolami.
-- Smarty adaptér přesunut do volitelného Composer balíčku compat/smarty, původní FQCN a escapování zachovány. Jádro ani jeho testy Smarty neinstalují. Chybějící adaptér hlásí instalační doporučení. Historické očekávání v JSON ponecháno jako migrační reference, vykonávaný core corpus ověřuje nativní výsledky.
-- Kompatibilní profil má oddělený vendor mimo checkout a mirror jádra: symlink na lokální jádro kolidoval s jeho classmap exclude a mohl vytvořit rekurzivní cestu. Regrese opravena oddělenou instalací, testy používají skutečné kořeny nainstalovaného jádra. Optional CI job běží odděleně od základní PHP/DB matice. Balíček ještě není publikovaný v Composer registru, lokální path repository je popsáno v README.
-- Optimalizovaný autoload odhalil historicky nesprávnou cestu Config\Exception\RuntimeException. Přesun do PSR4 odpovídajícího souboru, starý soubor ponechán jako require_once shim; test ověřuje veřejný namespace. composer dump-autoload --optimize --strict-psr prošel bez warning.
-- Rodič ověřil základní sadu bez Smarty **1888testů/5101assertions**,14.354s44MB PHP8.4.27/MySQL8.4. Oddělená kompatibilita **86/123**,0.114s20MB. Nezávislé statické review bez blokací, runtime nalezené instalační problémy opraveny a ověřeny celou kompatibilní sadou. Syntaxe a diff-check se ověřují před commitem.
-- Další krok MD-03 kontrolní bod migračního nástroje, následně odstranění Texy z jádra MD-04. API obsah a centrální administrace se verzují samostatně. Bez produkční konverze, merge nebo vydání tagu.
+- The sample site has its own branch and draft PR rrsoftcz/wbengine-skeleton-app#1, commit 35d2d54, CI green. The native layout, deferred lifecycle, sign-in/POST logout/CSRF, anonymous and signed-in user, locale, article, 404, fragments/page HIT and API verified by 20 HTTP checks. A fresh installation without Smarty after cache clearing passes the same checks.
+- The Smarty adapter moved to the optional Composer package compat/smarty, the original FQCN and escaping preserved. Neither the core nor its tests install Smarty. A missing adapter reports an installation recommendation. The historical expectation in JSON was left as a migration reference, the executed core corpus verifies native results.
+- The compatible profile has a separate vendor outside the checkout and a mirror of the core: a symlink to the local core collided with its classmap exclude and could create a recursive path. Regression fixed by a separate installation, tests use the real roots of the installed core. The optional CI job runs separately from the base PHP/DB matrix. The package is not yet published in the Composer registry, the local path repository is described in the README.
+- The optimized autoload revealed a historically incorrect path of Config\Exception\RuntimeException. Moved to the PSR-4 corresponding file, the old file kept as a require_once shim; a test verifies the public namespace. composer dump-autoload --optimize --strict-psr passed without warnings.
+- The parent verified the base suite without Smarty **1888 tests/5101 assertions**, 14.354 s 44 MB PHP 8.4.27/MySQL 8.4. Separate compatibility **86/123**, 0.114 s 20 MB. An independent static review without blockers, runtime found installation problems fixed and verified by the whole compatible suite. Syntax and diff-check are verified before the commit.
+- Next step: the MD-03 checkpoint of the migration tool, then removal of Texy from the core MD-04. API content and the central administration are versioned separately. No production conversion, merge or tag release.
 
 
-### 2026-10-26: MD-03 dokončen
+### 2026-10-26: MD-03 completed
 
-- Content\Migration ve stávajícím OOP namespace odděluje Converter/HtmlConverter/Model/Migrator/Cli. Tenký CLI vstup nevytváří paralelní runtime. Explicitní html/texy, původní HTML bajty se neodhadují. Bezpečný konzervativní DOM konvertor a porovnání renderu označují nepodporované či ztrátové konstrukce pro ruční řešení. Optional Texy bridge zůstává mimo jádro.
-- Výchozí dryrun zahrnuje překlady, přehled obsahuje původní/výsledné hodnoty, source/converter/scope hashe a per-record approval hash. Apply přijme jen přesně schválený bezpečný záznam, zamkne řádek, atomicky uloží ledger004 a nový obsah. Souběh/rollback konflikt odmítne. Žádná produkční data nebyla změněna.
-- Review nálezy ověřeny RED/GREEN: permissive MySQL truncation zjištěna skutečným postwrite hashem obsahu i zálohy a celá transakce rollbackne; vícenásobné code children nepoškodí význam; report má limity8MiBagregace/16MiBCLI/256locales.
-- Rodič znovu ověřil **38testů/138assertions**,PHP8.4.27/MySQL8.4, pouzeTEMP tabulky. Lint předchozí společné pracovní sady prošel; migrační/rollback příkazy a ochrana citlivých reportů jsou v ref-markdown.md. TPL03 už samostatně pushnut80208da, vlastní kompatibilita86/123green.
-- Další krok MD-04: odstranit povinný Texy balíček a Formatter závislost, volitelně zachovat explicitní kompatibilní adaptér; nové formáty Markdown a staré legacy_html zachovat bez reinterpretace. API a administrace navazují samostatně.
+- Content\Migration in the existing OOP namespace separates Converter/HtmlConverter/Model/Migrator/Cli. A thin CLI entry does not create a parallel runtime. Explicit html/texy, the original HTML bytes are not guessed. A safe conservative DOM converter and a render comparison mark unsupported or lossy constructs for manual handling. The optional Texy bridge stays outside the core.
+- The default dry-run includes translations, the overview contains original/resulting values, source/converter/scope hashes and a per-record approval hash. Apply accepts only an exactly approved safe record, locks the row, atomically stores the ledger 004 and the new content. A concurrency/rollback conflict is rejected. No production data were changed.
+- Review findings verified RED/GREEN: permissive MySQL truncation detected by the real post-write hash of the content and the backup and the whole transaction rolls back; multiple code children do not damage the meaning; the report has limits of 8 MiB aggregation/16 MiB CLI/256 locales.
+- The parent verified again **38 tests/138 assertions**, PHP 8.4.27/MySQL 8.4, only TEMP tables. Lint of the previous common working suite passed; migration/rollback commands and protection of sensitive reports are in ref-markdown.md. TPL03 already separately pushed 80208da, its own compatibility 86/123 green.
+- Next step MD-04: remove the mandatory Texy package and the Formatter dependency, optionally keep an explicit compatible adapter; keep the new Markdown format and the old legacy_html without reinterpretation. API and administration follow separately.
 
 
-### 2026-10-26: MD-04 dokončen
+### 2026-10-26: MD-04 completed
 
-- Composer jádra nově vyžaduje jen JWT balíček. Vlastní templates a Markdown nemají externí parser. Odstraněn nefunkční starý Texy adapter odkazující na APP_DIR/Vendor. Formater zachovává factory/adapter strom a procesní vstup, nový výchozí Markdown adapter lazy volá bezpečnou Markdown službu. Explicitní texy runtime končí konkrétním migračním doporučením, nikoli automatickou reinterpretací zdroje.
-- Major migrační dopad: externí přímí uživatelé getFormater()->process musí Texy zdroje nejdříve převést. Getter Article/legacy_html ani původní DB bajty se touto etapou nemění. Nová dokumentace a optional balíček uvádějí skutečný Composer path postup před publikováním balíčku.
-- RED prokázal povinnou Texy závislost, chybějící Markdown adapter a starý APP_DIR error. GREEN po opravě. Core Markdown/zdroje/profile **714testů/1866assertions**,0.186s28MB. Optional offline bridge **1test/5assertions** v izolovaném vendor s Texy. Žádný skipped Texy test v základním profilu, přesunut do balíčku s vlastní CI. Nezávislé code review bez blokací, zjištěné zastaralé README opraveno.
-- Čerstvý skeleton vendor má jen JWT+WBengine, bez Smarty i Texy, po vyčištění cache **20HTTPkontrolGREEN**. Změny či konverze produkčních dat neproběhly. Následuje samostatný commit/push této fáze a finální společná sada, jakmile API lifecycle vrátí výhradní DB okno.
-- Další krok API02/03/04 checkpoint po early-v2 dispatch testu a DX01/02 checkpoint včetně opravených instalovaných CLI. ADM04/05 pokračují v samostatném privátním repozitáři, foundation533f0e7 a CIgreen.
+- The core Composer now requires only the JWT package. Own templates and Markdown have no external parser. Removed the non-functional old Texy adapter referring to APP_DIR/Vendor. Formater preserves the factory/adapter tree and the process input, the new default Markdown adapter lazily calls the safe Markdown service. An explicit texy runtime ends with a concrete migration recommendation, not an automatic reinterpretation of the source.
+- Major migration impact: external direct users of getFormater()->process must first convert Texy sources. The Article getter/legacy_html and the original DB bytes do not change in this stage. The new documentation and the optional package state the real Composer path procedure before the package is published.
+- RED proved the mandatory Texy dependency, the missing Markdown adapter and the old APP_DIR error. GREEN after the fix. Core Markdown/sources/profile **714 tests/1866 assertions**, 0.186 s 28 MB. Optional offline bridge **1 test/5 assertions** in an isolated vendor with Texy. No skipped Texy test in the base profile, moved to the package with its own CI. An independent code review without blockers, the found outdated README fixed.
+- A fresh skeleton vendor has only JWT+WBengine, without Smarty and Texy, after cache clearing **20 HTTP checks GREEN**. No changes or conversion of production data took place. A separate commit/push of this phase and the final common suite follow, as soon as the API lifecycle returns the exclusive DB window.
+- Next step: the API02/03/04 checkpoint after the early-v2 dispatch test and the DX01/02 checkpoint including the fixed installed CLI. ADM04/05 continue in the separate private repository, foundation 533f0e7 and CI green.
 
 
-### 2026-10-26: API-02/03/04 a SEC-01 dokončeny
+### 2026-10-26: API-02/03/04 and SEC-01 completed
 
-- Api/V2 ContentModel/Resources/BoxRegistry/ImageModel ve stávajících namespace a modelových vzorech. Scoped CRUD a finite fields, strong If-Match, draft/revize/publish/preview/překlady, strukturální changes/restore i po smazání. Zápisy zamykají/ověřují reference, atomicky auditují a po commitu flushují společnou cache. Optional SQL005 bez runtimeDDL.
-- Média veřejná PNG/JPEG/WebP<=512KiB pod opaque ID mimo documentroot, staging/metadata/hash/MIME/nosniff, capabilityfalse bez explicitního durable úložiště. Registry boxů výchozíprázdné, klient nikdy nepředává PHP metodu. Namespace sekcí validován i při rename/restore.
-- Review blokace reprodukovány RED/GREEN: změna legacyHTML vyžadujeMarkdown aoba texty, views nezneplatní editETag, sectionrename nemůže změnitnamespace mimo registr; recovery token nově kryje rodiče/překlady/posledníudálost a chrání souběh. Lower-priority raster kontrola není plný pixeldecoder, omezení výslovně popsáno.
-- Dodatečná lifecycle brána: apiV2.enabled===true zapne Api service aplikace předCMS/cache/localeRedirect po vlastníchroutách. Přesun/smazání API stránky konektor neodpojí. TDD realHTTP5novýchscénářů, discovery0SQL/0connections/0box/bezsession i bezCMS, přesnýprefix/query a optout, HTTPS403/anon401. Focused36/256green.
-- APIfocused58/331green, rodič celá současná sada **1981testů/5596assertions**,15.250s48MB PHP8.4.27/MySQL8.4. Obsahovéfixy zmrazené, přidán ref-api-v2.md s kontraktem a omezeními. Následuje samostatný commit/push API a plán.
-- Další krok DX01/02 checkpoint, skutečná CMS benchmarkmaticeDX03 a ADM04/05pilot. Foundation administrace je privátní rrsoftcz/wbengine-admin PR1,533f0e7,CIgreen. Žádný release/tag/deploy.
+- Api/V2 ContentModel/Resources/BoxRegistry/ImageModel in the existing namespaces and model patterns. Scoped CRUD and finite fields, strong If-Match, draft/revisions/publish/preview/translations, structural changes/restore even after deletion. Writes lock/verify references, audit atomically and flush the common cache after commit. Optional SQL 005 without runtime DDL.
+- Media public PNG/JPEG/WebP <=512 KiB under an opaque ID outside the document root, staging/metadata/hash/MIME/nosniff, capability false without explicit durable storage. The box registry empty by default, the client never passes a PHP method. The section namespace is validated even on rename/restore.
+- Review blockers reproduced RED/GREEN: changing legacy HTML requires Markdown and both texts, views do not invalidate the edit ETag, a section rename cannot change the namespace outside the registry; the recovery token now covers parents/translations/the last event and protects against concurrency. The lower-priority raster check is not a full pixel decoder, the limitation is explicitly described.
+- An additional lifecycle gate: apiV2.enabled===true switches on the application's Api service before CMS/cache/locale redirect after custom routes. Moving/deleting the API page does not disconnect the connector. TDD real HTTP 5 new scenarios, discovery 0 SQL/0 connections/0 box/without session and without CMS, exact prefix/query and opt-out, HTTPS 403/anon 401. Focused 36/256 green.
+- API focused 58/331 green, the parent the whole current suite **1981 tests/5596 assertions**, 15.250 s 48 MB PHP 8.4.27/MySQL 8.4. Content fixes frozen, ref-api-v2.md added with the contract and limitations. A separate commit/push of the API and the plan follow.
+- Next step: the DX01/02 checkpoint, the real CMS benchmark matrix DX03 and the ADM04/05 pilot. The administration foundation is the private rrsoftcz/wbengine-admin PR 1, 533f0e7, CI green. No release/tag/deploy.
 
 
-### 2026-10-26: DX-01 a DX-02 dokončeny
+### 2026-10-26: DX-01 and DX-02 completed
 
-- Console Application/BoxGenerator/Doctor/MigrationStatus/Bootstrap zapojené jen na explicitní CLI, žádná režie běžného requestu. Scaffold výchozí preview, finite identifiers, symlink/nooverwrite kontroly, atomický create/rollback vlastních souborů. SQL pouze review návrh s unpublished page a nevyplněným page_link; nic samo neaplikuje. Test skutečně spouští generovaný Box přes původní parent strom.
-- Doctor config:check bezDB, doctor/migration:status jen read-only schema, explicitní optional API migrace, produkční Composer/autoload/OPcache/cache/proxy/HTTPS/secrets a writepath. Hodnoty tajemství ani DB výjimky se netisknou. Provozní kontrola běží jako CLI uživatel, webSAPI/uživatele je třeba ověřit zvlášť.
-- Review RED/GREEN opravy: CLI původně fungovalo jen v checkoutu, nyní podporuje skutečné Composer proxy i přímou installedpackage cestu, nikdynevyhledáváautoloadvCWD. Opraven i MD03 CLI stejnýmBootstrap. Composer nyní registruje oba bin vstupy. Doctor defaultfilecachepath+drivercase odpovídáCache runtime, zdravý default nehlásí fail.
-- Worker focused19/57GREEN, rodič před opravami12/34 a poté celá společná sada1981/5596green vDockerPHP8.4.27. Lint/diffcheckprošly. Review oprav bez zbývajících codeblokací, bin manifest přidán rodičem. Následuje samostatný commit/push DX s aktuálnímplánem.
-- DX03 RequestMatrix zatím samostatná rozpracovaná položka, reálný CMS benchmark dokončuje izolovaný skeleton checkout. Syntetických300/0errors není tvrzení CMSauthvýkonu. ADM04/05 UI a serverové testy hotové, společný skutečný HTTPSPHPpilot se připravuje.
+- Console Application/BoxGenerator/Doctor/MigrationStatus/Bootstrap wired only to the explicit CLI, no overhead of an ordinary request. Scaffold default preview, finite identifiers, symlink/no-overwrite checks, atomic create/rollback of its own files. SQL only a review proposal with an unpublished page and an unfilled page_link; it applies nothing by itself. The test really runs the generated Box through the original parent tree.
+- Doctor config:check without DB, doctor/migration:status only read-only schema, explicit optional API migrations, production Composer/autoload/OPcache/cache/proxy/HTTPS/secrets and write path. Secret values and DB exceptions are not printed. The operational check runs as the CLI user, the web SAPI/user must be verified separately.
+- Review RED/GREEN fixes: the CLI originally worked only in a checkout, now it supports a real Composer proxy and a direct installed package path, never searching for an autoload in the CWD. The MD03 CLI also fixed with the same Bootstrap. Composer now registers both bin entries. The Doctor default file cache path + driver case matches the Cache runtime, a healthy default does not report a fail.
+- Worker focused 19/57 GREEN, the parent before the fixes 12/34 and then the whole common suite 1981/5596 green in Docker PHP 8.4.27. Lint/diff check passed. Review of the fixes without remaining code blockers, the bin manifest added by the parent. A separate commit/push of DX with the current plan follows.
+- DX03 RequestMatrix is still a separate in-progress item, the real CMS benchmark is being finished by the isolated skeleton checkout. Synthetic 300/0 errors is not a claim of CMS auth performance. ADM04/05 UI and server tests done, a common real HTTPS PHP pilot is being prepared.
 
 
-### 2026-10-26: DX-03 dokončen, release CI blokace se řeší
+### 2026-10-26: DX-03 completed, release CI blockers being resolved
 
-- Skutečný CMS benchmark ve skeleton repo d0b1e79:15kohort x20requestů,konkurence4,300/0errors, všechnyHTTP200. Reálné CSRF přihlášení/DBsessions a souběžný stejný přihlášený cookie. Kořenový config ani běžný server změněny nebyly, runner čistí pouze vlastní náhodné cache kořeny.
-- Rodič nezávisle zopakoval stejných300/0errors. Pagewarm veřejný má20/20HIT,0SQL/0connections,p50/p95=1.527/1.746ms,1733req/s. Původní uložený worker běh1.475/1.787ms,1753req/s. Veřejný off6SQL/datawarm1SQL,obojí1connection. Privátní/custom/samecookie nikdysharedHIT. Serverpeak2MiB,OPcacheCLI0,maláfixture14sites9articles20boxes2users,PHP8.4.27/MySQL8.4.13. Nejde o produkční garanci,throughput zahrnuje fork/sběr klienta.
-- Obě skutečně nainstalované Composer bin proxy v aplikaci prošly help. Composer správně nastavuje executable bit, uložen i v jádru.
-- Nové CI nalezlo dvě release blokace: MariaDB rollback translation test vrací chybějící řádek a CIcanonicalredirectHTTPfixture neotevře stream (lokálně green). MariaDB nález lokálně reprodukován, worker prověřuje skutečnou atomicitu i persistentní InnoDB. HTTP test nyní vypisuje serverlog při selhání, aby bylo možné určit příčinu. Nejsou označeny jako opravené, release zůstává otevřený.
-- Společný izolovaný HTTPS/PHP/admin pilot mezitím prochází login/MFA, obsah/draft/publish/conflict/recovery a permissiondeny; probíhá rodičovské review a ověření.
+- The real CMS benchmark in the skeleton repo d0b1e79: 15 cohorts x 20 requests, concurrency 4, 300/0 errors, all HTTP 200. Real CSRF sign-in/DB sessions and a concurrent same signed-in cookie. The root config and an ordinary server were not changed, the runner cleans only its own random cache roots.
+- The parent independently repeated the same 300/0 errors. Public page warm has 20/20 HIT, 0 SQL/0 connections, p50/p95=1.527/1.746 ms, 1733 req/s. The original stored worker run 1.475/1.787 ms, 1753 req/s. Public off 6 SQL/data warm 1 SQL, both 1 connection. Private/custom/same cookie never shared HIT. Server peak 2 MiB, OPcache CLI 0, small fixture 14 sites 9 articles 20 boxes 2 users, PHP 8.4.27/MySQL 8.4.13. This is not a production guarantee, the throughput includes fork/client collection.
+- Both really installed Composer bin proxies in the application passed help. Composer correctly sets the executable bit, stored also in the core.
+- The new CI found two release blockers: the MariaDB rollback translation test returns a missing row and the CI canonical redirect HTTP fixture does not open a stream (green locally). The MariaDB finding was reproduced locally, the worker examines real atomicity and persistent InnoDB. The HTTP test now prints the server log on failure so that the cause can be determined. They are not marked as fixed, the release remains open.
+- The common isolated HTTPS/PHP/admin pilot meanwhile passes login/MFA, content/draft/publish/conflict/recovery and permission deny; the parent review and verification are in progress.
 
 
-### 2026-10-26: opraveny dvě CI fixture blokace
+### 2026-10-26: two CI fixture blockers fixed
 
-- CI serverlog určil příčinu redirect selhání: header callback se při bodyless redirect mohl spustit po zrušení Composer autoloadu a snažil se poprvé načíst Db. Testovací instrumentace nyní počítá nulu, pokud Db vůbec nebylo načtené, bez autoloadu v shutdown. Přidaný deterministický deferred-header/no-autoload test nejprve RED, po opravě celá lifecycle sada24/178GREEN. Produkční lifecycle se nemění.
-- MariaDB11.4TEMPORARY InnoDB minimal reprodukce ztrácí původní řádek při DELETE+INSERT stejného PK a následném rollbacku; persistentní InnoDB stejný scénář korektně vrací. Publikační rollback test nyní ověřuje skutečné persistentní publikační tabulky, se zachováním originálních testovacích tabulek pod unikátními zálohami a finally obnovou, guardDATABASE=wbengine_test. Všechny původní assertions zesíleny o celý článek, původní dvě locale, draft a neměnný počet revizí/událostí a nulový flush. Produkční SQL nezměněno. Worker ověřil celou ApiV2ContentTest23/129GREEN naMySQL8.4 iMariaDB11.4.13.
-- Finální whole-branch review našlo dvě integrační mezery: API api_settings nedocházely do vykonávanéhoBox a CLI generátor používal DBsectionkey s neslučitelným uppercase. Probíhá jediná společná fixwave s regresními unit i skutečnými Section/API integračními testy. Release stále rozpracovaný, nikoli hotový tag.
+- The CI server log determined the cause of the redirect failure: the header callback could, on a bodyless redirect, run after the Composer autoload was unregistered and tried to load Db for the first time. The test instrumentation now counts zero if Db was not loaded at all, without an autoload in shutdown. An added deterministic deferred-header/no-autoload test first RED, after the fix the whole lifecycle suite 24/178 GREEN. The production lifecycle does not change.
+- The MariaDB 11.4 TEMPORARY InnoDB minimal reproduction loses the original row on DELETE+INSERT of the same PK and a subsequent rollback; persistent InnoDB correctly returns the same scenario. The publish rollback test now verifies the real persistent publish tables, with preservation of the original test tables under unique backups and a finally restore, guard DATABASE=wbengine_test. All original assertions strengthened with the whole article, the original two locales, the draft and an unchanged count of revisions/events and a zero flush. Production SQL unchanged. The worker verified the whole ApiV2ContentTest 23/129 GREEN on MySQL 8.4 and MariaDB 11.4.13.
+- The final whole-branch review found two integration gaps: the API api_settings did not reach the executed Box and the CLI generator used a DB section key with an incompatible uppercase. A single common fix wave with regression unit and real Section/API integration tests is in progress. The release is still in progress, not a finished tag.
 
 
-### 2026-10-26: finální integrační fixwave dokončena
+### 2026-10-26: final integration fix wave completed
 
-- Nezávislé whole-branch review našloP1 runtime nastavení boxu aP2 generátor DBkey; jediný společný fixer opravil obě. Section načítá b.* v původním jediném dotazu a řádkové cache; volitelný api_settings je dostupný bez schema probe/DDL a bez rozbití unmigrated schématu. Box má getSettings/getSetting, omezený JSON objekt string enumů, neplatný vstup failclosed na default. Cena je širší interní řádková projekce budoucích columns.
-- CLI odděluje lowercase DBsectionkey od capitalized PHP namespace/path a přijímá jen registry kompatibilní délku. TDD4unitRED a skutečný APIPOST->SectionBox missing-settingRED, následně PATCHfull->compact ověří skutečný vykonaný box, postcommitcacheflush a lazy1SQL/oldschema.
-- Focused45testů/247assertionsMySQL iMariaDBgreen. Rodič celáaktuálnísada **1988testů/5663assertions**,16.289s48MB PHP8.4.27/MySQL8.4. Lint/diffcheckgreen. Jediné scoped re-review potvrdilo obě původní mezery odstraněné, bez další blokace v tomto rozsahu.
-- CI předchozího6fc3de8 má všech7jobůgreen, včetněPHP8.3/8.4/8.5MySQL aMaria10.11/11.4, optionalSmarty/Texy. Následuje samostatný fixwavecommit/push a ověření jehoCI. ADM04/05 checkpoint357d410 a rodič33testů/check/build/Docker+actualHTTPSPHPworkflow1/1green.
-- Další krok REL01, dvě samostatnéAPIinstalace, omezenýuživatel, revokace/výpadek, migrační/rollbackplaybook a finálníreference. Žádné produkční databáze ani checkoutmaster nebyly upraveny.
+- The independent whole-branch review found P1 runtime box settings and P2 generator DB key; a single common fixer fixed both. Section loads b.* in the original single query and row caches; the optional api_settings is available without a schema probe/DDL and without breaking an unmigrated schema. Box has getSettings/getSetting, a bounded JSON object of string enums, invalid input fails closed to the default. The cost is a broader internal row projection of future columns.
+- The CLI separates the lowercase DB section key from the capitalized PHP namespace/path and accepts only a registry-compatible length. TDD 4 unit RED and a real API POST->SectionBox missing-setting RED, then PATCH full->compact verifies the real executed box, post-commit cache flush and lazy 1 SQL/old schema.
+- Focused 45 tests/247 assertions MySQL and MariaDB green. The parent the whole current suite **1988 tests/5663 assertions**, 16.289 s 48 MB PHP 8.4.27/MySQL 8.4. Lint/diff check green. A single scoped re-review confirmed both original gaps removed, without further blockers in this scope.
+- CI of the previous 6fc3de8 has all 7 jobs green, including PHP 8.3/8.4/8.5 MySQL and Maria 10.11/11.4, optional Smarty/Texy. A separate fix wave commit/push and verification of its CI follow. ADM04/05 checkpoint 357d410 and the parent 33 tests/check/build/Docker+actual HTTPS PHP workflow 1/1 green.
+- Next step: REL01, two separate API installations, a limited user, revocation/outage, a migration/rollback playbook and the final reference. No production databases or the checkout master were modified.
 
 
-### 2026-10-26: finální provozní kontrola CLI layoutu
+### 2026-10-26: final operational check of the CLI layout
 
-- Rodič při přípravě upgrade návodu provedl config:check na skutečné aplikaci s base=/app/src a Composer vendor=/app/vendor. To odhalilo falešný composer.production fail: kontrola hledala vendor pouze podsrc, ačkoli skutečné metadata měla dev=false.
-- Nová RED regrese používá stejný projekt/src layout a skutečné PHP Composer metadata. Doctor nyní respektuje vlastní vendor explicitní aplikačníbase, jinak jediný přímý rodič s composer.json+vendor metadata. Nehledá libovolné nadřazené adresáře aniCWD. GREEN17/59focused, skutečný appCLIproductioncheck nyníok. Development compileCheck/HTTP/OPcache/nevytvořenýoptimizedautoload zůstávají správněfail, nejsou maskovány.
-- Připraven book-wbengine-4-upgrade.md: staging/inventura, zálohy a ověření obnovy, optionalSQL001–005, explicitníHTML/Texymigrace, CSRF/deferredlifecycle, klíče/MFA, cache, brána a konfliktní rollback. Obsahuje postup, nikoli tvrzení produkčního provedení. Následuje společný kontrolní bod této malé provozní opravy a návodu.
+- While preparing the upgrade guide, the parent ran config:check on a real application with base=/app/src and Composer vendor=/app/vendor. This revealed a false composer.production fail: the check looked for the vendor only under src, although the real metadata had dev=false.
+- A new RED regression uses the same project/src layout and real PHP Composer metadata. The Doctor now respects its own vendor of the explicit application base, otherwise the single direct parent with composer.json+vendor metadata. It does not search arbitrary parent directories or the CWD. GREEN 17/59 focused, the real app CLI production check is now ok. Development compileCheck/HTTP/OPcache/uncreated optimized autoload correctly remain fail, they are not masked.
+- Prepared book-wbengine-4-upgrade.md: staging/inventory, backups and verification of recovery, optional SQL 001-005, explicit HTML/Texy migration, CSRF/deferred lifecycle, keys/MFA, cache, the gate and conflict rollback. It contains a procedure, not a claim of production execution. A common checkpoint of this small operational fix and guide follows.
 
 
-### 2026-10-26: REL-01 technická brána ověřena
+### 2026-10-26: REL-01 technical gate verified
 
-- Všechny implementační etapy hotové. PERF04 uzavřen vědomým rozhodnutím nezavádět neprokázanou URLmapu; nejde o tvrzení implementace mapy. Originální frameworkmaster a produkčnídata bezezměn, pracovní větve a PR jsou kontrolními body.
-- Rodič celáposlednísada **1989testů/5666assertions**,16.079s48MB PHP8.4.27/MySQL8.4, Composer audit bez advisories a lintgreen. Poslední remote produkčnícheckpoint c56f9a3 má všech7CIjobůgreen. Skeleton skutečný no-dev optimized strictPSR autoload177classes bezwarning +20HTTPgreen, bezSmarty/Texy.
-- Dvě skutečně oddělené API instalace a centrála v tests/pilot, pevný testprojekt bezhostports, privátnígenerovanéCA/klíče ignorované. Provider3/3GREEN: ověřenéTLS/render, crosskey401, oddělené změny/ETag a odmítnutí bezCA.
-- Rodič zopakoval productionNode24build a **34admin testů**,check0/0; finální skutečný dualwebHTMLpilot1/1GREEN (~14.05s): MFA/obsah/konflikty/obnova, editor omezený naweb1, web2výpadek při běžícímweb1, zachovanýdirtytext+ETag, výslovnýretry bezautowrite, revokace401bezvlivu naweb1 a obaveřejnéweby200 poSIGKILLcentrály.
-- Acceptance odhalila chybu následného load při výpadku: přebíjel actionfail a ztrácel rozepsané texty. Úzká request-local oprava nejprveactualRED, po opravěGREEN; nezávislé scoped review potvrdilo lokální requireSite před fallbackem, žádné serializované klíče/cause a freshCSRF/role/scope/cap/ETag pro dalšíPOST. Adminfix má vlastní následujícícheckpoint.
-- Rodič provedl skutečný dump/restore: **17tabulek/861řádků**, shodné databázové defaulty, definice tabulek a SHA256 všech řádků. Pomocná restoreDB i privátní dump odstraněny v finally, zdroj bez změny. MD03 původníbajty/konfliktnírollback ověřuje vlastní sada, produkčnímigrace se nesimuluje jako hotová.
-- Opakování v tests/pilot/ref-pilot.md, upgrade/obnova v book-wbengine-4-upgrade.md. AdminCI má připraven samostatný společný pilotjob. Lokální path kompatibilní balíčky výslovně používají symlink=false, aby core /compat/ classmap exclusion nepohltil jejich symlink.
-- Kontrolní bod před vydáním: finální testovací brána, admin outagefix a CI byly pushnuty a ověřeny na remote. Následné sloučení, tag a release jsou zaznamenány v sekci „vydání WBengine 4.0.0“ níže.
+- All implementation stages done. PERF04 closed by a conscious decision not to introduce an unproven URL map; this is not a claim of implementing a map. The original framework master and production data unchanged, the working branches and PRs are checkpoints.
+- The parent the whole latest suite **1989 tests/5666 assertions**, 16.079 s 48 MB PHP 8.4.27/MySQL 8.4, Composer audit without advisories and lint green. The latest remote production checkpoint c56f9a3 has all 7 CI jobs green. Skeleton real no-dev optimized strict PSR-4 autoload 177 classes without warnings + 20 HTTP green, without Smarty/Texy.
+- Two really separated API installations and the central server in tests/pilot, a fixed test project without host ports, private generated CA/keys ignored. Provider 3/3 GREEN: verified TLS/render, cross-key 401, separated changes/ETag and rejection without a CA.
+- The parent repeated the production Node 24 build and **34 admin tests**, check 0/0; the final real dual-web HTML pilot 1/1 GREEN (~14.05 s): MFA/content/conflicts/recovery, an editor limited to web 1, a web 2 outage while web 1 runs, preserved dirty text+ETag, an explicit retry without auto-write, revocation 401 without effect on web 1 and both public sites 200 after a SIGKILL of the central server.
+- Acceptance revealed a bug of the subsequent load during an outage: it overrode the action fail and lost drafted texts. A narrow request-local fix first actual RED, after the fix GREEN; an independent scoped review confirmed the local requireSite before the fallback, no serialized keys/cause and fresh CSRF/role/scope/cap/ETag for the next POST. The admin fix has its own following checkpoint.
+- The parent performed a real dump/restore: **17 tables/861 rows**, identical database defaults, table definitions and SHA256 of all rows. The helper restore DB and the private dump removed in finally, the source unchanged. MD03 original bytes/conflict rollback is verified by its own suite, the production migration is not simulated as done.
+- Repeating in tests/pilot/ref-pilot.md, upgrade/recovery in book-wbengine-4-upgrade.md. Admin CI has a prepared separate common pilot job. Local path compatible packages explicitly use symlink=false, so that the core /compat/ classmap exclusion does not swallow their symlink.
+- Checkpoint before release: the final test gate, the admin outage fix and CI were pushed and verified on the remote. The subsequent merge, tag and release are recorded in the section "release of WBengine 4.0.0" below.
 
 
-### 2026-10-26: společná remote CI brána zelená
+### 2026-10-26: common remote CI gate green
 
-- Framework0c15eba: všech7jobůGREEN, PHP8.3/8.4/8.5MySQL iMaria10.11/11.4 aoběoptionalcompatibility. Administrace287274d: běžnýtestjobGREEN a nový Two-sitePHPAPIpilotGREEN2m18s, run40360443062. Tento job opravdu sestavil oba obrazy, ověřilTLS/isolation, actualdualwebformworkflow, revokaci/výpadky, dump/restore a finallyreset. Skeletond0b1e79: smokeCIgreen, rodič navíc posledníoptimizedautoload+20HTTPgreen.
-- Poznámky k vydání jsou v ref-release-4.0.0.md. Po schválení byly PR sloučeny, tag a release zveřejněny. Produkční data a nasazení neproběhly.
-- Ještě ověřujeme existující skeletonobsah suchýmběhem/vratným převodem naTEMPkopiích skutečnýchřádků, aby i jeho vlastní tracker obsahoval konkrétní důkaz původu a zachování staréhoHTML. Nejde o přepsání původních demo dat.
+- Framework 0c15eba: all 7 jobs GREEN, PHP 8.3/8.4/8.5 MySQL and Maria 10.11/11.4 and both optional compatibility. Administration 287274d: the ordinary test job GREEN and the new Two-site PHP API pilot GREEN 2m18s, run 40360443062. This job really built both images, verified TLS/isolation, the actual dual-web form workflow, revocation/outages, dump/restore and a finally reset. Skeleton d0b1e79: smoke CI green, the parent additionally the latest optimized autoload + 20 HTTP green.
+- Release notes are in ref-release-4.0.0.md. After approval the PRs were merged, the tag and release published. Production data and deployment did not take place.
+- We are still verifying the existing skeleton content by a dry run/reversible conversion on TEMP copies of real rows, so that its own tracker also contains concrete evidence of origin and preservation of the old HTML. This is not rewriting the original demo data.
 
 
-### 2026-10-26: ověřeny také skutečné originály vzorového obsahu
+### 2026-10-26: real originals of the sample content also verified
 
-- Skeleton původní SQL obsahuje9HTMLčlánků a9překladů, nikoli prokázanéTexy zdroje. Nový migrační smoke používá TEMPkopie a skutečnýMigrator/konvertor/ledger004. Rodič zopakoval18dryrunplánů,8safeapprovedapply/rollback a10manualreview záznamů bezaplikace (8unsupported element,2semantic mismatch). Původní plné řádky/hash i oběschémata bezezměn; následně20HTTPgreen.
-- Validní původníHTML se zachovává jakolegacy_html, nepřevádí se ztrátově jen kvůli standardizaci nových textů. Ručníissues jsou instrukcí při případné volbě konverze, nikoli důkaz vadnéhoobsahu nebo nefunkčníhoMarkdownparseru. ŽádnýTexyruntime aniSmarty není instalován. Podrobnosti a konkrétníIDs v aplikačnímplánu.
-- Všechny implementační etapy a technické release testy jsou dokončené. Následující publikační krok byl schválen, PR sloučeny, tag a GitHub release zveřejněny. Produkční nasazení a konverze provozních dat neproběhly.
+- The skeleton's original SQL contains 9 HTML articles and 9 translations, not proven Texy sources. The new migration smoke uses TEMP copies and the real Migrator/converter/ledger 004. The parent repeated 18 dry-run plans, 8 safe approved apply/rollback and 10 manual review records without application (8 unsupported element, 2 semantic mismatch). The original full rows/hash and both schemas unchanged; then 20 HTTP green.
+- Valid original HTML is preserved as legacy_html, not converted lossily just to standardize new texts. The manual issues are an instruction in case conversion is chosen, not proof of defective content or a non-functioning Markdown parser. No Texy runtime or Smarty is installed. Details and concrete IDs in the application plan.
+- All implementation stages and technical release tests are completed. The following publication step was approved, the PRs merged, the tag and GitHub release published. Production deployment and conversion of operational data did not take place.
 
 
-### 2026-10-26: vydání WBengine 4.0.0
+### 2026-10-26: release of WBengine 4.0.0
 
-- PR #2 jádra sloučen jako cf710e5adbc25809868a864e615f8b9fc62a7489.
-- Tag v4.0.0 zveřejněn na merge commitu jádra. GitHub release: https://github.com/rrsoftcz/wbengine/releases/tag/v4.0.0.
-- PR #1 skeletonu sloučen jako 19fde667530a273e95ce05a118bd438c705520b5; PR #1 administrace jako a74892ab17205a15955264f0a1ca5a669d585ca0. Obě CI integrace používají tag v4.0.0.
-- CI master/main všech tří repozitářů prošlo; administrativní pilot zahrnul TLS, oddělení webů, výpadek/revokaci a obnovu databáze.
-- Produkční nasazení a migrace provozních dat jsou dosud neprovedené a zůstávají samostatným krokem provozovatele.
+- Core PR #2 merged as cf710e5adbc25809868a864e615f8b9fc62a7489.
+- Tag v4.0.0 published on the core merge commit. GitHub release: https://github.com/rrsoftcz/wbengine/releases/tag/v4.0.0.
+- Skeleton PR #1 merged as 19fde667530a273e95ce05a118bd438c705520b5; administration PR #1 as a74892ab17205a15955264f0a1ca5a669d585ca0. Both CI integrations use the tag v4.0.0.
+- CI master/main of all three repositories passed; the administration pilot included TLS, separation of sites, outage/revocation and database recovery.
+- Production deployment and migration of operational data are not yet performed and remain a separate step of the operator.
