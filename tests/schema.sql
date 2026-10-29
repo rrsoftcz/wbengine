@@ -170,7 +170,48 @@ CREATE TABLE IF NOT EXISTS `cms_api_audit` (
   `local_user_id` int unsigned DEFAULT NULL,
   `action` varchar(64) NOT NULL,
   `outcome` varchar(64) NOT NULL,
+  `detail` varchar(128) DEFAULT NULL,
   `created_at` bigint unsigned NOT NULL,
   PRIMARY KEY (`audit_id`),
-  KEY `api_audit_integration_time` (`integration_id`, `created_at`)
+  KEY `api_audit_integration_time` (`integration_id`, `created_at`),
+  KEY `api_audit_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Change log: migrations/4.0.0/005 plus migrations/4.8.0/008 (source, local_user_id, created_at indexes).
+CREATE TABLE IF NOT EXISTS `cms_api_changes` (
+  `change_id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `resource` varchar(32) NOT NULL,
+  `resource_id` varchar(64) NOT NULL,
+  `action` varchar(32) NOT NULL,
+  `before_data` longtext DEFAULT NULL,
+  `after_data` longtext DEFAULT NULL,
+  `integration_id` int unsigned NOT NULL,
+  `central_actor` varchar(128) DEFAULT NULL,
+  `source` varchar(8) NOT NULL DEFAULT 'v2',
+  `local_user_id` int unsigned DEFAULT NULL,
+  `created_at` bigint unsigned NOT NULL,
+  PRIMARY KEY (`change_id`),
+  KEY `api_changes_resource` (`resource`, `resource_id`, `change_id`),
+  KEY `api_changes_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cms_api_drafts` (
+  `article_id` int unsigned NOT NULL,
+  `source_etag` char(66) NOT NULL,
+  `payload` longtext NOT NULL,
+  `revision_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`article_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cms_api_revisions` (
+  `revision_id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `article_id` int unsigned NOT NULL,
+  `payload` longtext NOT NULL,
+  `action` varchar(32) NOT NULL,
+  `integration_id` int unsigned NOT NULL,
+  `central_actor` varchar(128) DEFAULT NULL,
+  `created_at` bigint unsigned NOT NULL,
+  PRIMARY KEY (`revision_id`),
+  KEY `api_revisions_article` (`article_id`, `revision_id`),
+  KEY `api_revisions_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

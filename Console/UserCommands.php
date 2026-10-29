@@ -4,6 +4,7 @@ namespace Wbengine\Console;
 use Wbengine\Api\Exception\ApiException;
 use Wbengine\Api\Model\ApiUserModel;
 use Wbengine\Api\Model\Exception\ApiModelException;
+use Wbengine\Audit\ChangeLog;
 use Wbengine\Db;
 use Wbengine\User\Password;
 use Wbengine\User\Role;
@@ -60,7 +61,7 @@ final class UserCommands
 
         $password = $this->checkedPassword($this->prompt->read());
         try {
-            $result = $this->users->createUser(['email' => $email, 'username' => $username, 'password' => $password, 'role' => $role], false);
+            $result = $this->users->createUser(['email' => $email, 'username' => $username, 'password' => $password, 'role' => $role], false, ChangeLog::cliActor(), 'cli');
         } catch (ApiException | ApiModelException | UserException $e) {
             throw new CommandException($e->getMessage());
         }
@@ -74,7 +75,7 @@ final class UserCommands
         $password = $this->checkedPassword($this->prompt->read());
         try {
             // Hashes the password and revokes every refresh token of the user.
-            $this->users->updateUser((int) $user['user_id'], ['password' => $password]);
+            $this->users->updateUser((int) $user['user_id'], ['password' => $password], ChangeLog::cliActor(), 'cli');
         } catch (ApiException | ApiModelException | UserException $e) {
             throw new CommandException($e->getMessage());
         }
@@ -126,6 +127,9 @@ final class UserCommands
         } catch (\Throwable $e) {
             try { Db::getConnection()->rollback(); } catch (\Throwable) { }
             throw $e;
+        }
+        foreach ($this->summary($targets) as $row) {
+            ChangeLog::recordQuietly('user', $row['id'], 'delete', $row, null, ChangeLog::cliActor(), 'cli');
         }
         return ['deleted' => $this->summary($targets), 'dryRun' => false];
     }

@@ -128,6 +128,16 @@ class WbengineRestapiAbstract {
 
 
     /**
+     * The actor of the change log for a v1 write: the local user behind the access token.
+     * @param array|null $actor The actor row given to the isAuthenticated callback.
+     * @return array
+     */
+    public function changeActor($actor) {
+        return is_array($actor) && isset($actor['user_id']) ? array('local_user_id' => (int) $actor['user_id']) : array();
+    }
+
+
+    /**
      * @return Api\Routes\ApiRoutesInterface
      */
     public function getApiRouteModule($apiModule){

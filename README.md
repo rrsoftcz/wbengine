@@ -972,6 +972,7 @@ In the skeleton's container the binary is `vendor/bin/wbengine.php` in `/var/www
 | `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
 | `counters` | `views`: `enabled` (default `false`), `hits` (50) and `seconds` (60) per batch, `dir` for the counter files. Batches the article view counter |
 | `analytics` | `enabled` (default `false`), `timezone` (default `UTC`), `retentionDays` (default `62`, allowed 31–365). Stores identity-free daily aggregates after migration `006-analytics.sql` |
+| `audit` | `retentionDays` (default `365`, allowed 30–3650) for `cms_api_audit` and `cms_api_changes`, `revisionRetentionDays` (default `365`, allowed 30–3650) for `cms_api_revisions`. Applied by `audit:prune`, after migration `4.8.0/008-change-log-source.sql` |
 | `i18n` | `enabled` (default `false`), `default`, `locales`, `detect`, `urlPrefix`, `prefixDefault`, `cookie`, `cookieDays`, `dir`. See Internationalisation |
 | `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `{ "enabled": false, "ttl": 60 }` for the whole page cache. See the performance notes |
 | `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (both adapters, default `true`; `false` is a legacy migration option), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
@@ -1255,6 +1256,8 @@ vendor/bin/wbengine.php config:check --config=/site/src/Config/Settings.json --r
 vendor/bin/wbengine.php doctor --config=/site/src/Config/Settings.json --root=/site/src
 vendor/bin/wbengine.php migration:status --config=/site/src/Config/Settings.json --root=/site/src
 vendor/bin/wbengine.php analytics:prune --config=/site/src/Config/Settings.json
+vendor/bin/wbengine.php audit:prune --config=/site/src/Config/Settings.json [--days=N] [--dry-run]
+vendor/bin/wbengine.php audit:list --config=/site/src/Config/Settings.json [--limit=N] [--resource=NAME] [--actor=ACTOR]
 vendor/bin/wbengine.php user:create --email=owner@example.cz --role=admin --config=/site/src/Config/Settings.json
 vendor/bin/wbengine.php generate:box --root=/site/src --namespace=App --section=Main --module=Welcome --method=index
 ```

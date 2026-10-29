@@ -131,8 +131,11 @@ class Model extends \Wbengine\Model\ModelAbstract
         return time();
     }
 
-    /** central_actor is an untrusted attribution label, never an authorization fact. */
-    public function audit(?int $integrationId, ?string $centralActor, string $action, string $outcome, ?int $localUserId = null): void
+    /**
+     * central_actor is an untrusted attribution label, never an authorization fact.
+     * $detail is an error code or a reference (never a request body), stored when migration 4.8.0/008 exists.
+     */
+    public function audit(?int $integrationId, ?string $centralActor, string $action, string $outcome, ?int $localUserId = null, ?string $detail = null): void
     {
         if (null !== $centralActor && (strlen($centralActor) > 128 || preg_match('/[\x00-\x1f\x7f]/', $centralActor))) {
             throw new Problem('invalid_actor', 'Invalid central actor identifier.');
@@ -145,8 +148,15 @@ class Model extends \Wbengine\Model\ModelAbstract
             'outcome' => $outcome,
             'created_at' => $this->now(),
         ];
-        $id = Db::insert(self::AUDIT_TABLE, $values);
-        $this->verifyExact(Db::fetchAssoc('SELECT * FROM `' . self::AUDIT_TABLE . '` WHERE audit_id = ?', [$id]), $values);
+        $withDetail = null === $detail ? $values : $values + ['detail' => substr($detail, 0, 128)];
+        try {
+            $id = Db::insert(self::AUDIT_TABLE, $withDetail);
+        } catch (\Throwable $e) {
+            if (null === $detail || !\Wbengine\Audit\ChangeLog::unknownColumn($e)) { throw $e; }
+            $withDetail = $values;
+            $id = Db::insert(self::AUDIT_TABLE, $values);
+        }
+        $this->verifyExact(Db::fetchAssoc('SELECT * FROM `' . self::AUDIT_TABLE . '` WHERE audit_id = ?', [$id]), $withDetail);
     }
 
     /** Local operator maintenance: at most $batch old audit entries per call. */

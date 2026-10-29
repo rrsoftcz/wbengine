@@ -27,6 +27,20 @@ Target: **4.1.0**.
 - Box rows carry read-only `module`, `method` and `renders_articles`; a page read carries
   `article_box_ids`, the visible boxes that render articles. Unregistered legacy boxes count when their
   method is `getArticleBox` or their module is `Article`. All are rejected on write like unknown fields.
+- Complete change log as an engine feature. New `Wbengine\Audit\ChangeLog` writes every change to
+  `cms_api_changes` with actor, resource, action, before/after data and a `source` (`v2`, `v1`, `cli`).
+  API v2 writes use it in the same transaction as before. API v1 user create/patch/delete, section
+  writes, translation writes and cache flush, and the CLI `user:create|password|delete`, are now logged
+  too. Keys named password, token, secret, key or hash are redacted, passwords and hashes are never
+  stored. Migration `migrations/4.8.0/008-change-log-source.sql` adds `source`, `local_user_id`,
+  `cms_api_audit.detail` and `created_at` indexes (idempotent, reported by `migration:status` as
+  `migration.008`); until it is applied the new columns are skipped and nothing else changes.
+- Rejected API v2 writes (validation, not found, conflict, 412, 428) are recorded in `cms_api_audit`
+  with outcome `rejected` and the error code in `detail`. 5xx failures get a reference code in
+  `error_log`, in the response message and in an `error` audit row. No request body and no IP address.
+- `audit.retentionDays` and `audit.revisionRetentionDays` settings (default 365, 30 to 3650) and the CLI
+  commands `audit:prune [--days=N] [--dry-run]` (batched; keeps the newest change per resource and
+  revisions referenced by drafts) and `audit:list [--limit=N] [--resource=X] [--actor=X]`.
 - Pages, menu items and articles in API v2 lists and reads carry `translation_locales`, the languages
   that have a translation, computed with one query per page of results. A client can show "3 of 20
   languages" without asking for every language of every record.

@@ -339,6 +339,27 @@ class Config
     }
 
     /**
+     * Retention of the change log and the audit trail. Both default to 365 days.
+     *   audit.retentionDays: cms_api_audit and cms_api_changes, 30 to 3650.
+     *   audit.revisionRetentionDays: cms_api_revisions (article draft history), 30 to 3650.
+     */
+    public static function getAuditSettings(): array
+    {
+        $value = self::$config->audit ?? null;
+        $settings = is_object($value) ? get_object_vars($value) : (is_array($value) ? $value : []);
+        $result = [];
+        foreach (['retentionDays', 'revisionRetentionDays'] as $name) {
+            $days = $settings[$name] ?? 365;
+            $days = is_int($days) || (is_string($days) && preg_match('/^[0-9]{1,5}$/D', $days)) ? (int) $days : false;
+            if (false === $days || $days < 30 || $days > 3650) {
+                throw new \InvalidArgumentException('audit.' . $name . ' must be an integer from 30 to 3650.');
+            }
+            $result[$name] = $days;
+        }
+        return $result;
+    }
+
+    /**
      * Login rate limit settings with their defaults:
      *   enabled (true),
      *   maxAttempts per client IP and account together (5),

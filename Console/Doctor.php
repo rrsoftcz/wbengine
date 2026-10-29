@@ -9,6 +9,9 @@ final class Doctor
     /** Schema of migrations/4.0.0/007: last_used_at of integrations. */
     public const SCHEMA_INTEGRATIONS_LAST_USED = ['cms_api_integrations'=>['last_used_at']];
 
+    /** Schema of migrations/4.8.0/008: change log source, local user and audit detail. */
+    public const SCHEMA_CHANGE_LOG = ['cms_api_changes'=>['source','local_user_id'], 'cms_api_audit'=>['detail']];
+
     /** Schema of migrations/4.0.0/006: first-party analytics, shared with the integration screen preflight. */
     public const SCHEMA_ANALYTICS = ['cms_analytics_daily'=>['day','site_id','entity_type','entity_id','views'], 'cms_analytics_totals'=>['site_id','entity_type','entity_id','views'], 'cms_analytics_meta'=>['id','tracking_started_on']];
 
@@ -63,6 +66,7 @@ final class Doctor
             '004'=>[false, ['cms_content_migrations'=>['migration_id','entity','article_id','locale','source_format','before_data','after_data','source_hash','target_hash','created_at','rolled_back_at']]],
             '005'=>[!empty($config['apiV2']['enabled']), ['cms_boxes'=>['api_settings'], 'cms_api_changes'=>['change_id','resource','resource_id','action','before_data','after_data','integration_id','central_actor','created_at'], 'cms_api_drafts'=>['article_id','source_etag','payload','revision_id'], 'cms_api_revisions'=>['revision_id','article_id','payload','action','integration_id','central_actor','created_at'], 'cms_api_images'=>['image_id','mime','size','sha256','integration_id','created_at']]],
             '007'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_INTEGRATIONS_LAST_USED],
+            '008'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_CHANGE_LOG],
         ];
         $databaseDown = false;
         foreach ($requirements as $number => [$enabled, $schema]) {
@@ -74,7 +78,7 @@ final class Doctor
             catch (\Throwable) { $ok = false; $databaseDown = true; }
             finally { restore_error_handler(); }
             if (!$enabled && !$ok) { $report['migration.' . $number] = ['status'=>'skip', 'action'=>'Optional schema missing or DB unavailable; feature disabled. Apply only after backup when needed.']; continue; }
-            $add('migration.' . $number, $ok, "Review and apply optional migrations/4.0.0/$number SQL manually after backup; verify DB connectivity. No DDL was executed.");
+            $add('migration.' . $number, $ok, "Review and apply optional migrations/" . ($number === '008' ? '4.8.0' : '4.0.0') . "/$number SQL manually after backup; verify DB connectivity. No DDL was executed.");
         }
         return $report;
     }

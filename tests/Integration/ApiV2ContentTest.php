@@ -573,4 +573,70 @@ class ApiV2ContentTest extends TestCase
             self::assertSame([], $this->flushCounts);
         } finally { Db::query('SET SESSION sql_mode = ?', [$oldMode]); }
     }
+
+    public function testV2WritesAreLoggedWithSourceActorAndTheirAuditRow(): void
+    {
+        $created = $this->content->create('pages', ['link' => '/logged/', 'title' => 'Logged'], $this->actor);
+        $change = Db::fetchAssoc('SELECT * FROM cms_api_changes');
+        self::assertSame('v2', $change['source']);
+        self::assertNull($change['local_user_id']);
+        self::assertSame('pages', $change['resource']);
+        self::assertSame((string) $created['data']['site_id'], $change['resource_id']);
+        self::assertSame('create', $change['action']);
+        self::assertSame($this->actor['integration_id'], $change['integration_id']);
+        self::assertSame('editor-9', $change['central_actor']);
+        self::assertSame('allowed', Db::fetchAssoc('SELECT outcome FROM cms_api_audit WHERE action = ?', ['pages.create:' . $created['data']['site_id']])['outcome']);
+    }
+
+    public function testRejectedWritesAreAuditedWithTheErrorCodeAndNoBodyOrAddress(): void
+    {
+        $directory = sys_get_temp_dir() . '/api-rejected-rate-' . bin2hex(random_bytes(8));
+        $controller = new \Wbengine\Api\V2(new \Wbengine\Api(), new Model(), $this->content, new \Wbengine\RateLimit\Limiter($directory));
+        try {
+            $token = 'Bearer ' . $this->key;
+            $created = $controller->handle('POST', '/api/v2/pages', $token, true, 'editor-9', '{"title":"Page","link":"/page/"}', [], null, '203.0.113.7');
+            $id = $created['body']['data']['site_id'];
+            self::assertSame(428, $controller->handle('PATCH', '/api/v2/pages/' . $id, $token, true, 'editor-9', '{"title":"SECRET-BODY-TEXT"}', [], null, '203.0.113.7')['status']);
+            self::assertSame(412, $controller->handle('PATCH', '/api/v2/pages/' . $id, $token, true, 'editor-9', '{"title":"SECRET-BODY-TEXT"}', [], '"stale"', '203.0.113.7')['status']);
+            self::assertSame(400, $controller->handle('POST', '/api/v2/pages', $token, true, 'editor-9', '[]')['status']);
+            self::assertSame(404, $controller->handle('DELETE', '/api/v2/pages/99999', $token, true, 'editor-9', '', [], '"x"')['status']);
+            $rows = Db::fetchAllAssoc('SELECT * FROM cms_api_audit WHERE outcome = ? ORDER BY audit_id', ['rejected']);
+            self::assertSame(['precondition_required', 'precondition_failed'], array_slice(array_column($rows, 'detail'), 0, 2));
+            self::assertContains('not_found', array_column($rows, 'detail'));
+            self::assertCount(4, $rows);
+            self::assertSame('pages.patch', $rows[0]['action']);
+            self::assertSame('editor-9', $rows[0]['central_actor']);
+            self::assertSame($this->actor['integration_id'], $rows[0]['integration_id']);
+            $dump = json_encode(Db::fetchAllAssoc('SELECT * FROM cms_api_audit'));
+            self::assertStringNotContainsString('SECRET-BODY-TEXT', $dump);
+            self::assertStringNotContainsString('203.0.113.7', $dump);
+            // A refused write is not a change.
+            self::assertSame(1, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_changes')['n']);
+        } finally {
+            foreach (glob($directory . '/*') ?: [] as $file) { unlink($file); }
+            if (is_dir($directory)) { rmdir($directory); }
+        }
+    }
+
+    public function testServerFailureGetsAReferenceInLogResponseAndAuditRow(): void
+    {
+        $directory = sys_get_temp_dir() . '/api-error-rate-' . bin2hex(random_bytes(8));
+        $failing = new class extends ContentModel {
+            public function __construct() { parent::__construct(new BoxRegistry(), function (): void {}); }
+            public function create(string $resource, array $data, array $actor): array { throw new \RuntimeException('SQL secret detail'); }
+        };
+        $controller = new \Wbengine\Api\V2(new \Wbengine\Api(), new Model(), $failing, new \Wbengine\RateLimit\Limiter($directory));
+        $oldLog = ini_set('error_log', '/dev/null');
+        try {
+            $response = $controller->handle('POST', '/api/v2/pages', 'Bearer ' . $this->key, true, 'editor-9', '{"title":"Page","link":"/page/"}');
+            self::assertSame(503, $response['status']);
+            self::assertSame('unavailable', $response['body']['error']['code']);
+            self::assertMatchesRegularExpression('/Reference: ([a-f0-9]{8})\./', $response['body']['error']['message']);
+            preg_match('/Reference: ([a-f0-9]{8})\./', $response['body']['error']['message'], $match);
+            $row = Db::fetchAssoc('SELECT * FROM cms_api_audit WHERE outcome = ?', ['error']);
+            self::assertSame('ref:' . $match[1], $row['detail']);
+            self::assertSame('pages.post', $row['action']);
+            self::assertStringNotContainsString('SQL secret detail', json_encode($response) . json_encode($row));
+        } finally { ini_set('error_log', $oldLog); }
+    }
 }

@@ -33,7 +33,7 @@ class Section extends WbengineRestapiAbstract implements ApiSectionInterface
     public function updateSection($id, $data)
     {
         $this->isAuthenticated(
-            fn() => $this->Api()->toJson($this->getSectionModel()->updateSection($id, $data)),
+            fn($payload, $actor) => $this->Api()->toJson($this->getSectionModel()->updateSection($id, $data, $this->changeActor($actor))),
             Role::ADMIN
         );
     }
@@ -41,7 +41,7 @@ class Section extends WbengineRestapiAbstract implements ApiSectionInterface
     public function deleteSection($id)
     {
         $this->isAuthenticated(
-            fn() => $this->Api()->toJson($this->getSectionModel()->deleteSection($id)),
+            fn($payload, $actor) => $this->Api()->toJson($this->getSectionModel()->deleteSection($id, $this->changeActor($actor))),
             Role::ADMIN
         );
     }
@@ -56,11 +56,11 @@ class Section extends WbengineRestapiAbstract implements ApiSectionInterface
 
     public function addNewSection($sectionData)
     {
-        $this->isAuthenticated(function () use ($sectionData) {
+        $this->isAuthenticated(function ($payload, $actor) use ($sectionData) {
             if (!is_array($sectionData)) {
                 throw new ApiException("No section data found.", 1);
             }
-            $_lastId = $this->getSectionModel()->addSection($sectionData);
+            $_lastId = $this->getSectionModel()->addSection($sectionData, $this->changeActor($actor));
             if (!$_lastId) {
                 throw new ApiModelException("Something went wrong, seems data has added but any ID has returned.", 1);
             }

@@ -58,7 +58,7 @@ final class ConsoleCliTest extends TestCase
     {
         [$code,$output] = $this->cli(['migration:status','--config=' . dirname(__DIR__) . '/config/Settings.test.json']);
         self::assertSame(0, $code); $report = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
-        self::assertCount(5, $report); self::assertNotContains('fail', array_column($report, 'status'));
+        self::assertCount(6, $report); self::assertNotContains('fail', array_column($report, 'status'));
     }
     public function testMigrationStatusWithUnreachableDatabaseStaysCleanJson(): void
     {
@@ -78,6 +78,6 @@ final class ConsoleCliTest extends TestCase
     public function testUnknownOptionsFailAndHelpExplainsDeployment(): void
     {
         [$code] = $this->cli(['doctor','--password=SECRET']); self::assertSame(2, $code);
-        [$code,$output] = $this->cli(['help']); self::assertSame(0, $code); self::assertStringContainsString('--no-dev --optimize-autoloader', $output);
+        [$code,$output] = $this->cli(['help']); self::assertSame(0, $code); self::assertStringContainsString('--no-dev --optimize-autoloader', $output); self::assertStringContainsString('audit:prune', $output); self::assertStringContainsString('audit:list', $output);
     }
 }
