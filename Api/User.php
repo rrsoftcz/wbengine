@@ -46,7 +46,7 @@ class User extends WbengineRestapiAbstract implements WbengineRestapiInterface
             if ((int) $actor['user_id'] === (int) $userid) {
                 $this->Api()->toJson(array("success" => false, "message" => "You cannot delete your own account."), Http::BAD_REQUEST);
             }
-            $this->Api()->toJson($this->getUserModel()->deleteUser($userid));
+            $this->Api()->toJson($this->getUserModel()->deleteUser($userid, $this->changeActor($actor)));
         }, Role::ADMIN);
     }
 
@@ -62,19 +62,19 @@ class User extends WbengineRestapiAbstract implements WbengineRestapiInterface
                 $this->_forbidden();
             }
 
-            $this->Api()->toJson($this->getUserModel()->updateUser($userId, $user));
+            $this->Api()->toJson($this->getUserModel()->updateUser($userId, $user, $this->changeActor($actor)));
         }, Role::USER);
     }
 
     public function addUser($user) {
         $this->isAuthenticated(
-            function($payload) use ($user) {
+            function($payload, $actor) use ($user) {
                 if (!is_array($user) || empty($user["email"])) {
                     $this->Api()->toJson(array("success" => false, "message" => "Minimum fields error, email and password required."), Http::BAD_REQUEST);
                 }
 
                 $this->checkUserExist(
-                  fn($e) => $this->api()->toJson($this->getUserModel()->createUser($user, $e)), $user["email"]
+                  fn($e) => $this->api()->toJson($this->getUserModel()->createUser($user, $e, $this->changeActor($actor))), $user["email"]
                 );
             }, Role::ADMIN);
     }

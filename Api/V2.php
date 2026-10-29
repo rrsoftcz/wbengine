@@ -19,6 +19,8 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
     private ?Limiter $limiter;
     private ?ImageModel $images;
     private ?\Wbengine\Analytics\Overview $analytics;
+    /** Identity and action of the current request once authorization succeeded, for failure audit. */
+    private ?array $context = null;
 
     public function __construct(Api $api, ?Model $model = null, ?ContentModel $content = null, ?Limiter $limiter = null, ?ImageModel $images = null, ?\Wbengine\Analytics\Overview $analytics = null)
     {
@@ -40,6 +42,7 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
     {
         $path = rtrim((string) parse_url($path, PHP_URL_PATH), '/');
         $allow = 'GET';
+        $this->context = null;
         try {
             if (in_array($path, ['/api/v2', '/api/v2/capabilities'], true)) {
                 $this->method($method, ['GET']);
@@ -143,10 +146,41 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
         } catch (Problem $e) {
             $headers = 405 === $e->getCode() ? ['Allow' => $allow] : [];
             if (429 === $e->getCode()) { $headers['Retry-After'] = '300'; }
+            $message = $e->getMessage();
+            if ($e->getCode() >= 500) {
+                $reference = $this->failureReference(get_class($e) . ':' . $e->errorCode);
+                $this->auditFailure($method, 'error', 'ref:' . $reference);
+                return $this->response(Contract::error(new Problem($e->errorCode, $message . ' Reference: ' . $reference . '.', $e->getCode())), $e->getCode(), $headers);
+            }
+            if (!in_array($e->getCode(), [401, 405, 429], true)) { $this->auditFailure($method, 'rejected', $e->errorCode); }
             return $this->response(Contract::error($e), $e->getCode(), $headers);
         } catch (\Throwable $e) {
-            error_log(__METHOD__ . ': API v2 operation failed (' . get_class($e) . ').');
-            return $this->response(Contract::error(new Problem('unavailable', 'The API is temporarily unavailable.', 503)), 503);
+            $reference = $this->failureReference(get_class($e));
+            $this->auditFailure($method, 'error', 'ref:' . $reference);
+            return $this->response(Contract::error(new Problem('unavailable', 'The API is temporarily unavailable. Reference: ' . $reference . '.', 503)), 503);
+        }
+    }
+
+    /** Server log line with a short reference the client also receives. No message, SQL or payload. */
+    private function failureReference(string $what): string
+    {
+        $reference = bin2hex(random_bytes(4));
+        error_log(__CLASS__ . ': API v2 operation failed (' . $what . '), reference ' . $reference . '.');
+        return $reference;
+    }
+
+    /**
+     * A rejected or failed write of an authenticated integration goes to cms_api_audit: action, outcome
+     * and an error code or reference. Never the request body and never an IP address. Best effort:
+     * a broken audit store must not change the answer.
+     */
+    private function auditFailure(string $method, string $outcome, string $detail): void
+    {
+        if (null === $this->context || 'GET' === $method) { return; }
+        try {
+            $this->getModel()->audit($this->context['integration_id'], $this->context['central_actor'], $this->context['action'], $outcome, null, $detail);
+        } catch (\Throwable $e) {
+            error_log(__CLASS__ . ': failure audit was not stored (' . get_class($e) . ').');
         }
     }
 
@@ -199,6 +233,7 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
             $this->getModel()->audit($identity['integration_id'], $centralActor, $action, 'forbidden');
             throw new Problem('forbidden', 'The integration does not have the required scope.', 403);
         }
+        $this->context = ['integration_id' => $identity['integration_id'], 'central_actor' => $centralActor, 'action' => $action];
         return $identity;
     }
 

@@ -273,7 +273,7 @@ class ApiV2MemoryModel extends Model
         }
         return null;
     }
-    public function audit(?int $integrationId, ?string $centralActor, string $action, string $outcome, ?int $localUserId = null): void
+    public function audit(?int $integrationId, ?string $centralActor, string $action, string $outcome, ?int $localUserId = null, ?string $detail = null): void
     {
         $this->events[] = [$integrationId, $centralActor, $action, $outcome];
     }

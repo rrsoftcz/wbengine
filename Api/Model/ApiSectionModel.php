@@ -16,6 +16,7 @@
 namespace Wbengine\Api\Model;
 
 use Wbengine\Model\ModelAbstract;
+use Wbengine\Audit\ChangeLog;
 use Wbengine\Cache;
 use Wbengine\Db;
 use Wbengine\Api\Model\Exception\ApiModelException;
@@ -93,32 +94,48 @@ class ApiSectionModel extends ModelAbstract
     }
 
 
-    public function deleteSection($sectionId)
+    /**
+     * The optional $actor (local_user_id) attributes the change log row, $source is v1.
+     * A section `key` is a namespace, not a secret, so it is exempt from redaction.
+     */
+    public function deleteSection($sectionId, array $actor = array(), string $source = 'v1')
     {
         $sectionId = $this->_checkId($sectionId);
+        $before = Db::fetchAssoc(sprintf("SELECT * FROM %s WHERE `section_id` = ? LIMIT 1;", S_TABLE_SECTIONS), array($sectionId));
 
         Db::query(sprintf("DELETE FROM %s WHERE `section_id` = ? LIMIT 1;", S_TABLE_SECTIONS), array($sectionId));
         $deleted = Db::getAffected();
         Cache::flush();
+        if ($deleted && is_array($before)) {
+            ChangeLog::recordQuietly('section', $sectionId, 'delete', $before, null, $actor, $source, array('key'));
+        }
         return array("deleted" => $deleted);
     }
 
 
-    public function updateSection($sectionId, $sectionData)
+    public function updateSection($sectionId, $sectionData, array $actor = array(), string $source = 'v1')
     {
         $sectionId = $this->_checkId($sectionId);
         $sectionData = $this->_checkData($sectionData);
+        $before = Db::fetchAssoc(sprintf("SELECT %s FROM %s WHERE `section_id` = ? LIMIT 1;", implode(', ', array_map(array(Db::class, 'identifier'), array_keys($sectionData))), S_TABLE_SECTIONS), array($sectionId));
 
         $updated = Db::update(S_TABLE_SECTIONS, $sectionData, array('section_id' => $sectionId));
         Cache::flush();
+        if ($updated && is_array($before)) {
+            ChangeLog::recordQuietly('section', $sectionId, 'update', $before, $sectionData, $actor, $source, array('key'));
+        }
         return array("updated" => $updated);
     }
 
 
-    public function addSection($data)
+    public function addSection($data, array $actor = array(), string $source = 'v1')
     {
-        $id = Db::insert(S_TABLE_SECTIONS, $this->_checkData($data));
+        $data = $this->_checkData($data);
+        $id = Db::insert(S_TABLE_SECTIONS, $data);
         Cache::flush();
+        if ($id) {
+            ChangeLog::recordQuietly('section', $id, 'create', null, $data, $actor, $source, array('key'));
+        }
         return $id;
     }
 

@@ -2,6 +2,7 @@
 
 namespace Wbengine\Api;
 
+use Wbengine\Audit\ChangeLog;
 use Wbengine\Cache;
 use Wbengine\User\Role;
 
@@ -14,8 +15,9 @@ class CacheAdmin extends WbengineRestapiAbstract implements WbengineRestapiInter
 {
     public function flush()
     {
-        $this->isAuthenticated(function () {
+        $this->isAuthenticated(function ($payload, $actor) {
             Cache::flush();
+            ChangeLog::recordQuietly('cache', 'all', 'flush', null, null, $this->changeActor($actor), 'v1');
             $this->Api()->toJson(array("success" => true, "message" => "The cache was flushed."));
         }, Role::ADMIN);
     }

@@ -574,15 +574,7 @@ class ContentModel extends Model
 
     protected function change(string $resource, int|string $id, string $action, ?array $before, ?array $after, array $actor): void
     {
-        $data = [
-            'resource' => $resource, 'resource_id' => (string) $id, 'action' => $action,
-            'before_data' => null === $before ? null : json_encode($before, JSON_THROW_ON_ERROR),
-            'after_data' => null === $after ? null : json_encode($after, JSON_THROW_ON_ERROR),
-            'integration_id' => $actor['integration_id'], 'central_actor' => $actor['central_actor'] ?? null, 'created_at' => time(),
-        ];
-        $changeId = Db::insert('cms_api_changes', $data);
-        $stored = Db::fetchAssoc('SELECT * FROM cms_api_changes WHERE change_id = ?', [$changeId]);
-        $this->verifyStored($stored, $data);
+        \Wbengine\Audit\ChangeLog::record($resource, $id, $action, $before, $after, $actor, 'v2');
         $this->audit($actor['integration_id'], $actor['central_actor'] ?? null, $resource . '.' . $action . ':' . $id, 'allowed');
     }
 
