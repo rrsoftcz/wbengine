@@ -11,10 +11,22 @@ Target: **4.1.0**.
 
 ### Changed
 
+- Box device limits are now enforced: `device_min` and `device_strict` hide a box on devices below
+  (or, when strict, other than) the minimum. The stored default (`device_min` 1, not strict) still
+  shows every box everywhere. The full page cache key now contains the device type
+  (`PageCache::cacheKey($path, $device)`), so a page is cached once per device class.
+- `BoxRegistry::register()` takes an optional `$metadata` argument (`['renders' => 'article']`) and the
+  discovery catalog lists `renders` for each box type.
 - All documentation (plans, references, guides) is in English.
 
 ### Added
 
+- `GET /api/v2/pages?search=` (title or link) and `GET /api/v2/boxes?search=` (name): substring search
+  with escaped LIKE wildcards, at most 100 characters, combined with `page` and `per_page`.
+  Advertised as `search` in the capabilities.
+- Box rows carry read-only `module`, `method` and `renders_articles`; a page read carries
+  `article_box_ids`, the visible boxes that render articles. Unregistered legacy boxes count when their
+  method is `getArticleBox` or their module is `Article`. All are rejected on write like unknown fields.
 - Pages, menu items and articles in API v2 lists and reads carry `translation_locales`, the languages
   that have a translation, computed with one query per page of results. A client can show "3 of 20
   languages" without asking for every language of every record.

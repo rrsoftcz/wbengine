@@ -22,8 +22,17 @@ class ContentModel extends Model
     {
         $def = Resources::definition($resource);
         $pagination = Contract::pagination($query);
-        $rows = Db::fetchAllAssoc('SELECT * FROM ' . Db::identifier($def['table']) . ' ORDER BY ' . Db::identifier($def['id']) . ' LIMIT ? OFFSET ?', [$pagination['per_page'], $pagination['offset']]);
-        $count = (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM ' . Db::identifier($def['table']))['n'];
+        // Only pages (title, link) and boxes (name) can be searched, on a prepared LIKE with escaped wildcards.
+        $where = '';
+        $params = [];
+        $search = Contract::search($query);
+        if (null !== $search && in_array($resource, ['pages', 'boxes'], true)) {
+            $columns = 'pages' === $resource ? ['title', 'link'] : ['name'];
+            $where = ' WHERE ' . implode(' OR ', array_map(fn ($column) => Db::identifier($column) . " LIKE ? ESCAPE '\\\\'", $columns));
+            $params = array_fill(0, count($columns), Contract::likePattern($search));
+        }
+        $rows = Db::fetchAllAssoc('SELECT * FROM ' . Db::identifier($def['table']) . $where . ' ORDER BY ' . Db::identifier($def['id']) . ' LIMIT ? OFFSET ?', array_merge($params, [$pagination['per_page'], $pagination['offset']]));
+        $count = (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM ' . Db::identifier($def['table']) . $where, $params)['n'];
         $items = array_map(fn ($row) => $this->publicRow($resource, $row), $rows);
         if ('articles' === $resource && $items) {
             $ids = array_column($items, 'id');
@@ -58,12 +67,26 @@ class ContentModel extends Model
         return $items;
     }
 
+    /**
+     * Ids of the boxes visible on a page (listed in its sites or shared, as Section\Model selects
+     * them) that render articles. Read-only and derived, never part of the writable fields.
+     */
+    private function articleBoxIds(int $siteId): array
+    {
+        $ids = [];
+        foreach (Db::fetchAllAssoc("SELECT id, module, method FROM cms_boxes WHERE (CASE WHEN JSON_VALID(sites) THEN JSON_SEARCH(sites, 'one', ?) IS NOT NULL ELSE 0 END OR shared = 1) ORDER BY id", [(string) $siteId]) as $box) {
+            if ($this->boxes->rendersArticles((string) $box['module'], (string) $box['method'])) { $ids[] = (int) $box['id']; }
+        }
+        return $ids;
+    }
+
     public function read(string $resource, $id): array
     {
         if ('articles' === $resource) { return $this->articleResponse($this->articleState(Resources::id($id))); }
         $row = $this->row($resource, Resources::id($id));
         $data = $this->publicRow($resource, $row);
         if (in_array($resource, ['pages', 'menu'], true)) { $data = $this->withTranslationLocales($resource, [$data], Resources::definition($resource)['id'])[0]; }
+        if ('pages' === $resource) { $data['article_box_ids'] = $this->articleBoxIds((int) $row['site_id']); }
         return ['data' => $data, 'etag' => Resources::etag($row)];
     }
 
@@ -573,6 +596,9 @@ class ContentModel extends Model
             $row['type'] = $this->boxes->typeFor($row['module'], $row['method']);
             $row['settings'] = (object) json_decode($row['api_settings'] ?? '{}', true, 32, JSON_THROW_ON_ERROR);
             $row['sites'] = json_decode($row['sites'] ?? '[]', true, 32, JSON_THROW_ON_ERROR);
+            // Read-only, derived from the stored row: none of these is a writable field.
+            $row['renders_articles'] = $this->boxes->rendersArticles((string) $row['module'], (string) $row['method']);
+            $fields = array_merge($fields, ['module', 'method', 'renders_articles']);
         }
         return array_intersect_key($row, array_fill_keys($fields, true));
     }

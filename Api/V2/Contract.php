@@ -48,6 +48,23 @@ class Contract
         return ['page' => $page, 'per_page' => $perPage, 'offset' => ($page - 1) * $perPage];
     }
 
+    /** Optional "search" text of a list: null when absent or blank, otherwise a trimmed string of at most 100 characters. */
+    public static function search(array $query): ?string
+    {
+        if (!array_key_exists('search', $query)) { return null; }
+        if (!is_string($query['search']) || mb_strlen(trim($query['search'])) > 100 || preg_match('/[\x00-\x1f\x7f]/', $query['search'])) {
+            throw new Problem('invalid_search', 'The search text must be a string of at most 100 characters.');
+        }
+        $text = trim($query['search']);
+        return '' === $text ? null : $text;
+    }
+
+    /** A LIKE pattern matching the text anywhere, with the wildcard characters of the text escaped (use with ESCAPE '\\'). */
+    public static function likePattern(string $text): string
+    {
+        return '%' . addcslashes($text, '\\%_') . '%';
+    }
+
     public static function page(array $items, array $query, int $total): array
     {
         $pagination = self::pagination($query);

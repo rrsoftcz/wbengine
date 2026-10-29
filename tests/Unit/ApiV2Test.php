@@ -77,6 +77,52 @@ class ApiV2Test extends TestCase
         }
     }
 
+    public function testSearchTextIsBoundedAndWildcardsAreEscaped(): void
+    {
+        self::assertNull(Contract::search([]));
+        self::assertNull(Contract::search(['search' => '   ']));
+        self::assertSame('abc', Contract::search(['search' => ' abc ']));
+        self::assertSame(str_repeat('a', 100), Contract::search(['search' => str_repeat('a', 100)]));
+        self::assertSame('%50\\%\\_a\\\\b%', Contract::likePattern('50%_a\\b'));
+        foreach ([['search' => str_repeat('a', 101)], ['search' => ['x']], ['search' => "a\0b"]] as $query) {
+            try {
+                Contract::search($query);
+                self::fail('Invalid search accepted');
+            } catch (Problem $e) {
+                self::assertSame('invalid_search', $e->errorCode);
+                self::assertSame(400, $e->getCode());
+            }
+        }
+    }
+
+    public function testCapabilitiesAdvertiseSearch(): void
+    {
+        $data = (new V2(new Api()))->handle('GET', '/api/v2/capabilities')['body']['data'];
+        self::assertSame(['resources' => ['pages', 'boxes'], 'max_length' => 100], $data['search']);
+    }
+
+    public function testBoxRegistryTellsWhichBoxesRenderArticles(): void
+    {
+        $registry = new V2\BoxRegistry();
+        $registry->register('story', 'blog', 'story', [], ['central'], ['renders' => 'article']);
+        $registry->register('promo', 'promo', 'show');
+        self::assertTrue($registry->rendersArticles('blog', 'story'));
+        self::assertFalse($registry->rendersArticles('promo', 'show'));
+        self::assertFalse($registry->rendersArticles('other', 'unregistered'));
+        self::assertTrue($registry->rendersArticles('Other', 'getArticleBox'));
+        self::assertTrue($registry->rendersArticles('Article', 'anything'));
+        self::assertSame('article', $registry->catalog()[0]['renders']);
+        self::assertNull($registry->catalog()[1]['renders']);
+        foreach ([['renders' => 'page'], ['module' => 'x']] as $metadata) {
+            try {
+                $registry->register('bad', 'bad', 'bad', [], ['central'], $metadata);
+                self::fail('Invalid metadata accepted');
+            } catch (\InvalidArgumentException $e) {
+                self::assertStringContainsString('metadata', $e->getMessage());
+            }
+        }
+    }
+
     public function testPageResponseIncludesBoundedMetadataWithoutInternalOffset(): void
     {
         self::assertSame([
