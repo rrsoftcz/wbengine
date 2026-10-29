@@ -1,39 +1,39 @@
 # WBengine 4.0.0
 
-Vydáno 2026-10-26. Tag v4.0.0 ukazuje na merge commit cf710e5adbc25809868a864e615f8b9fc62a7489. Produkční data nebyla migrována.
+Released 2026-10-26. The v4.0.0 tag points to merge commit cf710e5adbc25809868a864e615f8b9fc62a7489. Production data was not migrated.
 
-## Změny
+## Changes
 
-- Vlastní nativní kompilované šablony jako základ, Smarty pouze volitelný kompatibilní balíček. Defaultní escapování, diagnostika nepodporované syntaxe a korektní vlastnictví výstupních bufferů.
-- Vlastní omezený Markdown parser, AST a bezpečný HTML renderer, soubory .md i explicitní DB formáty. Texy pouze volitelný offline převodník. Dry-run, schválený hash, přesné zálohy a konfliktní rollback článků i překladů.
-- Odložené CMS, terminální routy před cache, personalizované cache scope, bezpečnější sessions, vstupy, CSRF, proxy a autentizace. Parametrizované menu lookupy a změřený index boxů.
-- API v2 s omezenými klíči/scopes, auditem a limity, CRUD obsahu, registrovanými boxy, skutečně dostupným nastavením vykonávaného boxu, koncepty/revizemi/publikací, překlady, obnovou struktury, ETag a veřejnými rastrovými médii.
-- Samostatná centrální SvelteKit administrace: pozvánky, MFA, role po webech, šifrované klíče, ověřené pinned HTTPS, editor, preview/publish/recovery a zachování rozepsaných polí při konfliktu i výpadku.
-- Instalované Composer CLI pro diagnostiku, read-only schéma a bezpečný scaffold; opakovatelná skutečná CMS benchmark matice.
+- Own native compiled templates as the foundation, Smarty only as an optional compatibility package. Default escaping, diagnostics for unsupported syntax and correct ownership of output buffers.
+- Own restricted Markdown parser, AST and safe HTML renderer, .md files and explicit DB formats. Texy only as an optional offline converter. Dry run, approved hash, exact backups and conflict-checked rollback of articles and translations.
+- Deferred CMS, terminal routes before the cache, personalized cache scopes, safer sessions, inputs, CSRF, proxy and authentication. Parameterized menu lookups and a measured boxes index.
+- API v2 with restricted keys/scopes, audit and limits, content CRUD, registered boxes, actually available settings of an executed box, drafts/revisions/publishing, translations, structure recovery, ETag and public raster media.
+- Separate central SvelteKit administration: invitations, MFA, per-site roles, encrypted keys, verified pinned HTTPS, editor, preview/publish/recovery and preservation of text being edited on conflict and outage.
+- Installed Composer CLI for diagnostics, read-only schema and a safe scaffold; a repeatable real CMS benchmark matrix.
 
-PHP jádro zachovává Application/Site/Section/Box, namespaces, lazy služby a model/adapter vzory. Nevznikl paralelní PHP framework. URL mapa se po měření záměrně nezavádí: skutečný indexovaný SQL lookup zachovává DB collation a nemá zbytečné full-table/paměťové náklady.
+The PHP core keeps Application/Site/Section/Box, namespaces, lazy services and the model/adapter patterns. No parallel PHP framework was created. A URL map is deliberately not introduced after measurement: a real indexed SQL lookup preserves the DB collation and has no needless full-table/memory costs.
 
-## Ověření
+## Verification
 
-- Jádro: 1989 testů,5666 assertions na PHP8.4.27/MySQL8.4; audit a lint bez chyb. CI PHP8.3/8.4/8.5 a MariaDB10.11/11.4.
-- Optional Smarty86/123 a offline Texy1/5, samostatné CI profily. Jádro je neinstaluje, jediná runtime Composer závislost zůstává firebase/php-jwt.
-- Vzorový web:20 skutečných HTTP kontrol, fresh no-dev optimized strictPSR autoload bezSmarty/Texy;15bodová CMS matice300requestů/0chyb. Public pageHIT0SQL/0connections, osobní stránky nejsou sharedHIT. Jde o malou localhost fixture, nikoli produkční kapacitní garanci.
-- Administrace:34 unit/transport/action/komponentových testů,5 MySQL scénářů a HTTP auth smoke,check0chyb/0warnings a produkčníDockerbuild. Komponentový test kompiluje skutečný Svelte formulář.
-- Dva nezávislé HTTPS weby: crosskey401, oddělené změny/databáze, omezenýeditor, actualHTML draft/preview/publish/revize/konflikt/recovery/překlady/média, odvoláníklíče a výpadek/ručníretry. Veřejnéweby zůstaly dostupné po vypnutí centrály.
-- Skutečný DBdump/restore17tabulek se shodnými definicemi a SHA256 dat, pomocné artefakty uklizené. Společný automatický admin CI pilot prošel, včetně této obnovy. Node HTTP/SSR test nenahrazuje grafickou Chromium automatizaci.
+- Core: 1989 tests, 5666 assertions on PHP 8.4.27/MySQL 8.4; audit and lint without errors. CI on PHP 8.3/8.4/8.5 and MariaDB 10.11/11.4.
+- Optional Smarty 86/123 and offline Texy 1/5, separate CI profiles. The core does not install them; the only runtime Composer dependency remains firebase/php-jwt.
+- Sample site: 20 real HTTP checks, fresh no-dev optimized strict PSR autoload without Smarty/Texy; 15-point CMS matrix, 300 requests, 0 errors. Public page HIT 0 SQL/0 connections, personal pages are not a shared HIT. This is a small localhost fixture, not a production capacity guarantee.
+- Administration: 34 unit/transport/action/component tests, 5 MySQL scenarios and an HTTP auth smoke test, check 0 errors/0 warnings and a production Docker build. The component test compiles a real Svelte form.
+- Two independent HTTPS sites: cross-key 401, separate changes/databases, restricted editor, actual HTML draft/preview/publish/revisions/conflict/recovery/translations/media, key revocation and outage/manual retry. Public sites stayed available after the central administration was shut down.
+- Real DB dump/restore of 17 tables with identical definitions and SHA256 of data, helper artifacts cleaned up. The shared automatic admin CI pilot passed, including this restore. The Node HTTP/SSR test does not replace graphical Chromium automation.
 
-## Migrační dopady
+## Migration impacts
 
-Jde o novou major verzi. Zkontrolujte přímé Smarty/Texy API a pluginy, raw versus escapovaný výstup, nezměněné HTTP vstupy, POST logout a účelové CSRF, deferred lifecycle a produkční cache. Staré HTML se automaticky neoznačuje za Texy ani Markdown. Nový API konektor vyžaduje explicitní SQL002/003/005 a InnoDB, migrace obsahu také004. Schema se samo nemění za requestu.
+This is a new major version. Check direct Smarty/Texy APIs and plugins, raw versus escaped output, unmodified HTTP inputs, POST logout and purpose-bound CSRF, the deferred lifecycle and the production cache. Old HTML is not automatically labelled Texy or Markdown. The new API connector requires explicit SQL002/003/005 and InnoDB; content migrations also 004. The schema does not change by itself during a request.
 
-Kompatibilní Composer balíčky v compat/ ještě nejsou samostatně publikované. Pro lokální path repository použijte zdokumentované mirror nastavení symlink=false. Preview je soukromé; nahraná média jsou veřejná a úložiště musí být trvalé mimo document root. Externí CDN se nepurguje automaticky.
+The compatibility Composer packages in compat/ are not yet published separately. For a local path repository, use the documented mirror setting symlink=false. Preview is private; uploaded media are public and the storage must be permanent and outside the document root. An external CDN is not purged automatically.
 
-Přesný postup a návrat: book-wbengine-4-upgrade.md. Aktuální úkoly a historie: plan-framework-improvements.md. API, Markdown a templates mají samostatné ref dokumenty. Provozní správce musí ověřit vlastní zálohu, konkrétní obsah a ruční migrační issues před nasazením.
+Exact procedure and rollback: book-wbengine-4-upgrade.md. Current tasks and history: plan-framework-improvements.md. API, Markdown and templates have separate ref documents. The operations administrator must verify their own backup, the specific content and the manual migration issues before deployment.
 
-## Sloučené změny
+## Merged changes
 
-- Jádro: https://github.com/rrsoftcz/wbengine/pull/2
-- Vzorová aplikace: https://github.com/rrsoftcz/wbengine-skeleton-app/pull/1
-- Privátní centrála: https://github.com/rrsoftcz/wbengine-admin/pull/1
+- Core: https://github.com/rrsoftcz/wbengine/pull/2
+- Sample application: https://github.com/rrsoftcz/wbengine-skeleton-app/pull/1
+- Private central administration: https://github.com/rrsoftcz/wbengine-admin/pull/1
 
-GitHub release: https://github.com/rrsoftcz/wbengine/releases/tag/v4.0.0. Produkční deploy a konverze provozních dat jsou samostatné řízené operace podle upgrade návodu.
+GitHub release: https://github.com/rrsoftcz/wbengine/releases/tag/v4.0.0. Production deployment and the conversion of operational data are separate controlled operations according to the upgrade guide.
