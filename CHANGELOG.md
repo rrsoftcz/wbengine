@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (6.1.0)
+
+- Per-key address restriction: an integration key can be bound to IP addresses or CIDR ranges. The issue form has an optional field, every key card a form to change it, and the card shows the address the key was last used from. A call from another address is answered 403 `ip_not_allowed`. Migration `6.1.0/011-integration-ip-restriction.sql`; `doctor` reports it as `migration.011`. Without it nothing changes.
+
 ### Removed (6.0.0, breaking)
 
 - The unused settings `codePage`, `cdnPath`, `cssFiles`, `ipAdmins`, `minimizeHtml`, `minimizeCss` and `minimizeJs`, their `Config` getters (`getHtmlHeaderCharset()`, `getCdnPath()`, `getCssCollection()`, `getAdminIpCollection()`, `minimizeHtml()`, `minimizeCss()`, `minimizejs()`) and the `minimizeCss` template variable of `Site`. Nothing in the framework read them. An existing `Settings.json` with these keys still loads, the keys are ignored.

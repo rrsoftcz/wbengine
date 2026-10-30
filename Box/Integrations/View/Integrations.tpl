@@ -132,7 +132,7 @@
                 <select class="rounded border border-slate-300 p-2" id="wb-replaces" name="replaces">
                     <option value="">{$view.t.replaces_none}</option>
                     {foreach $view.rotatable as $option}
-                    <option value="{$option.id}" data-analytics="{$option.analytics}" data-groups="{$option.groups}">{$option.label}</option>
+                    <option value="{$option.id}" data-analytics="{$option.analytics}" data-groups="{$option.groups}" data-ips="{$option.ips}">{$option.label}</option>
                     {/foreach}
                 </select>
                 {/if}
@@ -166,6 +166,11 @@
                     </div>
                     {/if}
                 </fieldset>
+                {if $view.ipSupport}
+                <label for="wb-ips">{$view.t.ips_label}</label>
+                <input type="text" class="rounded border border-slate-300 p-2" id="wb-ips" name="allowed_ips" maxlength="600" autocomplete="off" spellcheck="false" placeholder="203.0.113.5, 198.51.100.0/24" aria-describedby="wb-ips-help">
+                <small class="wb-hint" id="wb-ips-help">{$view.t.ips_help} {$view.t.ips_your}: <code>{$view.yourAddress}</code></small>
+                {/if}
                 <label for="wb-password">{$view.t.password_label}</label>
                 <input type="password" class="rounded border border-slate-300 p-2" id="wb-password" name="password" autocomplete="current-password" required>
                 <small class="wb-hint">{$view.t.password_help}</small>
@@ -194,9 +199,27 @@
                 <dl class="wb-key-meta">
                     <div><dt>{$view.t.col_created}</dt><dd>{$row.created}, {$row.by}</dd></div>
                     <div><dt>{$view.t.col_last_used}</dt><dd>{$row.last_used}</dd></div>
+                    {if $view.ipSupport}
+                    <div><dt>{$view.t.col_allowed}</dt><dd>{if $row.restricted}<code>{$row.allowed_text}</code>{else}{$view.t.ips_any}{/if}</dd></div>
+                    <div><dt>{$view.t.col_last_ip}</dt><dd>{if $row.last_ip}<code>{$row.last_ip}</code>{else}{$view.t.ips_never}{/if}</dd></div>
+                    {/if}
                     <div><dt>{$view.t.col_scopes}</dt><dd>{foreach $row.groups as $g}<span class="wb-badge wb-lv-{$g.level}">{$g.label}</span> {/foreach}</dd></div>
                 </dl>
                 {if $view.canIssue}
+                {if $view.ipSupport}
+                <details class="wb-revoke">
+                    <summary>{$view.t.restrict_open}</summary>
+                    <form method="post" action="{$view.action}" autocomplete="off">
+                        <input type="hidden" name="action" value="restrict">
+                        <input type="hidden" name="token" value="{$view.tokens.restrict}">
+                        <input type="hidden" name="integration_id" value="{$row.id}">
+                        <input type="text" class="rounded border border-slate-300 p-1" name="allowed_ips" maxlength="600" value="{$row.ips_prefill}" placeholder="203.0.113.5, 198.51.100.0/24" aria-label="{$view.t.ips_label}" autocomplete="off" spellcheck="false">
+                        <input type="password" class="rounded border border-slate-300 p-1" name="password" autocomplete="current-password" required placeholder="{$view.t.confirm_password}" aria-label="{$view.t.confirm_password}">
+                        <button type="submit" class="btn-outline">{$view.t.restrict_submit}</button>
+                    </form>
+                    <small class="wb-hint">{$view.t.ips_card_hint}</small>
+                </details>
+                {/if}
                 <details class="wb-revoke">
                     <summary>{$view.t.revoke_open}</summary>
                     <form method="post" action="{$view.action}" autocomplete="off">
@@ -271,6 +294,8 @@
             var parts = pair.split('=');
             if (parts[1]) { levels[parts[0]] = parts[1]; }
         });
+        var ips = document.getElementById('wb-ips');
+        if (ips) { ips.value = option.getAttribute('data-ips') || ''; }
         if (!levels.analytics) { levels.analytics = option.getAttribute('data-analytics') === '1' ? 'read' : 'off'; }
         Object.keys(levels).forEach(function (name) {
             Array.prototype.forEach.call(document.getElementsByName('group_' + name), function (radio) {

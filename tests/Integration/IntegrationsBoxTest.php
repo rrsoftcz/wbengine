@@ -303,14 +303,91 @@ class IntegrationsBoxTest extends TestCase
         $this->assertStringContainsString("getElementsByName('group_'", $html);
     }
 
+    private function withIpColumns(): void
+    {
+        Db::query('ALTER TABLE cms_api_integrations ADD COLUMN allowed_ips TEXT NULL DEFAULT NULL');
+        Db::query('ALTER TABLE cms_api_integrations ADD COLUMN last_used_ip VARCHAR(45) NULL DEFAULT NULL');
+    }
+
+    public function testAddressControlsAreHiddenUntilTheMigrationIsApplied(): void
+    {
+        [$box] = $this->box(41, 'GET');
+        $html = $box->Integrations();
+        $this->assertStringNotContainsString('name="allowed_ips"', $html);
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'Needs migration', 'password' => 'admin-secret', 'allowed_ips' => '203.0.113.5'], $session, Integrations::PURPOSE_ISSUE);
+        $box->Integrations();
+        $this->assertSame(400, $out->status);
+        $this->assertSame(0, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
+    }
+
+    public function testKeyIsIssuedWithAllowedAddressesAndTheCardShowsThemWithTheLastUsedAddress(): void
+    {
+        $this->withIpColumns();
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'Admin server', 'password' => 'admin-secret', 'allowed_ips' => '203.0.113.5, 198.51.100.0/24'], $session, Integrations::PURPOSE_ISSUE);
+        $box->Integrations();
+        $this->assertSame(200, $out->status);
+        $row = $this->lastRow();
+        $this->assertSame(['203.0.113.5', '198.51.100.0/24'], json_decode($row['allowed_ips'], true));
+        Db::query('UPDATE cms_api_integrations SET last_used_ip = ? WHERE integration_id = ?', ['203.0.113.5', $row['integration_id']]);
+        [$box2] = $this->box(41, 'GET');
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $html = $box2->Integrations();
+        $this->assertStringContainsString('<code>203.0.113.5, 198.51.100.0/24</code>', $html);
+        $this->assertStringContainsString('<code>203.0.113.5</code>', $html);
+        $this->assertStringContainsString('name="allowed_ips"', $html);
+        $this->assertMatchesRegularExpression('~data-ips="203\.0\.113\.5, 198\.51\.100\.0/24"~', $html);
+    }
+
+    public function testInvalidAddressesAreRefusedWhenIssuingAndNothingIsIssued(): void
+    {
+        $this->withIpColumns();
+        foreach (['example.com', '10.0.0.0/40', '1.2.3.4; DROP TABLE x'] as $input) {
+            [$box, $out, $session] = $this->box(41, 'POST');
+            $this->post(['action' => 'issue', 'name' => 'Bad', 'password' => 'admin-secret', 'allowed_ips' => $input], $session, Integrations::PURPOSE_ISSUE);
+            $html = $box->Integrations();
+            $this->assertSame(400, $out->status, $input);
+            $this->assertSame(0, preg_match('/wbv2_[a-f0-9]{64}/', $html));
+        }
+        $this->assertSame(0, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
+    }
+
+    public function testRestrictNeedsThePasswordAndTheTokenAndChangesOnlyTheChosenKey(): void
+    {
+        $this->withIpColumns();
+        $first = (new Model())->provision(41, 'One', Integrations::PROFILE_SCOPES);
+        $second = (new Model())->provision(41, 'Two', Integrations::PROFILE_SCOPES);
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'restrict', 'integration_id' => (string) $first['integration_id'], 'allowed_ips' => '203.0.113.9', 'password' => 'wrong'], $session, Integrations::PURPOSE_RESTRICT);
+        $box->Integrations();
+        $this->assertSame(403, $out->status);
+        $this->assertNull(Db::fetchAssoc('SELECT allowed_ips FROM cms_api_integrations WHERE integration_id = ' . (int) $first['integration_id'])['allowed_ips']);
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = ['action' => 'restrict', 'token' => 'forged', 'integration_id' => (string) $first['integration_id'], 'allowed_ips' => '203.0.113.9', 'password' => 'admin-secret'];
+        $box->Integrations();
+        $this->assertSame(403, $out->status);
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'restrict', 'integration_id' => (string) $first['integration_id'], 'allowed_ips' => '203.0.113.9', 'password' => 'admin-secret'], $session, Integrations::PURPOSE_RESTRICT);
+        $box->Integrations();
+        $this->assertSame(200, $out->status);
+        $this->assertSame(['203.0.113.9'], json_decode(Db::fetchAssoc('SELECT allowed_ips FROM cms_api_integrations WHERE integration_id = ' . (int) $first['integration_id'])['allowed_ips'], true));
+        $this->assertNull(Db::fetchAssoc('SELECT allowed_ips FROM cms_api_integrations WHERE integration_id = ' . (int) $second['integration_id'])['allowed_ips']);
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'restrict', 'integration_id' => (string) $first['integration_id'], 'allowed_ips' => '', 'password' => 'admin-secret'], $session, Integrations::PURPOSE_RESTRICT);
+        $box->Integrations();
+        $this->assertNull(Db::fetchAssoc('SELECT allowed_ips FROM cms_api_integrations WHERE integration_id = ' . (int) $first['integration_id'])['allowed_ips']);
+    }
+
     public function testRotationPrefillsTheChoiceFromTheOldKey(): void
     {
         (new Model())->provision(41, 'Plain key', Integrations::PROFILE_SCOPES);
         (new Model())->provision(41, 'Analytics key', Integrations::scopesFor(true));
         [$box] = $this->box(41, 'GET');
         $html = $box->Integrations();
-        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="1" data-groups="[^"]*">Analytics key #\d+</option>~', $html);
-        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="0" data-groups="[^"]*">Plain key #\d+</option>~', $html);
+        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="1" data-groups="[^"]*" data-ips="[^"]*">Analytics key #\d+</option>~', $html);
+        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="0" data-groups="[^"]*" data-ips="[^"]*">Plain key #\d+</option>~', $html);
         $this->assertStringContainsString("getAttribute('data-analytics')", $html);
     }
 

@@ -20,7 +20,7 @@ class Model extends \Wbengine\Model\ModelAbstract
      * Trusted local provisioning API. The administrator's current role is read from DB.
      * Requires an idle connection: existing caller-owned transactions are refused.
      */
-    public function provision(int $adminUserId, string $name, array $scopes): array
+    public function provision(int $adminUserId, string $name, array $scopes, array $allowedIps = []): array
     {
         $this->validateNameAndScopes($name, $scopes);
         $this->requireAdministrator($adminUserId);
@@ -34,6 +34,11 @@ class Model extends \Wbengine\Model\ModelAbstract
                 'created_by' => $adminUserId,
                 'created_at' => $this->now(),
             ];
+            if ([] !== $allowedIps) {
+                $normalized = IpList::parse($allowedIps);
+                if (null === $normalized) { throw new Problem('invalid_ips', 'The allowed addresses are not valid.'); }
+                $values['allowed_ips'] = json_encode($normalized, JSON_THROW_ON_ERROR);
+            }
             $id = Db::insert(self::KEYS_TABLE, $values);
             $this->verifyExact(Db::fetchAssoc('SELECT * FROM `' . self::KEYS_TABLE . '` WHERE integration_id = ?', [$id]), $values);
             $this->audit($id, null, 'integration.provision', 'allowed', $adminUserId);
@@ -69,14 +74,58 @@ class Model extends \Wbengine\Model\ModelAbstract
         }
     }
 
+    /**
+     * Set the addresses an active key may be used from; an empty list allows any address. The change
+     * takes effect on the next request. Requires migration 6.1.0/011.
+     */
+    public function restrict(int $adminUserId, $integrationId, array $allowedIps): bool
+    {
+        $id = $this->positiveId($integrationId);
+        $this->requireAdministrator($adminUserId);
+        $normalized = IpList::parse($allowedIps);
+        if (null === $normalized) { throw new Problem('invalid_ips', 'The allowed addresses are not valid.'); }
+        $connection = $this->beginOwnedTransaction();
+        try {
+            $stored = [] === $normalized ? null : json_encode($normalized, JSON_THROW_ON_ERROR);
+            Db::query('UPDATE `' . self::KEYS_TABLE . '` SET allowed_ips = ? WHERE integration_id = ? AND revoked_at IS NULL', [$stored, $id]);
+            $exists = is_array(Db::fetchAssoc('SELECT integration_id FROM `' . self::KEYS_TABLE . '` WHERE integration_id = ? AND revoked_at IS NULL', [$id]));
+            if ($exists) {
+                $this->audit($id, null, 'integration.restrict', 'allowed', $adminUserId, (string) count($normalized));
+            }
+            $connection->commit();
+            return $exists;
+        } catch (\Throwable $e) {
+            $connection->rollback();
+            throw $e;
+        }
+    }
+
+    /** Whether migration 6.1.0/011 is applied (allowed and last used addresses can be stored). */
+    public function supportsIpRestriction(): bool
+    {
+        try {
+            Db::fetchAssoc('SELECT allowed_ips, last_used_ip FROM `' . self::KEYS_TABLE . '` LIMIT 1');
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     /** Metadata only: neither the key nor its hash ever leaves storage through this method. */
     public function list(): array
     {
-        $rows = Db::fetchAllAssoc('SELECT integration_id, name, created_by, created_at, revoked_at, scopes, last_used_at FROM `' . self::KEYS_TABLE . '` ORDER BY integration_id DESC LIMIT ' . self::LIST_LIMIT);
+        try {
+            $rows = Db::fetchAllAssoc('SELECT integration_id, name, created_by, created_at, revoked_at, scopes, last_used_at, allowed_ips, last_used_ip FROM `' . self::KEYS_TABLE . '` ORDER BY integration_id DESC LIMIT ' . self::LIST_LIMIT);
+            $withIps = true;
+        } catch (\Throwable $e) {
+            // Before migration 6.1.0/011 the address columns do not exist.
+            $rows = Db::fetchAllAssoc('SELECT integration_id, name, created_by, created_at, revoked_at, scopes, last_used_at FROM `' . self::KEYS_TABLE . '` ORDER BY integration_id DESC LIMIT ' . self::LIST_LIMIT);
+            $withIps = false;
+        }
         $result = [];
         foreach ($rows ?: [] as $row) {
             $scopes = json_decode((string) $row['scopes'], true);
-            $result[] = [
+            $entry = [
                 'integration_id' => (int) $row['integration_id'],
                 'name' => (string) $row['name'],
                 'created_by' => (int) $row['created_by'],
@@ -85,16 +134,32 @@ class Model extends \Wbengine\Model\ModelAbstract
                 'scopes' => is_array($scopes) && array_is_list($scopes) ? array_values(array_filter($scopes, 'is_string')) : [],
                 'last_used_at' => null === $row['last_used_at'] ? null : (int) $row['last_used_at'],
             ];
+            if ($withIps) {
+                $allowed = json_decode((string) ($row['allowed_ips'] ?? ''), true);
+                $entry['allowed_ips'] = is_array($allowed) && array_is_list($allowed) ? array_values(array_filter($allowed, 'is_string')) : [];
+                $entry['last_used_ip'] = null === $row['last_used_ip'] ? null : (string) $row['last_used_ip'];
+            }
+            $result[] = $entry;
         }
         return $result;
     }
 
-    public function authenticate(string $token): ?array
+    /**
+     * The identity of a key, or null. With $clientIp the allowed addresses of the key are checked too:
+     * a mismatch still returns the identity, marked 'ip_denied', so the caller can answer 403 and the
+     * key is not recorded as used.
+     */
+    public function authenticate(string $token, ?string $clientIp = null): ?array
     {
         if (!preg_match('/^wbv2_[a-f0-9]{64}$/D', $token)) {
             return null;
         }
-        $row = Db::fetchAssoc('SELECT integration_id, name, scopes FROM `' . self::KEYS_TABLE . '` WHERE key_hash = ? AND revoked_at IS NULL LIMIT 1', [hash('sha256', $token)]);
+        try {
+            $row = Db::fetchAssoc('SELECT integration_id, name, scopes, allowed_ips FROM `' . self::KEYS_TABLE . '` WHERE key_hash = ? AND revoked_at IS NULL LIMIT 1', [hash('sha256', $token)]);
+        } catch (\Throwable $e) {
+            // Before migration 6.1.0/011 there is no address restriction.
+            $row = Db::fetchAssoc('SELECT integration_id, name, scopes FROM `' . self::KEYS_TABLE . '` WHERE key_hash = ? AND revoked_at IS NULL LIMIT 1', [hash('sha256', $token)]);
+        }
         if (!is_array($row)) {
             return null;
         }
@@ -107,7 +172,12 @@ class Model extends \Wbengine\Model\ModelAbstract
             return null;
         }
         foreach ($scopes as $scope) { if (!is_string($scope) || !in_array($scope, self::SCOPES, true)) { return null; } }
-        $this->touchLastUsed((int) $row['integration_id']);
+        $allowed = json_decode((string) ($row['allowed_ips'] ?? ''), true);
+        $allowed = is_array($allowed) && array_is_list($allowed) ? array_values(array_filter($allowed, 'is_string')) : [];
+        if (null !== $clientIp && !IpList::allows($allowed, $clientIp)) {
+            return ['integration_id' => (int) $row['integration_id'], 'name' => $row['name'], 'scopes' => $scopes, 'ip_denied' => true];
+        }
+        $this->touchLastUsed((int) $row['integration_id'], $clientIp);
         return ['integration_id' => (int) $row['integration_id'], 'name' => $row['name'], 'scopes' => $scopes];
     }
 
@@ -116,10 +186,20 @@ class Model extends \Wbengine\Model\ModelAbstract
      * request and concurrent workers do not race. A failed write (for example before migration
      * 4.0.0/007 was applied) never fails the request.
      */
-    private function touchLastUsed(int $integrationId): void
+    private function touchLastUsed(int $integrationId, ?string $clientIp = null): void
     {
         $now = $this->now();
+        $ip = null === $clientIp ? null : IpList::address($clientIp);
         try {
+            if (null !== $ip) {
+                try {
+                    // Also written at once when the address changed, so the card shows where the key is used from.
+                    Db::query('UPDATE `' . self::KEYS_TABLE . '` SET last_used_at = ?, last_used_ip = ? WHERE integration_id = ? AND (last_used_at IS NULL OR last_used_at <= ? OR last_used_ip IS NULL OR last_used_ip <> ?)', [$now, $ip, $integrationId, $now - self::LAST_USED_INTERVAL, $ip]);
+                    return;
+                } catch (\Throwable $e) {
+                    // Before migration 6.1.0/011: fall back to the timestamp only.
+                }
+            }
             Db::query('UPDATE `' . self::KEYS_TABLE . '` SET last_used_at = ? WHERE integration_id = ? AND (last_used_at IS NULL OR last_used_at <= ?)', [$now, $integrationId, $now - self::LAST_USED_INTERVAL]);
         } catch (\Throwable $e) {
             error_log(__METHOD__ . ': last_used_at was not updated (' . get_class($e) . ').');
