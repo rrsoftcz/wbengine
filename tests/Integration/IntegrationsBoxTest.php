@@ -227,7 +227,7 @@ class IntegrationsBoxTest extends TestCase
         [$box] = $this->box(41, 'GET');
         $html = $box->Integrations();
         $this->assertSame(2, substr_count($html, 'class="wb-key"'));
-        $this->assertStringContainsString('Content: Read</span>', $html);
+        $this->assertStringContainsString('<span class="wb-badge wb-g-content">Content: Read</span>', $html);
         $this->assertStringContainsString('Content: Read and write</span>', $html);
         $this->assertStringContainsString('Site administration: Read and write</span>', $html);
         $this->assertSame(2, substr_count($html, 'name="action" value="revoke"'), 'a revoke form exists for active keys only');
@@ -281,9 +281,11 @@ class IntegrationsBoxTest extends TestCase
         foreach (['content', 'publish', 'structure', 'images', 'site', 'history'] as $group) {
             $this->assertStringContainsString('name="group_' . $group . '"', $html);
         }
-        $this->assertMatchesRegularExpression('~name="group_content".*?<option value="write" selected>~s', $html);
+        $this->assertStringContainsString('<input type="radio" name="group_content" value="write" checked>', $html);
+        $this->assertStringNotContainsString('<input type="radio" name="group_content" value="off" checked>', $html);
+        $this->assertSame(7, substr_count($html, 'class="wb-gcard wb-g-'), 'six groups and the analytics choice are cards');
         $this->assertStringContainsString('data-groups="content=read;publish=off;structure=off;images=off;site=read;history=off"', $html);
-        $this->assertStringContainsString("getElementById('wb-group-'", $html);
+        $this->assertStringContainsString("getElementsByName('group_'", $html);
     }
 
     public function testRotationPrefillsTheChoiceFromTheOldKey(): void
