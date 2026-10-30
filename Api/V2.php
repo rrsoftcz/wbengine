@@ -275,11 +275,16 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
         }
         $rateKey = 'ip:' . ($clientIp ?? Http::getClientIp());
         if ($this->limiter->retryAfter($rateKey, 10, 300) > 0) { throw new Problem('rate_limited', 'Too many authentication failures. Try again later.', 429); }
-        $identity = preg_match('/^Bearer ([^\s]+)$/Di', $authorization, $matches) ? $this->getModel()->authenticate($matches[1]) : null;
+        $identity = preg_match('/^Bearer ([^\s]+)$/Di', $authorization, $matches) ? $this->getModel()->authenticate($matches[1], $clientIp ?? Http::getClientIp()) : null;
         if (!$identity) {
             $this->limiter->hit($rateKey, 300);
             $this->getModel()->audit(null, $centralActor, $action, 'unauthorized');
             throw new Problem('unauthorized', 'Invalid integration credentials.', 401);
+        }
+        if (!empty($identity['ip_denied'])) {
+            $this->limiter->hit($rateKey, 300);
+            $this->getModel()->audit($identity['integration_id'], $centralActor, $action, 'forbidden', null, 'ip_not_allowed');
+            throw new Problem('ip_not_allowed', 'The integration key may not be used from this address.', 403);
         }
         if (array_diff($scopes, $identity['scopes'])) {
             $this->limiter->hit($rateKey, 300);

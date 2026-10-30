@@ -10,6 +10,7 @@ final class Doctor
     public const SCHEMA_INTEGRATIONS_LAST_USED = ['cms_api_integrations'=>['last_used_at']];
 
     /** Schema of migrations/4.8.0/008: change log source, local user and audit detail. */
+    public const SCHEMA_INTEGRATIONS_IPS = ['cms_api_integrations'=>['allowed_ips','last_used_ip']];
     public const SCHEMA_CHANGE_LOG = ['cms_api_changes'=>['source','local_user_id'], 'cms_api_audit'=>['detail']];
 
     /** Schema of migrations/4.0.0/006: first-party analytics, shared with the integration screen preflight. */
@@ -65,6 +66,7 @@ final class Doctor
             '005'=>[!empty($config['apiV2']['enabled']), ['cms_boxes'=>['api_settings'], 'cms_api_changes'=>['change_id','resource','resource_id','action','before_data','after_data','integration_id','central_actor','created_at'], 'cms_api_drafts'=>['article_id','source_etag','payload','revision_id'], 'cms_api_revisions'=>['revision_id','article_id','payload','action','integration_id','central_actor','created_at'], 'cms_api_images'=>['image_id','mime','size','sha256','integration_id','created_at']]],
             '007'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_INTEGRATIONS_LAST_USED],
             '008'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_CHANGE_LOG],
+            '011'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_INTEGRATIONS_IPS],
         ];
         $databaseDown = false;
         foreach ($requirements as $number => [$enabled, $schema]) {

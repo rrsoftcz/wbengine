@@ -3,6 +3,7 @@
 namespace Wbengine\Box;
 
 use Wbengine\Api\Model\ApiUserModel;
+use Wbengine\Api\V2\IpList;
 use Wbengine\Api\V2\Model;
 use Wbengine\Api\V2\Preflight;
 use Wbengine\Api\V2\Problem;
@@ -31,6 +32,7 @@ class Integrations extends WbengineBoxAbstract
 {
     const PURPOSE_ISSUE = 'integrations.issue';
     const PURPOSE_REVOKE = 'integrations.revoke';
+    const PURPOSE_RESTRICT = 'integrations.restrict';
     /**
      * The profile "Site management in WBengine Admin": exactly these scopes, nothing derived from
      * Model::SCOPES, so a scope the framework adds later is never issued by accident.
@@ -103,7 +105,7 @@ class Integrations extends WbengineBoxAbstract
     private function handlePost(int $userId): string
     {
         $action = Http::PostString('action');
-        $purposes = ['issue' => self::PURPOSE_ISSUE, 'revoke' => self::PURPOSE_REVOKE];
+        $purposes = ['issue' => self::PURPOSE_ISSUE, 'revoke' => self::PURPOSE_REVOKE, 'restrict' => self::PURPOSE_RESTRICT];
         if (!is_string($action) || !isset($purposes[$action])) {
             return $this->show($userId, 400, ['error' => 'error.action']);
         }
@@ -118,6 +120,8 @@ class Integrations extends WbengineBoxAbstract
         $model = new Model();
         $replaces = null;
         $revokeId = null;
+        $restrictIps = [];
+        $issueIps = [];
         $withAnalytics = false;
         $issueScopes = [];
         if ('issue' === $action) {
@@ -147,6 +151,16 @@ class Integrations extends WbengineBoxAbstract
             if (count($issueScopes) <= count(self::BASE_SCOPES)) {
                 return $this->show($userId, 400, ['error' => 'error.empty_key']);
             }
+            $ipInput = trim((string) Http::PostString('allowed_ips'));
+            if ('' !== $ipInput) {
+                $issueIps = IpList::parse($ipInput);
+                if (null === $issueIps) {
+                    return $this->show($userId, 400, ['error' => 'error.invalid_ips']);
+                }
+                if (!$model->supportsIpRestriction()) {
+                    return $this->show($userId, 400, ['error' => 'error.ips_unsupported']);
+                }
+            }
             $replacesInput = Http::PostString('replaces');
             if (is_string($replacesInput) && '' !== $replacesInput) {
                 $replaces = $this->activeIntegration($model, $replacesInput);
@@ -158,6 +172,15 @@ class Integrations extends WbengineBoxAbstract
             $revokeId = Http::PostString('integration_id');
             if (!is_string($revokeId) || !preg_match('/^[1-9][0-9]{0,9}$/D', $revokeId)) {
                 return $this->show($userId, 400, ['error' => 'error.invalid_id']);
+            }
+            if ('restrict' === $action) {
+                $restrictIps = IpList::parse(trim((string) Http::PostString('allowed_ips')));
+                if (null === $restrictIps) {
+                    return $this->show($userId, 400, ['error' => 'error.invalid_ips']);
+                }
+                if (!$model->supportsIpRestriction()) {
+                    return $this->show($userId, 400, ['error' => 'error.ips_unsupported']);
+                }
             }
         }
 
@@ -176,8 +199,12 @@ class Integrations extends WbengineBoxAbstract
 
         try {
             if ('issue' === $action) {
-                $issued = $model->provision($userId, $name, $issueScopes);
+                $issued = $model->provision($userId, $name, $issueScopes, $issueIps);
                 return $this->show($userId, 200, ['issued' => $issued, 'replaces' => $replaces]);
+            }
+            if ('restrict' === $action) {
+                $done = $model->restrict($userId, $revokeId, $restrictIps);
+                return $this->show($userId, 200, [$done ? 'notice' : 'error' => $done ? 'notice_restricted' : 'notice_not_revoked']);
             }
             $revoked = $model->revoke($userId, $revokeId);
             return $this->show($userId, 200, [$revoked ? 'notice' : 'error' => $revoked ? 'notice_revoked' : 'notice_not_revoked']);
@@ -209,6 +236,7 @@ class Integrations extends WbengineBoxAbstract
             }
         }
         $canIssue = !$problems;
+        $ipSupport = $canIssue && $model->supportsIpRestriction();
         $analyticsProblems = $canIssue ? $this->analyticsProblems() : [];
         $analyticsMessages = [];
         foreach ($analyticsProblems as $code) {
@@ -250,9 +278,13 @@ class Integrations extends WbengineBoxAbstract
                 'has_analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true),
                 'revoked_on' => $active ? '' : $this->date($row['revoked_at']),
                 'groups' => $this->groupLabels($row['scopes']),
+                'allowed_text' => implode(', ', $row['allowed_ips'] ?? []),
+                'restricted' => [] !== ($row['allowed_ips'] ?? []),
+                'last_ip' => (string) ($row['last_used_ip'] ?? ''),
+                'ips_prefill' => implode(', ', ($row['allowed_ips'] ?? []) ?: (null !== ($row['last_used_ip'] ?? null) ? [$row['last_used_ip']] : [])),
             ];
             if ($active && (!isset($state['issued']) || (int) $state['issued']['integration_id'] !== $row['integration_id'])) {
-                $rotatable[] = ['id' => $row['integration_id'], 'label' => $row['name'] . ' #' . $row['integration_id'], 'analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true) ? '1' : '0', 'groups' => $this->levelsAttribute($row['scopes'])];
+                $rotatable[] = ['id' => $row['integration_id'], 'label' => $row['name'] . ' #' . $row['integration_id'], 'analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true) ? '1' : '0', 'groups' => $this->levelsAttribute($row['scopes']), 'ips' => implode(', ', $row['allowed_ips'] ?? [])];
             }
         }
 
@@ -274,7 +306,9 @@ class Integrations extends WbengineBoxAbstract
             'revokedCount' => count(array_filter($list, fn(array $row) => !$row['active'])),
             'rotatable' => $rotatable,
             'issued' => $issued,
-            'tokens' => ['issue' => $csrf->token(self::PURPOSE_ISSUE), 'revoke' => $csrf->token(self::PURPOSE_REVOKE)],
+            'ipSupport' => $ipSupport,
+            'yourAddress' => (string) Http::getClientIp(),
+            'tokens' => ['issue' => $csrf->token(self::PURPOSE_ISSUE), 'revoke' => $csrf->token(self::PURPOSE_REVOKE), 'restrict' => $csrf->token(self::PURPOSE_RESTRICT)],
         ];
         $this->sendStatus($status);
         $this->sendPrivateHeaders();
@@ -459,7 +493,7 @@ class Integrations extends WbengineBoxAbstract
             'col_by', 'col_last_used', 'col_scopes', 'col_status', 'revoke_submit', 'revoke_password', 'rotation_title', 'rotation_1',
             'rotation_2', 'rotation_3', 'issued_title', 'issued_warning', 'copy', 'copied', 'copy_failed', 'instr_title', 'instr_1',
             'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help', 'name_help', 'analytics_label',
-            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title', 'col_none', 'col_read', 'col_write'] as $key) {
+            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title', 'col_none', 'col_read', 'col_write', 'ips_title', 'ips_label', 'ips_help', 'ips_any', 'ips_your', 'col_allowed', 'col_last_ip', 'restrict_open', 'restrict_submit', 'ips_never', 'confirm_password', 'ips_card_hint'] as $key) {
             $texts[$key] = I18n::t('wb.integrations.' . $key);
         }
         return $texts;

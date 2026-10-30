@@ -244,7 +244,7 @@ class IntegrationsHttpTest extends DbTestCase
             $this->assertSame(1, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_audit WHERE action = ?', ['integration.provision'])['n']);
             // Rotation offers the old key with its analytics flag.
             $next = $this->request('/integrations/');
-            $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="1" data-groups="[^"]*">WBengine Admin #\d+</option>~', $next['body']);
+            $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="1" data-groups="[^"]*" data-ips="[^"]*">WBengine Admin #\d+</option>~', $next['body']);
         } finally {
             $this->dropAnalyticsSchema();
         }

@@ -260,7 +260,7 @@ class ApiV2Test extends TestCase
 class ApiV2MemoryModel extends Model
 {
     public array $events = [];
-    public function authenticate(string $token): ?array
+    public function authenticate(string $token, ?string $clientIp = null): ?array
     {
         if ('failure' === $token) {
             throw new \RuntimeException('SQL /secret/password');
