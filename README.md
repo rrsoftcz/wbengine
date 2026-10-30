@@ -824,8 +824,11 @@ To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action
 The versioned server-to-server API foundation is available at `/api/v2` and
 `/api/v2/capabilities`, with HTTPS scoped integration identity at `/api/v2/identity`.
 Keys are hashed on the website. A logged in local `ADMIN` issues, lists, revokes and
-rotates them on the "Integrations" screen (`Wbengine\Box\Integrations`, bind it with a
-thin subclass and a `cms_boxes` row on a page with `acl = 1`), or through the trusted local
+rotates them on the "Integrations" screen (`Wbengine\Box\Integrations`). The screen and its
+template ship with the framework; `vendor/bin/wbengine.php integrations:install --root=src --config=src/Config/Settings.json`
+previews, and with `--apply` creates, the thin application class, the page (`/integrations/`, `acl = 1`),
+the section and the box record (nothing existing is changed) and lists what still blocks issuing keys,
+or use the trusted local
 model APIs. Every change is a POST with a CSRF token and a fresh password confirmation;
 the raw key is shown once in the POST response. Apply `migrations/4.0.0/007-api-integration-last-used.sql`
 (adds `last_used_at`) and check with `doctor`. Discovery accurately reports unavailable content CRUD.
