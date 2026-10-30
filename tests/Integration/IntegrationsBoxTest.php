@@ -106,7 +106,8 @@ class IntegrationsBoxTest extends TestCase
         $this->assertSame(1, preg_match_all('/wbv2_[a-f0-9]{64}/', $html, $m));
         $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
         $this->assertSame(hash('sha256', $m[0][0]), $row['key_hash']);
-        $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($row['scopes'], true));
+        $issued = json_decode($row['scopes'], true);
+        $this->assertEqualsCanonicalizing(Integrations::PROFILE_SCOPES, $issued);
         $this->assertCount(22, Integrations::PROFILE_SCOPES);
         $this->assertNotContains('analytics:read', Integrations::PROFILE_SCOPES);
         // Every scope of the profile is a real framework scope, even when the framework knows more.
@@ -136,7 +137,7 @@ class IntegrationsBoxTest extends TestCase
         $this->assertSame(200, $out->status);
         $scopes = json_decode($this->lastRow()['scopes'], true);
         $this->assertCount(23, $scopes);
-        $this->assertSame(array_merge(Integrations::PROFILE_SCOPES, ['analytics:read']), $scopes);
+        $this->assertEqualsCanonicalizing(array_merge(Integrations::PROFILE_SCOPES, ['analytics:read']), $scopes);
         $this->assertSame([], array_diff($scopes, Model::SCOPES));
         $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(23\)</summary>~', $html);
         $this->assertStringContainsString('Read the website traffic overview', $html);
@@ -155,9 +156,9 @@ class IntegrationsBoxTest extends TestCase
             $this->post(['action' => 'issue', 'name' => 'WBengine Admin', 'password' => 'admin-secret'] + $extra, $session, Integrations::PURPOSE_ISSUE);
             $html = $box->Integrations();
             $this->assertSame(200, $out->status);
-            $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
+            $this->assertEqualsCanonicalizing(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
             $this->assertMatchesRegularExpression('~<summary>[^<]*\(22\)</summary>~', $html);
-            $this->assertStringNotContainsString('wb-badge">', $html);
+            $this->assertStringNotContainsString('<span class="wb-badge">Analytics</span>', $html);
         }
     }
 
@@ -198,7 +199,7 @@ class IntegrationsBoxTest extends TestCase
         $this->post(['action' => 'issue', 'name' => 'WBengine Admin', 'password' => 'admin-secret'], $session, Integrations::PURPOSE_ISSUE);
         $box->Integrations();
         $this->assertSame(200, $out->status);
-        $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
+        $this->assertEqualsCanonicalizing(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
     }
 
     public function testOnlyABooleanIsReadAndNeverAScopeListFromTheClient(): void
@@ -211,7 +212,7 @@ class IntegrationsBoxTest extends TestCase
                 $this->assertSame(400, $out->status, json_encode($extra));
             } else {
                 $this->assertSame(200, $out->status, json_encode($extra));
-                $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
+                $this->assertEqualsCanonicalizing(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
             }
         }
         $this->assertSame(3, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
@@ -219,17 +220,70 @@ class IntegrationsBoxTest extends TestCase
 
     public function testListShowsActiveKeysFirstAndFoldsRevokedOnesAway(): void
     {
-        $old = (new Model())->provision(41, 'Old key', array_slice(Integrations::PROFILE_SCOPES, 0, 17));
+        $old = (new Model())->provision(41, 'Old key', Integrations::scopesForGroups(['content' => 'read']));
         (new Model())->provision(41, 'Current key', Integrations::PROFILE_SCOPES);
         Db::query('UPDATE cms_api_integrations SET revoked_at = ' . time() . ' WHERE integration_id = ' . (int) $old['integration_id']);
-        (new Model())->provision(41, 'Limited key', array_slice(Integrations::PROFILE_SCOPES, 0, 17));
+        (new Model())->provision(41, 'Reader key', Integrations::scopesForGroups(['content' => 'read', 'structure' => 'read']));
         [$box] = $this->box(41, 'GET');
         $html = $box->Integrations();
         $this->assertSame(2, substr_count($html, 'class="wb-key"'));
-        $this->assertSame(1, substr_count($html, 'wb-badge wb-badge-warn'));
+        $this->assertStringContainsString('Content: Read</span>', $html);
+        $this->assertStringContainsString('Content: Read and write</span>', $html);
+        $this->assertStringContainsString('Site administration: Read and write</span>', $html);
         $this->assertSame(2, substr_count($html, 'name="action" value="revoke"'), 'a revoke form exists for active keys only');
         $this->assertMatchesRegularExpression('~<summary>Revoked keys \(1\)</summary>~', $html);
         $this->assertLessThan(strpos($html, 'Revoked keys (1)'), strpos($html, 'Current key'));
+    }
+
+    public function testIssueWithChosenGroupsGrantsExactlyThoseScopes(): void
+    {
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'Editor key', 'password' => 'admin-secret', 'group_content' => 'write', 'group_publish' => 'off', 'group_structure' => 'read', 'group_images' => 'read', 'group_site' => 'off', 'group_history' => 'on'], $session, Integrations::PURPOSE_ISSUE);
+        $box->Integrations();
+        $this->assertSame(200, $out->status);
+        $scopes = json_decode($this->lastRow()['scopes'], true);
+        $this->assertEqualsCanonicalizing(['discovery:read', 'articles:read', 'pages:read', 'menu:read', 'translations:read', 'preview:read', 'articles:write', 'pages:write', 'menu:write', 'translations:write', 'sections:read', 'boxes:read', 'images:read', 'audit:read'], $scopes);
+        $this->assertNotContains('publish:write', $scopes);
+        $this->assertNotContains('users:write', $scopes);
+        $this->assertSame([], array_diff($scopes, Model::SCOPES));
+    }
+
+    public function testWriteLevelAlwaysIncludesTheReadLevelAndAnalyticsStaysItsOwnChoice(): void
+    {
+        $this->assertSame(['discovery:read', 'images:read', 'images:write'], Integrations::scopesForGroups(['images' => 'write']));
+        $this->assertSame(['discovery:read', 'analytics:read'], Integrations::scopesForGroups(['analytics' => 'on']));
+        $this->assertSame(['content' => 'write', 'publish' => 'on', 'structure' => 'write', 'images' => 'write', 'site' => 'write', 'history' => 'on'], Integrations::levelsOf(Integrations::PROFILE_SCOPES));
+        $this->assertSame(['content' => 'read', 'images' => 'read'], Integrations::levelsOf(['discovery:read', 'articles:read', 'pages:read', 'menu:read', 'translations:read', 'preview:read', 'images:read', 'users:write']));
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'Analytics only', 'password' => 'admin-secret', 'group_content' => 'off', 'group_publish' => 'off', 'group_structure' => 'off', 'group_images' => 'off', 'group_site' => 'off', 'group_history' => 'off', 'analytics' => '1'], $session, Integrations::PURPOSE_ISSUE);
+        $box->Integrations();
+        $this->assertSame(200, $out->status);
+        $this->assertSame(['discovery:read', 'analytics:read'], json_decode($this->lastRow()['scopes'], true));
+    }
+
+    public function testUnknownGroupLevelsAndEmptyKeysAreRefusedAndNothingIsIssued(): void
+    {
+        foreach ([['group_content' => 'admin'], ['group_site' => 'on'], ['group_publish' => 'write'], ['group_content' => 'off', 'group_publish' => 'off', 'group_structure' => 'off', 'group_images' => 'off', 'group_site' => 'off', 'group_history' => 'off']] as $groups) {
+            [$box, $out, $session] = $this->box(41, 'POST');
+            $this->post(['action' => 'issue', 'name' => 'Bad', 'password' => 'admin-secret'] + $groups, $session, Integrations::PURPOSE_ISSUE);
+            $html = $box->Integrations();
+            $this->assertSame(400, $out->status, json_encode($groups));
+            $this->assertSame(0, preg_match('/wbv2_[a-f0-9]{64}/', $html));
+        }
+        $this->assertSame(0, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
+    }
+
+    public function testTheFormOffersEveryGroupWithTheFullProfilePreselectedAndRotationPresetsTheLevels(): void
+    {
+        (new Model())->provision(41, 'Reader', Integrations::scopesForGroups(['content' => 'read', 'site' => 'read']));
+        [$box] = $this->box(41, 'GET');
+        $html = $box->Integrations();
+        foreach (['content', 'publish', 'structure', 'images', 'site', 'history'] as $group) {
+            $this->assertStringContainsString('name="group_' . $group . '"', $html);
+        }
+        $this->assertMatchesRegularExpression('~name="group_content".*?<option value="write" selected>~s', $html);
+        $this->assertStringContainsString('data-groups="content=read;publish=off;structure=off;images=off;site=read;history=off"', $html);
+        $this->assertStringContainsString("getElementById('wb-group-'", $html);
     }
 
     public function testRotationPrefillsTheChoiceFromTheOldKey(): void
@@ -238,8 +292,8 @@ class IntegrationsBoxTest extends TestCase
         (new Model())->provision(41, 'Analytics key', Integrations::scopesFor(true));
         [$box] = $this->box(41, 'GET');
         $html = $box->Integrations();
-        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="1">Analytics key #\d+</option>~', $html);
-        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="0">Plain key #\d+</option>~', $html);
+        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="1" data-groups="[^"]*">Analytics key #\d+</option>~', $html);
+        $this->assertMatchesRegularExpression('~<option value="\d+" data-analytics="0" data-groups="[^"]*">Plain key #\d+</option>~', $html);
         $this->assertStringContainsString("getAttribute('data-analytics')", $html);
     }
 

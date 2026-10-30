@@ -6,8 +6,8 @@ use Wbengine\Db;
 
 /**
  * integrations:install. Makes the built-in Integrations box (Wbengine\Box\Integrations) reachable on a site:
- * the thin application class, the page, the section and the box record. Existing records and files are never
- * changed. Without --apply nothing is written, the result only lists what would be created.
+ * the section, the page and the box record. The box needs no class in the application. Existing records are
+ * never changed. Without --apply nothing is written, the result only lists what would be created.
  */
 final class IntegrationsInstaller
 {
@@ -15,27 +15,12 @@ final class IntegrationsInstaller
     public const METHOD = 'integrations';
 
     /** @return array{applied: bool, actions: array<int, array{what: string, status: string}>, problems: string[]} */
-    public function install(string $root, string $namespace, string $sectionKey, string $link, bool $apply, bool $apiEnabled): array
+    public function install(string $sectionKey, string $link, bool $apply, bool $apiEnabled): array
     {
-        foreach (explode('\\', $namespace) as $identifier) {
-            if (!preg_match('/^[A-Za-z][A-Za-z0-9_]*$/D', $identifier)) { throw new \InvalidArgumentException('Use a valid PHP namespace.'); }
-        }
         if (!preg_match('/^[a-z][a-z0-9_]{0,44}$/D', $sectionKey)) { throw new \InvalidArgumentException('Use a lowercase section key of at most 45 characters.'); }
         if (!preg_match('~^/[a-z0-9][a-z0-9/_-]{0,90}/$~D', $link)) { throw new \InvalidArgumentException('Use a page link such as /integrations/.'); }
-        $base = realpath($root);
-        if (false === $base || !is_dir($base)) { throw new \RuntimeException('Choose an existing application root directory.'); }
-
-        $actions = [];
         $class = ucfirst($sectionKey);
-        $relative = 'Box/' . $class . '/Integrations.php';
-        $target = $base . '/' . $relative;
-        $actions[] = ['what' => 'class ' . $relative, 'status' => is_file($target) ? 'exists' : ($apply ? 'created' : 'missing')];
-        if ($apply && !is_file($target)) {
-            $dir = dirname($target);
-            if (!is_dir($dir) && !mkdir($dir, 0755, true)) { throw new \RuntimeException('Cannot create the box directory.'); }
-            $code = "<?php\nnamespace $namespace\\Box\\$class;\n\n/** Integration keys for the central WBengine Admin. All behavior is in the framework box. */\nclass Integrations extends \\Wbengine\\Box\\Integrations\n{\n}\n";
-            if (false === file_put_contents($target, $code, LOCK_EX)) { throw new \RuntimeException('Cannot write the box class.'); }
-        }
+        $actions = [];
 
         $section = Db::fetchAssoc('SELECT section_id FROM cms_sections WHERE `key` = ? LIMIT 1', [$sectionKey]);
         $actions[] = ['what' => 'section ' . $sectionKey, 'status' => $section ? 'exists' : ($apply ? 'created' : 'missing')];

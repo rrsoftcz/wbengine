@@ -40,6 +40,24 @@ class Integrations extends WbengineBoxAbstract
     /** The optional scope added by the "Analytics" choice, on top of PROFILE_SCOPES. */
     const ANALYTICS_SCOPE = 'analytics:read';
 
+    /**
+     * The permission groups an administrator chooses from when issuing a key. A group has one or more
+     * levels in increasing order; choosing a level also grants the levels before it. discovery:read is
+     * always granted. Nothing but these lists decides which scopes a key may get.
+     */
+    const GROUPS = [
+        'content' => ['read' => ['articles:read', 'pages:read', 'menu:read', 'translations:read', 'preview:read'], 'write' => ['articles:write', 'pages:write', 'menu:write', 'translations:write']],
+        'publish' => ['on' => ['publish:write']],
+        'structure' => ['read' => ['sections:read', 'boxes:read'], 'write' => ['sections:write', 'boxes:write']],
+        'images' => ['read' => ['images:read'], 'write' => ['images:write']],
+        'site' => ['read' => ['users:read', 'config:read'], 'write' => ['users:write', 'cache:write']],
+        'history' => ['on' => ['audit:read']],
+        'analytics' => ['on' => ['analytics:read']],
+    ];
+
+    /** Scopes every key has. */
+    const BASE_SCOPES = ['discovery:read'];
+
     /** Where the operator reads how to enable analytics. */
     const ANALYTICS_DOCS = 'https://github.com/rrsoftcz/wbengine#readme';
 
@@ -101,6 +119,7 @@ class Integrations extends WbengineBoxAbstract
         $replaces = null;
         $revokeId = null;
         $withAnalytics = false;
+        $issueScopes = [];
         if ('issue' === $action) {
             $name = trim((string) Http::PostString('name'));
             if ('' === $name || strlen($name) > 128 || preg_match('/[\x00-\x1f\x7f]/', $name)) {
@@ -114,6 +133,15 @@ class Integrations extends WbengineBoxAbstract
             $withAnalytics = '1' === $analyticsInput;
             if ($withAnalytics && $this->analyticsProblems()) {
                 return $this->show($userId, 400, ['error' => 'error.analytics_unavailable']);
+            }
+            // Group levels: only known groups and levels are read. No group field at all means the full profile.
+            $levels = self::levelsFromInput(fn (string $name) => Http::PostString('group_' . $name), $withAnalytics);
+            if (null === $levels) {
+                return $this->show($userId, 400, ['error' => 'error.invalid_group']);
+            }
+            $issueScopes = self::scopesForGroups($levels);
+            if (count($issueScopes) <= count(self::BASE_SCOPES)) {
+                return $this->show($userId, 400, ['error' => 'error.empty_key']);
             }
             $replacesInput = Http::PostString('replaces');
             if (is_string($replacesInput) && '' !== $replacesInput) {
@@ -144,7 +172,7 @@ class Integrations extends WbengineBoxAbstract
 
         try {
             if ('issue' === $action) {
-                $issued = $model->provision($userId, $name, self::scopesFor($withAnalytics));
+                $issued = $model->provision($userId, $name, $issueScopes);
                 return $this->show($userId, 200, ['issued' => $issued, 'replaces' => $replaces]);
             }
             $revoked = $model->revoke($userId, $revokeId);
@@ -217,11 +245,10 @@ class Integrations extends WbengineBoxAbstract
                 'scope_count' => count($row['scopes']),
                 'has_analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true),
                 'revoked_on' => $active ? '' : $this->date($row['revoked_at']),
-                // A key issued before the profile grew lacks the newer scopes: still valid, but some Admin pages need a new key.
-                'limited' => $active && array_diff(self::PROFILE_SCOPES, $row['scopes']) !== [],
+                'groups' => $this->groupLabels($row['scopes']),
             ];
             if ($active && (!isset($state['issued']) || (int) $state['issued']['integration_id'] !== $row['integration_id'])) {
-                $rotatable[] = ['id' => $row['integration_id'], 'label' => $row['name'] . ' #' . $row['integration_id'], 'analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true) ? '1' : '0'];
+                $rotatable[] = ['id' => $row['integration_id'], 'label' => $row['name'] . ' #' . $row['integration_id'], 'analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true) ? '1' : '0', 'groups' => $this->levelsAttribute($row['scopes'])];
             }
         }
 
@@ -235,8 +262,7 @@ class Integrations extends WbengineBoxAbstract
             'address' => $address,
             'action' => $this->formAction(),
             'defaultName' => self::DEFAULT_NAME,
-            'scopes' => $this->scopeDescriptions(),
-            'scopeCount' => count(self::PROFILE_SCOPES),
+            'groupForm' => $this->groupForm(),
             'analytics' => ['available' => !$analyticsProblems, 'off' => (bool) $analyticsProblems, 'problems' => $analyticsMessages, 'docs' => self::ANALYTICS_DOCS],
             'integrations' => $list,
             'activeKeys' => array_values(array_filter($list, fn(array $row) => $row['active'])),
@@ -272,6 +298,87 @@ class Integrations extends WbengineBoxAbstract
     }
 
     /**
+     * Group levels of the full profile: every group at its highest level.
+     *
+     * @return array<string, string>
+     */
+    public static function fullLevels(bool $withAnalytics): array
+    {
+        $levels = [];
+        foreach (self::GROUPS as $name => $definition) {
+            if ('analytics' === $name && !$withAnalytics) { continue; }
+            $levels[$name] = (string) array_key_last($definition);
+        }
+        return $levels;
+    }
+
+    /**
+     * Read the chosen levels of a submitted form. $field returns the posted value of a group or null when
+     * it was not posted. Null result: an unknown level. No group field at all gives the full profile.
+     *
+     * @return array<string, string>|null
+     */
+    public static function levelsFromInput(callable $field, bool $withAnalytics): ?array
+    {
+        $levels = [];
+        $posted = false;
+        foreach (self::GROUPS as $name => $definition) {
+            if ('analytics' === $name) { continue; }
+            $value = $field($name);
+            if (null === $value) { continue; }
+            $posted = true;
+            if ('off' === $value || '' === $value) { continue; }
+            if (!is_string($value) || !array_key_exists($value, $definition)) { return null; }
+            $levels[$name] = $value;
+        }
+        if (!$posted) {
+            return self::fullLevels($withAnalytics);
+        }
+        if ($withAnalytics) { $levels['analytics'] = 'on'; }
+        return $levels;
+    }
+
+    /**
+     * The scopes of chosen levels, in a stable order: discovery:read first, then by group.
+     *
+     * @param array<string, string> $levels group => level
+     * @return string[]
+     */
+    public static function scopesForGroups(array $levels): array
+    {
+        $scopes = self::BASE_SCOPES;
+        foreach (self::GROUPS as $name => $definition) {
+            if (!isset($levels[$name]) || !array_key_exists($levels[$name], $definition)) { continue; }
+            foreach ($definition as $level => $levelScopes) {
+                $scopes = array_merge($scopes, $levelScopes);
+                if ($level === $levels[$name]) { break; }
+            }
+        }
+        return array_values(array_unique($scopes));
+    }
+
+    /**
+     * The levels that exactly describe a set of scopes: for every group the highest level whose
+     * scopes (and those of the levels before it) are all present.
+     *
+     * @param string[] $scopes
+     * @return array<string, string>
+     */
+    public static function levelsOf(array $scopes): array
+    {
+        $levels = [];
+        foreach (self::GROUPS as $name => $definition) {
+            $needed = [];
+            foreach ($definition as $level => $levelScopes) {
+                $needed = array_merge($needed, $levelScopes);
+                if (array_diff($needed, $scopes) !== []) { break; }
+                $levels[$name] = $level;
+            }
+        }
+        return $levels;
+    }
+
+    /**
      * Scopes in plain language. Without an argument: the fixed profile.
      *
      * @param string[]|null $scopes
@@ -285,6 +392,55 @@ class Integrations extends WbengineBoxAbstract
         return $result;
     }
 
+    /**
+     * The form rows of the permission groups (analytics has its own checkbox): label, help and the levels
+     * with the highest one preselected.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function groupForm(): array
+    {
+        $rows = [];
+        foreach (self::GROUPS as $name => $definition) {
+            if ('analytics' === $name) { continue; }
+            $options = [['value' => 'off', 'label' => I18n::t('wb.integrations.level.off'), 'selected' => false]];
+            $highest = array_key_last($definition);
+            foreach (array_keys($definition) as $level) {
+                $options[] = ['value' => $level, 'label' => I18n::t('wb.integrations.level.' . $level), 'selected' => $level === $highest];
+            }
+            $rows[] = ['name' => $name, 'label' => I18n::t('wb.integrations.group.' . $name), 'help' => I18n::t('wb.integrations.group_help.' . $name), 'options' => $options];
+        }
+        return $rows;
+    }
+
+    /**
+     * The groups of a key in plain language, for example "Content: read and write".
+     *
+     * @param string[] $scopes
+     * @return string[]
+     */
+    private function groupLabels(array $scopes): array
+    {
+        $labels = [];
+        foreach (self::levelsOf($scopes) as $name => $level) {
+            $labels[] = 'on' === $level
+                ? I18n::t('wb.integrations.group.' . $name)
+                : I18n::t('wb.integrations.group_level', ['group' => I18n::t('wb.integrations.group.' . $name), 'level' => I18n::t('wb.integrations.level.' . $level)]);
+        }
+        return $labels;
+    }
+
+    /** "content=write;site=read": the levels of a key, to preset the form when it is rotated. */
+    private function levelsAttribute(array $scopes): string
+    {
+        $parts = [];
+        foreach (self::GROUPS as $name => $definition) {
+            if ('analytics' === $name) { continue; }
+            $parts[] = $name . '=' . (self::levelsOf($scopes)[$name] ?? 'off');
+        }
+        return implode(';', $parts);
+    }
+
     private function texts(): array
     {
         $texts = [];
@@ -293,7 +449,7 @@ class Integrations extends WbengineBoxAbstract
             'col_by', 'col_last_used', 'col_scopes', 'col_status', 'revoke_submit', 'revoke_password', 'rotation_title', 'rotation_1',
             'rotation_2', 'rotation_3', 'issued_title', 'issued_warning', 'copy', 'copied', 'copy_failed', 'instr_title', 'instr_1',
             'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help', 'name_help', 'analytics_label',
-            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'badge_limited', 'limited_help', 'revoke_open'] as $key) {
+            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help'] as $key) {
             $texts[$key] = I18n::t('wb.integrations.' . $key);
         }
         return $texts;

@@ -7,6 +7,15 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added
+
+- Permission groups when issuing an integration key: Content, Publishing, Structure, Images, Site administration and History, each with a level (no access, read, read and write), plus the Analytics choice. A key cannot be changed afterwards. The key cards list the groups instead of a count. Without a group field the full profile is still issued.
+- The Integrations box needs no class in the application: a `cms_boxes` row naming the module `integrations` is enough (`Section` resolves it to `Wbengine\Box\Integrations`). `integrations:install` no longer writes a class or needs `--root` and `--namespace`.
+
+### Removed
+
+- The "Older key" marker of the key list, which cannot be told apart from a deliberately limited key.
+
 ### Documentation
 
 - README brought up to date with 5.0: API v2 reference table and database updates, the complete configuration reference (`http`, `apiV2`, `i18n.baseUrl`, page cache paths), command line tools including `integrations:install`, an upgrade guide from 4.x, and version-specific wording removed.

@@ -31,24 +31,17 @@ final class IntegrationsInstallerTest extends DbTestCase
 
     public function testPreviewWritesNothing(): void
     {
-        $result = (new IntegrationsInstaller())->install($this->root, 'App', 'central', '/integrations/', false, true);
+        $result = (new IntegrationsInstaller())->install('central', '/integrations/', false, true);
         $this->assertFalse($result['applied']);
-        $this->assertSame(['missing', 'missing', 'missing', 'missing'], array_column($result['actions'], 'status'));
-        $this->assertFileDoesNotExist($this->root . '/Box/Central/Integrations.php');
+        $this->assertSame(['missing', 'missing', 'missing'], array_column($result['actions'], 'status'));
         $this->assertSame(0, $this->rows('cms_boxes'));
     }
 
-    public function testApplyCreatesTheClassSectionPageAndBoxOnceAndNeverChangesThemAgain(): void
+    public function testApplyCreatesTheSectionPageAndBoxOnceAndNeverChangesThemAgain(): void
     {
         $installer = new IntegrationsInstaller();
-        $first = $installer->install($this->root, 'App', 'central', '/integrations/', true, true);
-        $this->assertSame(['created', 'created', 'created', 'created'], array_column($first['actions'], 'status'));
-        $class = file_get_contents($this->root . '/Box/Central/Integrations.php');
-        $this->assertStringContainsString('namespace App\\Box\\Central;', $class);
-        $this->assertStringContainsString('extends \\Wbengine\\Box\\Integrations', $class);
-        exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($this->root . '/Box/Central/Integrations.php') . ' 2>&1', $out, $code);
-        $this->assertSame(0, $code);
-
+        $first = $installer->install('central', '/integrations/', true, true);
+        $this->assertSame(['created', 'created', 'created'], array_column($first['actions'], 'status'));
         $site = Db::fetchAssoc("SELECT site_id, visible, acl FROM cms_sites WHERE link = '/integrations/'");
         $box = Db::fetchAssoc("SELECT sites, section_id, static FROM cms_boxes WHERE module = 'integrations' AND method = 'integrations'");
         $this->assertSame(1, (int) $site['visible']);
@@ -56,26 +49,26 @@ final class IntegrationsInstallerTest extends DbTestCase
         $this->assertSame([(string) $site['site_id']], json_decode($box['sites'], true));
         $this->assertSame(1, (int) $box['static']);
 
-        $second = $installer->install($this->root, 'App', 'central', '/integrations/', true, true);
-        $this->assertSame(['exists', 'exists', 'exists', 'exists'], array_column($second['actions'], 'status'));
+        $second = $installer->install('central', '/integrations/', true, true);
+        $this->assertSame(['exists', 'exists', 'exists'], array_column($second['actions'], 'status'));
         $this->assertSame(1, $this->rows('cms_boxes'));
         $this->assertSame(1, $this->rows('cms_sites'));
     }
 
     public function testReportsWhatStillBlocksIssuingKeys(): void
     {
-        $result = (new IntegrationsInstaller())->install($this->root, 'App', 'central', '/integrations/', false, false);
+        $result = (new IntegrationsInstaller())->install('central', '/integrations/', false, false);
         $this->assertContains('api_disabled', $result['problems']);
     }
 
     public function testRejectsUnsafeNamesBeforeTouchingAnything(): void
     {
-        foreach ([['App; evil', 'central', '/integrations/'], ['App', 'Central', '/integrations/'], ['App', 'central', 'integrations']] as [$namespace, $section, $link]) {
+        foreach ([['Central', '/integrations/'], ['central', 'integrations'], ['central; DROP', '/integrations/']] as [$section, $link]) {
             try {
-                (new IntegrationsInstaller())->install($this->root, $namespace, $section, $link, true, true);
+                (new IntegrationsInstaller())->install($section, $link, true, true);
                 $this->fail('Unsafe input was accepted.');
             } catch (\InvalidArgumentException) {
-                $this->assertDirectoryDoesNotExist($this->root . '/Box');
+                $this->assertSame(0, $this->rows('cms_boxes'));
             }
         }
     }
