@@ -1,10 +1,6 @@
 {
   "timeZone": "Europe/Prague",
-  "codePage": "utf8",
-  "minimizeHtml": false,
-  "minimizeCss": false,
   "debug": false,
-  "cdnPath": "",
   "renderer": {
     "adapterName": "NativeRenderer",
     "templatesDir": "/View/",
@@ -22,7 +18,5 @@
   },
   "recaptcha": {
     "secretKey": ""
-  },
-  "cssFiles": [],
-  "ipAdmins": []
+  }
 }

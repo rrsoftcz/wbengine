@@ -48,9 +48,8 @@ class RendererDispatchTest extends TestCase
     }
 
     #[DataProvider('documents')]
-    public function testDispatchPreservesRenderedWhitespaceAndEscapesOrdinaryValues(string $adapter, bool $minimize, string $content): void
+    public function testDispatchPreservesRenderedWhitespaceAndEscapesOrdinaryValues(string $adapter, bool $unused, string $content): void
     {
-        Config::$config->minimizeHtml = $minimize;
         $this->assertSame($content . '&lt;b title=&quot;x&quot;&gt;unsafe&lt;/b&gt;', $this->dispatch($adapter, $content));
     }
 
@@ -77,9 +76,8 @@ class RendererDispatchTest extends TestCase
     }
 
     #[DataProvider('adapters')]
-    public function testDispatchDoesNotRequireTheObsoleteMinimizeHtmlSetting(string $adapter): void
+    public function testDispatchNeedsNoMinifySetting(string $adapter): void
     {
-        unset(Config::$config->minimizeHtml);
         $this->assertSame("<pre>a  b\nc</pre>" . '&lt;b title=&quot;x&quot;&gt;unsafe&lt;/b&gt;',
             $this->dispatch($adapter, "<pre>a  b\nc</pre>"));
     }

@@ -892,11 +892,7 @@ In the skeleton's container the binary is `vendor/bin/wbengine.php` in `/var/www
 | Key | Meaning |
 |-----|---------|
 | `timeZone` | PHP time zone, for example `Europe/Prague` |
-| `codePage` | HTML charset, `utf8` |
 | `debug` | `true` shows the debug bar and detailed errors. Never in production. `WBENGINE_DEBUG` overrides it |
-| `minimizeHtml`, `minimizeCss`, `minimizeJs` | `minimizeHtml` is deprecated and ignored by core dispatch; CSS/JS settings keep their behavior |
-| `cdnPath` | prefix for static assets |
-| `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `port`, `database`, `username`, `password`, `charset` (use `utf8mb4`) |
 | `renderer` | `adapterName` (`NativeRenderer`; `SmartyRenderer` only with the optional compatibility package), `autoEscape` (default `true`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `i18n` | `enabled` (default `false`), `default`, `locales`, `detect`, `urlPrefix`, `prefixDefault`, `cookie`, `cookieDays`, `dir`, `baseUrl` (public origin for absolute hreflang links). See Internationalisation |
@@ -905,12 +901,11 @@ In the skeleton's container the binary is `vendor/bin/wbengine.php` in `/var/www
 | `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
 | `http` | `trustedProxies` (addresses or CIDR ranges of reverse proxies) and `forwardedHeaders` (`x-forwarded-for`, `x-forwarded-proto`). Both default to empty: forwarded headers are never trusted unless listed |
 | `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed. `WBENGINE_RECAPTCHA_SECRET` overrides it |
-| `ipAdmins` | list of administrator IP addresses |
 | `apiV2` | `enabled` (default `false`) switches on `/api/v2`; `imageDirectory` is the directory for uploaded images (`WBENGINE_IMAGE_DIR` overrides it) |
 | `analytics` | `enabled` (default `false`), `timezone` (default `UTC`), `retentionDays` (default `62`, allowed 31 to 365). Identity-free daily aggregates, needs migration `4.0.0/006-analytics.sql` |
 | `audit` | `retentionDays` (default `365`, allowed 30 to 3650) for `cms_api_audit` and `cms_api_changes`, `revisionRetentionDays` (default `365`, allowed 30 to 3650) for `cms_api_revisions`. Applied by `audit:prune` |
 
-An application may add keys of its own; the framework ignores what it does not read. The environment variables `WBENGINE_DEBUG`, `WBENGINE_RECAPTCHA_SECRET` and `WBENGINE_IMAGE_DIR` override the matching settings. Keep `Settings.json` out of version control.
+An application may add keys of its own, and a key the framework does not read (for example one left from an older version) is ignored. The environment variables `WBENGINE_DEBUG`, `WBENGINE_RECAPTCHA_SECRET` and `WBENGINE_IMAGE_DIR` override the matching settings. Keep `Settings.json` out of version control.
 
 ## Debug tooling
 
@@ -938,11 +933,7 @@ preserve the rendered bytes of trusted HTML, including `pre`, `textarea`, inline
 JavaScript/CSS, attribute values and JSON script text. Ordinary template variables
 still use the renderer's existing output-escaping rules.
 
-The legacy `minimizeHtml` setting is ignored by core dispatch, including when true.
-`Config::minimizeHtml()` remains readable for existing external callers and is
-marked deprecated; remove this setting from new application configurations. The
-old whole-document whitespace regex is no longer available as a runtime option.
-CSS/JS settings and template compilation rules are outside this change.
+There is no setting that minifies or rewrites the HTML.
 
 Enable gzip or Brotli at the webserver or reverse proxy to reduce transfer size
 without changing HTML content. Keep encoding negotiation and `Vary: Accept-Encoding`
@@ -1098,6 +1089,10 @@ Use `PHP_VERSION=8.3 docker compose build` (and `docker compose run --rm php com
 The integration tests create their tables from `tests/schema.sql`. They are skipped when the database is not reachable. For new installations use the `utf8mb4` connection charset: the older `utf8` alias is three bytes per character and cannot carry emoji.
 
 ## Upgrading
+
+### From 5.x to 6.0
+
+* The settings `codePage`, `cdnPath`, `cssFiles`, `ipAdmins`, `minimizeHtml`, `minimizeCss` and `minimizeJs` and their `Config` getters (`getHtmlHeaderCharset()`, `getCdnPath()`, `getCssCollection()`, `getAdminIpCollection()`, `minimizeHtml()`, `minimizeCss()`, `minimizejs()`) are removed, together with the `minimizeCss` template variable. Nothing in the framework read them. An existing `Settings.json` keeps working, the leftover keys are ignored; delete them. If a template used `{$minimizeCss}`, write the file name yourself.
 
 ### From 4.x to 5.0
 

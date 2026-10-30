@@ -606,7 +606,6 @@ Class Site implements ComponentParentInterface
         $this->setVariable('title', $this->getHtmlTitle(), 'meta');
         $this->setVariable('description', $this->getHtmlDescription(), 'meta');
         $this->setVariable('keywords', $this->getHtmlKeywords(), 'meta');
-        $this->setVariable('minimizeCss', (Config::minimizeCss())?'.min':'', 'meta');
         if ($app->isDebugOn()) {
             $this->assignDiagnostics();
         }

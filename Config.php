@@ -182,18 +182,9 @@ class Config
     }
 
 
-    public static function getCdnPath(){
-        return self::$config->cdnPath;
-    }
-
     public static function getDbCredentials()
     {
         return new Value(self::$config->dbAdapterDefinition);
-    }
-
-    public static function getHtmlHeaderCharset()
-    {
-        return self::$config->codePage;
     }
 
     public static function getRendererTemplatesDir()
@@ -236,11 +227,6 @@ class Config
     public static function getRendererCompiledDir()
     {
         return self::_getProperty('renderer','compiledDir');
-    }
-
-    public static function getCssCollection()
-    {
-        return self::$config->cssFiles;
     }
 
     /**
@@ -439,11 +425,6 @@ class Config
             : null;
     }
 
-    public static function getAdminIpCollection()
-    {
-        return self::$config->ipAdmins;
-    }
-
     public static function isDebugEnabled()
     {
         $environment = getenv('WBENGINE_DEBUG');
@@ -458,19 +439,6 @@ class Config
     {
         return self::_getValueTimeZone()->asString();
 //        return self::$config->timeZone;
-    }
-
-    public static function minimizeCss(){
-        return self::$config->minimizeCss;
-    }
-
-    /** @deprecated Since 4.0, Renderer::dispatch ignores this legacy setting. */
-    public static function minimizeHtml(){
-        return self::$config->minimizeHtml;
-    }
-
-    public static function minimizejs(){
-        return self::$config->minimizeJs;
     }
 
     private static function _getValueTimeZone(){
