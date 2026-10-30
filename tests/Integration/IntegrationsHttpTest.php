@@ -156,7 +156,7 @@ class IntegrationsHttpTest extends DbTestCase
         }
         $this->assertStringContainsString('<legend>Permissions</legend>', $body);
         $this->assertStringContainsString('<input type="radio" name="group_content" value="write" checked>', $body);
-        $this->assertStringContainsString('class="wb-gcard wb-g-content"', $body);
+        $this->assertStringContainsString('class="wb-mrow"', $body);
         // The form is its own panel and the inline styles survive the template engine unchanged.
         $this->assertStringContainsString('<form class="wb-panel"', $body);
         $this->assertStringContainsString('.wb-integrations .wb-panel{margin:1.5rem 0;', $body);
@@ -190,14 +190,14 @@ class IntegrationsHttpTest extends DbTestCase
         $this->login('admin@example.test', 'admin-secret');
         // Switched off in the configuration and no migration.
         $response = $this->request('/integrations/');
-        $this->assertMatchesRegularExpression('~<input type="checkbox" id="wb-analytics" name="analytics" value="1" disabled~', $response['body']);
+        $this->assertStringContainsString('<input type="radio" name="group_analytics" value="read" disabled>', $response['body']);
         $this->assertStringContainsString('analytics.enabled = true', $response['body']);
         $this->assertStringContainsString('006-analytics.sql', $response['body']);
         $this->assertStringContainsString('href="' . Integrations::ANALYTICS_DOCS . '"', $response['body']);
         // Enabled in the configuration but the migration is missing.
         $this->enableAnalyticsConfig();
         $response = $this->request('/integrations/');
-        $this->assertMatchesRegularExpression('~name="analytics" value="1" disabled~', $response['body']);
+        $this->assertStringContainsString('name="group_analytics" value="read" disabled', $response['body']);
         $this->assertStringNotContainsString('analytics.enabled = true', $response['body']);
         $this->assertStringContainsString('006-analytics.sql', $response['body']);
         // A key without analytics is still issued.
@@ -211,7 +211,7 @@ class IntegrationsHttpTest extends DbTestCase
         $this->dropAnalyticsSchema();
         $this->login('admin@example.test', 'admin-secret');
         $token = $this->formToken($this->request('/integrations/'), 'issue');
-        $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $token, 'name' => 'WBengine Admin', 'analytics' => '1', 'password' => 'admin-secret']);
+        $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $token, 'name' => 'WBengine Admin', 'group_analytics' => 'read', 'password' => 'admin-secret']);
         $this->assertSame(400, $response['status']);
         $this->assertPrivateHeaders($response);
         $this->assertStringContainsString(htmlspecialchars(\Wbengine\I18n::t('wb.integrations.error.analytics_unavailable'), ENT_QUOTES), $response['body']);
@@ -226,10 +226,10 @@ class IntegrationsHttpTest extends DbTestCase
             $this->enableAnalyticsConfig();
             $this->login('admin@example.test', 'admin-secret');
             $form = $this->request('/integrations/');
-            $this->assertMatchesRegularExpression('~<input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby~', $form['body']);
-            $this->assertDoesNotMatchRegularExpression('~name="analytics" value="1" disabled~', $form['body']);
+            $this->assertStringContainsString('<input type="radio" name="group_analytics" value="read">', $form['body']);
+            $this->assertStringNotContainsString('name="group_analytics" value="read" disabled', $form['body']);
             $this->assertStringContainsString('name="group_site"', $form['body']);
-            $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $this->formToken($form, 'issue'), 'name' => 'WBengine Admin', 'analytics' => '1', 'password' => 'admin-secret']);
+            $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $this->formToken($form, 'issue'), 'name' => 'WBengine Admin', 'group_analytics' => 'read', 'password' => 'admin-secret']);
             $this->assertSame(200, $response['status']);
             $this->assertPrivateHeaders($response);
             $this->assertSame(1, preg_match_all('/wbv2_[a-f0-9]{64}/', $response['body']));
