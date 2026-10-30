@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS `cms_users` (
   `user_ip` varchar(45) DEFAULT NULL,
   `locale` int DEFAULT '1',
   `role` varchar(20) NOT NULL DEFAULT 'user',
+  `disabled_at` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`user_id`),
   KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -214,4 +215,14 @@ CREATE TABLE IF NOT EXISTS `cms_api_revisions` (
   PRIMARY KEY (`revision_id`),
   KEY `api_revisions_article` (`article_id`, `revision_id`),
   KEY `api_revisions_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cms_password_resets` (
+  `token_hash` char(64) NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  `created_at` bigint unsigned NOT NULL,
+  `expires_at` bigint unsigned NOT NULL,
+  `used_at` bigint unsigned DEFAULT NULL,
+  PRIMARY KEY (`token_hash`),
+  KEY `password_resets_user` (`user_id`,`used_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

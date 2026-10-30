@@ -88,7 +88,9 @@ class Model extends ModelAbstract
 
             $sql = sprintf('SELECT * FROM %s WHERE user_id = ? LIMIT 1', S_TABLE_USERS);
 
-            return Db::fetchAssoc($sql, array((int)$userId));
+            $row = Db::fetchAssoc($sql, array((int)$userId));
+            // The session of a disabled account no longer identifies anybody.
+            return (is_array($row) && AccountState::isPresent() && null !== ($row['disabled_at'] ?? null)) ? null : $row;
         }
     }
 
@@ -150,6 +152,10 @@ class Model extends ModelAbstract
         }
 
         if (!Password::verify($plain, $row['password'])) {
+            return null;
+        }
+        // A disabled account answers exactly like a wrong password.
+        if (AccountState::isPresent() && null !== ($row['disabled_at'] ?? null)) {
             return null;
         }
 

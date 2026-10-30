@@ -13,6 +13,7 @@ class ApiV2LastUsedTest extends TestCase
 {
     protected function setUp(): void
     {
+        \Wbengine\User\AccountState::reset();
         try {
             Db::query('SELECT 1');
         } catch (\Throwable $e) {

@@ -14,7 +14,7 @@ class Model extends \Wbengine\Model\ModelAbstract
     /** Seconds between two last_used_at writes of one key. */
     public const LAST_USED_INTERVAL = 60;
     public const LIST_LIMIT = 500;
-    public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write', 'analytics:read', 'audit:read'];
+    public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write', 'analytics:read', 'audit:read', 'users:read', 'users:write', 'cache:write', 'config:read'];
 
     /**
      * Trusted local provisioning API. The administrator's current role is read from DB.

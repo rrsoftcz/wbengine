@@ -95,8 +95,8 @@ class IntegrationsPreflightTest extends TestCase
         }
         $cs = require dirname(__DIR__, 2) . '/I18n/messages/cs.php';
         $this->assertSame('Číst přehled návštěvnosti webu', $cs['wb.integrations.scope.analytics_read']);
-        $this->assertCount(19, \Wbengine\Box\Integrations::scopesFor(true));
-        $this->assertCount(18, \Wbengine\Box\Integrations::scopesFor(false));
+        $this->assertCount(23, \Wbengine\Box\Integrations::scopesFor(true));
+        $this->assertCount(22, \Wbengine\Box\Integrations::scopesFor(false));
     }
 
     public function testCatalogsHaveTheSameIntegrationKeys(): void

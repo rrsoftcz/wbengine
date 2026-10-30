@@ -16,6 +16,7 @@ class ApiV2AnalyticsTest extends TestCase
 
     protected function setUp(): void
     {
+        \Wbengine\User\AccountState::reset();
         try { Db::query('SELECT 1'); } catch (\Throwable $e) { $this->markTestSkipped('MySQL unavailable.'); }
         $this->oldConfig = Config::$config;
         Config::$config = (object) ['analytics' => (object) ['enabled' => true, 'timezone' => 'UTC', 'retentionDays' => 62]];
