@@ -2,7 +2,6 @@
 
 namespace Wbengine\Api\V2;
 
-use Wbengine\Api\Auth\RefreshTokens;
 use Wbengine\Audit\ChangeLog;
 use Wbengine\Db;
 use Wbengine\User\AccountState;
@@ -92,10 +91,7 @@ final class UsersModel
         if ([] !== $changes) { Db::update(S_TABLE_USERS, $changes, ['user_id' => $id]); }
         if (null !== $disable && $disable !== $this->disabled($before)) {
             AccountState::set($id, $disable);
-            // Disabling ends API sessions at once.
-            if ($disable) { $this->revokeTokens($id); }
         }
-        if ([] !== $changes && isset($changes['role'])) { $this->revokeTokens($id); }
         $after = $this->find($id);
         $action = null !== $disable && $disable !== $this->disabled($before) ? ($disable ? 'disable' : 'enable') : 'update';
         ChangeLog::record('user', $id, $action, $this->audited($before), $this->audited($after), $actor);
@@ -140,11 +136,6 @@ final class UsersModel
     private function activeAdmins(): int
     {
         return (int) Db::fetchAssoc('SELECT COUNT(*) AS c FROM ' . S_TABLE_USERS . ' WHERE `role` = ?' . AccountState::activeSql() . ';', [Role::ADMIN])['c'];
-    }
-
-    private function revokeTokens(int $id): void
-    {
-        try { (new RefreshTokens())->revokeAllForUser($id); } catch (\Throwable $e) { error_log(__METHOD__ . ': ' . $e->getMessage()); }
     }
 
     private function email($value): string

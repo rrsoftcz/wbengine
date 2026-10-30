@@ -1,9 +1,6 @@
 <?php
 namespace Wbengine\Tests\Integration;
 
-use Wbengine\Api\CacheAdmin;
-use Wbengine\Api\Section;
-use Wbengine\Api\User;
 use Wbengine\Audit\ChangeLog;
 use Wbengine\Audit\Retention;
 use Wbengine\Config;
@@ -21,7 +18,6 @@ final class ChangeLogTest extends ApiTestCase
         foreach (['cms_api_changes', 'cms_api_audit', 'cms_api_drafts', 'cms_api_revisions'] as $table) { Db::query('DELETE FROM ' . $table); }
         $this->admin = $this->createUser('admin@example.com', Role::ADMIN);
         $this->createUser('second-admin@example.com', Role::ADMIN);
-        $this->asUser($this->admin);
     }
 
     private function changes(): array
@@ -29,70 +25,7 @@ final class ChangeLogTest extends ApiTestCase
         return Db::fetchAllAssoc('SELECT * FROM cms_api_changes ORDER BY change_id') ?: [];
     }
 
-    public function testV1UserCreateIsLoggedWithoutThePassword(): void
-    {
-        $users = new User($this->api);
-        $r = $this->respond(fn () => $users->addUser(['email' => 'new@example.com', 'password' => 'Sup3r-Secret-pw', 'role' => 'editor']));
-        $this->assertSame(200, $r['status']);
-
-        $rows = $this->changes();
-        $this->assertCount(1, $rows);
-        $this->assertSame('user', $rows[0]['resource']);
-        $this->assertSame((string) $r['json']['user_id'], $rows[0]['resource_id']);
-        $this->assertSame('create', $rows[0]['action']);
-        $this->assertSame('v1', $rows[0]['source']);
-        $this->assertSame($this->admin, (int) $rows[0]['local_user_id']);
-        $this->assertSame(0, (int) $rows[0]['integration_id']);
-        $after = json_decode($rows[0]['after_data'], true);
-        $this->assertSame('new@example.com', $after['email']);
-        $this->assertTrue($after['passwordSet']);
-        $dump = json_encode($rows);
-        $this->assertStringNotContainsString('Sup3r-Secret-pw', $dump);
-        $this->assertStringNotContainsString('$2y$', $dump);
-        $this->assertArrayNotHasKey('password', $after);
-    }
-
-    public function testV1UserPatchAndDeleteAreLoggedAndAPasswordChangeStoresOnlyAFlag(): void
-    {
-        $users = new User($this->api);
-        $target = $this->createUser('target@example.com');
-        $this->respond(fn () => $users->updateUser($target, ['firstname' => 'Eva', 'password' => 'Another-Secret-1']));
-        $this->respond(fn () => $users->deleteUserById($target));
-
-        $rows = $this->changes();
-        $this->assertSame(['update', 'delete'], array_column($rows, 'action'));
-        $update = $rows[0];
-        $this->assertSame('Eva', json_decode($update['after_data'], true)['firstname']);
-        $this->assertTrue(json_decode($update['after_data'], true)['passwordChanged']);
-        $this->assertArrayHasKey('firstname', json_decode($update['before_data'], true));
-        $this->assertSame('target@example.com', json_decode($rows[1]['before_data'], true)['email']);
-        $this->assertNull($rows[1]['after_data']);
-        $dump = json_encode($rows);
-        $this->assertStringNotContainsString('Another-Secret-1', $dump);
-        $this->assertStringNotContainsString('$2y$', $dump);
-    }
-
-    public function testV1SectionWritesAndCacheFlushAreLoggedAndTheSectionKeyIsKept(): void
-    {
-        $sections = new Section($this->api);
-        $created = $this->respond(fn () => $sections->addNewSection(['title' => 'Main', 'key' => 'central']));
-        $id = $created['json']['section_id'];
-        $this->respond(fn () => $sections->updateSection($id, ['title' => 'Renamed']));
-        $this->respond(fn () => $sections->deleteSection($id));
-        $this->respond(fn () => (new CacheAdmin($this->api))->flush());
-
-        $rows = $this->changes();
-        $this->assertSame(['section:create', 'section:update', 'section:delete', 'cache:flush'], array_map(static fn ($r) => $r['resource'] . ':' . $r['action'], $rows));
-        $this->assertSame('central', json_decode($rows[0]['after_data'], true)['key']);
-        $this->assertSame('Main', json_decode($rows[1]['before_data'], true)['title']);
-        $this->assertSame('Renamed', json_decode($rows[1]['after_data'], true)['title']);
-        foreach ($rows as $row) {
-            $this->assertSame('v1', $row['source']);
-            $this->assertSame($this->admin, (int) $row['local_user_id']);
-        }
-    }
-
-    public function testRedactionAppliesToStoredRowsOfV1AndCliButNotToV2(): void
+    public function testRedactionAppliesToStoredRowsOfCliAndHistoricV1ButNotToV2(): void
     {
         $actor = ['local_user_id' => $this->admin];
         ChangeLog::record('user', 1, 'update', ['token' => 'T1'], ['password' => 'P1', 'ac_key' => 'K1', 'title' => 'x'], $actor, 'v1');

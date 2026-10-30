@@ -56,7 +56,6 @@ final class PasswordSetup
         Db::query('UPDATE cms_password_resets SET used_at = ? WHERE token_hash = ? AND used_at IS NULL', array($now, $hash));
         if (1 !== Db::getAffected()) { throw new UserException('The link is not valid or has expired.'); }
         Db::update(S_TABLE_USERS, array('password' => $newHash), array('user_id' => $userId));
-        try { (new \Wbengine\Api\Auth\RefreshTokens())->revokeAllForUser($userId); } catch (\Throwable $e) { error_log(__METHOD__ . ': ' . $e->getMessage()); }
         return $userId;
     }
 }

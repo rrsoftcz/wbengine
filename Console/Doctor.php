@@ -22,8 +22,6 @@ final class Doctor
         $add('debug', ($config['debug'] ?? true) === false, 'Set debug to false for production.');
         $add('renderer.compileCheck', ($config['renderer']['compileCheck'] ?? true) === false, 'Set renderer.compileCheck to false; clear compiled templates explicitly during deploy.');
         $add('renderer.adapter', ($config['renderer']['adapterName'] ?? '') === 'NativeRenderer', 'Use NativeRenderer; install the separate Smarty compatibility package only for migrated legacy sites.');
-        $keys = ['access'=>getenv('WBENGINE_JWT_KEY') ?: ($config['jwt']['accessKey'] ?? null), 'refresh'=>getenv('WBENGINE_JWT_REFRESH_KEY') ?: ($config['jwt']['refreshKey'] ?? null)];
-        $add('secrets.jwt', is_string($keys['access']) && strlen($keys['access']) >= 32 && is_string($keys['refresh']) && strlen($keys['refresh']) >= 32 && $keys['access'] !== $keys['refresh'], 'Set distinct JWT signing keys of at least 32 bytes via WBENGINE_JWT_KEY and WBENGINE_JWT_REFRESH_KEY.');
         if (($config['recaptcha']['enabled'] ?? false) === true) { $add('secrets.recaptcha', !empty(getenv('WBENGINE_RECAPTCHA_SECRET') ?: ($config['recaptcha']['secretKey'] ?? null)), 'Set WBENGINE_RECAPTCHA_SECRET.'); }
         $add('opcache', extension_loaded('Zend OPcache') && filter_var(ini_get(PHP_SAPI === 'cli' ? 'opcache.enable_cli' : 'opcache.enable'), FILTER_VALIDATE_BOOL), 'Enable OPcache in the production web SAPI; CLI and web settings can differ.');
         $proxies = $config['http']['trustedProxies'] ?? []; $headers = $config['http']['forwardedHeaders'] ?? [];

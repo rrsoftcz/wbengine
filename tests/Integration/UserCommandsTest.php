@@ -1,7 +1,6 @@
 <?php
 namespace Wbengine\Tests\Integration;
 
-use Wbengine\Api\Auth\RefreshTokens;
 use Wbengine\Console\CommandException;
 use Wbengine\Console\PasswordPrompt;
 use Wbengine\Console\UserCommands;
@@ -104,7 +103,6 @@ final class UserCommandsTest extends DbTestCase
     {
         $id = $this->commands()->create(['email' => 'pw@corp.cz'])['id'];
         $old = $this->row('pw@corp.cz')['password'];
-        $token = (new RefreshTokens())->issue($id, 3600);
         Db::insert('cms_sessions', ['session_id' => 'sess-1', 'user_id' => $id]);
         Db::insert('cms_sessions', ['session_id' => 'sess-2', 'user_id' => $id + 100]);
 
@@ -114,9 +112,7 @@ final class UserCommandsTest extends DbTestCase
         self::assertNotSame($old, $new);
         self::assertTrue(password_verify('another long passphrase', $new));
         self::assertFalse(password_verify(self::PW, $new));
-        self::assertNotNull(Db::fetchAssoc('SELECT revoked_at FROM cms_refresh_tokens WHERE user_id = ?', [$id])['revoked_at']);
         self::assertSame(['sess-2'], array_column(Db::fetchAllAssoc('SELECT session_id FROM cms_sessions'), 'session_id'));
-        self::assertNotSame('', $token);
     }
     public function testPasswordCommandRefusesUnknownUserAndShortPassword(): void
     {
@@ -172,12 +168,10 @@ final class UserCommandsTest extends DbTestCase
     {
         $this->admin();
         $id = $this->commands()->create(['email' => 'demo@example.com'])['id'];
-        (new RefreshTokens())->issue($id, 3600);
         $result = $this->commands()->delete(['example' => true, 'dry-run' => true]);
         self::assertSame([['id' => $id, 'email' => 'demo@example.com', 'role' => 'user']], $result['deleted']);
         self::assertTrue($result['dryRun']);
         self::assertNotNull($this->row('demo@example.com'));
-        self::assertSame(1, (int) Db::fetchAssoc('SELECT COUNT(*) c FROM cms_refresh_tokens')['c']);
     }
     public function testAnonymousUserSurvivesAndRelatedRowsAreRemovedInTheSameDeletion(): void
     {
@@ -186,8 +180,6 @@ final class UserCommandsTest extends DbTestCase
         $this->admin();
         $demo = $this->commands()->create(['email' => 'demo@example.com'])['id'];
         $keep = $this->commands()->create(['email' => 'keep@corp.cz'])['id'];
-        $tokens = new RefreshTokens();
-        $tokens->issue($demo, 3600); $tokens->issue($keep, 3600);
         Db::insert('cms_sessions', ['session_id' => 's-demo', 'user_id' => $demo]);
         Db::insert('cms_sessions', ['session_id' => 's-keep', 'user_id' => $keep]);
         Db::insert('cms_api_audit', ['local_user_id' => $demo, 'action' => 'x', 'outcome' => 'ok', 'created_at' => 1]);
@@ -195,7 +187,6 @@ final class UserCommandsTest extends DbTestCase
         $this->commands()->delete(['email' => 'demo@example.com']);
 
         self::assertNotNull(Db::fetchAssoc('SELECT 1 FROM cms_users WHERE user_id = 0'));
-        self::assertSame([$keep], array_map('intval', array_column(Db::fetchAllAssoc('SELECT user_id FROM cms_refresh_tokens'), 'user_id')));
         self::assertSame(['s-keep'], array_column(Db::fetchAllAssoc('SELECT session_id FROM cms_sessions'), 'session_id'));
         self::assertNull(Db::fetchAssoc('SELECT local_user_id FROM cms_api_audit')['local_user_id']);
     }

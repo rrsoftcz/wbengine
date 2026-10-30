@@ -7,7 +7,6 @@ use PHPUnit\Framework\TestCase;
 use Wbengine\Application\Application;
 use Wbengine\Application\Env\Http;
 use Wbengine\Application\Env\Stac\Utils;
-use Wbengine\Api;
 use Wbengine\Config;
 use Wbengine\I18n;
 
@@ -87,18 +86,18 @@ class TrustedProxyTest extends TestCase
         $_SERVER = ['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9', 'HTTP_X_FORWARDED_PROTO' => 'https'];
         $this->policy(['10.0.0.0/8'], []);
         $this->assertSame('10.0.0.1', Utils::getUserIp());
-        $this->assertFalse((new Api())->getCookieIsSecured());
+        $this->assertFalse(\Wbengine\Application\Env\Http::isSecure());
         $this->policy(['10.0.0.0/8'], ['x-forwarded-for']);
         $this->assertSame('203.0.113.9', Utils::getUserIp());
-        $this->assertFalse((new Api())->getCookieIsSecured());
+        $this->assertFalse(\Wbengine\Application\Env\Http::isSecure());
     }
 
     #[DataProvider('schemes')]
-    public function testApiCookieUsesTrustedOriginalScheme(array $server, array $proxies, bool $expected): void
+    public function testSecureDetectionUsesTrustedOriginalScheme(array $server, array $proxies, bool $expected): void
     {
         $this->policy($proxies);
         $_SERVER = $server;
-        $this->assertSame($expected, (new Api())->getCookieIsSecured());
+        $this->assertSame($expected, \Wbengine\Application\Env\Http::isSecure());
     }
 
     public static function schemes(): array
@@ -154,17 +153,6 @@ class TrustedProxyTest extends TestCase
             [['REMOTE_ADDR' => '10.0.0.1', 'HTTPS' => 'on', 'HTTP_X_FORWARDED_PROTO' => 'http'], false],
             [['HTTPS' => 'on'], true],
         ];
-    }
-
-    public function testExplicitApiSecureSettingStillOverridesDetection(): void
-    {
-        $this->policy(['10.0.0.1']);
-        $_SERVER = ['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_PROTO' => 'https'];
-        $api = new Api();
-        $api->setCookieIsSecured(false);
-        $this->assertFalse($api->getCookieIsSecured());
-        $api->setCookieIsSecured(true);
-        $this->assertTrue($api->getCookieIsSecured());
     }
 
     #[DataProvider('invalidPolicies')]

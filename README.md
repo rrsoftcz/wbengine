@@ -39,7 +39,7 @@ A ready to run example application lives in the companion project `wbengine-skel
 * Extensions: `mysqli`, `json`, `mbstring`
 * MySQL 8 or MariaDB 10.6+ (box selection uses `JSON_SEARCH`). Tested on MySQL 8.4, MariaDB 10.11 and MariaDB 11.4.
 * A web server that sends every request that is not a file to `index.php`: Apache with `mod_rewrite` or Nginx with PHP-FPM (both tested, the skeleton has the configuration for each)
-* Runtime Composer package: `firebase/php-jwt` 7. Templates and Markdown use built-in engines; Smarty compatibility and offline Texy migration are optional separate packages.
+* No runtime Composer packages. Templates and Markdown use built-in engines; Smarty compatibility and offline Texy migration are optional separate packages.
 
 PHP has no long term support releases. 8.4 receives security fixes until the end of 2028 and 8.3 until the end of 2027, which is why 8.3 is the minimum.
 
@@ -119,7 +119,7 @@ Relevant `cms_boxes` columns:
 | `Router`, `Router\Route` | method and path matching with `{param}` placeholders |
 | `Url` | the parsed request URL |
 | `Session`, `User`, `User\Password` | database backed session, the current user, password hashing |
-| `Auth`, `Api\*` | JWT creation and the REST API modules |
+| `Api` | API v2 (`Api/V2`): integration keys, scopes, content, users, audit |
 | `Renderer` | native compiled templates (`NativeRenderer`); optional Smarty compatibility |
 | `Vars`, `Registry` | template variable bag, key value store |
 | `Debug`, `Error\Handler` | debug bar, error to exception conversion |
@@ -632,28 +632,9 @@ and a token for `auth.logout` to `/login/`. POST `?a=logout` is also supported. 
 wrong-purpose or foreign-session tokens return 403. Both renderers use the existing
 escaped `token` field.
 
-Cookie API operations (`login`, refresh and device logout) use a separate stateless
-boundary: send **POST**, `Content-Type: application/json` and `X-WBengine-CSRF: 1`.
-This constant header is not a secret; it forces a browser CORS preflight for
-cross-origin requests. Simple form/text requests are rejected before authentication,
-refresh rotation, cookie changes or session creation. Wrong methods return 405,
-wrong content types 415, and a missing/invalid header 403. The default CORS allowed
-headers include this marker. Allow credentialed CORS only for origins you trust;
-never reflect arbitrary origins. SameSite remains an additional protection.
-
-```javascript
-fetch('/api/auth/jwt/revalidate', {
-    method: 'POST',
-    credentials: 'include',
-    headers: {'Content-Type': 'application/json', 'X-WBengine-CSRF': '1'},
-    body: '{}'
-});
-```
-
-Bearer-authorized API mutations retain their token/role checks and do not start a
-session for CSRF. The refresh endpoint remains independent of PHP sessions. Existing
-API clients must add the JSON/custom-header contract when upgrading to 4.0.
-The approach follows the [OWASP CSRF guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
+The API (v2) is not browser based: it is called server to server with a bearer
+integration key, sets no cookies and starts no session, so it has no CSRF surface.
+Browser logins use the form of `Box\Auth` and its CSRF token described above.
 
 ### Trusted reverse proxies in 4.0
 
@@ -694,8 +675,8 @@ Comma-separated values are ignored. Without a valid trusted value, secure detect
 uses only the local PHP `HTTPS` value `on` or `1`. A trusted `http` overrides backend
 TLS because the browser's original connection determines the cookie transport.
 
-Session cookies, the locale preference cookie, absolute locale links and API
-refresh-cookie issuance/deletion use this shared detection.
+Session cookies, the locale preference cookie and absolute locale links
+use this shared detection.
 Their HttpOnly and SameSite policies remain in effect. The explicit API
 `setCookieIsSecured()` override remains available. A change in resolved IP may
 invalidate existing sessions and change rate-limit keys during rollout.
@@ -754,72 +735,14 @@ Router::post('/api/things', fn () => /* ... */ null);
 
 `{name}` matches letters, digits, underscore and dash.
 
-The REST API lives under `/api/`. Existing API boxes still work and now run during
-CMS handling rather than construction. To avoid the CMS lookup for API requests,
-move the existing API bootstrap into application setup before `run()` (after the
-constructor has normalized i18n), for example:
-
-```php
-$path = (string) parse_url(\Wbengine\Application\Env\Http::Uri(), PHP_URL_PATH);
-if ($path === '/api' || str_starts_with($path, '/api/')) {
-    $api = new \Wbengine\Api();
-    $api->Initialize();
-    $api->end();
-}
-$App->run();
-```
-
-The API keeps its existing controllers, namespaces, authentication and terminating
-responses. A project may also invoke it from a suitable deferred Application route.
-The compatible box-based form remains:
-
-```php
-class Restapi extends WbengineBoxAbstract
-{
-    public function Restapi()
-    {
-        $api = new \Wbengine\Api();
-        $api->Initialize();
-        $api->end();
-    }
-}
-```
-
-Modules included in 3.1:
-
-| Method and path | Purpose | Auth |
-|-----------------|---------|------|
-| `POST /api/auth/login` | exchange e-mail and password for a JWT | no |
-| `POST /api/auth/jwt/revalidate` | exchange the refresh cookie for a new access token (rotates the refresh token) | refresh cookie |
-| `POST /api/auth/logout` | revoke this device's refresh token and clear the cookie | cookie |
-| `POST /api/auth/logout/all` | revoke the refresh tokens of every device | token |
-| `POST /api/cache/flush` | drop the cached data and pages (after editing the database directly) | admin |
-| `GET /api/translations/{kind}/{id}` | translations of a site, menu item or article | editor |
-| `PUT /api/translations/{kind}/{id}/{locale}` | create or change a translation | editor |
-| `DELETE /api/translations/{kind}/{id}/{locale}` | remove a translation | editor |
-| `POST /api/auth/jwt/identify` | check that a bearer token belongs to the `user_id` in the body | token |
-| `GET /api/users` | list users (never returns the password hash) | admin |
-| `GET /api/users/{id}` | read a user | admin, or the user themselves |
-| `POST /api/users/create` | create a user (e-mail, password, optional profile fields and role) | admin |
-| `PATCH /api/users/patch/{id}` | update profile fields or password; `role` only by an admin | admin, or the user themselves (not the role) |
-| `DELETE /api/users/{id}` | delete a user (not yourself, not the last admin) | admin |
-| `GET/POST /api/sections`, `GET/PUT/DELETE /api/sections/{id}` | sections CRUD | admin |
-
-Conventions:
-
-* Send `Authorization: Bearer <token>`. A missing, malformed, expired or wrongly signed token returns `401`. A valid token without the required role returns `403`.
-* Roles are `user`, `editor` and `admin` (`cms_users.role`, class `Wbengine\User\Role`). The role is read from the database on every privileged call, so demoting or deleting a user takes effect immediately, not when their token expires. The token carries the role only so a client can show or hide controls.
-* To protect your own action: `$this->isAuthenticated(function ($payload, $actor) { ... }, Role::EDITOR);`
-* Writes accept only whitelisted fields. Unknown fields (for example `user_type`) are rejected with `400`, so a client cannot raise its own privileges.
-* Success bodies are the plain data, errors are `{"success": false, "error": <code>, "message": "..."}`. Creates return `201` for sections.
-* CORS: `Access-Control-Allow-Origin` defaults to `*`. Use `Api::setSingleOrigin()` and `Api::allowHeader('Authorization')` for a browser based admin application, and `Api::setHeaderAllowOredentials(true)` only together with a single explicit origin.
-
-Deployment notes for cookie based refresh (unchanged from earlier versions):
-
-* If cross-domain authentication must work, deploy the API website on the same hostname as the client's API calls.
-* Both the client and the API server must run on HTTPS only, with a trusted certificate.
-
-To add a module, extend `Wbengine\Api\WbengineRestapiAbstract`, wrap each action in `$this->isAuthenticated(fn () => ...)`, and add a `Routes` class next to it. Look at `Api/Section.php` and `Api/Section/Routes.php` as the smallest example.
+The API lives under `/api/v2` and is the only API: server to server, authenticated by
+integration keys with scopes (see below). Enable it with `apiV2.enabled`; the application
+dispatches it before CMS handling, so no box or bootstrap code is needed. There is no
+cookie or JWT login through the API: users sign in on the web with `Box\Auth`. Adding
+another capability means adding a resource and a scope to API v2, not a new API version.
+Version 5.0 removed the former API v1 (`/api/auth`, `/api/users`, `/api/sections`,
+`/api/translations`, `/api/cache/flush`): users, sections, translations and the cache flush
+are API v2 resources, the JWT login was dropped without a replacement.
 
 The versioned server-to-server API foundation is available at `/api/v2` and
 `/api/v2/capabilities`, with HTTPS scoped integration identity at `/api/v2/identity`.
@@ -832,15 +755,15 @@ or use the trusted local
 model APIs. Every change is a POST with a CSRF token and a fresh password confirmation;
 the raw key is shown once in the POST response. Apply `migrations/4.0.0/007-api-integration-last-used.sql`
 (adds `last_used_at`) and check with `doctor`. Discovery accurately reports unavailable content CRUD.
-The key gets a fixed profile of 17 permissions. The administrator may tick the optional
-"Analytics" choice when issuing it, which adds `analytics:read` (18 in total) so the central
+The key gets a fixed profile of 22 permissions. The administrator may tick the optional
+"Analytics" choice when issuing it, which adds `analytics:read` (23 in total) so the central
 Admin can show the traffic overview of the website. The choice is offered only when analytics
 is usable: `analytics.enabled` is `true` in `Settings.json` and
 [`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql) is applied (see
 below). Otherwise it is disabled with instructions, and a key without analytics is issued as
 usual. The server accepts the choice only as a checked box, never a list of scopes.
 See [API v2 contracts, schema upgrade and audit/transaction rules](ref-api-v2.md).
-V1 remains supported; V2 intentionally has no browser CORS and rejects OPTIONS.
+API v2 intentionally has no browser CORS and rejects OPTIONS.
 
 First-party aggregate analytics is opt-in. Before enabling it, apply
 [`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql),
@@ -860,10 +783,8 @@ are not pruned.
 
 * **Passwords** are stored with `password_hash()`. Legacy unsalted MD5 hashes still work and are upgraded to a modern hash on the user's next successful login, provided `cms_users.password` is at least 60 characters wide (`varchar(255)` is recommended). If the column is still narrow the legacy hash is kept and a notice is written to the error log, so a narrow column can never lock a user out. Accounts can be created and passwords reset without the web or API from the command line, see [Creating and managing users from the CLI](#creating-and-managing-users-from-the-cli).
 * **Web login** (`Box\Auth`) uses a CSRF token, a failed attempt counter and reCAPTCHA after repeated failures. The password is read untouched from the request (`Http::PostRaw`), so special characters work.
-* **Login rate limiting** covers the web form, the AJAX login and the API login. Within 15 minutes a client may fail 5 times for one account, 20 times over all accounts, and an account may fail 25 times from all addresses together; after that the answer is `429` with `Retry-After` (an error message on the web form). The strict limit is per IP and account pair, so an attacker cannot lock the real owner out from another address. A successful login clears the pair and account counters, not the IP counter. Counters are files in the temp directory (set `rateLimit.login.dir` to a shared directory with several servers). Behind a reverse proxy or load balancer the limiter sees the proxy's address unless the web server restores the real client IP (`mod_remoteip`, `real_ip_header`), otherwise all clients share one IP counter.
+* **Login rate limiting** covers the web form and the AJAX login. Within 15 minutes a client may fail 5 times for one account, 20 times over all accounts, and an account may fail 25 times from all addresses together; after that the answer is `429` with `Retry-After` (an error message on the web form). The strict limit is per IP and account pair, so an attacker cannot lock the real owner out from another address. A successful login clears the pair and account counters, not the IP counter. Counters are files in the temp directory (set `rateLimit.login.dir` to a shared directory with several servers). Behind a reverse proxy or load balancer the limiter sees the proxy's address unless the web server restores the real client IP (`mod_remoteip`, `real_ip_header`), otherwise all clients share one IP counter.
 * **Sessions** are stored in `cms_sessions`, bound to the client IP and a hash of the user agent. The session cookie is `HttpOnly` and `SameSite=Lax` (and `Secure` over HTTPS), strict mode is on, and the session id is regenerated on login to prevent fixation. Stored session data is unserialized with `allowed_classes` limited to `stdClass`.
-* **Refresh tokens** keep a client logged in without a long lived access token. Login returns a short lived access token (15 minutes by default) and sets the `refresh_token` cookie (`HttpOnly`, `SameSite=Strict`, scoped to `/api/auth/`, `Secure` over HTTPS, 7 days by default; `Api::setJwtTokenExpiration()`, `setCookieExpiration()`, `setCookieDomain()`, `setCookieSameSite()` change this). The cookie holds an opaque random token and the database stores only its SHA-256 hash (table `cms_refresh_tokens`). Each `POST /api/auth/jwt/revalidate` returns a new access token and replaces the cookie with a new token; the old one works no more. If an old token is presented again after a 10 second grace period it was copied, so the whole token family is revoked and both the thief and the owner must log in again. Logout revokes the device, `POST /api/auth/logout/all` every device, and a password change or deleting a user revokes all their tokens. A login also ends 30 days after it started however often the refresh token is used (`Api::setRefreshAbsoluteLifetime()`). An already issued access token stays valid until it expires, which is why it is short lived. Refresh is cookie based, so the API must be on the same site as the client (see the deployment notes above).
-* **JWT** uses HS256 with two secrets (access and refresh). The secrets are read from the configuration or the environment and are never stored in the source. Authentication fails closed if a secret is missing or shorter than 32 characters.
 * Access control for pages is the `acl` column of `cms_sites`: a value of `1` or more requires a logged in user.
 
 For long exports or parallel AJAX requests, finish authentication, session writes
@@ -941,8 +862,8 @@ $ php vendor/bin/wbengine.php user:delete --example --dry-run --config=...
 
 (The JSON is pretty printed in real output.)
 
-* **user:create** validates the e-mail, role and password with the same code as `POST /api/users/create` (`Api\Model\ApiUserModel`) and stores a `password_hash()` hash. The role defaults to `user`. `--username` defaults to the part of the e-mail before the `@` (characters other than letters, digits and `. _ + -` become `_`, and `-2`, `-3` is appended when the name is taken). An explicit `--username` may contain letters, digits and `. _ + @ -` and is refused when taken. An existing e-mail or username, an unknown role, an unreachable database or a missing configuration is refused and nothing is written. A user created this way can log in with the web form (which signs in by e-mail) and the API immediately.
-* **user:password** sets a new password for an existing user, revokes all of the user's refresh tokens and deletes their rows in `cms_sessions`, so every device is logged out.
+* **user:create** validates the e-mail, role and password with the same code as the API v2 users resource (`Api\Model\ApiUserModel`) and stores a `password_hash()` hash. The role defaults to `user`. `--username` defaults to the part of the e-mail before the `@` (characters other than letters, digits and `. _ + -` become `_`, and `-2`, `-3` is appended when the name is taken). An explicit `--username` may contain letters, digits and `. _ + @ -` and is refused when taken. An existing e-mail or username, an unknown role, an unreachable database or a missing configuration is refused and nothing is written. A user created this way can log in with the web form (which signs in by e-mail) and the API immediately.
+* **user:password** sets a new password for an existing user and deletes their rows in `cms_sessions`, so every device is logged out.
 * **user:list** is read only and prints the id, username, e-mail, role and an `active` flag (the account has a usable password; the placeholder value `0` does not). The anonymous user (id 0) and the password hash are never shown.
 * **user:delete** removes one user by e-mail, or with `--example` every user whose e-mail domain is reserved for documentation by RFC 2606 and RFC 6761: `example.com`, `example.org`, `example.net` or a subdomain of them, and the top level domains `.example`, `.test`, `.invalid` and `.localhost`. Domains are matched by whole labels, so `notexample.com` is not touched. The anonymous user is never deleted, and the command refuses when no active administrator would remain, so create the replacement administrator first. The user's refresh tokens and sessions are deleted in the same transaction and the link in `cms_api_audit.local_user_id` is cleared (the audit rows stay). Integration keys created by the user are not changed: revoke them from the integrations screen if they should stop working. `--dry-run` only prints who would be deleted. The output lists the id, e-mail and role of every deleted user.
 
@@ -980,11 +901,10 @@ In the skeleton's container the binary is `vendor/bin/wbengine.php` in `/var/www
 | `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `{ "enabled": false, "ttl": 60 }` for the whole page cache. See the performance notes |
 | `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (both adapters, default `true`; `false` is a legacy migration option), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
 | `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |
-| `jwt` | `accessKey` and `refreshKey`, at least 32 characters each |
 | `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed |
 | `ipAdmins` | list of administrator IP addresses |
 
-Environment variables `WBENGINE_JWT_KEY`, `WBENGINE_JWT_REFRESH_KEY` and `WBENGINE_RECAPTCHA_SECRET` override the matching settings. Generate keys with `openssl rand -hex 32`. Keep `Settings.json` out of version control.
+The environment variable `WBENGINE_RECAPTCHA_SECRET` overrides the matching settings. Keep `Settings.json` out of version control.
 
 ## Debug tooling
 
