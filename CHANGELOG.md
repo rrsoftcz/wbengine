@@ -7,6 +7,13 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Removed (5.0.0, breaking)
+
+- API v1 (`/api/auth`, `/api/users`, `/api/sections`, `/api/translations`, `/api/cache/flush`) and the JWT login with refresh cookies. Users, sections, translations and the cache flush are API v2 resources; `Api::Initialize()`, the CORS and cookie settings of `Api`, `Wbengine\Auth`, `User::getJwtToken()` and `ApiSectionModel` are gone. Sign in on the web through `Box\Auth`.
+- The dependency `firebase/php-jwt`: the framework has no runtime Composer package. The `jwt` section of `Settings.json` and `WBENGINE_JWT_*` are ignored, and `doctor` no longer checks them.
+- The table `cms_refresh_tokens` (migration `5.0.0/010-drop-refresh-tokens.sql`).
+- The change log keeps `v1` as a valid historic source of old rows; new rows use `v2` or `cli`.
+
 ### Added
 
 - `integrations:install` command: previews, and with `--apply` creates, the application class, page, section and box record for the built-in Integrations screen, never changes existing records or files, and reports what still blocks issuing keys.

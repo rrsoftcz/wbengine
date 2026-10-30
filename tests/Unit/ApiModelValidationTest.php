@@ -4,7 +4,6 @@ namespace Wbengine\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Wbengine\Api\Model\ApiSectionModel;
 use Wbengine\Api\Model\ApiUserModel;
 use Wbengine\Api\Model\Exception\ApiModelException;
 
@@ -13,13 +12,6 @@ use Wbengine\Api\Model\Exception\ApiModelException;
  */
 class ApiModelValidationTest extends TestCase
 {
-    #[DataProvider('badIds')]
-    public function testSectionRejectsNonNumericIds($id): void
-    {
-        $this->expectException(ApiModelException::class);
-        (new ApiSectionModel())->deleteSection($id);
-    }
-
     #[DataProvider('badIds')]
     public function testUserRejectsNonNumericIds($id): void
     {
@@ -38,19 +30,6 @@ class ApiModelValidationTest extends TestCase
             'array'    => [[1]],
             'empty'    => [''],
         ];
-    }
-
-    public function testSectionRejectsUnknownColumns(): void
-    {
-        $this->expectException(ApiModelException::class);
-        $this->expectExceptionMessage('Unknown section field');
-        (new ApiSectionModel())->updateSection(1, array('title' => 'x', 'evil` = 1 --' => 'y'));
-    }
-
-    public function testSectionRejectsEmptyData(): void
-    {
-        $this->expectException(ApiModelException::class);
-        (new ApiSectionModel())->updateSection(1, array());
     }
 
     public function testUserCannotSetPrivilegedColumns(): void

@@ -226,7 +226,7 @@ class ApiV2Test extends TestCase
                 $api->setTerminator(static function () { throw new ApiV2ResponseSent(); });
                 ob_start();
                 try {
-                    $api->Initialize();
+                    $api->dispatchV2();
                     self::fail('API v2 did not send a response.');
                 } catch (ApiV2ResponseSent $e) {
                     $body = json_decode(ob_get_contents(), true, 64, JSON_THROW_ON_ERROR);

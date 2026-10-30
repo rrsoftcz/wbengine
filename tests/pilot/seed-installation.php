@@ -20,7 +20,6 @@ try {
         'http' => ['trustedProxies' => [$proxy], 'forwardedHeaders' => ['x-forwarded-proto', 'x-forwarded-for']],
         'cache' => ['enabled' => true, 'driver' => 'file', 'dir' => '/state/cache', 'pages' => ['enabled' => true]],
         'i18n' => ['enabled' => true, 'default' => 'en', 'locales' => ['en', 'cs']],
-        'jwt' => ['accessKey' => bin2hex(random_bytes(32)), 'refreshKey' => bin2hex(random_bytes(32))],
         'cssFiles' => [], 'ipAdmins' => [], 'recaptcha' => ['secretKey' => ''],
     ];
     pilotWrite($installation['app'] . '/Config/Settings.json', json_encode($config, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");

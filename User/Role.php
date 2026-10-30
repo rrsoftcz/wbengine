@@ -3,7 +3,7 @@
 namespace Wbengine\User;
 
 /**
- * User roles of the REST API, from the least to the most privileged.
+ * User roles, from the least to the most privileged.
  * The role is stored in cms_users.role and checked against the database on every
  * privileged call, so changing or removing a role takes effect immediately.
  */

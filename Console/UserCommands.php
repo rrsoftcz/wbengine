@@ -74,12 +74,12 @@ final class UserCommands
         if ($user === null) { throw new CommandException('No user with this e-mail exists.'); }
         $password = $this->checkedPassword($this->prompt->read());
         try {
-            // Hashes the password and revokes every refresh token of the user.
+            // Hashes the password.
             $this->users->updateUser((int) $user['user_id'], ['password' => $password], ChangeLog::cliActor(), 'cli');
         } catch (ApiException | ApiModelException | UserException $e) {
             throw new CommandException($e->getMessage());
         }
-        // PHP sessions keep a user logged in without a refresh token: end them too.
+        // End every web session of the user.
         if ($this->tableExists(S_TABLE_SESSIONS)) {
             Db::query(sprintf('DELETE FROM %s WHERE `user_id` = ?', S_TABLE_SESSIONS), [(int) $user['user_id']]);
         }
@@ -117,9 +117,7 @@ final class UserCommands
         try {
             // Re-check under a lock, so two concurrent deletions cannot remove every administrator.
             $this->assertAdminRemains($this->targets($example ? null : $this->email($options), true), true);
-            foreach ([S_TABLE_REFRESH_TOKENS, S_TABLE_SESSIONS] as $table) {
-                if ($this->tableExists($table)) { Db::query(sprintf('DELETE FROM %s WHERE `user_id` IN (%s)', $table, $marks), $ids); }
-            }
+            if ($this->tableExists(S_TABLE_SESSIONS)) { Db::query(sprintf('DELETE FROM %s WHERE `user_id` IN (%s)', S_TABLE_SESSIONS, $marks), $ids); }
             // The audit trail stays, only its link to the removed account is cleared.
             if ($this->tableExists('cms_api_audit')) { Db::query(sprintf('UPDATE cms_api_audit SET `local_user_id` = NULL WHERE `local_user_id` IN (%s)', $marks), $ids); }
             Db::query(sprintf('DELETE FROM %s WHERE `user_id` IN (%s) AND `user_id` > 0', S_TABLE_USERS, $marks), $ids);

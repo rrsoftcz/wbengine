@@ -20,7 +20,6 @@ use Wbengine\Model\ModelAbstract;
 use Wbengine\Db;
 use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Db\Exception\DbException;
-use Wbengine\Api\Auth\RefreshTokens;
 use Wbengine\Audit\ChangeLog;
 use Wbengine\User\AccountState;
 use Wbengine\User\Password;
@@ -152,20 +151,6 @@ class ApiUserModel extends ModelAbstract
     }
 
 
-    /**
-     * Revoke every refresh token of a user. A missing token table must not break the
-     * user operation itself.
-     */
-    private function _revokeRefreshTokens($userId)
-    {
-        try {
-            (new RefreshTokens())->revokeAllForUser($userId);
-        } catch (\Throwable $e) {
-            error_log(__METHOD__ . ': ' . $e->getMessage());
-        }
-    }
-
-
     public function getUserById($userId)
     {
         $userId = $this->_checkId($userId);
@@ -188,18 +173,16 @@ class ApiUserModel extends ModelAbstract
 
 
     /**
-     * The optional $actor (local_user_id, or the cli actor) and $source (v1 or cli) attribute the change log row.
+     * The optional $actor (local_user_id, or the cli actor) and $source (cli) attribute the change log row.
      */
-    public function deleteUser($userId, array $actor = array(), string $source = 'v1')
+    public function deleteUser($userId, array $actor = array(), string $source = 'cli')
     {
         $userId = $this->_checkId($userId);
         $this->_assertNotLastAdmin($userId);
         $before = Db::fetchAssoc(sprintf("SELECT %s FROM %s WHERE `user_id` = ? LIMIT 1;", self::PUBLIC_COLUMNS, S_TABLE_USERS), array($userId));
 
         Db::query(sprintf("DELETE FROM %s WHERE `user_id` = ? LIMIT 1;", S_TABLE_USERS), array($userId));
-        // Read the row count first: revoking the tokens runs another statement.
         $deleted = (bool) Db::getAffected();
-        $this->_revokeRefreshTokens($userId);
         if ($deleted && is_array($before)) {
             ChangeLog::recordQuietly('user', $userId, 'delete', $before, null, $actor, $source);
         }
@@ -212,7 +195,7 @@ class ApiUserModel extends ModelAbstract
     }
 
 
-    public function updateUser($userId, array $user, array $actor = array(), string $source = 'v1')
+    public function updateUser($userId, array $user, array $actor = array(), string $source = 'cli')
     {
         $userId = $this->_checkId($userId);
 
@@ -226,10 +209,6 @@ class ApiUserModel extends ModelAbstract
         $before = $columns ? Db::fetchAssoc(sprintf("SELECT %s FROM %s WHERE `user_id` = ? LIMIT 1;", implode(', ', array_map(array(Db::class, 'identifier'), $columns)), S_TABLE_USERS), array($userId)) : array();
 
         $updated = Db::update(S_TABLE_USERS, $data, array('user_id' => $userId));
-        if (array_key_exists('password', $data)) {
-            // A new password logs the user out of every device.
-            $this->_revokeRefreshTokens($userId);
-        }
         if ($updated && is_array($before)) {
             $after = array_diff_key($data, array('password' => 1));
             if (array_key_exists('password', $data)) {
@@ -241,7 +220,7 @@ class ApiUserModel extends ModelAbstract
     }
 
 
-    public function createUser($user, $exist, array $actor = array(), string $source = 'v1')
+    public function createUser($user, $exist, array $actor = array(), string $source = 'cli')
     {
         if (true === $exist) {
             throw new ApiException("The user with this email already exist, please try another one.", 400);

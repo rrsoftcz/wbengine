@@ -5,7 +5,7 @@ use Wbengine\Api\V2\Problem;
 use Wbengine\Db;
 
 /**
- * One place that writes cms_api_changes, whatever the write path: API v2, API v1 or the command line.
+ * One place that writes cms_api_changes, whatever the write path: API v2 or the command line (rows written by the removed API v1 stay readable).
  *
  * Actor array keys (all optional): integration_id (v2), central_actor (v2 label, or "cli:<os user>"),
  * local_user_id (v1). A row never stores passwords, tokens, secrets, keys or hashes: for the

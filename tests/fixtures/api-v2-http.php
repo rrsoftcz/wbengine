@@ -12,4 +12,4 @@ file_put_contents($directory . '/.upload-' . str_repeat('4', 32), $png);
 foreach ([str_repeat('1', 32) => 'image/png', str_repeat('3', 32) => 'image/jpeg'] as $id => $mime) {
     Db::insert('cms_api_images', ['image_id' => $id, 'mime' => $mime, 'size' => strlen($png), 'sha256' => hash('sha256', $png), 'integration_id' => 1, 'created_at' => 100]);
 }
-(new \Wbengine\Api())->Initialize();
+(new \Wbengine\Api())->dispatchV2();

@@ -20,8 +20,7 @@
     }
   ],
   "require": {
-    "php": "^8.3",
-    "firebase/php-jwt": "^7.0"
+    "php": "^8.3"
   },
   "autoload": {
     "psr-4": {

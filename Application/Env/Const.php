@@ -68,7 +68,6 @@ define('S_TABLE_BOXES', 'cms_boxes');
 define('S_TABLE_SESSIONS', 'cms_sessions');
 define('S_TABLE_BANS', 'cms_bans');
 define('S_TABLE_USERS', 'cms_users');
-define('S_TABLE_REFRESH_TOKENS', 'cms_refresh_tokens');
 define('S_TABLE_SITE_TRANSLATIONS', 'cms_site_translations');
 define('S_TABLE_MENU_TRANSLATIONS', 'cms_menu_translations');
 define('S_TABLE_ARTICLE_TRANSLATIONS', 'cms_article_translations');
