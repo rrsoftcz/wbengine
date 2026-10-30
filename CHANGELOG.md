@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added
+
+- `integrations:install` command: previews, and with `--apply` creates, the application class, page, section and box record for the built-in Integrations screen, never changes existing records or files, and reports what still blocks issuing keys.
+
 ### Changed
 
 - The integrations page lists active keys as cards (name, creation, last use, permissions, revoke behind a disclosure) with revoked keys folded into a closed section, and marks keys issued before the latest permissions as older keys.
