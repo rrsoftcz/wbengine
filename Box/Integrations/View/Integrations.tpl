@@ -24,9 +24,34 @@
 .wb-integrations .wb-revoke{margin-top:.6rem}
 .wb-integrations .wb-revoke summary{cursor:pointer;color:#475569;font-size:.875rem}
 .wb-integrations .wb-revoke form{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem}
-.wb-integrations .wb-groups{margin:0 0 .75rem;padding:.75rem 1rem;border:1px solid #cbd5e1;border-radius:.5rem;background:#fff}
-.wb-integrations .wb-groups legend{font-weight:600;padding:0 .35rem}
-.wb-integrations .wb-group{display:flex;flex-direction:column;gap:.2rem;margin:.6rem 0}
+.wb-integrations .wb-groups{margin:0 0 .75rem;padding:0;border:0}
+.wb-integrations .wb-groups legend{font-weight:600;padding:0}
+.wb-integrations .wb-gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:.75rem;margin-top:.5rem}
+.wb-integrations .wb-gcard{--g-bg:#f1f5f9;--g-line:#94a3b8;--g-ink:#334155;display:flex;flex-direction:column;gap:.35rem;padding:.8rem .9rem;border:1px solid var(--g-line);border-left-width:5px;border-radius:.6rem;background:var(--g-bg);color:#1e293b}
+.wb-integrations .wb-gtitle{color:var(--g-ink);font-size:1rem}
+.wb-integrations .wb-ghelp{color:#475569;font-size:.8125rem;line-height:1.4;flex:1}
+.wb-integrations .wb-levels{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.25rem}
+.wb-integrations .wb-levels .wb-check{font-weight:600;font-size:.875rem}
+.wb-integrations .wb-pill{position:relative;cursor:pointer}
+.wb-integrations .wb-pill input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.wb-integrations .wb-pill span{display:inline-block;padding:.25rem .65rem;border:1px solid transparent;border-radius:999px;background:rgba(255,255,255,.55);color:#475569;font-size:.8125rem;transition:background .12s,border-color .12s}
+.wb-integrations .wb-pill:hover span{background:rgba(255,255,255,.9)}
+.wb-integrations .wb-pill input:checked + span{background:#fff;border-color:var(--g-line);color:var(--g-ink);font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.12)}
+.wb-integrations .wb-pill input:focus-visible + span{outline:2px solid var(--g-ink);outline-offset:2px}
+.wb-integrations .wb-g-content{--g-bg:#eaf3ff;--g-line:#8fb8ec;--g-ink:#1d4f91}
+.wb-integrations .wb-g-publish{--g-bg:#eef8ea;--g-line:#9ccf86;--g-ink:#2d6a1c}
+.wb-integrations .wb-g-structure{--g-bg:#f3eeff;--g-line:#b6a3e6;--g-ink:#52399a}
+.wb-integrations .wb-g-images{--g-bg:#fff2e5;--g-line:#efb98a;--g-ink:#9a4d12}
+.wb-integrations .wb-g-site{--g-bg:#ffecef;--g-line:#eaa3ae;--g-ink:#9b2b3d}
+.wb-integrations .wb-g-history{--g-bg:#e8f7f5;--g-line:#85cdc5;--g-ink:#17655d}
+.wb-integrations .wb-g-analytics{--g-bg:#fff9dd;--g-line:#e6d27a;--g-ink:#7a6410}
+.wb-integrations .wb-badge.wb-g-content{background:#eaf3ff;color:#1d4f91}
+.wb-integrations .wb-badge.wb-g-publish{background:#eef8ea;color:#2d6a1c}
+.wb-integrations .wb-badge.wb-g-structure{background:#f3eeff;color:#52399a}
+.wb-integrations .wb-badge.wb-g-images{background:#fff2e5;color:#9a4d12}
+.wb-integrations .wb-badge.wb-g-site{background:#ffecef;color:#9b2b3d}
+.wb-integrations .wb-badge.wb-g-history{background:#e8f7f5;color:#17655d}
+.wb-integrations .wb-badge.wb-g-analytics{background:#fff9dd;color:#7a6410}
 </style>
 <section class="wb-integrations mx-auto mt-10 max-w-3xl px-4" data-wb-integrations>
     <div class="card p-8">
@@ -112,35 +137,42 @@
                 <fieldset class="wb-groups">
                     <legend>{$view.t.groups_title}</legend>
                     <small class="wb-hint">{$view.t.groups_help}</small>
-                    {foreach $view.groupForm as $group}
-                    <div class="wb-group">
-                        <label for="wb-group-{$group.name}">{$group.label}</label>
-                        <select class="rounded border border-slate-300 p-2" id="wb-group-{$group.name}" name="group_{$group.name}" aria-describedby="wb-group-help-{$group.name}">
-                            {foreach $group.options as $option}
-                            <option value="{$option.value}"{if $option.selected} selected{/if}>{$option.label}</option>
-                            {/foreach}
-                        </select>
-                        <small class="wb-hint" id="wb-group-help-{$group.name}">{$group.help}</small>
-                    </div>
-                    {/foreach}
-                </fieldset>
-                {if $view.analytics.available}
-                <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
-                {else}
-                <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" disabled aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
-                {/if}
-                <small class="wb-hint" id="wb-analytics-help">{$view.t.analytics_help}</small>
-                {if $view.analytics.off}
-                <div class="wb-off" role="note">
-                    {$view.t.analytics_off}
-                    <ul>
-                        {foreach $view.analytics.problems as $reason}
-                        <li>{$reason}</li>
+                    <div class="wb-gcards">
+                        {foreach $view.groupForm as $group}
+                        <div class="wb-gcard wb-g-{$group.name}">
+                            <strong class="wb-gtitle" id="wb-group-{$group.name}">{$group.label}</strong>
+                            <small class="wb-ghelp" id="wb-group-help-{$group.name}">{$group.help}</small>
+                            <div class="wb-levels" role="radiogroup" aria-labelledby="wb-group-{$group.name}" aria-describedby="wb-group-help-{$group.name}">
+                                {foreach $group.options as $option}
+                                <label class="wb-pill"><input type="radio" name="group_{$group.name}" value="{$option.value}"{if $option.selected} checked{/if}><span>{$option.label}</span></label>
+                                {/foreach}
+                            </div>
+                        </div>
                         {/foreach}
-                    </ul>
-                    <a href="{$view.analytics.docs}" rel="noopener noreferrer">{$view.t.analytics_docs}</a>
-                </div>
-                {/if}
+                        <div class="wb-gcard wb-g-analytics">
+                            <strong class="wb-gtitle">{$view.t.analytics_title}</strong>
+                            <small class="wb-ghelp" id="wb-analytics-help">{$view.t.analytics_help}</small>
+                            <div class="wb-levels">
+                                {if $view.analytics.available}
+                                <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
+                                {else}
+                                <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" disabled aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
+                                {/if}
+                            </div>
+                            {if $view.analytics.off}
+                            <div class="wb-off" role="note">
+                                {$view.t.analytics_off}
+                                <ul>
+                                    {foreach $view.analytics.problems as $reason}
+                                    <li>{$reason}</li>
+                                    {/foreach}
+                                </ul>
+                                <a href="{$view.analytics.docs}" rel="noopener noreferrer">{$view.t.analytics_docs}</a>
+                            </div>
+                            {/if}
+                        </div>
+                    </div>
+                </fieldset>
                 <label for="wb-password">{$view.t.password_label}</label>
                 <input type="password" class="rounded border border-slate-300 p-2" id="wb-password" name="password" autocomplete="current-password" required>
                 <small class="wb-hint">{$view.t.password_help}</small>
@@ -169,7 +201,7 @@
                 <dl class="wb-key-meta">
                     <div><dt>{$view.t.col_created}</dt><dd>{$row.created}, {$row.by}</dd></div>
                     <div><dt>{$view.t.col_last_used}</dt><dd>{$row.last_used}</dd></div>
-                    <div><dt>{$view.t.col_scopes}</dt><dd>{foreach $row.groups as $g}<span class="wb-badge">{$g}</span> {/foreach}</dd></div>
+                    <div><dt>{$view.t.col_scopes}</dt><dd>{foreach $row.groups as $g}<span class="wb-badge wb-g-{$g.name}">{$g.label}</span> {/foreach}</dd></div>
                 </dl>
                 {if $view.canIssue}
                 <details class="wb-revoke">
@@ -232,8 +264,9 @@
         if (!box.disabled) { box.checked = option.getAttribute('data-analytics') === '1'; }
         (option.getAttribute('data-groups') || '').split(';').forEach(function (pair) {
             var parts = pair.split('=');
-            var field = document.getElementById('wb-group-' + parts[0]);
-            if (field && parts[1]) { field.value = parts[1]; }
+            if (!parts[1]) { return; }
+            var radios = document.getElementsByName('group_' + parts[0]);
+            Array.prototype.forEach.call(radios, function (radio) { radio.checked = radio.value === parts[1]; });
         });
     });
 })();

@@ -12,6 +12,10 @@ documented here, see the git tags.
 - Permission groups when issuing an integration key: Content, Publishing, Structure, Images, Site administration and History, each with a level (no access, read, read and write), plus the Analytics choice. A key cannot be changed afterwards. The key cards list the groups instead of a count. Without a group field the full profile is still issued.
 - The Integrations box needs no class in the application: a `cms_boxes` row naming the module `integrations` is enough (`Section` resolves it to `Wbengine\Box\Integrations`). `integrations:install` no longer writes a class or needs `--root` and `--namespace`.
 
+### Changed
+
+- The permission groups of the issue form are cards with soft pastel colors, each with a row of level buttons; the key list repeats the colors on its group badges. The intro text and the Analytics label describe the choice instead of the former fixed profile.
+
 ### Removed
 
 - The "Older key" marker of the key list, which cannot be told apart from a deliberately limited key.

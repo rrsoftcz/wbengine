@@ -414,18 +414,18 @@ class Integrations extends WbengineBoxAbstract
     }
 
     /**
-     * The groups of a key in plain language, for example "Content: read and write".
+     * The groups of a key in plain language, for example "Content: Read", with the group name for its color.
      *
      * @param string[] $scopes
-     * @return string[]
+     * @return array<int, array{name: string, label: string}>
      */
     private function groupLabels(array $scopes): array
     {
         $labels = [];
         foreach (self::levelsOf($scopes) as $name => $level) {
-            $labels[] = 'on' === $level
+            $labels[] = ['name' => $name, 'label' => 'on' === $level
                 ? I18n::t('wb.integrations.group.' . $name)
-                : I18n::t('wb.integrations.group_level', ['group' => I18n::t('wb.integrations.group.' . $name), 'level' => I18n::t('wb.integrations.level.' . $level)]);
+                : I18n::t('wb.integrations.group_level', ['group' => I18n::t('wb.integrations.group.' . $name), 'level' => I18n::t('wb.integrations.level.' . $level)])];
         }
         return $labels;
     }
@@ -449,7 +449,7 @@ class Integrations extends WbengineBoxAbstract
             'col_by', 'col_last_used', 'col_scopes', 'col_status', 'revoke_submit', 'revoke_password', 'rotation_title', 'rotation_1',
             'rotation_2', 'rotation_3', 'issued_title', 'issued_warning', 'copy', 'copied', 'copy_failed', 'instr_title', 'instr_1',
             'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help', 'name_help', 'analytics_label',
-            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help'] as $key) {
+            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title'] as $key) {
             $texts[$key] = I18n::t('wb.integrations.' . $key);
         }
         return $texts;

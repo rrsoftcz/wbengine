@@ -155,7 +155,8 @@ class IntegrationsHttpTest extends DbTestCase
             $this->assertStringContainsString('name="group_' . $group . '"', $body);
         }
         $this->assertStringContainsString('<legend>Permissions</legend>', $body);
-        $this->assertMatchesRegularExpression('~name="group_content".*?<option value="write" selected>~s', $body);
+        $this->assertStringContainsString('<input type="radio" name="group_content" value="write" checked>', $body);
+        $this->assertStringContainsString('class="wb-gcard wb-g-content"', $body);
         // The form is its own panel and the inline styles survive the template engine unchanged.
         $this->assertStringContainsString('<form class="wb-panel"', $body);
         $this->assertStringContainsString('.wb-integrations .wb-panel{margin:1.5rem 0;', $body);
