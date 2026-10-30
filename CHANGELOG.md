@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Removed (6.0.0, breaking)
+
+- The unused settings `codePage`, `cdnPath`, `cssFiles`, `ipAdmins`, `minimizeHtml`, `minimizeCss` and `minimizeJs`, their `Config` getters (`getHtmlHeaderCharset()`, `getCdnPath()`, `getCssCollection()`, `getAdminIpCollection()`, `minimizeHtml()`, `minimizeCss()`, `minimizejs()`) and the `minimizeCss` template variable of `Site`. Nothing in the framework read them. An existing `Settings.json` with these keys still loads, the keys are ignored.
+
 ### Added
 
 - Permission groups when issuing an integration key: Content, Publishing, Structure, Images, Site administration and History, each with a level (no access, read, read and write), plus the Analytics choice. A key cannot be changed afterwards. The key cards list the groups instead of a count. Without a group field the full profile is still issued.

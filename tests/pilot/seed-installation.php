@@ -12,7 +12,7 @@ try {
     $proxy = trim((string) file_get_contents('/state/proxy-ip.txt'));
     if (!filter_var($proxy, FILTER_VALIDATE_IP)) { throw new RuntimeException('Pilot proxy address is unavailable.'); }
     $config = [
-        'timeZone' => 'Europe/Prague', 'codePage' => 'utf8', 'debug' => false, 'minimizeHtml' => false, 'minimizeCss' => false, 'cdnPath' => '',
+        'timeZone' => 'Europe/Prague', 'debug' => false,
         'apiV2' => ['enabled' => true, 'imageDirectory' => '/state/images'],
         'analytics' => ['enabled' => true, 'timezone' => 'UTC', 'retentionDays' => 62],
         'renderer' => ['adapterName' => 'NativeRenderer', 'templatesDir' => '/View/', 'compiledDir' => 'Compiled/', 'configDir' => '/Config/'],
@@ -20,7 +20,7 @@ try {
         'http' => ['trustedProxies' => [$proxy], 'forwardedHeaders' => ['x-forwarded-proto', 'x-forwarded-for']],
         'cache' => ['enabled' => true, 'driver' => 'file', 'dir' => '/state/cache', 'pages' => ['enabled' => true]],
         'i18n' => ['enabled' => true, 'default' => 'en', 'locales' => ['en', 'cs']],
-        'cssFiles' => [], 'ipAdmins' => [], 'recaptcha' => ['secretKey' => ''],
+        'recaptcha' => ['secretKey' => ''],
     ];
     pilotWrite($installation['app'] . '/Config/Settings.json', json_encode($config, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
     pilotWrite($installation['app'] . '/View/site.tpl', '<!doctype html><html><head><meta charset="utf-8"><title>Pilot</title></head><body><main>{$central|raw}</main></body></html>');
