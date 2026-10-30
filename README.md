@@ -5,13 +5,13 @@ WBengine is a small object oriented PHP framework for database driven websites a
 ```
 Application
   Site                 one row of cms_sites, chosen by the URL
-    Section            header, central, api ... (cms_sections)
+    Section            header, central, right ... (cms_sections)
       Box              one unit of content (cms_boxes): a PHP class + method
         static box     a template, rendered as is
         dynamic box    data from the database through a Model, then a template
 ```
 
-The framework is built with performance in mind: no ORM, no reflection-heavy container, one lazily created connection, compiled templates, and a built in debug bar that shows what a request really cost. A JWT REST API is included as the base for an administration backend.
+The framework is built with performance in mind: no ORM, no reflection-heavy container, one lazily created connection, compiled templates, and a built in debug bar that shows what a request really cost. A scoped, audited HTTP API (API v2) lets a central administration application manage a site server to server.
 
 A ready to run example application lives in the companion project `wbengine-skeleton-app`.
 
@@ -25,13 +25,14 @@ A ready to run example application lives in the companion project `wbengine-skel
 6. [Template engine](#template-engine)
 7. [Internationalisation](#internationalisation)
 8. [Database layer](#database-layer)
-9. [Routing and the REST API](#routing-and-the-rest-api)
+9. [Routing and the API](#routing-and-the-api)
 10. [Authentication, sessions and users](#authentication-sessions-and-users)
 11. [Configuration reference](#configuration-reference)
 12. [Debug tooling](#debug-tooling)
-13. [Performance notes and roadmap](#performance-notes-and-roadmap)
+13. [Performance notes](#performance-notes)
 14. [Security notes](#security-notes)
-15. [Upgrading from 3.0](#upgrading-from-30)
+15. [Command line tools](#command-line-tools)
+16. [Upgrading](#upgrading)
 
 ## Requirements
 
@@ -108,7 +109,7 @@ Relevant `cms_boxes` columns:
 
 * a static box renders a template only (`StaticBoxes::About` in the skeleton);
 * a dynamic box asks a Model for data and passes it to a template (`Blog::LocalStoryBox`);
-* framework bundled boxes ship their own template and logic: `Wbengine\Box\Article` (an article from `cms_articles`, with explicit Markdown or preserved legacy HTML) and `Wbengine\Box\Auth` (the login form with CSRF token and optional reCAPTCHA).
+* framework bundled boxes ship their own template and logic: `Wbengine\Box\Article` (an article from `cms_articles`, with explicit Markdown or preserved legacy HTML) `Wbengine\Box\Auth` (the login form with CSRF token and optional reCAPTCHA) and `Wbengine\Box\Integrations` (the screen where an administrator issues, rotates and revokes API v2 integration keys, see below).
 
 **Supporting classes**
 
@@ -142,7 +143,7 @@ $App->run()
   Renderer::dispatch()         at most one layout per Application instance
 ```
 
-In 4.0 the constructor performs no CMS queries or box execution, does not serve a
+The constructor performs no CMS queries or box execution, does not serve a
 page-cache HIT, and does not exit for a canonical-language redirect. I18n still
 normalizes the request early so route patterns see the path without a locale prefix.
 Redirects are emitted by `run()` after custom routes have had a chance to respond.
@@ -287,7 +288,7 @@ timestamps. Production `compileCheck: false` skips this per-render checksum.
 
 ### Moving from Smarty
 
-In 4.0 the temporary Smarty adapter also escapes by default. Legacy layouts must
+The temporary Smarty adapter also escapes by default. Legacy layouts must
 mark trusted section HTML, such as `{$header|raw}`, `{$central|raw}` and
 `{$debug|raw}`, explicitly. Ordinary database values remain escaped. A temporary
 `autoEscape: false` setting is available while migrating those templates.
@@ -499,7 +500,7 @@ Rules:
 
 Set the connection `charset` in the configuration. Use `utf8mb4` for new databases (`utf8` is the three byte variant and rejects emoji).
 
-### Reading request data in 4.0
+### Reading request data
 
 `Http::Post($name)` and `Http::Get($name)` return the corresponding PHP-parsed value
 unchanged, including nested arrays. Omit the name to read the whole POST or GET map.
@@ -534,7 +535,7 @@ request map directly to a database write. Render ordinary text with `{$title}`
 it came through a request helper. Keep password bytes unchanged; apply the intended
 password policy without HTML encoding or slash manipulation.
 
-**Migration:** `Http::secureClean()` has been removed in major version 4.0. Replace
+**Migration:** `Http::secureClean()` has been removed. Replace
 calls with the appropriate input accessor and field validation, and escape at the
 output context. Audit direct `echo` calls, custom renderers and templates using
 `autoEscape: false`; those no longer receive pre-escaped input. Previously stored
@@ -572,7 +573,7 @@ The helper does not enforce a media type; controller-specific requirements, incl
 the cookie API JSON/custom-header contract below, still apply. Repeated calls read
 and parse the body independently; no request body is retained in a static cache.
 
-### CSRF protection in 4.0
+### CSRF protection
 
 The session owns a lazy `Wbengine\Session\Csrf` service, available as
 `$app->getCsrf()` or `$session->getCsrf()`. Use it explicitly in every custom form
@@ -614,7 +615,7 @@ Tokens are bound to the session and purpose. They remain stable across forms and
 tabs, and verifying a request does not create a secret. A single random session
 secret derives purpose tokens with HMAC-SHA256. Session expiry, logout and session-ID
 regeneration invalidate them; fetch fresh forms after logging in. `reset()` explicitly
-invalidates all purposes. Existing per-render login tokens are not accepted in 4.0.
+invalidates all purposes. Per-render login tokens are not accepted.
 
 Issuing or verifying a token marks the response `Cache-Control: private, no-store`
 and bypasses page cache and all native fragment scopes for the rest of the request.
@@ -636,7 +637,7 @@ The API (v2) is not browser based: it is called server to server with a bearer
 integration key, sets no cookies and starts no session, so it has no CSRF surface.
 Browser logins use the form of `Box\Auth` and its CSRF token described above.
 
-### Trusted reverse proxies in 4.0
+### Trusted reverse proxies
 
 Forwarded metadata is disabled by default. `Utils::getUserIp()` and
 `Http::getClientIp()` return the validated connection peer, or an empty string
@@ -692,7 +693,7 @@ when configuration changes.
 The trust-chain rules follow the [MDN X-Forwarded-For guidance](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For);
 the single-value scheme contract follows [X-Forwarded-Proto](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-Proto).
 
-## Routing and the REST API
+## Routing and the API
 
 Application routes are deferred until `run()` and execute before shared cache or
 CMS handling. `get($path, $callable)` is a GET shortcut;
@@ -735,35 +736,38 @@ Router::post('/api/things', fn () => /* ... */ null);
 
 `{name}` matches letters, digits, underscore and dash.
 
-The API lives under `/api/v2` and is the only API: server to server, authenticated by
-integration keys with scopes (see below). Enable it with `apiV2.enabled`; the application
-dispatches it before CMS handling, so no box or bootstrap code is needed. There is no
-cookie or JWT login through the API: users sign in on the web with `Box\Auth`. Adding
-another capability means adding a resource and a scope to API v2, not a new API version.
-Version 5.0 removed the former API v1 (`/api/auth`, `/api/users`, `/api/sections`,
-`/api/translations`, `/api/cache/flush`): users, sections, translations and the cache flush
-are API v2 resources, the JWT login was dropped without a replacement.
+### API v2
 
-The versioned server-to-server API foundation is available at `/api/v2` and
-`/api/v2/capabilities`, with HTTPS scoped integration identity at `/api/v2/identity`.
-Keys are hashed on the website. A logged in local `ADMIN` issues, lists, revokes and
-rotates them on the "Integrations" screen (`Wbengine\Box\Integrations`). The screen and its
-template ship with the framework; `vendor/bin/wbengine.php integrations:install --root=src --config=src/Config/Settings.json`
-previews, and with `--apply` creates, the thin application class, the page (`/integrations/`, `acl = 1`),
-the section and the box record (nothing existing is changed) and lists what still blocks issuing keys,
-or use the trusted local
-model APIs. Every change is a POST with a CSRF token and a fresh password confirmation;
-the raw key is shown once in the POST response. Apply `migrations/4.0.0/007-api-integration-last-used.sql`
-(adds `last_used_at`) and check with `doctor`. Discovery accurately reports unavailable content CRUD.
-The key gets a fixed profile of 22 permissions. The administrator may tick the optional
-"Analytics" choice when issuing it, which adds `analytics:read` (23 in total) so the central
-Admin can show the traffic overview of the website. The choice is offered only when analytics
-is usable: `analytics.enabled` is `true` in `Settings.json` and
-[`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql) is applied (see
-below). Otherwise it is disabled with instructions, and a key without analytics is issued as
-usual. The server accepts the choice only as a checked box, never a list of scopes.
-See [API v2 contracts, schema upgrade and audit/transaction rules](ref-api-v2.md).
-API v2 intentionally has no browser CORS and rejects OPTIONS.
+The API lives under `/api/v2` and is the only API: server to server, authenticated by integration keys with scopes. Enable it with `"apiV2": {"enabled": true}`; the application dispatches it before CMS handling, so no box or bootstrap code is needed. It needs HTTPS (behind a proxy, list the proxy in `http.trustedProxies`), sets no cookies and has no browser CORS. There is no login through the API: users sign in on the web with `Box\Auth`. A new capability is a new resource and scope of API v2, not a new API version.
+
+| Path | Purpose | Scope |
+|------|---------|-------|
+| `GET /api/v2`, `/api/v2/capabilities` | public discovery: version, capability flags, languages, box types | none |
+| `GET /api/v2/identity` | the calling key: id, name, scopes | `discovery:read` |
+| `articles`, `pages`, `menu`, `sections`, `boxes` | list, read, create, update, delete, change history and restore; articles also drafts, revisions, publish and preview | `<resource>:read`, `<resource>:write`, `preview:read`, `publish:write` |
+| `translations/{site\|menu\|article}/{id}/{locale}` | read, save and delete a translation | `translations:read`, `translations:write` |
+| `images`, `media/{id}` | upload, list and delete images (when an image directory is set); public media | `images:read`, `images:write` |
+| `users`, `users/{id}`, `users/{id}/password-reset` | list, create, change role, disable, one-time password link (never a password in or out) | `users:read`, `users:write` |
+| `POST cache/flush` | drop cached data and pages | `cache:write` |
+| `GET config` | effective settings, read only, secrets shown as set or unset | `config:read` |
+| `GET changes` | the change feed and rejected writes | `audit:read` |
+| `GET analytics/overview` | traffic overview (optional) | `analytics:read` |
+
+Keys are hashed on the website. A logged in local `ADMIN` issues, lists, revokes and rotates them on the "Integrations" screen (`Wbengine\Box\Integrations`); the raw key is shown once. The screen and its template ship with the framework. `vendor/bin/wbengine.php integrations:install --root=src --config=src/Config/Settings.json` previews, and with `--apply` creates, the thin application class, the page (`/integrations/`, `acl = 1`), the section and the box record (nothing existing is changed) and lists what still blocks issuing keys. Every change is a POST with a CSRF token and a fresh password confirmation.
+
+The key gets a fixed profile of 22 permissions (all scopes above except `analytics:read`). The administrator may tick the optional "Analytics" choice, which adds `analytics:read` (23 in total) so a central administration can show the traffic overview. The choice is offered only when `analytics.enabled` is `true` and the analytics migration is applied. The server accepts it only as a checked box, never a list of scopes. Every write is recorded in the change log with the key and the actor the central administration names. See [API v2 contracts, schema upgrade and audit/transaction rules](ref-api-v2.md).
+
+Database updates for the API, applied by the operator and never by a web request (`vendor/bin/wbengine.php migration:status` and `doctor` report what is missing):
+
+| Migration | Adds |
+|-----------|------|
+| `4.0.0/002-api-v2-integrations.sql` | integration keys and audit tables |
+| `4.0.0/005-api-content.sql` | content API columns, drafts, revisions, change log |
+| `4.0.0/006-analytics.sql` | analytics tables (only for analytics) |
+| `4.0.0/007-api-integration-last-used.sql` | last use of a key |
+| `4.8.0/008-change-log-source.sql` | source and actor columns of the change log |
+| `4.10.0/009-remote-users.sql` | disabling accounts and one-time password links |
+| `5.0.0/010-drop-refresh-tokens.sql` | removes the unused refresh token table |
 
 First-party aggregate analytics is opt-in. Before enabling it, apply
 [`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql),
@@ -889,22 +893,24 @@ In the skeleton's container the binary is `vendor/bin/wbengine.php` in `/var/www
 |-----|---------|
 | `timeZone` | PHP time zone, for example `Europe/Prague` |
 | `codePage` | HTML charset, `utf8` |
-| `debug` | `true` shows the debug bar and detailed errors. Never in production |
-| `minimizeHtml`, `minimizeCss`, `minimizeJs` | `minimizeHtml` is deprecated and ignored by core dispatch in 4.0; CSS/JS settings retain their existing behavior |
+| `debug` | `true` shows the debug bar and detailed errors. Never in production. `WBENGINE_DEBUG` overrides it |
+| `minimizeHtml`, `minimizeCss`, `minimizeJs` | `minimizeHtml` is deprecated and ignored by core dispatch; CSS/JS settings keep their behavior |
 | `cdnPath` | prefix for static assets |
 | `cssFiles` | list of CSS files to combine when `minimizeCss` is on |
-| `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
+| `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `port`, `database`, `username`, `password`, `charset` (use `utf8mb4`) |
+| `renderer` | `adapterName` (`NativeRenderer`; `SmartyRenderer` only with the optional compatibility package), `autoEscape` (default `true`), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
+| `i18n` | `enabled` (default `false`), `default`, `locales`, `detect`, `urlPrefix`, `prefixDefault`, `cookie`, `cookieDays`, `dir`, `baseUrl` (public origin for absolute hreflang links). See Internationalisation |
+| `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `enabled`, `ttl` (default 60), `allowPaths`, `denyPaths` for the whole page cache. See the performance notes |
 | `counters` | `views`: `enabled` (default `false`), `hits` (50) and `seconds` (60) per batch, `dir` for the counter files. Batches the article view counter |
-| `analytics` | `enabled` (default `false`), `timezone` (default `UTC`), `retentionDays` (default `62`, allowed 31–365). Stores identity-free daily aggregates after migration `006-analytics.sql` |
-| `audit` | `retentionDays` (default `365`, allowed 30–3650) for `cms_api_audit` and `cms_api_changes`, `revisionRetentionDays` (default `365`, allowed 30–3650) for `cms_api_revisions`. Applied by `audit:prune`, after migration `4.8.0/008-change-log-source.sql` |
-| `i18n` | `enabled` (default `false`), `default`, `locales`, `detect`, `urlPrefix`, `prefixDefault`, `cookie`, `cookieDays`, `dir`. See Internationalisation |
-| `cache` | `enabled` (default `false`), `driver` (`apcu` or `file`), `ttl` in seconds (default 300), `dir` for the file driver, `pages`: `{ "enabled": false, "ttl": 60 }` for the whole page cache. See the performance notes |
-| `renderer` | `adapterName` (`SmartyRenderer` or `NativeRenderer`), `autoEscape` (both adapters, default `true`; `false` is a legacy migration option), `templatesDir`, `compiledDir`, `configDir`, `compileCheck` (default `true`; set `false` in production to skip the template change check, then clear the compiled directory on deploy) |
-| `dbAdapterDefinition` | `adapterName` (`Mysqli`), `hostname`, `database`, `username`, `password`, `charset` |
-| `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed |
+| `rateLimit` | `login`: `enabled` (default `true`), `maxAttempts` per IP and account (5), `ipMaxAttempts` per IP (20), `accountMaxAttempts` per account (25), `window` in seconds (900), `dir` for the counter files |
+| `http` | `trustedProxies` (addresses or CIDR ranges of reverse proxies) and `forwardedHeaders` (`x-forwarded-for`, `x-forwarded-proto`). Both default to empty: forwarded headers are never trusted unless listed |
+| `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed. `WBENGINE_RECAPTCHA_SECRET` overrides it |
 | `ipAdmins` | list of administrator IP addresses |
+| `apiV2` | `enabled` (default `false`) switches on `/api/v2`; `imageDirectory` is the directory for uploaded images (`WBENGINE_IMAGE_DIR` overrides it) |
+| `analytics` | `enabled` (default `false`), `timezone` (default `UTC`), `retentionDays` (default `62`, allowed 31 to 365). Identity-free daily aggregates, needs migration `4.0.0/006-analytics.sql` |
+| `audit` | `retentionDays` (default `365`, allowed 30 to 3650) for `cms_api_audit` and `cms_api_changes`, `revisionRetentionDays` (default `365`, allowed 30 to 3650) for `cms_api_revisions`. Applied by `audit:prune` |
 
-The environment variable `WBENGINE_RECAPTCHA_SECRET` overrides the matching settings. Keep `Settings.json` out of version control.
+An application may add keys of its own; the framework ignores what it does not read. The environment variables `WBENGINE_DEBUG`, `WBENGINE_RECAPTCHA_SECRET` and `WBENGINE_IMAGE_DIR` override the matching settings. Keep `Settings.json` out of version control.
 
 ## Debug tooling
 
@@ -912,7 +918,7 @@ With `"debug": true` a bar is appended to the page showing the PHP version, the 
 
 Debug mode also turns on `display_errors`. It exposes SQL and paths, so it must never be enabled on a public server. With debug off, an uncaught exception shows a readable, non-sensitive error page with a reference code; the exception class, message, file and line are written to the PHP error log under the same reference code. Configuration failures have a specific checklist for `src/Config/Settings.json` without exposing server paths. During local recovery, `WBENGINE_DEBUG=1` enables the exception detail template even when the configuration file cannot be loaded. Remove that environment variable before exposing the site publicly.
 
-In 4.0, `Site::initialize()` automatically assigns `server`, `dbinfo` and
+`Site::initialize()` automatically assigns `server`, `dbinfo` and
 `phpversion` only when debug is enabled. Production templates no longer receive
 these diagnostic values by default. If an internal page explicitly needs them,
 call `$app->getSite()->assignDiagnostics()` after site initialization; it assigns
@@ -924,7 +930,7 @@ one bound SQL lookup for exact database collation, so it can itself open the
 connection; diagnostics add no SQL beyond that necessary lookup. Content, navigation and custom boxes can still require database access.
 Keep diagnostic output restricted to trusted users and escape the values normally.
 
-### HTML whitespace and transfer compression in 4.0
+### HTML whitespace and transfer compression
 
 `Renderer::dispatch()` emits the rendered template through the selected adapter's
 `display()` method. It does not rewrite whitespace in the result. Both adapters
@@ -950,7 +956,7 @@ renderer behavior cannot repair an already stored response. Render fresh output
 from the original templates/content. Uncompressed bodies can be larger after this
 change, so check transfer compression in the deployment configuration.
 
-## Performance notes and roadmap
+## Performance notes
 
 For large box tables, the optional migration
 [`migrations/4.0.0/001-boxes-section-order.sql`](migrations/4.0.0/001-boxes-section-order.sql)
@@ -973,63 +979,9 @@ change does not alter cached rows.
 
 The repeatable test benchmark is
 `docker compose -p wbengine-modernization run --rm php php tests/benchmarks/content-lookup.php`.
-It uses connection-local temporary tables, 30,000 boxes over 100 sections, 20 percent
-shared boxes in each section and 140 matching boxes. Median SQL times from 15 runs:
-MySQL 8.4, original/no index 5.3782 ms versus factored/section-order 0.3839 ms;
-MariaDB 11.4, 6.6089 ms versus 0.3637 ms. EXPLAIN estimates fall from about 30,000
-rows to 300. The chosen combination avoids filesort in these datasets; the
-`(section_id, shared, order)` candidate still needs filesort. These are warm DB
-buffer measurements with application cache off, not cold-disk or web throughput
-claims. Warm memory/file box-cache samples execute zero SQL queries.
+With 30,000 boxes over 100 sections and 20 percent shared boxes, the factored query with the index takes about 0.4 ms against 5.4 ms (MySQL 8.4) or 6.6 ms (MariaDB 11.4) without it, and EXPLAIN estimates fall from about 30,000 rows to 300. These are warm database buffer figures with the application cache off. The index adds a little write work (about 0.5 ms per batch of 1,000 inserts), so remeasure for a write-heavy workload.
 
-Indexes add write work: median batches of 1,000 inserts increased from 2.4174 to
-2.9838 ms on MySQL and from 2.1693 to 2.7339 ms on MariaDB in this fixture. Cleanup
-is outside the timed insertion samples. Remeasure for a different section count,
-shared ratio or write-heavy workload. A relational membership table is deferred
-until measured JSON filtering cost warrants its migration and API complexity.
-
-The URL-map optimization is deferred. Before FIX-02, 10,000 visible sites took
-0.1468 ms through the link index, 0.9076 ms for the old warm in-memory scan and
-20.0181 ms for the old file-cache read/scan. Those full-table cache paths have now
-been removed. Current selection always executes one bound SQL query, whether a
-memory/file cache driver is enabled or disabled; random URLs create no lookup
-cache entries. This preserves the actual column collation, accent/case/padding,
-strict values, visibility and highest-site-ID selection. Site row edits become
-visible immediately on an uncached page; whole-page caches still need normal
-invalidation/TTL. Translations retain their separate existing data-cache policy.
-
-FIX-02 regressions cover stored `/café/` matching `/cafe/` under unicode_ci and
-rejecting `/CAFÉ/` under bin, plus decomposed Unicode, padding, invalid strict values,
-hidden rows, duplicates, prefixes and injection-shaped inputs on MySQL/MariaDB.
-Production initialization now includes that one necessary site query. Anonymous
-whole-page HITs and terminal custom routes still bypass CMS selection as before.
-The benchmark labels the selected cache-driver cases as SQL lookups and measures
-any hypothetical full-table map build separately; it does not claim zero-SQL site
-selection or a current full-table scan.
-
-What the engine does well today: a single connection opened only when needed, no model hydration, compiled native templates, bound parameter queries, and a debug bar that makes the query count visible on every page.
-
-`Site::isMenuSelected()` now resolves all parent URL prefixes in one bound SQL
-statement and reuses their IDs for the rest of that Site's current prefix snapshot.
-Checking only the current positive site ID needs no lookup. This avoids a query per
-prefix for every menu item. A changed prefix list or `Site::initialize()` resets the
-snapshot. `Menu::selected()` retains its existing current-page-only behavior.
-
-The parent lookup still includes hidden and strict sites and uses the database's
-actual column collation for case/accent/binary comparisons. Duplicate links now pick
-the lowest `site_id` deterministically. The URL parser's bare prefix `/blog` first
-matches an exact stored link, then falls back to `/blog/` when the exact link is
-missing. Missing prefixes retain ID 0 in `getUrlPairsWithSiteId()`, but zero/negative
-IDs are never active menu entries.
-
-This uses at most one menu-selection SQL statement even with a warm data cache;
-`sites:visible` alone cannot preserve hidden-parent and database collation behavior.
-There is no persistent cache entry per requested URL. The new model method
-`SiteModel::getSiteIdsByUrls(array $urls)` resolves exact URLs in input order,
-including duplicates, and returns integer IDs or zero for misses. SQL work still
-scales with the number of URL prefixes, while statement round trips do not scale
-with the number of menu items. Navigation using this parent helper can therefore
-add one statement to the historical skeleton figures below.
+Site selection always executes one bound SQL query, whether a cache driver is enabled or not: it keeps the real column collation, strict values, visibility and the highest site id for duplicates. `Site::isMenuSelected()` resolves all parent URL prefixes in one statement, so menu rendering does not add a query per menu item.
 
 Measured queries per page in the skeleton application (debug bar):
 
@@ -1049,21 +1001,18 @@ What changed:
 
 * **Page cache** (opt-in, needs the cache enabled): `"cache": {"enabled": true, "driver": "apcu", "pages": {"enabled": true, "ttl": 60}}`. Anonymous visitors get a stored copy of the page, served before any box runs. A hit costs no database query for a visitor without a session cookie and one session lookup for a returning visitor (to be sure they are not logged in). A page is stored only when it is the same for everybody: a plain `GET` without a query string or `Authorization` header, for a visitor who is not logged in, a `200` HTML response, no write to the session (so the login page with its CSRF token is never stored), the site does not require a login, and the URL is exactly the site's own link (a deeper path that falls back to it is not stored, which also keeps the number of entries bounded by the number of sites). Responses carry `X-WBengine-Cache: HIT`, `MISS-STORED` or `BYPASS`, plus an `ETag` and `304` support. The TTL (60 seconds by default) bounds staleness; the API flushes the pages when sections change; after editing `cms_sites`, `cms_menu`, `cms_sections`, `cms_boxes` or articles directly in the database, call `POST /api/cache/flush` (admin token), which also reaches an APCu cache, or wait for the TTL. If a page depends on anything besides the URL and the login state (device type, a language cookie, the time), do not enable the page cache for that site. Indicative throughput of the skeleton home page in the same Docker VM: about 570 requests per second without any cache, about 725 with the data cache, about 1,175 with the page cache (a single completed run, treat it as a direction).
 
-Still open, in the order I recommend:
-
-1. Automatic invalidation of the page cache when content tables change (today the API flushes it, other edits use `Cache::flush()` or the TTL).
-4. Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (clear compiled templates when deploying changed sources).
+Production setup: opcache with `composer dump-autoload --classmap-authoritative`, `php.ini-production`, and `"compileCheck": false` in the renderer settings (clear compiled templates when deploying changed sources).
 
 ## Security notes
 
 * Use bound parameters for every value (see the database layer).
 * Keep `debug` off in production and `Settings.json` out of git.
-* The API authorizes by role (`user`, `editor`, `admin`) checked against the database. Give every new API action an explicit role: `isAuthenticated()` without one only checks that the token is valid.
-* Both WBengine renderer adapters escape output by default in 4.0. Use `{$value|escape}` and `{$html|raw}` explicitly during migration. Set `renderer.autoEscape: false` only as a temporary legacy compatibility setting, then migrate trusted HTML and re-enable escaping.
+* The API authorizes by integration key scope. A key is stored only as a hash, shown once, and every request is checked against the keys table. Roles (`user`, `editor`, `admin`) are read from the database whenever one is needed, never from a session or a form.
+* Both WBengine renderer adapters escape output by default. Use `{$value|escape}` and `{$html|raw}` explicitly during migration. Set `renderer.autoEscape: false` only as a temporary legacy compatibility setting, then migrate trusted HTML and re-enable escaping.
 * Put TLS in front of the application. The session cookie is marked `Secure` only when the request arrives over HTTPS.
 * Report problems privately to the maintainers.
 
-### Page cache controls in 4.0
+### Page cache controls
 
 Use exact canonical paths to restrict shared page caching:
 
@@ -1126,15 +1075,13 @@ reuses raw HTML cached during legacy migration. Existing compiled templates are
 recompiled into a new compiler version and old fragment entries are not reused. Clear compiled templates during deployment when
 `compileCheck` is disabled. The legacy `Runtime::cache()` helper remains public-only.
 
-Before deploying 4.0, widen `cms_users.password` to `varchar(255)`. Creating or
+Widen `cms_users.password` to `varchar(255)`. Creating or
 changing a password now fails when a secure hash cannot fit. Existing legacy MD5
 passwords can still log in and are upgraded once the schema supports it.
 
 ## Development and tests
 
-The next major version is **4.0.0**, currently in development. The
-[modernization plan](plan-framework-improvements.md) records completed work, active
-tasks, dependencies, migration procedures and the remaining release gates. New PHP
+The [modernization plan](plan-framework-improvements.md) records completed work, dependencies and migration procedures. New PHP
 features must follow the existing Application/Site/Section/Box object tree,
 namespaces, lazy services, model and renderer adapter conventions.
 
@@ -1150,27 +1097,33 @@ Use `PHP_VERSION=8.3 docker compose build` (and `docker compose run --rm php com
 
 The integration tests create their tables from `tests/schema.sql`. They are skipped when the database is not reachable. For new installations use the `utf8mb4` connection charset: the older `utf8` alias is three bytes per character and cannot carry emoji.
 
-## Upgrading from 3.0
+## Upgrading
+
+### From 4.x to 5.0
+
+* API v1 is removed: `/api/auth`, `/api/users`, `/api/sections`, `/api/translations` and `/api/cache/flush`, together with the JWT login and the refresh cookie. The only API is v2 (`/api/v2`) with integration keys; users, sections, translations and the cache flush are v2 resources. There is no login through the API: users sign in on the web with `Box\Auth`. Clients of the old routes must move to API v2 with an integration key.
+* The dependency `firebase/php-jwt` is gone: the framework has no runtime Composer package. The `jwt` section of `Settings.json` and the `WBENGINE_JWT_*` variables are ignored; remove them. `doctor` no longer checks them.
+* Remove the application code that starts the old API (`new \Wbengine\Api(); $api->Initialize(); $api->end();` in a box or bootstrap) and the API page and box. API v2 is dispatched by the application itself when `apiV2.enabled` is `true`.
+* Drop the unused refresh token table with `migrations/5.0.0/010-drop-refresh-tokens.sql`.
+* Removed classes and methods: `Wbengine\Auth`, `Api::Initialize()`, `Api::end()`, the CORS and cookie setters of `Api`, `User::getJwtToken()`, `User::useJwt()`, `WbengineRestapiAbstract::isAuthenticated()`, `getSectionModel()` and `ApiSectionModel`.
+* Rows of the change log written by the old API keep the source `v1`; new rows use `v2` or `cli`.
+
+### From 3.0
 
 * PHP 8.3 or newer is required.
-* `firebase/php-jwt` moved from 5 to 7. If you call it yourself, decode with a `Key` object.
-* JWT signing keys are no longer built in. Add a `jwt` section to `Settings.json` or set the environment variables. Authentication refuses to start without them. The keys that used to ship with the library are public and must not be used.
 * Add a `recaptcha` section if you use the login captcha. The previous built in secret is removed.
 * Widen the password column: `ALTER TABLE cms_users MODIFY password varchar(255) NOT NULL DEFAULT '0';`
 * Replace string built SQL with bound parameters. `Db::query()` and the fetch helpers accept an array of parameters. `Db::createUpdateQuery()` is removed, use `Db::update()`.
 * `SiteModel::getUrlId()` is replaced by `getUrlCandidates()`, which returns an array.
-* The `/api/sections` routes now require an admin token, and users and sections accept only whitelisted fields.
-* Add the refresh token column `family_started_at` (`schemas/migrations/004-refresh-token-family-start.sql` in the skeleton): a refresh token family now has an absolute lifetime. Without it logging in works but no refresh token is issued.
-* Create the refresh token table (`schemas/migrations/003-add-refresh-tokens.sql` in the skeleton). Without it logging in still works, but refreshing answers 401. Clients must log in again once, the old refresh cookie is not accepted. Check your cookie settings: the defaults changed (access token 15 minutes, refresh token 7 days, cookie path `/api/auth/`, `SameSite=Strict`).
-* Add `cms_users.role` (`ALTER TABLE cms_users ADD COLUMN role varchar(20) NOT NULL DEFAULT 'user';`) and promote your administrators, otherwise privileged API calls answer 403.
-* API routes accept URLs with or without a trailing slash. If your `.htaccess` adds a trailing slash with a 301 redirect, exclude `/api`, because a redirect turns a POST into a GET.
+* Add `cms_users.role` (`ALTER TABLE cms_users ADD COLUMN role varchar(20) NOT NULL DEFAULT 'user';`) and promote your administrators.
+* If your `.htaccess` adds a trailing slash with a 301 redirect, exclude `/api`, because a redirect turns a POST into a GET, and keep the query string in the rewrite rule (`[QSA,L]`), otherwise API filters and dates are lost.
 
 ## License
 
 MIT, see [LICENSE.md](LICENSE.md).
 
 
-## Development and deployment CLI (4.0)
+## Command line tools
 
 Composer installs `vendor/bin/wbengine.php` and `vendor/bin/migrate-content.php` in applications. From a framework checkout use `php bin/wbengine.php`. Both entry points load the host application autoloader through Composer's bin proxy or anchored installed-package paths. They never search the caller's current directory for executable code.
 
@@ -1182,6 +1135,10 @@ vendor/bin/wbengine.php analytics:prune --config=/site/src/Config/Settings.json
 vendor/bin/wbengine.php audit:prune --config=/site/src/Config/Settings.json [--days=N] [--dry-run]
 vendor/bin/wbengine.php audit:list --config=/site/src/Config/Settings.json [--limit=N] [--resource=NAME] [--actor=ACTOR]
 vendor/bin/wbengine.php user:create --email=owner@example.cz --role=admin --config=/site/src/Config/Settings.json
+vendor/bin/wbengine.php user:password --email=owner@example.cz --config=/site/src/Config/Settings.json
+vendor/bin/wbengine.php user:list --config=/site/src/Config/Settings.json
+vendor/bin/wbengine.php user:delete --email=demo@example.com [--dry-run] --config=/site/src/Config/Settings.json
+vendor/bin/wbengine.php integrations:install --root=/site/src --config=/site/src/Config/Settings.json [--apply]
 vendor/bin/wbengine.php generate:box --root=/site/src --namespace=App --section=Main --module=Welcome --method=index
 ```
 

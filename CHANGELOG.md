@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Documentation
+
+- README brought up to date with 5.0: API v2 reference table and database updates, the complete configuration reference (`http`, `apiV2`, `i18n.baseUrl`, page cache paths), command line tools including `integrations:install`, an upgrade guide from 4.x, and version-specific wording removed.
+
 ### Removed (5.0.0, breaking)
 
 - API v1 (`/api/auth`, `/api/users`, `/api/sections`, `/api/translations`, `/api/cache/flush`) and the JWT login with refresh cookies. Users, sections, translations and the cache flush are API v2 resources; `Api::Initialize()`, the CORS and cookie settings of `Api`, `Wbengine\Auth`, `User::getJwtToken()` and `ApiSectionModel` are gone. Sign in on the web through `Box\Auth`.
