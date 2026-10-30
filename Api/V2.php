@@ -8,6 +8,7 @@ use Wbengine\Api\V2\ContentModel;
 use Wbengine\Api\V2\ImageModel;
 use Wbengine\Api\V2\Resources;
 use Wbengine\Api\V2\Problem;
+use Wbengine\Api\V2\UsersModel;
 use Wbengine\Application\Env\Http;
 use Wbengine\RateLimit\Limiter;
 
@@ -58,6 +59,36 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
                 $this->method($method, ['GET']);
                 $actor = $this->authorize(['analytics:read'], 'analytics.overview', $authorization, $secure, $centralActor, $clientIp);
                 return $this->readReply($this->response(Contract::success($this->getAnalytics()->overview($query))), $actor, 'analytics.overview');
+            }
+            if ('/api/v2/config' === $path) {
+                $this->method($method, ['GET']);
+                $actor = $this->authorize(['config:read'], 'config.read', $authorization, $secure, $centralActor, $clientIp);
+                return $this->readReply($this->response(Contract::success($this->effectiveConfig())), $actor, 'config.read');
+            }
+            if ('/api/v2/cache/flush' === $path) {
+                $this->method($method, ['POST']);
+                $actor = $this->authorize(['cache:write'], 'cache.flush', $authorization, $secure, $centralActor, $clientIp);
+                $actor['central_actor'] = $centralActor;
+                \Wbengine\Cache::flush();
+                \Wbengine\Audit\ChangeLog::record('cache', 'all', 'flush', null, null, $actor);
+                return $this->response(Contract::success(['flushed' => true]));
+            }
+            if (preg_match('~^/api/v2/users(?:/([1-9][0-9]{0,9})(/password-reset)?)?$~D', $path, $match)) {
+                $id = isset($match[1]) ? Resources::id($match[1]) : null; $reset = isset($match[2]);
+                $methods = null === $id ? ['GET', 'POST'] : ($reset ? ['POST'] : ['GET', 'PATCH']);
+                $allow = implode(', ', $methods); $this->method($method, $methods);
+                $actor = $this->authorize(['users:' . ('GET' === $method ? 'read' : 'write')], 'users.' . strtolower($method) . ($reset ? '.password_reset' : ''), $authorization, $secure, $centralActor, $clientIp);
+                $actor['central_actor'] = $centralActor;
+                $users = new UsersModel();
+                if ('GET' === $method) {
+                    return $this->readReply($this->response(null === $id ? $users->collection($query) : $users->read($id)), $actor, 'users.' . (null === $id ? 'list' : 'read'));
+                }
+                $result = match (true) {
+                    $reset => $users->passwordReset($id, $actor),
+                    'POST' === $method => $users->create(Contract::objectBody($body, ['email', 'username', 'firstname', 'lastname', 'role']), $actor),
+                    default => $users->update($id, Contract::objectBody($body, ['role', 'disabled', 'firstname', 'lastname']), $actor),
+                };
+                return $this->response($result, 'POST' === $method && !$reset ? 201 : 200, ['Cache-Control' => 'no-store']);
             }
             if ('/api/v2/changes' === $path) {
                 $this->method($method, ['GET']);
@@ -214,8 +245,23 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
         $resources['preview'] = ['read' => true, 'write' => false];
         $resources['publish'] = ['read' => false, 'write' => true];
         $resources['audit'] = ['read' => true, 'write' => false];
+        $resources['users'] = ['read' => true, 'write' => \Wbengine\User\AccountState::isPresent()];
+        $resources['cache'] = ['read' => false, 'write' => true];
+        $resources['config'] = ['read' => true, 'write' => false];
         $resources['analytics'] = ['read' => \Wbengine\Config::getAnalyticsSettings()['enabled'], 'write' => false];
         return ['api_version' => '2.0', 'capabilities' => $resources, 'box_types' => $this->getContentModel()->boxTypes(), 'i18n' => ['default' => \Wbengine\I18n::translator()->getDefaultLocale(), 'locales' => array_values(\Wbengine\I18n::locales())], 'authentication' => ['type' => 'integration_bearer', 'https_required' => true], 'pagination' => ['type' => 'page', 'default_per_page' => 25, 'max_per_page' => 100], 'search' => ['resources' => ['pages', 'boxes'], 'max_length' => 100]];
+    }
+
+    /** The effective settings for the central Admin: read-only, every secret-like value replaced, no database details. */
+    private function effectiveConfig(): array
+    {
+        $settings = \Wbengine\Audit\ChangeLog::redact(\Wbengine\Config::$config);
+        unset($settings['dbAdapterDefinition']);
+        $mark = static function ($value) use (&$mark) {
+            if (is_array($value)) { return array_map($mark, $value); }
+            return \Wbengine\Audit\ChangeLog::REDACTED === $value ? 'set' : $value;
+        };
+        return ['settings' => $mark($settings)];
     }
 
     private function authorize(array $scopes, string $action, string $authorization, bool $secure, ?string $centralActor, ?string $clientIp): array

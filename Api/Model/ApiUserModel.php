@@ -22,6 +22,7 @@ use Wbengine\Api\Model\Exception\ApiModelException;
 use Wbengine\Db\Exception\DbException;
 use Wbengine\Api\Auth\RefreshTokens;
 use Wbengine\Audit\ChangeLog;
+use Wbengine\User\AccountState;
 use Wbengine\User\Password;
 use Wbengine\User\Role;
 
@@ -108,7 +109,7 @@ class ApiUserModel extends ModelAbstract
     public function getAuthorization($userId)
     {
         $row = Db::fetchAssoc(
-            sprintf("SELECT `user_id`, `role` FROM %s WHERE `user_id` = ? AND `user_id` > 0 LIMIT 1;", S_TABLE_USERS),
+            sprintf("SELECT `user_id`, `role` FROM %s WHERE `user_id` = ? AND `user_id` > 0%s LIMIT 1;", S_TABLE_USERS, AccountState::activeSql()),
             array((int) $userId)
         );
         return is_array($row) ? $row : null;
@@ -125,7 +126,7 @@ class ApiUserModel extends ModelAbstract
     public function getTokenIdentity($userId)
     {
         $row = Db::fetchAssoc(
-            sprintf("SELECT `user_id`, `username`, `email`, `role` FROM %s WHERE `user_id` = ? AND `user_id` > 0 LIMIT 1;", S_TABLE_USERS),
+            sprintf("SELECT `user_id`, `username`, `email`, `role` FROM %s WHERE `user_id` = ? AND `user_id` > 0%s LIMIT 1;", S_TABLE_USERS, AccountState::activeSql()),
             array((int) $userId)
         );
         return is_array($row) ? $row : null;
@@ -134,7 +135,8 @@ class ApiUserModel extends ModelAbstract
 
     public function countAdmins()
     {
-        return (int) Db::fetchAssoc(sprintf("SELECT COUNT(*) AS c FROM %s WHERE `role` = ?;", S_TABLE_USERS), array(Role::ADMIN))['c'];
+        // A disabled administrator cannot repair anything, so it does not count.
+        return (int) Db::fetchAssoc(sprintf("SELECT COUNT(*) AS c FROM %s WHERE `role` = ?%s;", S_TABLE_USERS, AccountState::activeSql()), array(Role::ADMIN))['c'];
     }
 
 

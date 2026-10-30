@@ -7,6 +7,11 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (remote users, cache and settings)
+
+- API v2 users: list, read, create, change the role, disable and enable, issue a password link; scopes `users:read` and `users:write`. One-time password links (`cms_password_resets`, 48 hours, only the hash stored) are used on the login page (`/login/?reset=TOKEN`). Disabled accounts (`cms_users.disabled_at`) cannot sign in, get tokens or keep a web session. Migration `4.10.0/009-remote-users.sql`; without it nothing is disabled and nothing breaks.
+- `POST /api/v2/cache/flush` (scope `cache:write`) and `GET /api/v2/config` (scope `config:read`, secrets replaced). The fixed integration profile has 22 scopes; keys issued earlier gain the new ones by rotation.
+
 ### Added (change feed)
 
 - `GET /api/v2/changes` with the new scope `audit:read` (capability `audit.read`): a paginated, filterable feed of the change log (`resource`, `resource_id`, `action`, `source`, `actor`, `since`, `until`) and, with `outcome=rejected`, of rejected and failed writes, without before/after bodies. `audit:read` is part of the fixed integration profile (18 scopes); keys issued earlier gain it by rotation.

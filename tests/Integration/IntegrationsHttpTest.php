@@ -151,7 +151,7 @@ class IntegrationsHttpTest extends DbTestCase
         $this->login('admin@example.test', 'admin-secret');
         $body = $this->request('/integrations/')['body'];
         // The permission list is a collapsed <details> with a count, not an always open list next to the form.
-        $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(18\)</summary>~', $body);
+        $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(22\)</summary>~', $body);
         $this->assertStringNotContainsString('<details class="wb-scopes" open', $body);
         $this->assertStringContainsString('Read the structure and capabilities of the website', $body);
         // The form is its own panel and the inline styles survive the template engine unchanged.
@@ -225,16 +225,16 @@ class IntegrationsHttpTest extends DbTestCase
             $form = $this->request('/integrations/');
             $this->assertMatchesRegularExpression('~<input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby~', $form['body']);
             $this->assertDoesNotMatchRegularExpression('~name="analytics" value="1" disabled~', $form['body']);
-            $this->assertMatchesRegularExpression('~<summary>[^<]*\(18\)</summary>~', $form['body']);
+            $this->assertMatchesRegularExpression('~<summary>[^<]*\(22\)</summary>~', $form['body']);
             $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $this->formToken($form, 'issue'), 'name' => 'WBengine Admin', 'analytics' => '1', 'password' => 'admin-secret']);
             $this->assertSame(200, $response['status']);
             $this->assertPrivateHeaders($response);
             $this->assertSame(1, preg_match_all('/wbv2_[a-f0-9]{64}/', $response['body']));
             $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
             $scopes = json_decode($row['scopes'], true);
-            $this->assertCount(19, $scopes);
+            $this->assertCount(23, $scopes);
             $this->assertSame(array_merge(Integrations::PROFILE_SCOPES, ['analytics:read']), $scopes);
-            $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(19\)</summary>~', $response['body']);
+            $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(23\)</summary>~', $response['body']);
             $this->assertStringNotContainsString('<details class="wb-scopes" open', $response['body']);
             $this->assertStringContainsString('Read the website traffic overview', $response['body']);
             $this->assertStringContainsString('<span class="wb-badge">Analytics</span>', $response['body']);
@@ -332,7 +332,7 @@ class IntegrationsHttpTest extends DbTestCase
         foreach (Integrations::PROFILE_SCOPES as $scope) {
             $this->assertStringContainsString(\Wbengine\I18n::t('wb.integrations.scope.' . str_replace(':', '_', $scope)), $response['body']);
         }
-        $this->assertCount(18, Integrations::PROFILE_SCOPES);
+        $this->assertCount(22, Integrations::PROFILE_SCOPES);
         $this->assertNotContains('analytics:read', Integrations::PROFILE_SCOPES);
 
         $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');

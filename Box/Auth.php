@@ -9,6 +9,7 @@ use Wbengine\Box\Exception\BoxException;
 use Wbengine\Box\WbengineBoxAbstract;
 use Wbengine\Site\SiteException;
 use Wbengine\User;
+use Wbengine\User\PasswordSetup;
 
 class Auth extends WbengineStaticBox
 {
@@ -30,6 +31,10 @@ class Auth extends WbengineStaticBox
     public function getLoginBox()
     {
         try {
+            $resetToken = Http::getRequestMethod(Http::TYPE_POST) ? Http::PostString('reset') : Http::getParam('reset');
+            if (null !== $resetToken && '' !== $resetToken) {
+                return $this->_passwordSetupBox((string) $resetToken);
+            }
             if (Http::getParam('a') === 'logout' || Http::PostString('a') === 'logout') {
                 if (!Http::getRequestMethod(Http::TYPE_POST)) {
                     header('Allow: POST');
@@ -113,6 +118,54 @@ class Auth extends WbengineStaticBox
         } catch (BoxException $e) {
             throw new SiteException($e->getMessage());
         }
+    }
+
+    /**
+     * The page behind a one-time password link (/login/?reset=TOKEN): set a first or a new password.
+     * The token is checked before the form is shown and claimed once when it is submitted.
+     */
+    private function _passwordSetupBox(string $resetToken): string
+    {
+        $error = null; $done = false;
+        $valid = PasswordSetup::isValid($resetToken);
+        if ($valid && Http::getRequestMethod(Http::TYPE_POST)) {
+            $password = (string) Http::PostRaw('newPassword');
+            if (!$this->getSession()->getCsrf()->validateRequest('auth.password_setup')) {
+                http_response_code(403);
+                $error = I18n::t('wb.login.invalid_token');
+            } elseif ($password !== (string) Http::PostRaw('confirmPassword')) {
+                http_response_code(400);
+                $error = I18n::t('wb.password_setup.mismatch');
+            } else {
+                try {
+                    PasswordSetup::consume($resetToken, $password);
+                    $done = true;
+                } catch (User\UserException $e) {
+                    http_response_code(400);
+                    $error = I18n::t(PasswordSetup::isValid($resetToken) ? 'wb.password_setup.weak' : 'wb.password_setup.invalid');
+                    $valid = PasswordSetup::isValid($resetToken);
+                }
+            }
+        }
+        header('Cache-Control: no-store');
+        header('Referrer-Policy: no-referrer');
+        $r = $this->getRenderer();
+        $r->assign('valid', $valid || $done);
+        $r->assign('done', $done);
+        $r->assign('error', $error);
+        $r->assign('resetToken', $resetToken, true);
+        $r->assign('minLength', PasswordSetup::MIN_LENGTH);
+        $r->assign('formAction', I18n::url('/login/'));
+        $r->assign('loginUrl', I18n::url('/login/'));
+        $r->assign('token', $this->getSession()->getCsrf()->token('auth.password_setup'), true);
+        $r->assign('t', array(
+            'title' => I18n::t('wb.password_setup.title'), 'intro' => I18n::t('wb.password_setup.intro'),
+            'password' => I18n::t('wb.password_setup.password'), 'confirm' => I18n::t('wb.password_setup.confirm'),
+            'hint' => sprintf(I18n::t('wb.password_setup.hint'), PasswordSetup::MIN_LENGTH),
+            'submit' => I18n::t('wb.password_setup.submit'), 'done' => I18n::t('wb.password_setup.done'),
+            'login' => I18n::t('wb.password_setup.login'), 'invalid' => I18n::t('wb.password_setup.invalid'),
+        ));
+        return $r->render('Login/View/SetPassword', null, true);
     }
 
     /** Render this before entering a shared template cache block. */
