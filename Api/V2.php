@@ -245,7 +245,8 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
         $resources['preview'] = ['read' => true, 'write' => false];
         $resources['publish'] = ['read' => false, 'write' => true];
         $resources['audit'] = ['read' => true, 'write' => false];
-        $resources['users'] = ['read' => true, 'write' => \Wbengine\User\AccountState::isPresent()];
+        // Discovery performs no database work, so the account state is not probed here: a site without migration 4.10.0/009 answers 409 to disabling.
+        $resources['users'] = ['read' => true, 'write' => true];
         $resources['cache'] = ['read' => false, 'write' => true];
         $resources['config'] = ['read' => true, 'write' => false];
         $resources['analytics'] = ['read' => \Wbengine\Config::getAnalyticsSettings()['enabled'], 'write' => false];
