@@ -24,6 +24,9 @@
 .wb-integrations .wb-revoke{margin-top:.6rem}
 .wb-integrations .wb-revoke summary{cursor:pointer;color:#475569;font-size:.875rem}
 .wb-integrations .wb-revoke form{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem}
+.wb-integrations .wb-groups{margin:0 0 .75rem;padding:.75rem 1rem;border:1px solid #cbd5e1;border-radius:.5rem;background:#fff}
+.wb-integrations .wb-groups legend{font-weight:600;padding:0 .35rem}
+.wb-integrations .wb-group{display:flex;flex-direction:column;gap:.2rem;margin:.6rem 0}
 </style>
 <section class="wb-integrations mx-auto mt-10 max-w-3xl px-4" data-wb-integrations>
     <div class="card p-8">
@@ -90,14 +93,6 @@
         <h2 class="mt-8">{$view.t.connect_title}</h2>
         <p>{$view.t.connect_help}</p>
         <p><strong>{$view.t.address_label}:</strong> <code>{$view.address}</code></p>
-        <details class="wb-scopes">
-            <summary>{$view.t.scopes_title} ({$view.scopeCount})</summary>
-            <ul>
-                {foreach $view.scopes as $scope}
-                <li>{$scope}</li>
-                {/foreach}
-            </ul>
-        </details>
         <form class="wb-panel" method="post" action="{$view.action}" autocomplete="off">
             <input type="hidden" name="action" value="issue">
             <input type="hidden" name="token" value="{$view.tokens.issue}">
@@ -110,10 +105,25 @@
                 <select class="rounded border border-slate-300 p-2" id="wb-replaces" name="replaces">
                     <option value="">{$view.t.replaces_none}</option>
                     {foreach $view.rotatable as $option}
-                    <option value="{$option.id}" data-analytics="{$option.analytics}">{$option.label}</option>
+                    <option value="{$option.id}" data-analytics="{$option.analytics}" data-groups="{$option.groups}">{$option.label}</option>
                     {/foreach}
                 </select>
                 {/if}
+                <fieldset class="wb-groups">
+                    <legend>{$view.t.groups_title}</legend>
+                    <small class="wb-hint">{$view.t.groups_help}</small>
+                    {foreach $view.groupForm as $group}
+                    <div class="wb-group">
+                        <label for="wb-group-{$group.name}">{$group.label}</label>
+                        <select class="rounded border border-slate-300 p-2" id="wb-group-{$group.name}" name="group_{$group.name}" aria-describedby="wb-group-help-{$group.name}">
+                            {foreach $group.options as $option}
+                            <option value="{$option.value}"{if $option.selected} selected{/if}>{$option.label}</option>
+                            {/foreach}
+                        </select>
+                        <small class="wb-hint" id="wb-group-help-{$group.name}">{$group.help}</small>
+                    </div>
+                    {/foreach}
+                </fieldset>
                 {if $view.analytics.available}
                 <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
                 {else}
@@ -155,14 +165,12 @@
                 <div class="wb-key-head">
                     <strong>{$row.name}</strong> <span class="wb-id">#{$row.id}</span>
                     {if $row.has_analytics}<span class="wb-badge">{$view.t.analytics_badge}</span>{/if}
-                    {if $row.limited}<span class="wb-badge wb-badge-warn" title="{$view.t.limited_help}">{$view.t.badge_limited}</span>{/if}
                 </div>
                 <dl class="wb-key-meta">
                     <div><dt>{$view.t.col_created}</dt><dd>{$row.created}, {$row.by}</dd></div>
                     <div><dt>{$view.t.col_last_used}</dt><dd>{$row.last_used}</dd></div>
-                    <div><dt>{$view.t.col_scopes}</dt><dd>{$row.scope_count}</dd></div>
+                    <div><dt>{$view.t.col_scopes}</dt><dd>{foreach $row.groups as $g}<span class="wb-badge">{$g}</span> {/foreach}</dd></div>
                 </dl>
-                {if $row.limited}<p class="wb-hint">{$view.t.limited_help}</p>{/if}
                 {if $view.canIssue}
                 <details class="wb-revoke">
                     <summary>{$view.t.revoke_open}</summary>
@@ -220,7 +228,13 @@
     if (!select || !box) { return; }
     select.addEventListener('change', function () {
         var option = select.options[select.selectedIndex];
-        if (!box.disabled && option && option.value !== '') { box.checked = option.getAttribute('data-analytics') === '1'; }
+        if (!option || option.value === '') { return; }
+        if (!box.disabled) { box.checked = option.getAttribute('data-analytics') === '1'; }
+        (option.getAttribute('data-groups') || '').split(';').forEach(function (pair) {
+            var parts = pair.split('=');
+            var field = document.getElementById('wb-group-' + parts[0]);
+            if (field && parts[1]) { field.value = parts[1]; }
+        });
     });
 })();
 </script>

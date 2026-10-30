@@ -29,6 +29,9 @@ use Wbengine\Section\Exception\SectionException;
 
 class Section implements ComponentParentInterface
 {
+    /** Boxes bundled with the framework that a box row may name without an application class (module, lowercase). */
+    private const BUNDLED_BOXES = ['integrations' => \Wbengine\Box\Integrations::class];
+
 
     /**
      * Model instance
@@ -159,6 +162,11 @@ class Section implements ComponentParentInterface
     private function _getModuleBox(array $box)
     {
         $className = $this->_buildNamespace($this->getParentNameSpace(), $this->getKey(), $box['module']);
+        // A box shipped with the framework needs no class in the application: the box row alone is enough.
+        // Only this fixed list is ever resolved to a framework class, never a name taken from the row.
+        if (!class_exists($className, true) && isset(self::BUNDLED_BOXES[strtolower((string) $box['module'])])) {
+            $className = self::BUNDLED_BOXES[strtolower((string) $box['module'])];
+        }
 
         if (class_exists($className, true)) {
             $this->_module = new $className($box, $this);
