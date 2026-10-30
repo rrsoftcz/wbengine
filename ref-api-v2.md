@@ -1,6 +1,5 @@
-# WBengine 4.0 API v2
+# WBengine API v2
 
-Status 2026-10-26: API-01 to API-04 implemented; content operations have a transactional audit, ETag and cache invalidation. Image availability depends on an explicit safe storage, the box catalog on local registration.
 
 ## Controller and contract
 
