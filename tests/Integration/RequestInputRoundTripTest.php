@@ -3,7 +3,7 @@
 namespace Wbengine\Tests\Integration;
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Wbengine\Api\Model\ApiSectionModel;
+use Wbengine\Db;
 use Wbengine\Application\Env\Http;
 
 class RequestInputRoundTripTest extends DbTestCase
@@ -38,9 +38,8 @@ class RequestInputRoundTripTest extends DbTestCase
     {
         $value = "O'Brien\\docs <script>alert(\"x\")</script> &amp; text";
         $_POST = ['title' => $value];
-        $model = new ApiSectionModel();
-        $id = $model->addSection(['title' => Http::Post('title'), 'key' => 'input-roundtrip']);
-        $stored = $model->getSectionById($id)['title'];
+        $id = Db::insert('cms_sections', ['title' => Http::Post('title'), 'key' => 'input-roundtrip']);
+        $stored = Db::fetchAssoc('SELECT title FROM cms_sections WHERE section_id = ?', [$id])['title'];
         $this->assertSame($value, $stored);
 
         $class = 'Wbengine\\Renderer\\Adapter\\' . $adapter;
