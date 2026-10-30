@@ -136,5 +136,6 @@ return array(
     'wb.integrations.scope.images_write' => 'Nahrávat obrázky',
     'wb.integrations.scope.preview_read' => 'Zobrazit náhled nepublikovaného obsahu',
     'wb.integrations.scope.publish_write' => 'Publikovat obsah',
+    'wb.integrations.scope.audit_read' => 'Číst záznam změn',
     'wb.integrations.scope.analytics_read' => 'Číst přehled návštěvnosti webu',
 );

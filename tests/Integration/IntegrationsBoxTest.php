@@ -106,7 +106,7 @@ class IntegrationsBoxTest extends TestCase
         $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
         $this->assertSame(hash('sha256', $m[0][0]), $row['key_hash']);
         $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($row['scopes'], true));
-        $this->assertCount(17, Integrations::PROFILE_SCOPES);
+        $this->assertCount(18, Integrations::PROFILE_SCOPES);
         $this->assertNotContains('analytics:read', Integrations::PROFILE_SCOPES);
         // Every scope of the profile is a real framework scope, even when the framework knows more.
         $this->assertSame([], array_diff(Integrations::PROFILE_SCOPES, Model::SCOPES));
@@ -134,10 +134,10 @@ class IntegrationsBoxTest extends TestCase
         $html = $box->Integrations();
         $this->assertSame(200, $out->status);
         $scopes = json_decode($this->lastRow()['scopes'], true);
-        $this->assertCount(18, $scopes);
+        $this->assertCount(19, $scopes);
         $this->assertSame(array_merge(Integrations::PROFILE_SCOPES, ['analytics:read']), $scopes);
         $this->assertSame([], array_diff($scopes, Model::SCOPES));
-        $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(18\)</summary>~', $html);
+        $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(19\)</summary>~', $html);
         $this->assertStringContainsString('Read the website traffic overview', $html);
         $this->assertStringNotContainsString('<details class="wb-scopes" open', $html);
         // The list of keys shows that the key has analytics.
@@ -155,7 +155,7 @@ class IntegrationsBoxTest extends TestCase
             $html = $box->Integrations();
             $this->assertSame(200, $out->status);
             $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($this->lastRow()['scopes'], true));
-            $this->assertMatchesRegularExpression('~<summary>[^<]*\(17\)</summary>~', $html);
+            $this->assertMatchesRegularExpression('~<summary>[^<]*\(18\)</summary>~', $html);
             $this->assertStringNotContainsString('wb-badge">', $html);
         }
     }
