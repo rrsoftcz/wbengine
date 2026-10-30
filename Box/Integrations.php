@@ -47,12 +47,12 @@ class Integrations extends WbengineBoxAbstract
      */
     const GROUPS = [
         'content' => ['read' => ['articles:read', 'pages:read', 'menu:read', 'translations:read', 'preview:read'], 'write' => ['articles:write', 'pages:write', 'menu:write', 'translations:write']],
-        'publish' => ['on' => ['publish:write']],
+        'publish' => ['write' => ['publish:write']],
         'structure' => ['read' => ['sections:read', 'boxes:read'], 'write' => ['sections:write', 'boxes:write']],
         'images' => ['read' => ['images:read'], 'write' => ['images:write']],
         'site' => ['read' => ['users:read', 'config:read'], 'write' => ['users:write', 'cache:write']],
-        'history' => ['on' => ['audit:read']],
-        'analytics' => ['on' => ['analytics:read']],
+        'history' => ['read' => ['audit:read']],
+        'analytics' => ['read' => ['analytics:read']],
     ];
 
     /** Scopes every key has. */
@@ -130,7 +130,11 @@ class Integrations extends WbengineBoxAbstract
             if (null !== $analyticsInput && !in_array($analyticsInput, ['', '0', '1'], true)) {
                 return $this->show($userId, 400, ['error' => 'error.invalid_analytics']);
             }
-            $withAnalytics = '1' === $analyticsInput;
+            $groupAnalytics = Http::PostString('group_analytics');
+            if (null !== $groupAnalytics && !in_array($groupAnalytics, ['', 'off', 'read'], true)) {
+                return $this->show($userId, 400, ['error' => 'error.invalid_analytics']);
+            }
+            $withAnalytics = '1' === $analyticsInput || 'read' === $groupAnalytics;
             if ($withAnalytics && $this->analyticsProblems()) {
                 return $this->show($userId, 400, ['error' => 'error.analytics_unavailable']);
             }
@@ -262,7 +266,7 @@ class Integrations extends WbengineBoxAbstract
             'address' => $address,
             'action' => $this->formAction(),
             'defaultName' => self::DEFAULT_NAME,
-            'groupForm' => $this->groupForm(),
+            'groupForm' => $this->groupForm(!$analyticsProblems),
             'analytics' => ['available' => !$analyticsProblems, 'off' => (bool) $analyticsProblems, 'problems' => $analyticsMessages, 'docs' => self::ANALYTICS_DOCS],
             'integrations' => $list,
             'activeKeys' => array_values(array_filter($list, fn(array $row) => $row['active'])),
@@ -334,7 +338,7 @@ class Integrations extends WbengineBoxAbstract
         if (!$posted) {
             return self::fullLevels($withAnalytics);
         }
-        if ($withAnalytics) { $levels['analytics'] = 'on'; }
+        if ($withAnalytics) { $levels['analytics'] = 'read'; }
         return $levels;
     }
 
@@ -393,22 +397,29 @@ class Integrations extends WbengineBoxAbstract
     }
 
     /**
-     * The form rows of the permission groups (analytics has its own checkbox): label, help and the levels
-     * with the highest one preselected.
+     * The rows of the permission matrix: for every group the label, the help and one cell per level
+     * (off, read, write). A cell is present only when the group has that level. The highest level is
+     * preselected, except for analytics which is off until chosen and disabled when it is not usable.
      *
      * @return array<int, array<string, mixed>>
      */
-    private function groupForm(): array
+    private function groupForm(bool $analyticsAvailable): array
     {
         $rows = [];
         foreach (self::GROUPS as $name => $definition) {
-            if ('analytics' === $name) { continue; }
-            $options = [['value' => 'off', 'label' => I18n::t('wb.integrations.level.off'), 'selected' => false]];
-            $highest = array_key_last($definition);
-            foreach (array_keys($definition) as $level) {
-                $options[] = ['value' => $level, 'label' => I18n::t('wb.integrations.level.' . $level), 'selected' => $level === $highest];
+            $analytics = 'analytics' === $name;
+            $default = $analytics ? 'off' : (string) array_key_last($definition);
+            $cells = [];
+            foreach (['off', 'read', 'write'] as $level) {
+                $cells[] = [
+                    'value' => $level,
+                    'present' => 'off' === $level || array_key_exists($level, $definition),
+                    'selected' => $level === $default,
+                    'disabled' => $analytics && !$analyticsAvailable,
+                    'label' => I18n::t('wb.integrations.cell.' . $level),
+                ];
             }
-            $rows[] = ['name' => $name, 'label' => I18n::t('wb.integrations.group.' . $name), 'help' => I18n::t('wb.integrations.group_help.' . $name), 'options' => $options];
+            $rows[] = ['name' => $name, 'label' => I18n::t('wb.integrations.group.' . $name), 'help' => I18n::t('wb.integrations.group_help.' . $name), 'cells' => $cells];
         }
         return $rows;
     }
@@ -417,13 +428,13 @@ class Integrations extends WbengineBoxAbstract
      * The groups of a key in plain language, for example "Content: Read", with the group name for its color.
      *
      * @param string[] $scopes
-     * @return array<int, array{name: string, label: string}>
+     * @return array<int, array{name: string, level: string, label: string}>
      */
     private function groupLabels(array $scopes): array
     {
         $labels = [];
         foreach (self::levelsOf($scopes) as $name => $level) {
-            $labels[] = ['name' => $name, 'label' => 'on' === $level
+            $labels[] = ['name' => $name, 'level' => $level, 'label' => 1 === count(self::GROUPS[$name])
                 ? I18n::t('wb.integrations.group.' . $name)
                 : I18n::t('wb.integrations.group_level', ['group' => I18n::t('wb.integrations.group.' . $name), 'level' => I18n::t('wb.integrations.level.' . $level)])];
         }
@@ -435,7 +446,6 @@ class Integrations extends WbengineBoxAbstract
     {
         $parts = [];
         foreach (self::GROUPS as $name => $definition) {
-            if ('analytics' === $name) { continue; }
             $parts[] = $name . '=' . (self::levelsOf($scopes)[$name] ?? 'off');
         }
         return implode(';', $parts);
@@ -449,7 +459,7 @@ class Integrations extends WbengineBoxAbstract
             'col_by', 'col_last_used', 'col_scopes', 'col_status', 'revoke_submit', 'revoke_password', 'rotation_title', 'rotation_1',
             'rotation_2', 'rotation_3', 'issued_title', 'issued_warning', 'copy', 'copied', 'copy_failed', 'instr_title', 'instr_1',
             'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help', 'name_help', 'analytics_label',
-            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title'] as $key) {
+            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title', 'col_none', 'col_read', 'col_write'] as $key) {
             $texts[$key] = I18n::t('wb.integrations.' . $key);
         }
         return $texts;

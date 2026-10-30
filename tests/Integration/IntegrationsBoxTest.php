@@ -169,7 +169,7 @@ class IntegrationsBoxTest extends TestCase
             [$box, $out] = $this->box(41, 'GET', [], null, [$code]);
             $html = $box->Integrations();
             $this->assertSame(200, $out->status);
-            $this->assertMatchesRegularExpression('~<input type="checkbox" id="wb-analytics" name="analytics" value="1" disabled~', $html, $code);
+            $this->assertStringContainsString('<input type="radio" name="group_analytics" value="read" disabled>', $html, $code);
             $this->assertStringContainsString(htmlspecialchars(\Wbengine\I18n::t('wb.integrations.analytics_problem.' . $code), ENT_QUOTES), $html);
             $this->assertStringContainsString($needle, \Wbengine\I18n::t('wb.integrations.analytics_problem.' . $code));
             $this->assertStringContainsString(Integrations::ANALYTICS_DOCS, $html);
@@ -178,7 +178,8 @@ class IntegrationsBoxTest extends TestCase
         }
         [$box, $out] = $this->box(41, 'GET');
         $html = $box->Integrations();
-        $this->assertDoesNotMatchRegularExpression('~name="analytics" value="1" disabled~', $html);
+        $this->assertStringContainsString('<input type="radio" name="group_analytics" value="read">', $html);
+        $this->assertStringNotContainsString('name="group_analytics" value="read" disabled', $html);
         $this->assertStringNotContainsString('wb-off', explode('</style>', $html)[1]);
     }
 
@@ -227,8 +228,8 @@ class IntegrationsBoxTest extends TestCase
         [$box] = $this->box(41, 'GET');
         $html = $box->Integrations();
         $this->assertSame(2, substr_count($html, 'class="wb-key"'));
-        $this->assertStringContainsString('<span class="wb-badge wb-g-content">Content: Read</span>', $html);
-        $this->assertStringContainsString('Content: Read and write</span>', $html);
+        $this->assertStringContainsString('<span class="wb-badge wb-lv-read">Content: Read</span>', $html);
+        $this->assertStringContainsString('<span class="wb-badge wb-lv-write">Content: Read and write</span>', $html);
         $this->assertStringContainsString('Site administration: Read and write</span>', $html);
         $this->assertSame(2, substr_count($html, 'name="action" value="revoke"'), 'a revoke form exists for active keys only');
         $this->assertMatchesRegularExpression('~<summary>Revoked keys \(1\)</summary>~', $html);
@@ -238,7 +239,7 @@ class IntegrationsBoxTest extends TestCase
     public function testIssueWithChosenGroupsGrantsExactlyThoseScopes(): void
     {
         [$box, $out, $session] = $this->box(41, 'POST');
-        $this->post(['action' => 'issue', 'name' => 'Editor key', 'password' => 'admin-secret', 'group_content' => 'write', 'group_publish' => 'off', 'group_structure' => 'read', 'group_images' => 'read', 'group_site' => 'off', 'group_history' => 'on'], $session, Integrations::PURPOSE_ISSUE);
+        $this->post(['action' => 'issue', 'name' => 'Editor key', 'password' => 'admin-secret', 'group_content' => 'write', 'group_publish' => 'off', 'group_structure' => 'read', 'group_images' => 'read', 'group_site' => 'off', 'group_history' => 'read'], $session, Integrations::PURPOSE_ISSUE);
         $box->Integrations();
         $this->assertSame(200, $out->status);
         $scopes = json_decode($this->lastRow()['scopes'], true);
@@ -251,8 +252,8 @@ class IntegrationsBoxTest extends TestCase
     public function testWriteLevelAlwaysIncludesTheReadLevelAndAnalyticsStaysItsOwnChoice(): void
     {
         $this->assertSame(['discovery:read', 'images:read', 'images:write'], Integrations::scopesForGroups(['images' => 'write']));
-        $this->assertSame(['discovery:read', 'analytics:read'], Integrations::scopesForGroups(['analytics' => 'on']));
-        $this->assertSame(['content' => 'write', 'publish' => 'on', 'structure' => 'write', 'images' => 'write', 'site' => 'write', 'history' => 'on'], Integrations::levelsOf(Integrations::PROFILE_SCOPES));
+        $this->assertSame(['discovery:read', 'analytics:read'], Integrations::scopesForGroups(['analytics' => 'read']));
+        $this->assertSame(['content' => 'write', 'publish' => 'write', 'structure' => 'write', 'images' => 'write', 'site' => 'write', 'history' => 'read'], Integrations::levelsOf(Integrations::PROFILE_SCOPES));
         $this->assertSame(['content' => 'read', 'images' => 'read'], Integrations::levelsOf(['discovery:read', 'articles:read', 'pages:read', 'menu:read', 'translations:read', 'preview:read', 'images:read', 'users:write']));
         [$box, $out, $session] = $this->box(41, 'POST');
         $this->post(['action' => 'issue', 'name' => 'Analytics only', 'password' => 'admin-secret', 'group_content' => 'off', 'group_publish' => 'off', 'group_structure' => 'off', 'group_images' => 'off', 'group_site' => 'off', 'group_history' => 'off', 'analytics' => '1'], $session, Integrations::PURPOSE_ISSUE);
@@ -261,9 +262,22 @@ class IntegrationsBoxTest extends TestCase
         $this->assertSame(['discovery:read', 'analytics:read'], json_decode($this->lastRow()['scopes'], true));
     }
 
+    public function testAnalyticsCanBeChosenInTheMatrixAndOnlyAsOffOrRead(): void
+    {
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'Matrix analytics', 'password' => 'admin-secret', 'group_content' => 'read', 'group_analytics' => 'read'], $session, Integrations::PURPOSE_ISSUE);
+        $box->Integrations();
+        $this->assertSame(200, $out->status);
+        $this->assertContains('analytics:read', json_decode($this->lastRow()['scopes'], true));
+        [$box, $out, $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'Bad analytics', 'password' => 'admin-secret', 'group_content' => 'read', 'group_analytics' => 'write'], $session, Integrations::PURPOSE_ISSUE);
+        $box->Integrations();
+        $this->assertSame(400, $out->status);
+    }
+
     public function testUnknownGroupLevelsAndEmptyKeysAreRefusedAndNothingIsIssued(): void
     {
-        foreach ([['group_content' => 'admin'], ['group_site' => 'on'], ['group_publish' => 'write'], ['group_content' => 'off', 'group_publish' => 'off', 'group_structure' => 'off', 'group_images' => 'off', 'group_site' => 'off', 'group_history' => 'off']] as $groups) {
+        foreach ([['group_content' => 'admin'], ['group_site' => 'on'], ['group_publish' => 'read'], ['group_history' => 'on'], ['group_content' => 'off', 'group_publish' => 'off', 'group_structure' => 'off', 'group_images' => 'off', 'group_site' => 'off', 'group_history' => 'off']] as $groups) {
             [$box, $out, $session] = $this->box(41, 'POST');
             $this->post(['action' => 'issue', 'name' => 'Bad', 'password' => 'admin-secret'] + $groups, $session, Integrations::PURPOSE_ISSUE);
             $html = $box->Integrations();
@@ -283,8 +297,9 @@ class IntegrationsBoxTest extends TestCase
         }
         $this->assertStringContainsString('<input type="radio" name="group_content" value="write" checked>', $html);
         $this->assertStringNotContainsString('<input type="radio" name="group_content" value="off" checked>', $html);
-        $this->assertSame(7, substr_count($html, 'class="wb-gcard wb-g-'), 'six groups and the analytics choice are cards');
-        $this->assertStringContainsString('data-groups="content=read;publish=off;structure=off;images=off;site=read;history=off"', $html);
+        $this->assertSame(7, substr_count($html, 'class="wb-mrow"'), 'six groups and the analytics choice are rows of the matrix');
+        $this->assertStringContainsString('<input type="radio" name="group_analytics" value="off" checked>', $html);
+        $this->assertStringContainsString('data-groups="content=read;publish=off;structure=off;images=off;site=read;history=off;analytics=off"', $html);
         $this->assertStringContainsString("getElementsByName('group_'", $html);
     }
 

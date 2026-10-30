@@ -14,7 +14,7 @@ documented here, see the git tags.
 
 ### Changed
 
-- The permission groups of the issue form are cards with soft pastel colors, each with a row of level buttons; the key list repeats the colors on its group badges. The intro text and the Analytics label describe the choice instead of the former fixed profile.
+- The permission groups of the issue form are one row each with radio buttons None, Read and Write (a group with one level has one button, Analytics is a row too). A row is red for none, blue for read and green for write; the key list uses the same colors on its group badges. Levels of single-level groups are now `write` (Publishing) and `read` (History, Analytics).
 
 ### Removed
 

@@ -24,34 +24,36 @@
 .wb-integrations .wb-revoke{margin-top:.6rem}
 .wb-integrations .wb-revoke summary{cursor:pointer;color:#475569;font-size:.875rem}
 .wb-integrations .wb-revoke form{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem}
-.wb-integrations .wb-groups{margin:0 0 .75rem;padding:0;border:0}
+.wb-integrations .wb-groups{margin:0 0 .75rem;padding:0;border:0;min-width:0}
 .wb-integrations .wb-groups legend{font-weight:600;padding:0}
-.wb-integrations .wb-gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:.75rem;margin-top:.5rem}
-.wb-integrations .wb-gcard{--g-bg:#f1f5f9;--g-line:#94a3b8;--g-ink:#334155;display:flex;flex-direction:column;gap:.35rem;padding:.8rem .9rem;border:1px solid var(--g-line);border-left-width:5px;border-radius:.6rem;background:var(--g-bg);color:#1e293b}
-.wb-integrations .wb-gtitle{color:var(--g-ink);font-size:1rem}
-.wb-integrations .wb-ghelp{color:#475569;font-size:.8125rem;line-height:1.4;flex:1}
-.wb-integrations .wb-levels{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.25rem}
-.wb-integrations .wb-levels .wb-check{font-weight:600;font-size:.875rem}
-.wb-integrations .wb-pill{position:relative;cursor:pointer}
-.wb-integrations .wb-pill input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
-.wb-integrations .wb-pill span{display:inline-block;padding:.25rem .65rem;border:1px solid transparent;border-radius:999px;background:rgba(255,255,255,.55);color:#475569;font-size:.8125rem;transition:background .12s,border-color .12s}
-.wb-integrations .wb-pill:hover span{background:rgba(255,255,255,.9)}
-.wb-integrations .wb-pill input:checked + span{background:#fff;border-color:var(--g-line);color:var(--g-ink);font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.12)}
-.wb-integrations .wb-pill input:focus-visible + span{outline:2px solid var(--g-ink);outline-offset:2px}
-.wb-integrations .wb-g-content{--g-bg:#eaf3ff;--g-line:#8fb8ec;--g-ink:#1d4f91}
-.wb-integrations .wb-g-publish{--g-bg:#eef8ea;--g-line:#9ccf86;--g-ink:#2d6a1c}
-.wb-integrations .wb-g-structure{--g-bg:#f3eeff;--g-line:#b6a3e6;--g-ink:#52399a}
-.wb-integrations .wb-g-images{--g-bg:#fff2e5;--g-line:#efb98a;--g-ink:#9a4d12}
-.wb-integrations .wb-g-site{--g-bg:#ffecef;--g-line:#eaa3ae;--g-ink:#9b2b3d}
-.wb-integrations .wb-g-history{--g-bg:#e8f7f5;--g-line:#85cdc5;--g-ink:#17655d}
-.wb-integrations .wb-g-analytics{--g-bg:#fff9dd;--g-line:#e6d27a;--g-ink:#7a6410}
-.wb-integrations .wb-badge.wb-g-content{background:#eaf3ff;color:#1d4f91}
-.wb-integrations .wb-badge.wb-g-publish{background:#eef8ea;color:#2d6a1c}
-.wb-integrations .wb-badge.wb-g-structure{background:#f3eeff;color:#52399a}
-.wb-integrations .wb-badge.wb-g-images{background:#fff2e5;color:#9a4d12}
-.wb-integrations .wb-badge.wb-g-site{background:#ffecef;color:#9b2b3d}
-.wb-integrations .wb-badge.wb-g-history{background:#e8f7f5;color:#17655d}
-.wb-integrations .wb-badge.wb-g-analytics{background:#fff9dd;color:#7a6410}
+.wb-integrations .wb-matrix{display:flex;flex-direction:column;gap:.4rem;margin-top:.5rem}
+.wb-integrations .wb-mhead,.wb-integrations .wb-mrow{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,5.75rem);align-items:center;gap:.25rem}
+.wb-integrations .wb-mhead{padding:0 .75rem 0 1rem;color:#475569;font-size:.8125rem;font-weight:600;text-align:center}
+.wb-integrations .wb-mrow{--m-bg:#f1f5f9;--m-line:#94a3b8;--m-ink:#334155;padding:.55rem .75rem .55rem 1rem;border:1px solid var(--m-line);border-left-width:6px;border-radius:.6rem;background:var(--m-bg);transition:background .15s,border-color .15s}
+.wb-integrations .wb-mrow[data-level="off"],.wb-integrations .wb-mrow:has(input[value="off"]:checked){--m-bg:#fdecee;--m-line:#e4a0aa;--m-ink:#9b2b3d}
+.wb-integrations .wb-mrow[data-level="read"],.wb-integrations .wb-mrow:has(input[value="read"]:checked){--m-bg:#eaf3ff;--m-line:#8fb8ec;--m-ink:#1d4f91}
+.wb-integrations .wb-mrow[data-level="write"],.wb-integrations .wb-mrow:has(input[value="write"]:checked){--m-bg:#eaf7e6;--m-line:#94cc80;--m-ink:#2d6a1c}
+.wb-integrations .wb-mrow:has(input:disabled){--m-bg:#f1f5f9;--m-line:#cbd5e1;--m-ink:#64748b;opacity:.75}
+.wb-integrations .wb-mlabel{display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.wb-integrations .wb-mlabel strong{color:var(--m-ink)}
+.wb-integrations .wb-mlabel small{color:#475569;font-size:.8125rem;line-height:1.35}
+.wb-integrations .wb-mcell{display:flex;flex-direction:column;align-items:center;gap:.15rem;cursor:pointer;color:#475569;font-size:.75rem}
+.wb-integrations .wb-mtext{display:none}
+.wb-integrations .wb-mempty{cursor:default}
+.wb-integrations .wb-mcell input{appearance:none;-webkit-appearance:none;width:1.4rem;height:1.4rem;margin:0;border:2px solid var(--m-line);border-radius:50%;background:#fff;cursor:pointer;transition:box-shadow .12s,background .12s}
+.wb-integrations .wb-mcell input:checked{background:var(--m-ink);border-color:var(--m-ink);box-shadow:inset 0 0 0 4px #fff}
+.wb-integrations .wb-mcell input:hover:not(:disabled){box-shadow:0 0 0 3px rgba(255,255,255,.9),0 0 0 5px var(--m-line)}
+.wb-integrations .wb-mcell input:checked:hover:not(:disabled){box-shadow:inset 0 0 0 4px #fff,0 0 0 3px rgba(255,255,255,.9),0 0 0 5px var(--m-line)}
+.wb-integrations .wb-mcell input:focus-visible{outline:2px solid var(--m-ink);outline-offset:3px}
+.wb-integrations .wb-mcell input:disabled{cursor:not-allowed}
+@media (max-width:40rem){
+.wb-integrations .wb-mhead{display:none}
+.wb-integrations .wb-mrow{grid-template-columns:repeat(3,1fr)}
+.wb-integrations .wb-mlabel{grid-column:1 / -1;margin-bottom:.35rem}
+.wb-integrations .wb-mtext{display:block}
+}
+.wb-integrations .wb-badge.wb-lv-read{background:#eaf3ff;color:#1d4f91}
+.wb-integrations .wb-badge.wb-lv-write{background:#eaf7e6;color:#2d6a1c}
 </style>
 <section class="wb-integrations mx-auto mt-10 max-w-3xl px-4" data-wb-integrations>
     <div class="card p-8">
@@ -137,41 +139,32 @@
                 <fieldset class="wb-groups">
                     <legend>{$view.t.groups_title}</legend>
                     <small class="wb-hint">{$view.t.groups_help}</small>
-                    <div class="wb-gcards">
+                    <div class="wb-matrix" data-wb-matrix>
+                        <div class="wb-mhead" aria-hidden="true"><span></span><span>{$view.t.col_none}</span><span>{$view.t.col_read}</span><span>{$view.t.col_write}</span></div>
                         {foreach $view.groupForm as $group}
-                        <div class="wb-gcard wb-g-{$group.name}">
-                            <strong class="wb-gtitle" id="wb-group-{$group.name}">{$group.label}</strong>
-                            <small class="wb-ghelp" id="wb-group-help-{$group.name}">{$group.help}</small>
-                            <div class="wb-levels" role="radiogroup" aria-labelledby="wb-group-{$group.name}" aria-describedby="wb-group-help-{$group.name}">
-                                {foreach $group.options as $option}
-                                <label class="wb-pill"><input type="radio" name="group_{$group.name}" value="{$option.value}"{if $option.selected} checked{/if}><span>{$option.label}</span></label>
-                                {/foreach}
-                            </div>
+                        <div class="wb-mrow" role="radiogroup" aria-labelledby="wb-group-{$group.name}" aria-describedby="wb-group-help-{$group.name}">
+                            <div class="wb-mlabel"><strong id="wb-group-{$group.name}">{$group.label}</strong><small id="wb-group-help-{$group.name}">{$group.help}</small></div>
+                            {foreach $group.cells as $cell}
+                            {if $cell.present}
+                            <label class="wb-mcell"><input type="radio" name="group_{$group.name}" value="{$cell.value}"{if $cell.selected} checked{/if}{if $cell.disabled} disabled{/if}><span class="wb-mtext">{$cell.label}</span></label>
+                            {else}
+                            <span class="wb-mcell wb-mempty" aria-hidden="true"></span>
+                            {/if}
+                            {/foreach}
                         </div>
                         {/foreach}
-                        <div class="wb-gcard wb-g-analytics">
-                            <strong class="wb-gtitle">{$view.t.analytics_title}</strong>
-                            <small class="wb-ghelp" id="wb-analytics-help">{$view.t.analytics_help}</small>
-                            <div class="wb-levels">
-                                {if $view.analytics.available}
-                                <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
-                                {else}
-                                <label class="wb-check" for="wb-analytics"><input type="checkbox" id="wb-analytics" name="analytics" value="1" disabled aria-describedby="wb-analytics-help"> {$view.t.analytics_label}</label>
-                                {/if}
-                            </div>
-                            {if $view.analytics.off}
-                            <div class="wb-off" role="note">
-                                {$view.t.analytics_off}
-                                <ul>
-                                    {foreach $view.analytics.problems as $reason}
-                                    <li>{$reason}</li>
-                                    {/foreach}
-                                </ul>
-                                <a href="{$view.analytics.docs}" rel="noopener noreferrer">{$view.t.analytics_docs}</a>
-                            </div>
-                            {/if}
-                        </div>
                     </div>
+                    {if $view.analytics.off}
+                    <div class="wb-off" role="note">
+                        {$view.t.analytics_off}
+                        <ul>
+                            {foreach $view.analytics.problems as $reason}
+                            <li>{$reason}</li>
+                            {/foreach}
+                        </ul>
+                        <a href="{$view.analytics.docs}" rel="noopener noreferrer">{$view.t.analytics_docs}</a>
+                    </div>
+                    {/if}
                 </fieldset>
                 <label for="wb-password">{$view.t.password_label}</label>
                 <input type="password" class="rounded border border-slate-300 p-2" id="wb-password" name="password" autocomplete="current-password" required>
@@ -201,7 +194,7 @@
                 <dl class="wb-key-meta">
                     <div><dt>{$view.t.col_created}</dt><dd>{$row.created}, {$row.by}</dd></div>
                     <div><dt>{$view.t.col_last_used}</dt><dd>{$row.last_used}</dd></div>
-                    <div><dt>{$view.t.col_scopes}</dt><dd>{foreach $row.groups as $g}<span class="wb-badge wb-g-{$g.name}">{$g.label}</span> {/foreach}</dd></div>
+                    <div><dt>{$view.t.col_scopes}</dt><dd>{foreach $row.groups as $g}<span class="wb-badge wb-lv-{$g.level}">{$g.label}</span> {/foreach}</dd></div>
                 </dl>
                 {if $view.canIssue}
                 <details class="wb-revoke">
@@ -254,20 +247,37 @@
 {if $view.canIssue}
 <script>
 (function () {
-    // Rotation: preset the Analytics choice from the key that is being replaced.
+    var matrix = document.querySelector('[data-wb-matrix]');
+    if (!matrix) { return; }
+    // The row takes the color of the chosen level: red none, blue read, green write.
+    function paint(row) {
+        var chosen = row.querySelector('input:checked');
+        if (chosen) { row.setAttribute('data-level', chosen.value); }
+    }
+    var rows = matrix.querySelectorAll('.wb-mrow');
+    Array.prototype.forEach.call(rows, paint);
+    matrix.addEventListener('change', function (event) {
+        var row = event.target.closest ? event.target.closest('.wb-mrow') : null;
+        if (row) { paint(row); }
+    });
+    // Rotation: preset the levels from the key that is being replaced.
     var select = document.getElementById('wb-replaces');
-    var box = document.getElementById('wb-analytics');
-    if (!select || !box) { return; }
+    if (!select) { return; }
     select.addEventListener('change', function () {
         var option = select.options[select.selectedIndex];
         if (!option || option.value === '') { return; }
-        if (!box.disabled) { box.checked = option.getAttribute('data-analytics') === '1'; }
+        var levels = {};
         (option.getAttribute('data-groups') || '').split(';').forEach(function (pair) {
             var parts = pair.split('=');
-            if (!parts[1]) { return; }
-            var radios = document.getElementsByName('group_' + parts[0]);
-            Array.prototype.forEach.call(radios, function (radio) { radio.checked = radio.value === parts[1]; });
+            if (parts[1]) { levels[parts[0]] = parts[1]; }
         });
+        if (!levels.analytics) { levels.analytics = option.getAttribute('data-analytics') === '1' ? 'read' : 'off'; }
+        Object.keys(levels).forEach(function (name) {
+            Array.prototype.forEach.call(document.getElementsByName('group_' + name), function (radio) {
+                if (!radio.disabled) { radio.checked = radio.value === levels[name]; }
+            });
+        });
+        Array.prototype.forEach.call(rows, paint);
     });
 })();
 </script>
