@@ -150,10 +150,12 @@ class IntegrationsHttpTest extends DbTestCase
     {
         $this->login('admin@example.test', 'admin-secret');
         $body = $this->request('/integrations/')['body'];
-        // The permission list is a collapsed <details> with a count, not an always open list next to the form.
-        $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(22\)</summary>~', $body);
-        $this->assertStringNotContainsString('<details class="wb-scopes" open', $body);
-        $this->assertStringContainsString('Read the structure and capabilities of the website', $body);
+        // The permissions are chosen per group, each with a level, and the full profile is preselected.
+        foreach (['content', 'publish', 'structure', 'images', 'site', 'history'] as $group) {
+            $this->assertStringContainsString('name="group_' . $group . '"', $body);
+        }
+        $this->assertStringContainsString('<legend>Permissions</legend>', $body);
+        $this->assertMatchesRegularExpression('~name="group_content".*?<option value="write" selected>~s', $body);
         // The form is its own panel and the inline styles survive the template engine unchanged.
         $this->assertStringContainsString('<form class="wb-panel"', $body);
         $this->assertStringContainsString('.wb-integrations .wb-panel{margin:1.5rem 0;', $body);
@@ -200,7 +202,7 @@ class IntegrationsHttpTest extends DbTestCase
         // A key without analytics is still issued.
         $issued = $this->issue($this->formToken($response, 'issue'), 'admin-secret');
         $this->assertSame(200, $issued['status']);
-        $this->assertSame(Integrations::PROFILE_SCOPES, json_decode(Db::fetchAssoc('SELECT * FROM cms_api_integrations')['scopes'], true));
+        $this->assertEqualsCanonicalizing(Integrations::PROFILE_SCOPES, json_decode(Db::fetchAssoc('SELECT * FROM cms_api_integrations')['scopes'], true));
     }
 
     public function testServerRefusesAnalyticsWhenItIsNotUsable(): void
@@ -225,7 +227,7 @@ class IntegrationsHttpTest extends DbTestCase
             $form = $this->request('/integrations/');
             $this->assertMatchesRegularExpression('~<input type="checkbox" id="wb-analytics" name="analytics" value="1" aria-describedby~', $form['body']);
             $this->assertDoesNotMatchRegularExpression('~name="analytics" value="1" disabled~', $form['body']);
-            $this->assertMatchesRegularExpression('~<summary>[^<]*\(22\)</summary>~', $form['body']);
+            $this->assertStringContainsString('name="group_site"', $form['body']);
             $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $this->formToken($form, 'issue'), 'name' => 'WBengine Admin', 'analytics' => '1', 'password' => 'admin-secret']);
             $this->assertSame(200, $response['status']);
             $this->assertPrivateHeaders($response);
@@ -233,7 +235,7 @@ class IntegrationsHttpTest extends DbTestCase
             $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
             $scopes = json_decode($row['scopes'], true);
             $this->assertCount(23, $scopes);
-            $this->assertSame(array_merge(Integrations::PROFILE_SCOPES, ['analytics:read']), $scopes);
+            $this->assertEqualsCanonicalizing(array_merge(Integrations::PROFILE_SCOPES, ['analytics:read']), $scopes);
             $this->assertMatchesRegularExpression('~<details class="wb-scopes">\s*<summary>[^<]*\(23\)</summary>~', $response['body']);
             $this->assertStringNotContainsString('<details class="wb-scopes" open', $response['body']);
             $this->assertStringContainsString('Read the website traffic overview', $response['body']);
@@ -337,7 +339,7 @@ class IntegrationsHttpTest extends DbTestCase
 
         $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
         $this->assertSame(hash('sha256', $key), $row['key_hash']);
-        $this->assertSame(Integrations::PROFILE_SCOPES, json_decode($row['scopes'], true));
+        $this->assertEqualsCanonicalizing(Integrations::PROFILE_SCOPES, json_decode($row['scopes'], true));
         $this->assertSame(21, $row['created_by']);
         $dump = json_encode([Db::fetchAllAssoc('SELECT * FROM cms_api_integrations'), Db::fetchAllAssoc('SELECT * FROM cms_api_audit'), Db::fetchAllAssoc('SELECT * FROM cms_sessions')]);
         $this->assertStringNotContainsString($key, $dump);
