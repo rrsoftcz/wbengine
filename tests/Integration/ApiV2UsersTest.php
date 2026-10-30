@@ -89,7 +89,6 @@ final class ApiV2UsersTest extends ApiTestCase
         $user = $reflection->newInstanceWithoutConstructor();
         foreach (['_login' => $email, '_paswd' => $password] as $property => $value) {
             $p = $reflection->getProperty($property);
-            $p->setAccessible(true);
             $p->setValue($user, $value);
         }
         return (new User\Model())->authenticate($user);
