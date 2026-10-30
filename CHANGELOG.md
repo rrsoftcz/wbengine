@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Changed
+
+- The integrations page lists active keys as cards (name, creation, last use, permissions, revoke behind a disclosure) with revoked keys folded into a closed section, and marks keys issued before the latest permissions as older keys.
+
 ### Added (remote users, cache and settings)
 
 - API v2 users: list, read, create, change the role, disable and enable, issue a password link; scopes `users:read` and `users:write`. One-time password links (`cms_password_resets`, 48 hours, only the hash stored) are used on the login page (`/login/?reset=TOKEN`). Disabled accounts (`cms_users.disabled_at`) cannot sign in, get tokens or keep a web session. Migration `4.10.0/009-remote-users.sql`; without it nothing is disabled and nothing breaks.

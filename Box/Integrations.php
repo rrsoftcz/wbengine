@@ -216,6 +216,9 @@ class Integrations extends WbengineBoxAbstract
                 'last_used' => null === $row['last_used_at'] ? I18n::t('wb.integrations.never_used') : $this->date($row['last_used_at']),
                 'scope_count' => count($row['scopes']),
                 'has_analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true),
+                'revoked_on' => $active ? '' : $this->date($row['revoked_at']),
+                // A key issued before the profile grew lacks the newer scopes: still valid, but some Admin pages need a new key.
+                'limited' => $active && array_diff(self::PROFILE_SCOPES, $row['scopes']) !== [],
             ];
             if ($active && (!isset($state['issued']) || (int) $state['issued']['integration_id'] !== $row['integration_id'])) {
                 $rotatable[] = ['id' => $row['integration_id'], 'label' => $row['name'] . ' #' . $row['integration_id'], 'analytics' => in_array(self::ANALYTICS_SCOPE, $row['scopes'], true) ? '1' : '0'];
@@ -236,6 +239,9 @@ class Integrations extends WbengineBoxAbstract
             'scopeCount' => count(self::PROFILE_SCOPES),
             'analytics' => ['available' => !$analyticsProblems, 'off' => (bool) $analyticsProblems, 'problems' => $analyticsMessages, 'docs' => self::ANALYTICS_DOCS],
             'integrations' => $list,
+            'activeKeys' => array_values(array_filter($list, fn(array $row) => $row['active'])),
+            'revokedKeys' => array_values(array_filter($list, fn(array $row) => !$row['active'])),
+            'revokedCount' => count(array_filter($list, fn(array $row) => !$row['active'])),
             'rotatable' => $rotatable,
             'issued' => $issued,
             'tokens' => ['issue' => $csrf->token(self::PURPOSE_ISSUE), 'revoke' => $csrf->token(self::PURPOSE_REVOKE)],
@@ -287,7 +293,7 @@ class Integrations extends WbengineBoxAbstract
             'col_by', 'col_last_used', 'col_scopes', 'col_status', 'revoke_submit', 'revoke_password', 'rotation_title', 'rotation_1',
             'rotation_2', 'rotation_3', 'issued_title', 'issued_warning', 'copy', 'copied', 'copy_failed', 'instr_title', 'instr_1',
             'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help', 'name_help', 'analytics_label',
-            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge'] as $key) {
+            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'badge_limited', 'limited_help', 'revoke_open'] as $key) {
             $texts[$key] = I18n::t('wb.integrations.' . $key);
         }
         return $texts;

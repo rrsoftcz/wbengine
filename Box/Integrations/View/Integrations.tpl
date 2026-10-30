@@ -12,6 +12,18 @@
 .wb-integrations .wb-off{margin:0 0 .75rem;padding:.6rem .85rem;border:1px solid #cbd5e1;border-radius:.5rem;background:#fff;color:#475569;font-size:.875rem;line-height:1.4}
 .wb-integrations .wb-off ul{margin:.4rem 0 0;padding-left:1.25rem}
 .wb-integrations .wb-hint{display:block;margin:-.25rem 0 .75rem;color:#475569;font-size:.875rem;line-height:1.4}
+.wb-integrations .wb-keys{list-style:none;margin:.5rem 0 0;padding:0;display:flex;flex-direction:column;gap:.75rem}
+.wb-integrations .wb-key{padding:.85rem 1rem;border:1px solid #cbd5e1;border-radius:.5rem;background:#fff}
+.wb-integrations .wb-key-head{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem}
+.wb-integrations .wb-id{color:#64748b;font-size:.8rem}
+.wb-integrations .wb-key-meta{display:flex;flex-wrap:wrap;gap:.25rem 1.5rem;margin:.5rem 0 0}
+.wb-integrations .wb-key-meta div{display:flex;gap:.4rem}
+.wb-integrations .wb-key-meta dt{color:#64748b}
+.wb-integrations .wb-key-meta dd{margin:0}
+.wb-integrations .wb-badge-warn{background:#fef3c7;color:#92400e}
+.wb-integrations .wb-revoke{margin-top:.6rem}
+.wb-integrations .wb-revoke summary{cursor:pointer;color:#475569;font-size:.875rem}
+.wb-integrations .wb-revoke form{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem}
 </style>
 <section class="wb-integrations mx-auto mt-10 max-w-3xl px-4" data-wb-integrations>
     <div class="card p-8">
@@ -136,49 +148,65 @@
 
         {if $view.showList}
         <h2 class="mt-8">{$view.t.list_title}</h2>
-        {if $view.integrations}
-        <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-            <thead>
-                <tr>
-                    <th>{$view.t.col_name}</th>
-                    <th>{$view.t.col_status}</th>
-                    <th>{$view.t.col_created}</th>
-                    <th>{$view.t.col_by}</th>
-                    <th>{$view.t.col_last_used}</th>
-                    <th>{$view.t.col_scopes}</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {foreach $view.integrations as $row}
-                <tr>
-                    <td>{$row.name}</td>
-                    <td>{$row.status}</td>
-                    <td>{$row.created}</td>
-                    <td>{$row.by}</td>
-                    <td>{$row.last_used}</td>
-                    <td>{$row.scope_count}{if $row.has_analytics} <span class="wb-badge">{$view.t.analytics_badge}</span>{/if}</td>
-                    <td>
-                        {if $row.active}
-                        {if $view.canIssue}
-                        <form method="post" action="{$view.action}" autocomplete="off">
-                            <input type="hidden" name="action" value="revoke">
-                            <input type="hidden" name="token" value="{$view.tokens.revoke}">
-                            <input type="hidden" name="integration_id" value="{$row.id}">
-                            <input type="password" class="rounded border border-slate-300 p-1" name="password" autocomplete="current-password" required placeholder="{$view.t.revoke_password}" aria-label="{$view.t.revoke_password}">
-                            <button type="submit" class="btn-outline">{$view.t.revoke_submit}</button>
-                        </form>
-                        {/if}
-                        {/if}
-                    </td>
-                </tr>
-                {/foreach}
-            </tbody>
-        </table>
-        </div>
+        {if $view.activeKeys}
+        <ul class="wb-keys">
+            {foreach $view.activeKeys as $row}
+            <li class="wb-key">
+                <div class="wb-key-head">
+                    <strong>{$row.name}</strong> <span class="wb-id">#{$row.id}</span>
+                    {if $row.has_analytics}<span class="wb-badge">{$view.t.analytics_badge}</span>{/if}
+                    {if $row.limited}<span class="wb-badge wb-badge-warn" title="{$view.t.limited_help}">{$view.t.badge_limited}</span>{/if}
+                </div>
+                <dl class="wb-key-meta">
+                    <div><dt>{$view.t.col_created}</dt><dd>{$row.created}, {$row.by}</dd></div>
+                    <div><dt>{$view.t.col_last_used}</dt><dd>{$row.last_used}</dd></div>
+                    <div><dt>{$view.t.col_scopes}</dt><dd>{$row.scope_count}</dd></div>
+                </dl>
+                {if $row.limited}<p class="wb-hint">{$view.t.limited_help}</p>{/if}
+                {if $view.canIssue}
+                <details class="wb-revoke">
+                    <summary>{$view.t.revoke_open}</summary>
+                    <form method="post" action="{$view.action}" autocomplete="off">
+                        <input type="hidden" name="action" value="revoke">
+                        <input type="hidden" name="token" value="{$view.tokens.revoke}">
+                        <input type="hidden" name="integration_id" value="{$row.id}">
+                        <input type="password" class="rounded border border-slate-300 p-1" name="password" autocomplete="current-password" required placeholder="{$view.t.revoke_password}" aria-label="{$view.t.revoke_password}">
+                        <button type="submit" class="btn-outline">{$view.t.revoke_submit}</button>
+                    </form>
+                </details>
+                {/if}
+            </li>
+            {/foreach}
+        </ul>
         {else}
-        <p>{$view.t.list_empty}</p>
+        <p>{$view.t.active_empty}</p>
+        {/if}
+        {if $view.revokedKeys}
+        <details class="wb-scopes">
+            <summary>{$view.t.revoked_title} ({$view.revokedCount})</summary>
+            <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr>
+                        <th>{$view.t.col_name}</th>
+                        <th>{$view.t.col_created}</th>
+                        <th>{$view.t.col_last_used}</th>
+                        <th>{$view.t.col_revoked}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {foreach $view.revokedKeys as $row}
+                    <tr>
+                        <td>{$row.name} <span class="wb-id">#{$row.id}</span></td>
+                        <td>{$row.created}</td>
+                        <td>{$row.last_used}</td>
+                        <td>{$row.revoked_on}</td>
+                    </tr>
+                    {/foreach}
+                </tbody>
+            </table>
+            </div>
+        </details>
         {/if}
         {/if}
     </div>

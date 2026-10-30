@@ -217,6 +217,21 @@ class IntegrationsBoxTest extends TestCase
         $this->assertSame(3, (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM cms_api_integrations')['n']);
     }
 
+    public function testListShowsActiveKeysFirstAndFoldsRevokedOnesAway(): void
+    {
+        $old = (new Model())->provision(41, 'Old key', array_slice(Integrations::PROFILE_SCOPES, 0, 17));
+        (new Model())->provision(41, 'Current key', Integrations::PROFILE_SCOPES);
+        Db::query('UPDATE cms_api_integrations SET revoked_at = ' . time() . ' WHERE integration_id = ' . (int) $old['integration_id']);
+        (new Model())->provision(41, 'Limited key', array_slice(Integrations::PROFILE_SCOPES, 0, 17));
+        [$box] = $this->box(41, 'GET');
+        $html = $box->Integrations();
+        $this->assertSame(2, substr_count($html, 'class="wb-key"'));
+        $this->assertSame(1, substr_count($html, 'wb-badge wb-badge-warn'));
+        $this->assertSame(2, substr_count($html, 'name="action" value="revoke"'), 'a revoke form exists for active keys only');
+        $this->assertMatchesRegularExpression('~<summary>Revoked keys \(1\)</summary>~', $html);
+        $this->assertLessThan(strpos($html, 'Revoked keys (1)'), strpos($html, 'Current key'));
+    }
+
     public function testRotationPrefillsTheChoiceFromTheOldKey(): void
     {
         (new Model())->provision(41, 'Plain key', Integrations::PROFILE_SCOPES);
