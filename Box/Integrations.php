@@ -35,7 +35,7 @@ class Integrations extends WbengineBoxAbstract
      * The profile "Site management in WBengine Admin": exactly these scopes, nothing derived from
      * Model::SCOPES, so a scope the framework adds later is never issued by accident.
      */
-    const PROFILE_SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write'];
+    const PROFILE_SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write', 'audit:read'];
 
     /** The optional scope added by the "Analytics" choice, on top of PROFILE_SCOPES. */
     const ANALYTICS_SCOPE = 'analytics:read';

@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (change feed)
+
+- `GET /api/v2/changes` with the new scope `audit:read` (capability `audit.read`): a paginated, filterable feed of the change log (`resource`, `resource_id`, `action`, `source`, `actor`, `since`, `until`) and, with `outcome=rejected`, of rejected and failed writes, without before/after bodies. `audit:read` is part of the fixed integration profile (18 scopes); keys issued earlier gain it by rotation.
+
 Target: **4.1.0**.
 
 ### Changed

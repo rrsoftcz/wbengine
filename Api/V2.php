@@ -59,6 +59,11 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
                 $actor = $this->authorize(['analytics:read'], 'analytics.overview', $authorization, $secure, $centralActor, $clientIp);
                 return $this->readReply($this->response(Contract::success($this->getAnalytics()->overview($query))), $actor, 'analytics.overview');
             }
+            if ('/api/v2/changes' === $path) {
+                $this->method($method, ['GET']);
+                $actor = $this->authorize(['audit:read'], 'changes.list', $authorization, $secure, $centralActor, $clientIp);
+                return $this->readReply($this->response($this->getModel()->changeFeed($query)), $actor, 'changes.list');
+            }
             if (preg_match('~^/api/v2/(articles|pages|menu|sections|boxes)(?:/([1-9][0-9]{0,9}))?$~D', $path, $match)) {
                 $resource = $match[1]; $id = isset($match[2]) ? Resources::id($match[2]) : null;
                 $methods = null === $id ? ['GET', 'POST'] : ['GET', 'PATCH', 'DELETE'];
@@ -208,6 +213,7 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
         $resources['discovery'] = ['read' => true, 'write' => false];
         $resources['preview'] = ['read' => true, 'write' => false];
         $resources['publish'] = ['read' => false, 'write' => true];
+        $resources['audit'] = ['read' => true, 'write' => false];
         $resources['analytics'] = ['read' => \Wbengine\Config::getAnalyticsSettings()['enabled'], 'write' => false];
         return ['api_version' => '2.0', 'capabilities' => $resources, 'box_types' => $this->getContentModel()->boxTypes(), 'i18n' => ['default' => \Wbengine\I18n::translator()->getDefaultLocale(), 'locales' => array_values(\Wbengine\I18n::locales())], 'authentication' => ['type' => 'integration_bearer', 'https_required' => true], 'pagination' => ['type' => 'page', 'default_per_page' => 25, 'max_per_page' => 100], 'search' => ['resources' => ['pages', 'boxes'], 'max_length' => 100]];
     }

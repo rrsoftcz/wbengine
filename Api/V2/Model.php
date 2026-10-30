@@ -14,7 +14,7 @@ class Model extends \Wbengine\Model\ModelAbstract
     /** Seconds between two last_used_at writes of one key. */
     public const LAST_USED_INTERVAL = 60;
     public const LIST_LIMIT = 500;
-    public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write', 'analytics:read'];
+    public const SCOPES = ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'sections:read', 'sections:write', 'boxes:read', 'boxes:write', 'translations:read', 'translations:write', 'images:read', 'images:write', 'preview:read', 'publish:write', 'analytics:read', 'audit:read'];
 
     /**
      * Trusted local provisioning API. The administrator's current role is read from DB.
@@ -135,6 +135,42 @@ class Model extends \Wbengine\Model\ModelAbstract
      * central_actor is an untrusted attribution label, never an authorization fact.
      * $detail is an error code or a reference (never a request body), stored when migration 4.8.0/008 exists.
      */
+    /**
+     * GET /changes: the change feed, or with outcome=rejected the rejected and failed writes. Filters are validated
+     * here; before/after bodies are never part of the feed.
+     */
+    public function changeFeed(array $query): array
+    {
+        $pagination = Contract::pagination($query);
+        $filters = [];
+        $text = static function (string $key, string $pattern, int $max) use ($query, &$filters): void {
+            if (!array_key_exists($key, $query)) { return; }
+            $value = $query[$key];
+            if (!is_string($value) || '' === $value || strlen($value) > $max || !preg_match($pattern, $value)) {
+                throw new Problem('invalid_filter', 'The "' . $key . '" filter is not valid.');
+            }
+            $filters[$key] = $value;
+        };
+        $text('resource', '/^[a-z_]+$/D', 32);
+        $text('resource_id', '/^[A-Za-z0-9_:.-]+$/D', 64);
+        $text('action', '/^[A-Za-z0-9_.:-]+$/D', 64);
+        $text('source', '/^(v2|v1|cli)$/D', 8);
+        if (array_key_exists('actor', $query)) {
+            $actor = $query['actor'];
+            if (!is_string($actor) || '' === $actor || strlen($actor) > 128 || !preg_match('//u', $actor) || preg_match('/[\x00-\x1f\x7f]/', $actor)) { throw new Problem('invalid_filter', 'The "actor" filter is not valid.'); }
+            $filters['actor'] = $actor;
+        }
+        foreach (['since', 'until'] as $key) {
+            if (!array_key_exists($key, $query)) { continue; }
+            if (!is_string($query[$key]) || !preg_match('/^[0-9]{1,12}$/D', $query[$key])) { throw new Problem('invalid_filter', 'The "' . $key . '" filter must be a time in epoch seconds.'); }
+            $filters[$key] = (int) $query[$key];
+        }
+        $outcome = $query['outcome'] ?? 'applied';
+        if (!is_string($outcome) || !in_array($outcome, ['applied', 'rejected'], true)) { throw new Problem('invalid_filter', 'The "outcome" filter must be applied or rejected.'); }
+        $feed = \Wbengine\Audit\ChangeLog::page($filters, $pagination['per_page'], $pagination['offset'], 'rejected' === $outcome);
+        return Contract::page($feed['items'], $query, $feed['total']);
+    }
+
     public function audit(?int $integrationId, ?string $centralActor, string $action, string $outcome, ?int $localUserId = null, ?string $detail = null): void
     {
         if (null !== $centralActor && (strlen($centralActor) > 128 || preg_match('/[\x00-\x1f\x7f]/', $centralActor))) {

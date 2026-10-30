@@ -147,6 +147,83 @@ final class ChangeLog
         ], $rows ?: []);
     }
 
+    /**
+     * One page of the change feed for the API: newest first, without the before/after bodies.
+     * Filters (all optional, exact match): resource, resource_id, actor (central actor label), source
+     * (v2, v1 or cli), action; since and until are epoch seconds (inclusive). With outcome=rejected the
+     * feed lists rejected and failed writes from the API audit instead (error code in "detail").
+     *
+     * @param array<string,mixed> $filters validated by the caller
+     * @return array{items:array<int,array<string,mixed>>,total:int}
+     */
+    public static function page(array $filters, int $limit, int $offset, bool $rejected = false): array
+    {
+        $where = []; $params = [];
+        $equal = static function (string $column, string $key) use (&$where, &$params, $filters): void {
+            if (isset($filters[$key])) { $where[] = $column . ' = ?'; $params[] = (string) $filters[$key]; }
+        };
+        if ($rejected) {
+            $where[] = "outcome IN ('rejected', 'error')";
+            $equal('central_actor', 'actor'); $equal('action', 'action');
+            $time = 'created_at';
+        } else {
+            $equal('resource', 'resource'); $equal('resource_id', 'resource_id'); $equal('central_actor', 'actor'); $equal('action', 'action');
+            if (isset($filters['source'])) { $where[] = 'source = ?'; $params[] = (string) $filters['source']; }
+            $time = 'created_at';
+        }
+        if (isset($filters['since'])) { $where[] = $time . ' >= ?'; $params[] = (int) $filters['since']; }
+        if (isset($filters['until'])) { $where[] = $time . ' <= ?'; $params[] = (int) $filters['until']; }
+        $filter = $where ? ' WHERE ' . implode(' AND ', $where) : '';
+        $limit = max(1, min(100, $limit)); $offset = max(0, $offset);
+        if ($rejected) {
+            $total = self::count('SELECT COUNT(*) FROM cms_api_audit' . $filter, $params);
+            $columns = 'audit_id, created_at, action, outcome, integration_id, central_actor, local_user_id';
+            try {
+                $rows = Db::fetchAllAssoc('SELECT ' . $columns . ', detail FROM cms_api_audit' . $filter . ' ORDER BY audit_id DESC LIMIT ' . $limit . ' OFFSET ' . $offset, $params);
+            } catch (\Throwable $e) {
+                if (!self::unknownColumn($e)) { throw $e; }
+                $rows = Db::fetchAllAssoc('SELECT ' . $columns . ' FROM cms_api_audit' . $filter . ' ORDER BY audit_id DESC LIMIT ' . $limit . ' OFFSET ' . $offset, $params);
+            }
+            return ['total' => $total, 'items' => array_map(static fn (array $row): array => [
+                'audit_id' => (int) $row['audit_id'], 'created_at' => (int) $row['created_at'], 'action' => $row['action'],
+                'outcome' => $row['outcome'], 'detail' => $row['detail'] ?? null, 'actor' => $row['central_actor'],
+                'integration_id' => (int) $row['integration_id'] ?: null,
+                'local_user_id' => isset($row['local_user_id']) ? (int) $row['local_user_id'] : null,
+            ], $rows ?: [])];
+        }
+        // The source and local_user_id columns exist from the change log schema on; older schemas list as v2.
+        $extended = true;
+        try {
+            $total = self::count('SELECT COUNT(*) FROM cms_api_changes' . $filter, $params);
+        } catch (\Throwable $e) {
+            if (!self::unknownColumn($e) || !isset($filters['source'])) { throw $e; }
+            // Filtering by source needs the column: nothing can match on an older schema except v2.
+            return ['total' => 0, 'items' => []];
+        }
+        $columns = 'change_id, created_at, resource, resource_id, action, integration_id, central_actor';
+        try {
+            $rows = Db::fetchAllAssoc('SELECT ' . $columns . ', source, local_user_id FROM cms_api_changes' . $filter . ' ORDER BY change_id DESC LIMIT ' . $limit . ' OFFSET ' . $offset, $params);
+        } catch (\Throwable $e) {
+            if (!self::unknownColumn($e)) { throw $e; }
+            $extended = false;
+            $rows = Db::fetchAllAssoc('SELECT ' . $columns . ' FROM cms_api_changes' . $filter . ' ORDER BY change_id DESC LIMIT ' . $limit . ' OFFSET ' . $offset, $params);
+        }
+        return ['total' => $total, 'items' => array_map(static fn (array $row): array => [
+            'change_id' => (int) $row['change_id'], 'created_at' => (int) $row['created_at'],
+            'resource' => $row['resource'], 'resource_id' => $row['resource_id'], 'action' => $row['action'],
+            'source' => $extended ? ($row['source'] ?? 'v2') : 'v2',
+            'actor' => $row['central_actor'],
+            'integration_id' => (int) $row['integration_id'] ?: null,
+            'local_user_id' => $extended && isset($row['local_user_id']) ? (int) $row['local_user_id'] : null,
+        ], $rows ?: [])];
+    }
+
+    private static function count(string $sql, array $params): int
+    {
+        $row = Db::fetchRow($sql, $params);
+        return is_array($row) ? (int) $row[0] : 0;
+    }
+
     /** MySQL error 1054, "unknown column": the schema predates migration 4.8.0/008. */
     public static function unknownColumn(\Throwable $e): bool
     {

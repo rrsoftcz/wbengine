@@ -136,5 +136,6 @@ return array(
     'wb.integrations.scope.images_write' => 'Upload images',
     'wb.integrations.scope.preview_read' => 'Show a preview of unpublished content',
     'wb.integrations.scope.publish_write' => 'Publish content',
+    'wb.integrations.scope.audit_read' => 'Read the change log',
     'wb.integrations.scope.analytics_read' => 'Read the website traffic overview',
 );
