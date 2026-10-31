@@ -224,7 +224,8 @@ final class Articles
             throw new ToolError($e->advice() . ' ' . $progress);
         }
         if ([] === $done) { return ToolResult::ok('Nothing to change: no fields were given.', ['id' => $id, 'etag' => $etag]); }
-        return ToolResult::ok('Saved. ' . ucfirst(implode('; ', $done)) . '. The article is not public until publish_article. Etag: ' . $etag . '.', ['id' => $id, 'etag' => $etag, 'page_id' => $pageId, 'steps' => $done]);
+        $warning = null !== $pageId && (isset($a['new_page']) || isset($a['page_id'])) ? $this->emptyPageWarning((int) $pageId) : null;
+        return ToolResult::ok('Saved. ' . ucfirst(implode('; ', $done)) . '. The article is not public until publish_article. Etag: ' . $etag . '.' . (null === $warning ? '' : ' ' . $warning), ['id' => $id, 'etag' => $etag, 'page_id' => $pageId, 'steps' => $done]);
     }
 
     /** @return array<string, array<string, string>> */
@@ -276,12 +277,25 @@ final class Articles
                 $notes[] = 'The article is published, but its page could not be checked or made visible (' . $e->errorCode . '). If the address answers 404, make the page visible.';
             }
         }
+        if ($pageId > 0 && null !== ($warning = $this->emptyPageWarning($pageId))) { $notes[] = $warning; }
         $hidden = !empty($d['hidden']);
         $text = 'Published article #' . $id . ($pageId > 0 ? ' on page #' . $pageId : '') . '.' . ($hidden ? ' It is hidden, so it is still not shown: use unhide_article.' : '');
         return ToolResult::ok(trim($text . ' ' . implode(' ', $notes)), ['id' => $id, 'state' => $hidden ? 'hidden' : 'published', 'page_id' => $pageId ?: null, 'etag' => $this->etagOf($r)]);
     }
 
     /** @return string[] what was changed or has to be done by hand */
+    /** A page shows an article only through a box that renders articles; without one the published address is empty. */
+    private function emptyPageWarning(int $pageId): ?string
+    {
+        try {
+            $page = (array) $this->api->request('GET', '/pages/' . $pageId)->data;
+        } catch (ApiError) {
+            return null;
+        }
+        if (!array_key_exists('article_box_ids', $page) || [] !== $page['article_box_ids']) { return null; }
+        return 'Warning: page #' . $pageId . ' has no box that shows articles, so its address stays empty even when the article is published. Use a page that already shows articles (page_id, see list_pages) or ask the site administrator to add an article box to this page.';
+    }
+
     private function makePageVisible(int $pageId): array
     {
         $page = $this->api->request('GET', '/pages/' . $pageId);

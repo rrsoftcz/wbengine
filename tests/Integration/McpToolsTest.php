@@ -198,6 +198,22 @@ final class McpToolsTest extends TestCase
         $this->assertSame(['mcp:test'], array_values(array_unique(array_column($changes['data']['changes'], 'actor'))));
     }
 
+    public function testAPageWithoutAnArticleBoxIsReportedBeforeAndAfterPublishing(): void
+    {
+        $tools = $this->tools();
+        $saved = $this->call($tools, 'save_article_draft', ['title' => 'Lonely', 'bodytext' => 'text', 'new_page' => ['link' => '/lonely/']]);
+        $this->assertStringContainsString('no box that shows articles', $saved['text']);
+        $published = $this->call($tools, 'publish_article', ['id' => $saved['data']['id']]);
+        $this->assertStringContainsString('no box that shows articles', $published['text']);
+
+        $section = Db::insert('cms_sections', ['title' => 'Test', 'key' => 'test']);
+        $shown = $this->call($tools, 'save_article_draft', ['title' => 'Shown', 'bodytext' => 'text', 'new_page' => ['link' => '/shown/']]);
+        Db::insert('cms_boxes', ['name' => 'Articles', 'module' => 'Article', 'method' => 'getArticleBox', 'section_id' => $section, 'sites' => json_encode([(string) $shown['data']['page_id']])]);
+        $again = $this->call($tools, 'save_article_draft', ['id' => $shown['data']['id'], 'page_id' => $shown['data']['page_id'], 'bodytext' => 'more']);
+        $this->assertStringNotContainsString('no box that shows articles', $again['text']);
+        $this->assertStringNotContainsString('no box that shows articles', $this->call($tools, 'publish_article', ['id' => $shown['data']['id']])['text']);
+    }
+
     public function testUpdatingADraftWithAndWithoutAnEtag(): void
     {
         $tools = $this->tools();
