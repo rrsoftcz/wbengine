@@ -98,3 +98,51 @@ jobs:
           tools: composer:v2
       - name: Test isolated offline bridge
         run: sh compat/texy-migration/bin/test
+
+  mcp-phar:
+    name: MCP server phar
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: wbengine_test
+          MYSQL_USER: wb_test
+          MYSQL_PASSWORD: wb_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uwb_test -pwb_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      WB_TEST_DB_HOST: 127.0.0.1
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mysqli, mbstring, json, phar, openssl
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Create the test schema
+        run: mysql -h 127.0.0.1 -uwb_test -pwb_test wbengine_test < tests/schema.sql
+
+      - name: Build the phar
+        run: php -d phar.readonly=0 bin/build-phar.php
+
+      - name: Phar contents and a stdio session through it
+        run: vendor/bin/phpunit tests/Unit/Mcp/PharTest.php
+
+      - name: End to end session against the built phar
+        run: WB_MCP_PHAR="$PWD/build/wbengine-mcp.phar" vendor/bin/phpunit tests/Integration/McpEndToEndTest.php

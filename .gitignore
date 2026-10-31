@@ -12,3 +12,4 @@ vendor/
 # Temporary task documents and optional package test caches
 tmp-*
 compat/*/.phpunit.cache/
+build/

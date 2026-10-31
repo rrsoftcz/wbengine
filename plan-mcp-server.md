@@ -224,18 +224,18 @@ F. Tests.
 - [x] Unit: protocol framing and errors, schema validation of tool input, the client (redirect refused, oversize refused, invalid TLS refused, key never printed).
 - [x] Integration: every tool against the real controller through the in-process transport with temporary tables (pattern of `tests/Integration/ApiV2ArticleHideTest.php`).
 - [x] End to end: start `bin/wbengine-mcp.php` as a process, run a stdio session against a test site served by the PHP built-in server (pattern of `ApiV2HttpTest`): create a draft with a new page, preview, publish, hide, unhide, read the change feed with the actor. The public URL answering 404 while hidden is not part of this session (the fixture serves the API only); `ApiV2ArticleHideTest` covers it. The test runs the phar instead when `WB_MCP_PHAR` points to one.
-- [ ] The same session against the built phar.
+- [x] The same session against the built phar.
 
 G. Agent key preset on the Integrations page.
 - [ ] Buttons above the matrix in `Integrations.tpl` (the table in "Agent key preset"), filled by the script next to the paint function; texts in `I18n/messages/en.php` and `cs.php` and in `texts()`; no change on the server side; without JavaScript the form is unchanged.
 - [ ] After issuing a key, the one-time screen shows the client configuration block (JSON) and a command for Claude Code, with the site address and the key; the `draft` mode for the drafts-only preset. Add a test that the block appears only in the issue response, once, and contains the key only there.
 
 H. The phar.
-- [ ] `bin/build-phar.php` (run with `php -d phar.readonly=0`): packs `Mcp/` and a small autoloader stub, sets the entry point, signs with SHA-256, writes `build/wbengine-mcp.phar` (`build/` is git-ignored).
-- [ ] `.github/workflows/release.yml`: on a published GitHub release, build the phar, run the stdio test against it, attach it to the release (`contents: write`). The README documents `php wbengine-mcp.phar` and the checksum.
+- [x] `bin/build-phar.php` (run with `php -d phar.readonly=0`): packs `Mcp/` and a small autoloader stub, sets the entry point, signs with SHA-256, writes `build/wbengine-mcp.phar` (`build/` is git-ignored).
+- [x] `.github/workflows/release.yml`: on a published GitHub release, build the phar, run the stdio test against it, attach it to the release (`contents: write`). The README documents `php wbengine-mcp.phar` and the checksum. The workflow also checks that the tag equals `Protocol::SERVER_VERSION`. The `release` trigger itself cannot be exercised before a release exists: the CI job `mcp-phar` runs the same build and tests on every pull request, so the first real run of the workflow (the 6.3.0 release) only adds the version check and the upload.
 
 I. Documentation.
-- [ ] Framework: README section "MCP server", `ref-mcp.md` (tools with schemas, errors, configuration, safety, client examples for Claude Code and Claude Desktop), CHANGELOG, update this plan.
+- [x] Framework: README section "MCP server", `ref-mcp.md` (tools with schemas, errors, configuration, safety, client examples for Claude Code and Claude Desktop), CHANGELOG, update this plan.
 - [ ] Skeleton: README, `docs/CHANGELOG.md`, public documentation page or paragraph (plain facts only: what the server does, how to connect, the agent key) through a guarded content migration `036-...` mirrored in the content dump; `composer.json` constraint, `bin/update-database.sh` needs no change.
 - [ ] Admin: a short note in `README.md` and `docs/book-connect-a-site-end-to-end.md` about keys for agents.
 

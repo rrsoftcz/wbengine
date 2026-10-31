@@ -786,6 +786,10 @@ Run `vendor/bin/wbengine.php analytics:prune --config=/site/src/Config/Settings.
 regularly to remove at most 1000 expired daily rows per invocation. Lifetime totals
 are not pruned.
 
+### MCP server
+
+An MCP (Model Context Protocol) server lets an AI client such as Claude write, preview, publish and hide the articles of one site. It is a client of API v2 over HTTPS, so the permissions, address restriction and change log of the integration key apply unchanged. It never opens the database. Issue a key on the Integrations page with the preset "Agent for content" (or "Agent, drafts only"), copy the client configuration the page shows once, and run the server with `php wbengine-mcp.phar` (a release asset with a checksum) or `vendor/bin/wbengine-mcp.php`. Configuration is read from `WBENGINE_MCP_URL`, `WBENGINE_MCP_KEY`, `WBENGINE_MCP_MODE` (`full` or `draft`), `WBENGINE_MCP_ACTOR` and `WBENGINE_MCP_ALLOW_INSECURE`. The tools, their inputs, the safety rules and client examples are in [`ref-mcp.md`](ref-mcp.md).
+
 ## Authentication, sessions and users
 
 * **Passwords** are stored with `password_hash()`. Legacy unsalted MD5 hashes still work and are upgraded to a modern hash on the user's next successful login, provided `cms_users.password` is at least 60 characters wide (`varchar(255)` is recommended). If the column is still narrow the legacy hash is kept and a notice is written to the error log, so a narrow column can never lock a user out. Accounts can be created and passwords reset without the web or API from the command line, see [Creating and managing users from the CLI](#creating-and-managing-users-from-the-cli).
@@ -1092,6 +1096,10 @@ Use `PHP_VERSION=8.3 docker compose build` (and `docker compose run --rm php com
 The integration tests create their tables from `tests/schema.sql`. They are skipped when the database is not reachable. For new installations use the `utf8mb4` connection charset: the older `utf8` alias is three bytes per character and cannot carry emoji.
 
 ## Upgrading
+
+### From 6.2 to 6.3
+
+* No migration and no setting. The MCP server is optional and runs outside the site; the Integrations page gained the presets and the client configuration block.
 
 ### From 5.x to 6.0
 
