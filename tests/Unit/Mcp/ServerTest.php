@@ -67,7 +67,7 @@ final class ServerTest extends TestCase
         $result = $this->call($server, ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/call', 'params' => $this->modernMeta() + ['name' => 'echo', 'arguments' => ['text' => 'hi']]]);
         $this->assertSame('complete', $result['result']['resultType']);
         $this->assertSame('said hi', $result['result']['content'][0]['text']);
-        $this->assertSame(['text' => 'hi'], $result['result']['structuredContent']);
+        $this->assertSame(['message' => 'said hi', 'text' => 'hi'], $result['result']['structuredContent'], 'the text is in the structured result too, for clients that show only that');
         $this->assertFalse($result['result']['isError']);
     }
 

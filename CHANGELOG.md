@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Fixed (6.5.1)
+
+- MCP server: the text of a tool result is also the `message` of its `structuredContent`. Claude Code shows the model only the structured part when there is one, so the guide texts, the Markdown report, the warnings and the marking of site text as data never reached it.
+
 ### Added (6.5.0)
 
 - MCP server: `get_statistics`, `site_report` (Markdown report with the change against the period before and the limits of the numbers) and `analyze_activity` (the change log by actor, resource, action and day, repeated edits, refused writes by error). `list_changes` takes `actor`, `action`, `since`, `until` and `outcome` `rejected`. Prompts `weekly_report` and `find_problems`, guide topic `statistics`. A menu entry created by `save_article_draft` goes after the last entry instead of at the position 100. No framework change: `GET /changes` already had the filters and the refused writes. See `ref-mcp.md`.
