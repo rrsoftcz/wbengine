@@ -7,6 +7,11 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (6.2.0)
+
+- Hiding articles: `POST /api/v2/articles/{id}/hide` and `/unhide` (scopes `articles:write` and `publish:write`, `If-Match`, idempotent, recorded in the change log as `hide` and `unhide`). A hidden article is not displayed, the page it belongs to is not found (404) and its menu item disappears; showing it again restores both. The article resource has a `hidden` field. Migration `6.2.0/012-article-hidden.sql` (also an index on `cms_articles.site_id`); `doctor` reports it as `migration.012`. Without it nothing changes and hiding answers 409 `hide_unavailable`.
+- The article list can be searched by title (`search`) and filtered (`hidden=0|1`, `has_draft=0|1`); the capabilities list `articles` among the searchable resources.
+
 ### Added (6.1.0)
 
 - Per-key address restriction: an integration key can be bound to IP addresses or CIDR ranges. The issue form has an optional field, every key card a form to change it, and the card shows the address the key was last used from. A call from another address is answered 403 `ip_not_allowed`. Migration `6.1.0/011-integration-ip-restriction.sql`; `doctor` reports it as `migration.011`. Without it nothing changes.

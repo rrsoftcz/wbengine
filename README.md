@@ -750,6 +750,7 @@ The API lives under `/api/v2` and is the only API: server to server, authenticat
 | `users`, `users/{id}`, `users/{id}/password-reset` | list, create, change role, disable, one-time password link (never a password in or out) | `users:read`, `users:write` |
 | `POST cache/flush` | drop cached data and pages | `cache:write` |
 | `GET config` | effective settings, read only, secrets shown as set or unset | `config:read` |
+| `articles/{id}/hide`, `articles/{id}/unhide` | hide a published article (its page answers 404 and its menu item disappears) or show it again | `articles:write`, `publish:write` |
 | `GET changes` | the change feed and rejected writes | `audit:read` |
 | `GET analytics/overview` | traffic overview (optional) | `analytics:read` |
 
@@ -769,6 +770,7 @@ Database updates for the API, applied by the operator and never by a web request
 | `4.10.0/009-remote-users.sql` | disabling accounts and one-time password links |
 | `5.0.0/010-drop-refresh-tokens.sql` | removes the unused refresh token table |
 | `6.1.0/011-integration-ip-restriction.sql` | allowed addresses and last used address of a key |
+| `6.2.0/012-article-hidden.sql` | the `hidden` flag of articles and an index on `cms_articles.site_id` |
 
 First-party aggregate analytics is opt-in. Before enabling it, apply
 [`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql),

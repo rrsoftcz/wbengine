@@ -98,7 +98,7 @@ class ApiV2Test extends TestCase
     public function testCapabilitiesAdvertiseSearch(): void
     {
         $data = (new V2(new Api()))->handle('GET', '/api/v2/capabilities')['body']['data'];
-        self::assertSame(['resources' => ['pages', 'boxes'], 'max_length' => 100], $data['search']);
+        self::assertSame(['resources' => ['pages', 'boxes', 'articles'], 'max_length' => 100], $data['search']);
     }
 
     public function testBoxRegistryTellsWhichBoxesRenderArticles(): void

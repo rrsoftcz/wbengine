@@ -103,10 +103,12 @@ class SiteModel extends ModelAbstract
                         WHERE (
                         (link IN (%s) AND strict = 0)
                         OR (link = ? AND strict = 1)
-                        ) AND visible = 1
+                        ) AND visible = 1%s
                         ORDER BY site_id DESC LIMIT 1;"
             , S_TABLE_SITES
             , implode(',', array_fill(0, count($candidates), '?'))
+            // A page whose article is hidden is not found, the visitor gets the usual 404.
+            , \Wbengine\Content\ArticleVisibility::pageCondition('site.site_id')
         );
         return ContentTranslations::overlayRow('site', Db::fetchAssoc($sql, array_merge($candidates, array((string)$site->getUrl()))));
     }
@@ -154,10 +156,12 @@ class SiteModel extends ModelAbstract
                         LEFT JOIN %s s ON (s.site_id = m.site_id)
                         WHERE m.visible = 1
                         AND m.parent = 0
-                        AND m.type = ?
+                        AND m.type = ?%s
                         ORDER BY m.order ASC;'
             , S_TABLE_MENU
             , S_TABLE_SITES
+            // The menu item of a page with a hidden article disappears too.
+            , \Wbengine\Content\ArticleVisibility::pageCondition('m.site_id')
         );
 
         $type = ($site->getSiteParentId()) ? (int)$site->getSiteParentId() : 1;

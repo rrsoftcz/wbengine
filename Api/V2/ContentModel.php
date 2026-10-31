@@ -22,15 +22,29 @@ class ContentModel extends Model
     {
         $def = Resources::definition($resource);
         $pagination = Contract::pagination($query);
-        // Only pages (title, link) and boxes (name) can be searched, on a prepared LIKE with escaped wildcards.
+        // Only pages (title, link), boxes (name) and articles (title) can be searched, on a prepared LIKE with escaped wildcards.
         $where = '';
         $params = [];
         $search = Contract::search($query);
-        if (null !== $search && in_array($resource, ['pages', 'boxes'], true)) {
-            $columns = 'pages' === $resource ? ['title', 'link'] : ['name'];
-            $where = ' WHERE ' . implode(' OR ', array_map(fn ($column) => Db::identifier($column) . " LIKE ? ESCAPE '\\\\'", $columns));
+        $conditions = [];
+        if (null !== $search && in_array($resource, ['pages', 'boxes', 'articles'], true)) {
+            $columns = match ($resource) { 'pages' => ['title', 'link'], 'articles' => ['title'], default => ['name'] };
+            $conditions[] = '(' . implode(' OR ', array_map(fn ($column) => Db::identifier($column) . " LIKE ? ESCAPE '\\\\'", $columns)) . ')';
             $params = array_fill(0, count($columns), Contract::likePattern($search));
         }
+        if ('articles' === $resource) {
+            foreach (['hidden', 'has_draft'] as $filter) {
+                if (!array_key_exists($filter, $query)) { continue; }
+                if (!is_string($query[$filter]) || !in_array($query[$filter], ['0', '1'], true)) { throw new Problem('invalid_filter', 'The filter ' . $filter . ' must be 0 or 1.'); }
+                if ('hidden' === $filter) {
+                    if (!\Wbengine\Content\ArticleVisibility::isSupported()) { throw new Problem('hide_unavailable', 'Hiding articles needs the database update 6.2.0/012.', 409); }
+                    $conditions[] = 'hidden = ' . (int) $query[$filter];
+                } else {
+                    $conditions[] = ('1' === $query[$filter] ? '' : 'NOT ') . 'EXISTS (SELECT 1 FROM cms_api_drafts d WHERE d.article_id = ' . Db::identifier($def['id']) . ')';
+                }
+            }
+        }
+        if ($conditions) { $where = ' WHERE ' . implode(' AND ', $conditions); }
         $rows = Db::fetchAllAssoc('SELECT * FROM ' . Db::identifier($def['table']) . $where . ' ORDER BY ' . Db::identifier($def['id']) . ' LIMIT ? OFFSET ?', array_merge($params, [$pagination['per_page'], $pagination['offset']]));
         $count = (int) Db::fetchAssoc('SELECT COUNT(*) AS n FROM ' . Db::identifier($def['table']) . $where, $params)['n'];
         $items = array_map(fn ($row) => $this->publicRow($resource, $row), $rows);
@@ -335,6 +349,35 @@ class ContentModel extends Model
         } catch (\Throwable $e) { $connection->rollback(); throw $e; }
     }
 
+    /**
+     * Hide or show an article. A hidden article is not displayed and its page is not found (404), its menu
+     * item disappears. Idempotent. Requires migration 6.2.0/012.
+     */
+    public function setArticleHidden($id, bool $hidden, ?string $etag, array $actor): array
+    {
+        $id = Resources::id($id);
+        $connection = $this->beginContentTransaction('articles');
+        $changed = false;
+        try {
+            $state = $this->articleState($id, true);
+            if (!array_key_exists('hidden', $state['published'])) { throw new Problem('hide_unavailable', 'Hiding articles needs the database update 6.2.0/012.', 409); }
+            Resources::match($etag, $state);
+            if ($hidden === (1 === (int) $state['published']['hidden'])) {
+                $result = $this->articleResponse($state);
+            } else {
+                Db::update('cms_articles', ['hidden' => $hidden ? 1 : 0], ['id' => $id]);
+                $after = $this->articleState($id, true);
+                $this->verifyStored($after['published'], ['hidden' => $hidden ? 1 : 0]);
+                $this->change('articles', $id, $hidden ? 'hide' : 'unhide', $state, $after, $actor);
+                $result = $this->articleResponse($after);
+                $changed = true;
+            }
+            $connection->commit();
+        } catch (\Throwable $e) { $connection->rollback(); throw $e; }
+        if ($changed) { ($this->flusher)(); }
+        return $result;
+    }
+
     public function publish($id, ?string $etag, array $actor): array
     {
         $id = Resources::id($id);
@@ -505,7 +548,11 @@ class ContentModel extends Model
         }
     }
 
-    private function sourceEtag(array $state): string { return Resources::etag([$state['published'], $state['translations']]); }
+    /**
+     * Identity of the published text a draft is based on. Hiding is no content change, so `hidden` is not part of it:
+     * a draft written before an article was hidden can still be published afterwards.
+     */
+    private function sourceEtag(array $state): string { return Resources::etag([array_diff_key($state['published'], ['hidden' => 1]), $state['translations']]); }
 
     private function articleFields(array $row): array { return array_intersect_key($row, Resources::definition('articles')['fields']); }
 
@@ -583,7 +630,7 @@ class ContentModel extends Model
         $row = array_change_key_case($row, CASE_LOWER);
         $def = Resources::definition($resource);
         $fields = array_merge([$def['id']], array_keys($def['fields']));
-        if ('articles' === $resource) { $fields = array_merge($fields, ['published']); }
+        if ('articles' === $resource) { $fields = array_merge($fields, ['published', 'hidden']); }
         if ('boxes' === $resource) {
             $row['type'] = $this->boxes->typeFor($row['module'], $row['method']);
             $row['settings'] = (object) json_decode($row['api_settings'] ?? '{}', true, 32, JSON_THROW_ON_ERROR);
@@ -592,7 +639,9 @@ class ContentModel extends Model
             $row['renders_articles'] = $this->boxes->rendersArticles((string) $row['module'], (string) $row['method']);
             $fields = array_merge($fields, ['module', 'method', 'renders_articles']);
         }
-        return array_intersect_key($row, array_fill_keys($fields, true));
+        $row = array_intersect_key($row, array_fill_keys($fields, true));
+        if ('articles' === $resource && array_key_exists('hidden', $row)) { $row['hidden'] = 1 === (int) $row['hidden']; }
+        return $row;
     }
 
     private function storageData(string $resource, array $data, ?array $before = null): array
