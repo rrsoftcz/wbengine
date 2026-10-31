@@ -103,18 +103,31 @@ final class Client
         return str_replace($this->key, '[key]', $text);
     }
 
+    private function hasIpv4(string $host): bool
+    {
+        return '' !== $host && false === filter_var($host, FILTER_VALIDATE_IP) && gethostbyname($host) !== $host;
+    }
+
     /** @internal default transport: PHP streams with certificate and host name verification, redirects off. */
     public function streamTransport(string $method, string $url, array $headers, ?string $body, array $limits): array
     {
         $lines = [];
         foreach ($headers as $name => $value) { $lines[] = $name . ': ' . $value; }
-        $context = stream_context_create([
-            'http' => ['method' => $method, 'header' => implode("\r\n", $lines), 'content' => $body ?? '', 'timeout' => $limits['timeout'], 'follow_location' => 0, 'max_redirects' => 0, 'ignore_errors' => true],
-            'ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false],
-        ]);
-        $handle = @fopen($url, 'rb', false, $context);
+        $host = (string) parse_url($url, PHP_URL_HOST);
+        $handle = false;
+        // PHP streams try IPv6 first and wait for its timeout (seconds) when the route is broken, as it often is
+        // from a home network. A host with an IPv4 address is tried over IPv4 first; the name is unchanged, so the
+        // certificate is verified for it exactly as before. Without an IPv4 address, or when that fails, the default.
+        foreach ($this->hasIpv4($host) ? [['bindto' => '0:0'], []] : [[]] as $socket) {
+            $context = stream_context_create([
+                'http' => ['method' => $method, 'header' => implode("\r\n", $lines), 'content' => $body ?? '', 'timeout' => $limits['timeout'], 'follow_location' => 0, 'max_redirects' => 0, 'ignore_errors' => true],
+                'ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false],
+                'socket' => $socket,
+            ]);
+            $handle = @fopen($url, 'rb', false, $context);
+            if (false !== $handle) { break; }
+        }
         if (false === $handle) {
-            $host = (string) parse_url($url, PHP_URL_HOST);
             throw new ApiError('transport', 'Cannot connect to ' . $host . ' (network, certificate or timeout).');
         }
         $deadline = microtime(true) + $limits['timeout'];
