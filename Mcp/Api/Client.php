@@ -62,7 +62,7 @@ final class Client
         $headers = ['Authorization' => 'Bearer ' . $this->key, 'Accept' => 'application/json', 'X-WBengine-Actor' => $this->actor];
         $payload = null;
         if (null !== $body) {
-            $payload = json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRESERVE_ZERO_FRACTION);
+            $payload = json_encode([] === $body ? new \stdClass() : $body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRESERVE_ZERO_FRACTION);
             $headers['Content-Type'] = 'application/json';
         }
         if (null !== $ifMatch) { $headers['If-Match'] = $ifMatch; }
