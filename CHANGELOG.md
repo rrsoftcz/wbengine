@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Fixed (6.4.1)
+
+- MCP server: requests to a host with an IPv4 address go over IPv4 first. PHP streams try IPv6 first and waited several seconds on a network whose IPv6 route is broken, which made every tool call about seven seconds slower. The host name and the certificate check are unchanged; without an IPv4 address, or when IPv4 fails, the default behaviour is used.
+
 ### Added (6.4.0)
 
 - MCP server for an editor who is not technical. Tools `wbengine_guide` (how the site works, shipped as texts and also offered as MCP resources and prompts), `plan_article_page` and `check_article` (address, browser title, description, article box, menu, languages; `publish_article` refuses a page that cannot show anything and reports what is still open), `update_page`, `list_menu`, `set_menu_entry`, `list_sections`, `list_box_types`, `list_boxes`, `add_box`, `update_box`, `hide_box`, `show_box`, `upload_image`, `list_images`. `save_article_draft` with `new_page` fills the SEO fields and attaches the box that shows the article. Tools are offered only when the key has their scopes; `site_info` says whether new article pages can be created. Nothing is deleted. See `ref-mcp.md`.

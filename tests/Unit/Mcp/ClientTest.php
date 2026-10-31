@@ -128,4 +128,15 @@ final class ClientTest extends TestCase
             try { new Client('https://example.org', $key, 'a'); $this->fail(); } catch (ApiError $e) { $this->assertSame('invalid_configuration', $e->errorCode); $this->assertStringNotContainsString('a b', $e->getMessage()); }
         }
     }
+
+    public function testOnlyHostNamesWithAnIpv4AddressAreTriedOverIpv4First(): void
+    {
+        $client = new Client('https://www.example.org', self::KEY, 'mcp:test', static fn() => []);
+        $has = new \ReflectionMethod($client, 'hasIpv4');
+        $this->assertTrue($has->invoke($client, 'localhost'));
+        $this->assertFalse($has->invoke($client, '127.0.0.1'), 'an address is used as it is');
+        $this->assertFalse($has->invoke($client, '::1'));
+        $this->assertFalse($has->invoke($client, ''));
+        $this->assertFalse($has->invoke($client, 'no-such-host.invalid'), 'no IPv4 address: the default behaviour');
+    }
 }
