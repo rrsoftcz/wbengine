@@ -232,7 +232,7 @@ class IntegrationsHttpTest extends DbTestCase
             $response = $this->request('/integrations/', ['action' => 'issue', 'token' => $this->formToken($form, 'issue'), 'name' => 'WBengine Admin', 'group_analytics' => 'read', 'password' => 'admin-secret']);
             $this->assertSame(200, $response['status']);
             $this->assertPrivateHeaders($response);
-            $this->assertSame(1, preg_match_all('/wbv2_[a-f0-9]{64}/', $response['body']));
+            $this->assertSame(3, preg_match_all('/wbv2_[a-f0-9]{64}/', $response['body']), 'key field, client JSON and Claude Code command');
             $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
             $scopes = json_decode($row['scopes'], true);
             $this->assertCount(23, $scopes);
@@ -325,8 +325,10 @@ class IntegrationsHttpTest extends DbTestCase
         $response = $this->issue($token, 'admin-secret', 'WBengine Admin');
         $this->assertSame(200, $response['status']);
         $this->assertPrivateHeaders($response);
-        $this->assertSame(1, preg_match_all('/wbv2_[a-f0-9]{64}/', $response['body'], $matches));
+        $this->assertSame(3, preg_match_all('/wbv2_[a-f0-9]{64}/', $response['body'], $matches), 'key field, client JSON and Claude Code command');
         $key = $matches[0][0];
+        $this->assertCount(1, array_unique($matches[0]));
+        $this->assertSame(1, substr_count($response['body'], 'WBENGINE_MCP_MODE": "full"'));
         $this->assertSame(1, substr_count($response['body'], 'value="' . $key . '"'));
         // The central Admin instruction: address, recommended name, key.
         $this->assertStringContainsString('value="https://' . substr($this->origin, 7) . '/"', $response['body']);

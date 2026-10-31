@@ -29,6 +29,7 @@
 .wb-integrations .wb-matrix{display:flex;flex-direction:column;gap:.4rem;margin-top:.5rem}
 .wb-integrations .wb-mhead,.wb-integrations .wb-mrow{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,5.75rem);align-items:center;gap:.25rem}
 .wb-integrations .wb-mhead{padding:0 .75rem 0 1rem;color:#475569;font-size:.8125rem;font-weight:600;text-align:center}
+.wb-integrations .wb-presets{margin:.5rem 0 .75rem}.wb-integrations .wb-presets[hidden]{display:none}.wb-integrations .wb-preset-buttons{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.35rem}
 .wb-integrations .wb-mrow{--m-bg:#f1f5f9;--m-line:#94a3b8;--m-ink:#334155;padding:.55rem .75rem .55rem 1rem;border:1px solid var(--m-line);border-left-width:6px;border-radius:.6rem;background:var(--m-bg);transition:background .15s,border-color .15s}
 .wb-integrations .wb-mrow[data-level="off"],.wb-integrations .wb-mrow:has(input[value="off"]:checked){--m-bg:#fdecee;--m-line:#e4a0aa;--m-ink:#9b2b3d}
 .wb-integrations .wb-mrow[data-level="read"],.wb-integrations .wb-mrow:has(input[value="read"]:checked){--m-bg:#eaf3ff;--m-line:#8fb8ec;--m-ink:#1d4f91}
@@ -96,6 +97,17 @@
         {if $view.issued.replaces}
         <p class="rounded border border-slate-300 bg-slate-50 p-3">{$view.issued.replaces}</p>
         {/if}
+        <h3>{$view.t.mcp_title}</h3>
+        <p>{$view.t.mcp_help}</p>
+        <div class="wb-fields">
+            <label for="wb-mcp-json">{$view.t.mcp_json}</label>
+            <textarea readonly rows="14" spellcheck="false" class="w-full rounded border border-slate-300 p-2 font-mono" id="wb-mcp-json">{$view.issued.mcp.json}</textarea>
+            <div><button type="button" class="btn-outline" data-wb-copy="wb-mcp-json" data-done="{$view.t.copied}" data-fail="{$view.t.copy_failed}">{$view.t.copy}</button></div>
+            <label for="wb-mcp-command">{$view.t.mcp_command}</label>
+            <textarea readonly rows="3" spellcheck="false" class="w-full rounded border border-slate-300 p-2 font-mono" id="wb-mcp-command">{$view.issued.mcp.command}</textarea>
+            <div><button type="button" class="btn-outline" data-wb-copy="wb-mcp-command" data-done="{$view.t.copied}" data-fail="{$view.t.copy_failed}">{$view.t.copy}</button></div>
+        </div>
+        <p><small class="wb-hint">{$view.t.mcp_note}</small></p>
         <details class="wb-scopes">
             <summary>{$view.t.scopes_title} ({$view.issued.scope_count})</summary>
             <ul>
@@ -139,6 +151,15 @@
                 <fieldset class="wb-groups">
                     <legend>{$view.t.groups_title}</legend>
                     <small class="wb-hint">{$view.t.groups_help}</small>
+                    <div class="wb-presets" data-wb-presets hidden>
+                        <strong>{$view.t.presets_title}</strong>
+                        <small class="wb-hint">{$view.t.presets_help}</small>
+                        <div class="wb-preset-buttons">
+                            {foreach $view.presets as $preset}
+                            <button type="button" class="btn-outline" data-wb-preset="{$preset.id}" data-name="{$preset.name}" data-levels="{$preset.levels}" title="{$preset.help}">{$preset.label}</button>
+                            {/foreach}
+                        </div>
+                    </div>
                     <div class="wb-matrix" data-wb-matrix>
                         <div class="wb-mhead" aria-hidden="true"><span></span><span>{$view.t.col_none}</span><span>{$view.t.col_read}</span><span>{$view.t.col_write}</span></div>
                         {foreach $view.groupForm as $group}
@@ -283,26 +304,45 @@
         var row = event.target.closest ? event.target.closest('.wb-mrow') : null;
         if (row) { paint(row); }
     });
-    // Rotation: preset the levels from the key that is being replaced.
-    var select = document.getElementById('wb-replaces');
-    if (!select) { return; }
-    select.addEventListener('change', function () {
-        var option = select.options[select.selectedIndex];
-        if (!option || option.value === '') { return; }
+    // Set the radios from "group=level;group=level".
+    function apply(pairs) {
         var levels = {};
-        (option.getAttribute('data-groups') || '').split(';').forEach(function (pair) {
+        (pairs || '').split(';').forEach(function (pair) {
             var parts = pair.split('=');
             if (parts[1]) { levels[parts[0]] = parts[1]; }
         });
-        var ips = document.getElementById('wb-ips');
-        if (ips) { ips.value = option.getAttribute('data-ips') || ''; }
-        if (!levels.analytics) { levels.analytics = option.getAttribute('data-analytics') === '1' ? 'read' : 'off'; }
         Object.keys(levels).forEach(function (name) {
             Array.prototype.forEach.call(document.getElementsByName('group_' + name), function (radio) {
                 if (!radio.disabled) { radio.checked = radio.value === levels[name]; }
             });
         });
         Array.prototype.forEach.call(rows, paint);
+        return levels;
+    }
+    // Presets: buttons that fill the matrix and the name. Without JavaScript the form works as it is.
+    var presets = document.querySelector('[data-wb-presets]');
+    if (presets) {
+        presets.hidden = false;
+        presets.addEventListener('click', function (event) {
+            var button = event.target.closest ? event.target.closest('[data-wb-preset]') : null;
+            if (!button) { return; }
+            apply(button.getAttribute('data-levels'));
+            var name = document.getElementById('wb-name');
+            if (name) { name.value = button.getAttribute('data-name') || name.value; }
+        });
+    }
+    // Rotation: preset the levels from the key that is being replaced.
+    var select = document.getElementById('wb-replaces');
+    if (!select) { return; }
+    select.addEventListener('change', function () {
+        var option = select.options[select.selectedIndex];
+        if (!option || option.value === '') { return; }
+        var ips = document.getElementById('wb-ips');
+        if (ips) { ips.value = option.getAttribute('data-ips') || ''; }
+        var levels = apply(option.getAttribute('data-groups'));
+        if (!levels.analytics) {
+            apply('analytics=' + (option.getAttribute('data-analytics') === '1' ? 'read' : 'off'));
+        }
     });
 })();
 </script>

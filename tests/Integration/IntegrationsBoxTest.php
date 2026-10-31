@@ -97,13 +97,55 @@ class IntegrationsBoxTest extends TestCase
         $_POST = $fields + ['token' => $session->getCsrf()->token($purpose)];
     }
 
+    public function testThePresetButtonsFillTheFormAndTheClientBlockAppearsOnlyWhenTheKeyIsIssued(): void
+    {
+        [$box] = $this->box(41, 'GET');
+        $form = $box->Integrations();
+        $this->assertSame(1, substr_count($form, 'data-wb-presets hidden'), 'hidden until the script shows it, so the form works without JavaScript');
+        foreach (['full', 'agent', 'drafts', 'readonly'] as $id) { $this->assertStringContainsString('data-wb-preset="' . $id . '"', $form); }
+        $this->assertStringContainsString('data-name="MCP agent (drafts)" data-levels="content=write;publish=off;structure=off;images=write;site=off;history=read"', $form);
+        $this->assertStringContainsString('data-name="WBengine Admin" data-levels="content=write;publish=write;structure=write;images=write;site=write;history=read"', $form);
+        $this->assertStringNotContainsString('WBENGINE_MCP', $form);
+        $this->assertStringNotContainsString('claude mcp add', $form);
+
+        [$box, , $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'MCP agent', 'password' => 'admin-secret', 'group_content' => 'write', 'group_publish' => 'write', 'group_images' => 'write', 'group_history' => 'read'], $session, Integrations::PURPOSE_ISSUE);
+        $issued = $box->Integrations();
+        $this->assertSame(1, substr_count($issued, 'id="wb-mcp-json"'));
+        $this->assertSame(1, substr_count($issued, 'id="wb-mcp-command"'));
+        $this->assertSame(1, preg_match('~<textarea[^>]*id="wb-mcp-json">(.*?)</textarea>~s', $issued, $json));
+        $config = json_decode(html_entity_decode($json[1]), true);
+        $entry = array_values($config['mcpServers'])[0];
+        $this->assertSame('full', $entry['env']['WBENGINE_MCP_MODE']);
+        $this->assertSame(Db::fetchAssoc('SELECT key_hash FROM cms_api_integrations')['key_hash'], hash('sha256', $entry['env']['WBENGINE_MCP_KEY']));
+        $this->assertStringContainsString('claude mcp add', $issued);
+
+        // Neither the block nor the key is shown again.
+        [$box] = $this->box(41, 'GET');
+        $again = $box->Integrations();
+        $this->assertStringNotContainsString('WBENGINE_MCP', $again);
+        $this->assertStringNotContainsString('wb-mcp-json', $again);
+        $this->assertStringNotContainsString($entry['env']['WBENGINE_MCP_KEY'], $again);
+    }
+
+    public function testADraftsOnlyKeyGetsTheDraftModeInItsClientBlock(): void
+    {
+        [$box, , $session] = $this->box(41, 'POST');
+        $this->post(['action' => 'issue', 'name' => 'MCP agent (drafts)', 'password' => 'admin-secret', 'group_content' => 'write', 'group_publish' => 'off', 'group_history' => 'read'], $session, Integrations::PURPOSE_ISSUE);
+        $html = $box->Integrations();
+        $this->assertSame(1, preg_match('~<textarea[^>]*id="wb-mcp-json">(.*?)</textarea>~s', $html, $json));
+        $this->assertSame('draft', array_values(json_decode(html_entity_decode($json[1]), true)['mcpServers'])[0]['env']['WBENGINE_MCP_MODE']);
+    }
+
     public function testIssueUsesTheCompleteAdminProfileAndRendersTheKeyOnce(): void
     {
         [$box, $out, $session] = $this->box(41, 'POST');
         $this->post(['action' => 'issue', 'name' => 'WBengine Admin', 'password' => 'admin-secret'], $session, Integrations::PURPOSE_ISSUE);
         $html = $box->Integrations();
         $this->assertSame(200, $out->status);
-        $this->assertSame(1, preg_match_all('/wbv2_[a-f0-9]{64}/', $html, $m));
+        // The key is in its field, in the client JSON and in the Claude Code command of the one-time screen, and nowhere else.
+        $this->assertSame(3, preg_match_all('/wbv2_[a-f0-9]{64}/', $html, $m));
+        $this->assertCount(1, array_unique($m[0]));
         $row = Db::fetchAssoc('SELECT * FROM cms_api_integrations');
         $this->assertSame(hash('sha256', $m[0][0]), $row['key_hash']);
         $issued = json_decode($row['scopes'], true);
