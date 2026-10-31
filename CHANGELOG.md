@@ -7,6 +7,11 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (6.3.0)
+
+- MCP server (`Wbengine\Mcp`, `bin/wbengine-mcp.php`, also built as the single signed file `wbengine-mcp.phar` and attached to every release with its checksum): stdio, speaks the stateless revision 2026-07-28 and the revisions 2025-11-25 and 2025-06-18 with `initialize`. Tools for one site: `site_info`, `list_pages`, `list_articles`, `get_article`, `save_article_draft`, `preview_article`, `publish_article`, `hide_article`, `unhide_article`, `list_changes`. It is a client of API v2 with verified TLS, no redirects, size and time limits; text from the site is returned marked as data; `WBENGINE_MCP_MODE=draft` removes the publish and hide tools. See `ref-mcp.md`.
+- The Integrations page offers presets for the permission matrix (Full management, Agent for content, Agent drafts only, Read only) and shows a client configuration (JSON and a `claude mcp add` command) with the key once, after a key is issued.
+
 ### Added (6.2.0)
 
 - Hiding articles: `POST /api/v2/articles/{id}/hide` and `/unhide` (scopes `articles:write` and `publish:write`, `If-Match`, idempotent, recorded in the change log as `hide` and `unhide`). A hidden article is not displayed, the page it belongs to is not found (404) and its menu item disappears; showing it again restores both. The article resource has a `hidden` field. Migration `6.2.0/012-article-hidden.sql` (also an index on `cms_articles.site_id`); `doctor` reports it as `migration.012`. Without it nothing changes and hiding answers 409 `hide_unavailable`.

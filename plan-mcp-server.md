@@ -235,7 +235,7 @@ H. The phar.
 - [x] `.github/workflows/release.yml`: on a published GitHub release, build the phar, run the stdio test against it, attach it to the release (`contents: write`). The README documents `php wbengine-mcp.phar` and the checksum. The workflow also checks that the tag equals `Protocol::SERVER_VERSION`. The `release` trigger itself cannot be exercised before a release exists: the CI job `mcp-phar` runs the same build and tests on every pull request, so the first real run of the workflow (the 6.3.0 release) only adds the version check and the upload.
 
 I. Documentation.
-- [ ] Framework: README section "MCP server", `ref-mcp.md` (tools with schemas, errors, configuration, safety, client examples for Claude Code and Claude Desktop), CHANGELOG, update this plan.
+- [x] Framework: README section "MCP server", `ref-mcp.md` (tools with schemas, errors, configuration, safety, client examples for Claude Code and Claude Desktop), CHANGELOG, update this plan.
 - [ ] Skeleton: README, `docs/CHANGELOG.md`, public documentation page or paragraph (plain facts only: what the server does, how to connect, the agent key) through a guarded content migration `036-...` mirrored in the content dump; `composer.json` constraint, `bin/update-database.sh` needs no change.
 - [ ] Admin: a short note in `README.md` and `docs/book-connect-a-site-end-to-end.md` about keys for agents.
 
