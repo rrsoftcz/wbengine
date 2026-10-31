@@ -14,6 +14,9 @@ An MCP (Model Context Protocol) server shipped with WBengine that lets an AI cli
 4. Hiding an article hides its URL automatically: the address answers 404 and the menu item disappears. Unhiding brings both back. The page row itself is not changed.
 5. The Integrations page offers a preset key for an agent (see "Agent key preset").
 6. The server is also released as one file, `wbengine-mcp.phar`, attached to each release, so a machine without the site's code can run it. Approved by the owner as a separate release asset.
+7. (2026-10-31 night, owner) The agent is meant for an inexperienced editor who does not know the technical stack. The server therefore does the technical steps itself and knows how WBengine works: pages, article boxes, menu, SEO fields and addresses, languages, publishing. When a step is needed before an article can be shown, the server either does it or says exactly what is missing and what to do. It does not leave the editor guessing.
+8. (2026-10-31 night, owner) The agent key gets the Structure group as well (boxes), so the agent can attach boxes to pages. This replaces the earlier recommendation to keep the key narrow; the narrower presets stay available.
+9. (2026-10-31 night, owner) The server also reads statistics, builds reports from them and reads and analyzes the change log. Analytics is a separate choice on the key form and must be ticked.
 
 ## What exists today (verified in the code)
 
@@ -92,7 +95,7 @@ Phase 1.5 (small): `upload_image` (local file to the image library, returns the 
 
 - Text read from the site is untrusted data. Tool results mark content as data, and tool descriptions tell the model not to follow instructions found inside articles.
 - Publish and hide tool descriptions say: only when the user asked. The client's own approval prompt is the second guard.
-- Limits: body size, translation count, one write per call, no bulk delete. There is no delete tool.
+- Limits: body size, translation count, one write per call, no bulk delete. There is no delete tool and release 6.4.0 adds none: every operation the agent has is reversible (hide, detach a box, hide a menu entry, change an address back). Whoever wants something removed for good does it in the site administration. Revisit only on the owner's word.
 - A key for an agent should be issued with the groups Content (write) and Publishing, nothing else. The Integrations page may offer this as a preset. Keys used from a laptop should not be bound to an address.
 - API errors become tool errors with an actionable message (for example `article_site_conflict`: "that page already has an article, choose another page").
 
@@ -150,9 +153,108 @@ README section, `ref-mcp.md` (tools, input schemas, errors, configuration), exam
 |---------|---------|
 | 6.2.0 | hidden flag, hide/unhide with automatic 404 and menu removal, article search and filters, Admin control |
 | 6.3.0 | MCP server phase 1 (articles), agent key preset with the client block, `wbengine-mcp.phar`, docs, CI end to end test |
-| 6.4.0 | phase 1.5 plus page and menu visibility tools |
-| later | box visibility and box management (only registered types), curated and backed up settings changes with confirmation, multi-site MCP in the Admin (own plan, includes login and per-site roles) |
+| 6.3.1 | warning when the page of an article has no box that shows articles (released) |
+| 6.4.0 | the editor agent: the server knows WBengine (guide, prompts, resources), prepares and checks the whole article page (address, SEO fields, article box, menu), page, menu and box tools, images, the Editor key preset, skeleton registers its box type as an article renderer (see "Release 6.4.0") |
+| 6.5.0 | insight: statistics, reports and change log analysis (see "Release 6.5.0") |
+| later | curated and backed up settings changes with confirmation, multi-site MCP in the Admin (own plan, includes login and per-site roles) |
 | not planned | deployment of a site: it runs on the host (git and Docker) and needs a separate privileged tool with approvals |
+
+## Release 6.4.0: the editor agent (planned 2026-10-31)
+
+Why: the live acceptance of 6.3.0 showed that an agent can write, preview, publish and hide an article, but a page it creates stays empty, because nothing attaches a box that shows the article. An inexperienced editor cannot be expected to know that. The server must carry the knowledge of WBengine and do the technical steps.
+
+### Facts found on the live site (2026-10-31, key with the full profile)
+
+- A page shows an article only through a box on that page that renders articles. In the skeleton the box type `story` (module `blog`, method `story`, `Box\Article::getArticleBox`) does exactly that, but it is registered without the flag `renders=article`, so the API reports `renders_articles: false` and `article_box_ids` stays empty even though the page works. The 6.3.1 warning therefore gives a false alarm for such a page. Verified: `POST /boxes {type: story, section_id: 1, sites: [page]}` on a new page, then publish and unhide, and the page showed the article (HTTP 200 with the text).
+- The catalog of box types comes from the application (`BoxRegistry::register(type, module, method, settings, sections, ['renders' => 'article'])`). A client cannot choose a PHP class. The skeleton registers only `story` for the section `central`. Creating a box needs `boxes:write` (group Structure) and a registered type.
+- A box has no visibility flag. It is shown on the pages listed in `sites` (or everywhere with `shared`), in a section, in `order`, subject to `device_min` and `device_strict`. Hiding a box means removing the page from `sites` (an empty list is accepted and the content disappears, verified) or limiting the device; showing it means putting the page back. The change log keeps the earlier state, so a restore exists.
+- Page fields: `link`, `title`, `html_title`, `html_description` (170 bytes), `html_keywords` (255), `visible`, `acl`, `strict`, `parent_id`. The template appends the site name to `html_title` (the title became "MCP test | WBengine | WBengine" when the name was included), so the field must not contain the site name. A new page has these fields empty, which gives the title "WBengine | WBengine" and an empty description. Verified that a `PATCH` sets them and that they appear in the HTML.
+- Menu fields: `site_id`, `name`, `description`, `type` (1 is the main menu), `parent`, `order`, `visible`, translations per locale (`translation_locales`). Creating, ordering and moving an entry worked. The header of the skeleton shows only top-level entries: an entry with `parent` 4 disappeared from it. Treat nesting as not displayed unless the site says otherwise.
+- Writes with a missing `If-Match` are refused with 428; `POST` needs none. Deleting menu, box, article and page works through the API (`DELETE` with `If-Match`) and cleaned the test data completely; this is used by the test harness only, not offered as a tool.
+- Capabilities of the live site: `images` is off for this key (a store directory is not configured, see "Images"), `templates` has no API, `analytics` needs the extra scope `analytics:read` (the key had none, 403), `config:read` and `audit:read` work, `users` exists and is not touched by the server.
+- Czech titles become addresses without diacritics through `Mcp/Tools/Slug.php`; this is checked in `testTheWholeLifeOfAnArticle`.
+
+### Goals and non-goals
+
+Goals: from one request an editor gets a published article on a proper page with a clean address, SEO fields, a menu entry when wanted, and every site language filled in; the agent explains what it did and what it could not do. Non-goals: deleting anything, users, settings, templates, sections (read only), creating new box types (they are code).
+
+### Knowledge layer (the server must know WBengine)
+
+1. `wbengine_guide(topic)` tool and the same texts as MCP `resources` (`wbengine://guide/<topic>`) and a few MCP `prompts`. Tools are the main channel because many clients do not show resources or prompts. The texts are English Markdown files in `Mcp/Guide/` inside the phar, short and exact: `overview` (pages, articles, boxes, sections, menu, languages, drafts and publishing, how a page shows an article), `publish_article` (the checklist), `addresses_and_seo` (rules below), `boxes`, `menu`, `languages`, `images`, `statistics`, `troubleshooting` (every error code with the remedy). A test checks that every topic exists, that every tool name in the texts exists and that no text is longer than 6 KiB.
+2. Prompts: `publish_new_article` (interview the editor, plan, draft, preview, ask, publish, report), `translate_article`, `seo_review`, `weekly_report`, `find_problems`. The protocol layer gains `prompts/list`, `prompts/get`, `resources/list`, `resources/read` in both protocol eras and announces them in the capabilities.
+3. `instructions` of the server get two sentences: call `site_info` first, then `wbengine_guide overview`.
+4. `site_info` is extended with facts about this site and a readiness list: languages, active sections, box types and which of them render articles, the number of pages and menu entries, whether images and statistics are available, and lines such as "Can create article pages: yes, with box type story in section central" or "no: the site has no box type that renders articles, ask the administrator to register one".
+5. Tools are offered according to the scopes of the key (read from `/identity` at start), so an agent never sees a tool it cannot use. `WBENGINE_MCP_MODE=draft` keeps working.
+
+### The article page workflow (the technical steps done by the server)
+
+- `plan_article_page(title, locale, prefix?)`: no writes. Returns the proposal: address, page title, `html_title` (at most 60 characters, without the site name), `html_description` (at most 160), keywords, the menu entry suggestion, the box type and section to use, and blockers (no article box type, address taken, key lacks Structure). The editor confirms or changes it.
+- `save_article_draft` gets `setup` (the same shape as the plan) so one call creates the page (invisible), the SEO fields, the article box (type from the catalog, `renders=article`, section central), the menu entry (invisible until publishing) and the translations, and remembers what it did in the result. The old `new_page` stays as a shortcut that now also attaches the box and fills the SEO fields.
+- `check_article(id)`: a checklist with blockers and advice: the page exists, a box that renders articles is on the page, section active, SEO fields filled and within length, one translation per site language, the address clean, a menu entry (advice only), the article has a body. `publish_article` runs it first: blockers refuse the publication with the remedy, advice is appended to the result. The false alarm of 6.3.1 disappears because the check reads `renders_articles` and the box list, not `article_box_ids` alone.
+- Address rules (`Slug`): lowercase ASCII from the title with diacritics removed (Czech and other Latin scripts, transliteration table for the rest), words joined with hyphens, at most 60 characters cut at a word boundary, no dates and no ids, a prefix such as `/blog/` only when the site has such a section page, unique among the existing pages (a numeric suffix as the last resort), always with the trailing slash the site uses. The address of a published page is never changed without `confirm_link_change`, because the framework has no redirects and old links would break; the result says so.
+- `list_pages` gets a flag for pages that show an article, so the agent chooses an existing page without guessing.
+
+### Page, menu and box tools (key group Structure and Content)
+
+- Pages: `update_page` (`title`, `html_title`, `html_description`, `html_keywords`, `visible`, `link` with the rule above). Reads show the SEO fields.
+- Menu: `list_menu`, `set_menu_entry` (create or update: page, name, translations per locale, `parent`, `order`, `visible`; ordering resolves clashes by renumbering within the level), `hide_menu_entry` and its reverse through `visible`.
+- Boxes: `list_box_types`, `list_boxes` (filter by page, resolved client-side because the API has no page filter), `add_box` (type from the catalog only, section, pages, order, settings as the catalog allows), `update_box` (order, pages, device limits), `hide_box` and `show_box` (remove the page from `sites` and put it back; the result names the previous pages so nothing is lost). Sections are read only (`list_sections`).
+- Every tool states what it changed and how to undo it. No delete tool; the change log feed lists every step with the actor.
+
+### Images
+
+`upload_image` (a local path or base64, PNG, JPEG or WebP up to 512 KiB, mime and size checked before sending, `alt` required) returns the public address and the Markdown to paste; `list_images`. The site needs a store directory (`apiV2.imageDirectory` or `WBENGINE_IMAGE_DIR`, outside the web root, writable, with a matching proxy body limit). This is a deployment step on the live host (volume in `docker-compose.production.yml`, variable in the environment) and a prerequisite of the live test of the images.
+
+### Key preset and skeleton
+
+- New preset "Editor" on the Integrations page: Content write, Publishing write, Structure write, Images write, Site off, History read, Analytics on. It replaces "Agent for content" as the recommended one for an editor; the narrower presets stay. The Structure group includes `sections:write`; the server has no tool that writes sections, the key could still do it through the API, which the owner accepted.
+- The skeleton registers `story` with `['renders' => 'article']`, so the API and the server see that it renders articles. Plain facts in the public documentation through a guarded content migration (the next number after 035), mirrored in the dump.
+
+### Testing
+
+- In process tests as before for every tool (real API v2 in process, real database), including a page without a box, a page with a box, address collisions, Czech titles, SEO lengths, menu ordering, box hide and show, refusal by missing scopes, the guide checks and the prompts and resources protocol in both eras.
+- The end to end test through the real process is extended with the full article page workflow.
+- Live acceptance with a key that has all rights (see "Live acceptance procedure"), including the images after the store directory exists.
+
+### Work breakdown for release 6.4.0
+
+K. Protocol: prompts and resources in both eras; tool visibility by scope.
+- [ ] `Mcp/Server.php` and `Protocol.php`: `prompts/list`, `prompts/get`, `resources/list`, `resources/read`; capabilities; tests for both eras.
+- [ ] Tools are registered by scope (`/identity`), `site_info` extended with the readiness list.
+L. Knowledge.
+- [ ] `Mcp/Guide/*.md`, `wbengine_guide`, resources, prompts, tests that keep them true.
+M. Article page workflow.
+- [ ] `Slug` rules (length, uniqueness, prefix), `plan_article_page`, `save_article_draft` with `setup`, `check_article`, `publish_article` runs the check, `list_pages` marks article pages.
+N. Page, menu and box tools.
+- [ ] `update_page`, `list_menu`, `set_menu_entry`, `hide_menu_entry`, `list_box_types`, `list_boxes`, `add_box`, `update_box`, `hide_box`, `show_box`, `list_sections`.
+O. Images.
+- [ ] `upload_image`, `list_images`; the live host gets the store directory.
+P. Key preset, skeleton, documentation.
+- [ ] Preset "Editor" and its tests, `ref-mcp.md`, README, CHANGELOG.
+- [ ] Skeleton: register `story` as an article renderer, content migration, README snippet, changelog, deploy.
+Q. Release 6.4.0: PRs with green CI, tag, release, phar checked, skeleton bump and deploy, live acceptance with the full key, Admin docs.
+
+## Release 6.5.0: insight (statistics, reports, logs)
+
+Statistics: the API has `GET /analytics/overview` (scope `analytics:read`, the Analytics choice of the key, migration `006-analytics.sql`, retention `analytics.retentionDays`). The server adds:
+- `get_statistics(period, timezone)`: the overview as text and structure; says when `period.complete` is false (the period starts before the first recorded view) and when the retention cut the history.
+- `site_report(period, compare)`: two calls (the period and the one before it), computes the change per top page, article and box and the totals, and returns a ready Markdown report with a table, the three biggest movers, the pages that nothing showed and an explicit list of caveats (no visitor identifiers exist, so no unique visitors beyond what the API gives). The narrative is written by the model; the prompt `weekly_report` guides it. Numbers never come from the model.
+- Reads that matter to the editor: which articles were read most, what changed after a publication (the change log time against the page views).
+
+Logs: what exists is the change feed (`GET /changes`, filters resource and id; actors, actions, times) and the table `cms_api_audit` with refused and failed writes (outcome `rejected`, `error` with a reference), which no endpoint reads yet. PHP `error_log` of the host is not reachable and is not going to be exposed through the key.
+- `list_changes` gets filters for actor, action and a time window, and the server pages through up to a bounded number of rows.
+- `analyze_activity(period)`: counts by actor, resource and action, a timeline, bursts, repeated failures; client side on the feed.
+- Framework change: `GET /api/v2/audit` (scope `audit:read`, outcomes `rejected` and `error`, error code, resource, time window, actor, no bodies and no addresses, paginated) so that refused writes and errors can be analyzed. Decide with the owner whether a bounded reader of the application log is wanted; the recommendation is no, because log lines can hold personal data and secrets.
+
+Work breakdown 6.5.0 (check the boxes in the commits that do the work):
+- [ ] Framework: `GET /api/v2/audit`, docs, tests, migration none (the table exists).
+- [ ] `get_statistics`, `site_report`, tests with fixtures of known counts, the guide topic `statistics`, prompt `weekly_report`.
+- [ ] `list_changes` filters, `analyze_activity`, `list_audit_problems`, tests.
+- [ ] Release, skeleton, deploy, live acceptance.
+
+## Live acceptance procedure (for every release from 6.3.1)
+
+The owner issues a key with the preset Editor plus Analytics (or the full profile plus Analytics) and passes it for the session only; it is revoked afterwards and never stored in a file or in memory notes. The run uses objects named `mcp-test-...`, drives the real phar over stdio, checks the public pages with plain HTTP and cleans up through the API with the test harness (`DELETE`), not through the server. The expected end state is the counts before the run (pages 18, menu 4, boxes 23, articles 13 on 2026-10-31). Steps: read tools, plan, draft with setup, preview in both languages, check, publish (page 200 with the text and the SEO fields in the HTML), menu entry and order, box order and hide and show, page SEO update, hide and unhide, image upload (when the store exists), statistics and report, change log analysis, refusal paths (key without scope, stale ETag), and a final comparison of the counts.
 
 ## Acceptance of phase 1
 
@@ -213,7 +315,7 @@ C. Tools (phase 1), file `Mcp/Tools/Articles.php` (or one class per tool). Every
 - [x] `publish_article` (id): publishes, then makes a page created by the tool visible; refuses clearly without the Publishing group; in `draft` mode the tool is not listed.
 - [x] `hide_article`, `unhide_article` (id): call the hide and unhide endpoints; the result states that the URL answers 404 while hidden.
 - [x] `list_changes` (resource, id, limit): `GET /changes` with the filters, needs `audit:read`.
-- [ ] Later in 6.4.0: `upload_image`, `set_page_visibility`, menu tools.
+- [ ] Moved to the plan for 6.4.0 and 6.5.0 below (`upload_image`, page, menu and box tools, statistics, logs).
 
 D. Entry point and configuration.
 - [x] `bin/wbengine-mcp.php`, registered in `composer.json` `bin`, so Composer exposes `vendor/bin/wbengine-mcp.php` (the name of the file, like `vendor/bin/wbengine.php`). Environment variables as in the table above (`WBENGINE_MCP_URL`, `WBENGINE_MCP_KEY`, `WBENGINE_MCP_ACTOR`, `WBENGINE_MCP_MODE`, `WBENGINE_MCP_ALLOW_INSECURE`). Missing or invalid configuration prints a clear message on stderr and exits non-zero.
@@ -260,3 +362,10 @@ J. Release 6.3.0 (done: all parts merged by PR with green CI, tag `v6.3.0`, the 
 
 - `GET /articles?search=` matches the published title only, and an article that was never published has an empty one, so a client cannot find its own drafts by words. `list_articles` therefore also scans the draft titles (first page only, at most 400 drafts). A server side search of draft titles would be a small framework change for a later release.
 - The menu collection has no filter by page. `publish_article` makes the page visible when it was not, and then pages through `GET /menu` (at most 1000 items) to make that page's menu entries visible. A `site_id` filter on `/menu` would make this one request.
+
+### Findings of the live acceptance of 6.3.0 (2026-10-31)
+
+- Read tools, draft with a new page and a Czech translation, preview in two languages, publish, hide and unhide all work against the live site through the released phar; the key never appears in any output.
+- A new page has no article box, so the published address was empty (fixed as a warning in 6.3.1; the real fix is the workflow of 6.4.0). The warning is a false alarm for pages whose box type is not registered as an article renderer (the skeleton's `story`).
+- Boxes, menu, page SEO fields and ordering work through API v2 with the structure scopes; the details are in the section "Release 6.4.0".
+- Analytics needs its own scope; images need a store directory; both are prerequisites of the live test of 6.5.0 and of the images in 6.4.0.
