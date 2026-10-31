@@ -6,7 +6,7 @@
 4. Pictures: upload_image for each (alt text required), paste the returned Markdown into the text.
 5. Call save_article_draft with the title, introtext, bodytext and translations for every other site language, new_page from the plan and menu_name when the user wants a menu entry. This creates the page (not visible yet), the box that shows the article and the menu entry.
 6. Call preview_article for each language and read it. Show the user what it says.
-7. Call check_article. Fix blockers. Warnings and advice (missing description, missing translation) are worth fixing, tell the user when you leave one.
+7. Call check_article. Fix blockers. Warnings and advice (missing description, missing translation of the article, the page or the menu entry) are worth fixing: update_page takes translations for the browser title and description, set_menu_entry for the menu name. Tell the user when you leave one.
 8. Ask the user explicitly whether to publish. Publish only after a clear yes.
 9. Call publish_article. It checks the page again, makes the page and the menu entry visible and says what is still open. Tell the user the address.
 10. If the user wants it gone again: hide_article. It is reversible with unhide_article.

@@ -12,11 +12,20 @@ final class Slug
         'æ' => 'ae', 'œ' => 'oe', 'đ' => 'd', 'þ' => 'th',
     ];
 
+    /** Words that should not end an address, a title or a menu name: a cut at a word boundary must not leave one hanging. */
+    private const STOP = ['a', 'an', 'the', 'and', 'or', 'of', 'to', 'in', 'on', 'for', 'with', 'at', 'by', 'from', 'into', 'is', 'as',
+        'i', 'na', 'v', 've', 's', 'se', 'z', 'ze', 'do', 'o', 'u', 'k', 'ke', 'pro', 'od', 'po', 'za', 'pri', 'pred', 'nebo', 'aby', 'ze', 'při', 'před'];
+
+    /** Longest part of an address after the prefix. Short enough to read and to share, whole words only. */
+    public const MAX_SLUG = 50;
+
     public static function fromTitle(string $title, string $prefix = '/'): string
     {
-        $text = strtr(mb_strtolower($title, 'UTF-8'), self::MAP);
+        // An apostrophe belongs to the word (humanity's becomes humanitys), it does not split it (humanity-s).
+        $text = str_replace(["'", "\u{2019}", "\u{2018}", '`', "\u{00B4}"], '', mb_strtolower($title, 'UTF-8'));
+        $text = strtr($text, self::MAP);
         $slug = trim(preg_replace('/[^a-z0-9]+/', '-', $text) ?? '', '-');
-        $slug = self::cut($slug, 60, '-');
+        $slug = self::finish(self::cut($slug, self::MAX_SLUG, '-'), '-');
         return self::prefix($prefix) . ('' === $slug ? 'article' : $slug) . '/';
     }
 
@@ -42,7 +51,23 @@ final class Slug
     /** A title for the browser tab: whole words, at most $max characters. The template adds the site name. */
     public static function titleTag(string $title, int $max = 60): string
     {
-        return self::cut(trim(preg_replace('/\s+/u', ' ', $title) ?? ''), $max, ' ');
+        return self::finish(self::cut(trim(preg_replace('/\s+/u', ' ', $title) ?? ''), $max, ' '), ' ');
+    }
+
+    /** A short name for a menu entry: the part of the title before a colon or dash when it is short, else the first words. */
+    public static function menuName(string $title, int $max = 30): string
+    {
+        $clean = trim(preg_replace('/\s+/u', ' ', $title) ?? '');
+        $head = trim((string) preg_split('/\s[-|\x{2013}\x{2014}]\s|:/u', $clean, 2)[0]);
+        return mb_strlen($head) >= 3 && mb_strlen($head) <= $max ? $head : self::titleTag($clean, $max);
+    }
+
+    /** Drop punctuation and function words from the end, so a cut never leaves "and the" hanging. Keeps at least one word. */
+    private static function finish(string $text, string $boundary): string
+    {
+        $words = explode($boundary, rtrim($text, " ,:;-/\u{2013}\u{2014}"));
+        while (count($words) > 1 && in_array(mb_strtolower(rtrim((string) end($words), ',:;')), self::STOP, true)) { array_pop($words); }
+        return rtrim(implode($boundary, $words), " ,:;-/\u{2013}\u{2014}");
     }
 
     /** A meta description from Markdown text: plain words, whole sentence when one fits, at most $max characters. Null when empty. */

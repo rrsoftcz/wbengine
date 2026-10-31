@@ -153,4 +153,21 @@ final class InsightTest extends TestCase
         $r = $this->call($tools, 'analyze_activity');
         $this->assertStringContainsString('0 changes, 0 refused writes', $r['text']);
     }
+
+    public function testThereIsNoChangeAgainstAPeriodThatBeganBeforeCounting(): void
+    {
+        $calls = 0;
+        $tools = $this->tools(function () use (&$calls) {
+            $data = $this->overview(40);
+            if (++$calls > 1) { $data['period']['complete'] = false; $data['totals']['page_views'] = 0; }
+            return [200, $data];
+        });
+        $r = $this->call($tools, 'site_report', ['days' => 7]);
+        $this->assertStringContainsString('There is no comparison: the period before starts before counting began', $r['text']);
+        $this->assertStringNotContainsString('| Before |', $r['text']);
+        $this->assertStringNotContainsString('new (+', $r['text']);
+        $this->assertStringNotContainsString('%)', $r['text']);
+        $this->assertFalse($r['data']['compared']);
+        $this->assertSame(40, $r['data']['totals']['page_views']);
+    }
 }

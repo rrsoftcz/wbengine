@@ -52,10 +52,10 @@ final class ArticlePages
             $page['box_type'] = $box['type'];
             $page['section'] = in_array('central', $box['sections'], true) ? 'central' : ($box['sections'][0] ?? 'central');
         }
-        $lines = ['Proposed page for the article "' . $title . '":', 'Address: ' . $link . ($link !== $wanted ? ' (' . $wanted . ' is taken)' : ''), 'Browser title: ' . $page['html_title'] . ' (the site name is added by the template)', 'Description: ' . ($description ?? 'none yet: write 120 to 160 characters that say what the page is about'), 'Article box: ' . (null === $box ? 'none available' : $box['type'] . ' in section ' . $page['section']), 'Menu entry (optional): ' . Slug::titleTag($title, 30)];
+        $lines = ['Proposed page for the article "' . $title . '":', 'Address: ' . $link . ($link !== $wanted ? ' (' . $wanted . ' is taken)' : ''), 'Browser title: ' . $page['html_title'] . ' (the site name is added by the template)', 'Description: ' . ($description ?? 'none yet: write 120 to 160 characters that say what the page is about'), 'Article box: ' . (null === $box ? 'none available' : $box['type'] . ' in section ' . $page['section']), 'Menu entry (optional): ' . Slug::menuName($title)];
         foreach ($blockers as $blocker) { $lines[] = 'Blocker: ' . $blocker; }
         $lines[] = [] === $blockers ? 'Show this to the user, then call save_article_draft with this object as new_page.' : 'Resolve the blockers before creating the page.';
-        return ToolResult::ok(implode("\n", $lines), ['new_page' => $page, 'menu_name' => Slug::titleTag($title, 30), 'blockers' => $blockers]);
+        return ToolResult::ok(implode("\n", $lines), ['new_page' => $page, 'menu_name' => Slug::menuName($title), 'blockers' => $blockers]);
     }
 
     private function checkResult(int $id): ToolResult
@@ -116,10 +116,20 @@ final class ArticlePages
         $have = array_merge(array_keys((array) ($article['translations'] ?? [])), array_keys((array) ($draft['translations'] ?? [])));
         $missing = array_values(array_diff($this->facts->locales(), [$this->facts->defaultLocale()], $have));
         if ([] !== $missing) { $add(self::WARNING, 'translation_missing', 'No translation for: ' . implode(', ', $missing) . '. Visitors in those languages see the main language. Save translations with save_article_draft.'); }
+        $others = array_values(array_diff($this->facts->locales(), [$this->facts->defaultLocale()]));
+        if ([] !== $others && array_key_exists('translation_locales', $page)) {
+            $noPage = array_values(array_diff($others, (array) $page['translation_locales']));
+            if ([] !== $noPage) { $add(self::WARNING, 'page_translation_missing', 'The page has no translation of its title, browser title and description for: ' . implode(', ', $noPage) . '. In those languages the browser tab and the search result stay in the main language. Add them with update_page (translations).'); }
+        }
         $link = (string) ($page['link'] ?? '');
         if (!Slug::valid($link) || $link !== strtolower($link)) { $add(self::ADVICE, 'address', 'The address ' . $link . ' is not a clean lowercase address.'); }
         $menu = Guard::optional(fn() => $this->facts->all('/menu'));
-        if (null !== $menu && [] === array_filter($menu, static fn($m) => (int) $m['site_id'] === $pageId)) { $add(self::ADVICE, 'no_menu', 'The page has no menu entry. Add one with set_menu_entry if visitors should find it there.'); }
+        $mine = null === $menu ? [] : array_values(array_filter($menu, static fn($m) => (int) $m['site_id'] === $pageId));
+        if (null !== $menu && [] === $mine) { $add(self::ADVICE, 'no_menu', 'The page has no menu entry. Add one with set_menu_entry if visitors should find it there.'); }
+        foreach ($mine as $entry) {
+            $noMenu = array_values(array_diff($others, (array) ($entry['translation_locales'] ?? $others)));
+            if (array_key_exists('translation_locales', $entry) && [] !== $noMenu) { $add(self::WARNING, 'menu_translation_missing', 'The menu entry "' . str_replace('"', "'", (string) $entry['name']) . '" has no translation for: ' . implode(', ', $noMenu) . '. Visitors in those languages see the main language name. Add it with set_menu_entry (translations).'); break; }
+        }
         return $f;
     }
 

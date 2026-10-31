@@ -86,4 +86,32 @@ final class ArticlePagesTest extends TestCase
         $draft = $this->site(['/articles/5' => [200, ['id' => 5, 'site_id' => 0, 'bodytext' => 'old', 'introtext' => '', 'translations' => [], 'draft' => ['content' => ['site_id' => 9, 'bodytext' => 'new', 'introtext' => ''], 'translations' => ['de' => ['title' => 'x'], 'en' => ['title' => 'y']]]]]]);
         $this->assertSame([], $this->codes($this->pages($draft)->check(5)), 'the page and the translations come from the draft');
     }
+
+    public function testAPageAndAMenuEntryWithoutTheTranslationAreWarnedAbout(): void
+    {
+        $site = $this->site([
+            '/articles/5' => [200, ['id' => 5, 'site_id' => 9, 'bodytext' => 'text', 'introtext' => '', 'translations' => ['en' => ['title' => 'x'], 'de' => ['title' => 'y']], 'draft' => null]],
+            '/pages/9' => [200, ['site_id' => 9, 'link' => '/clanek/', 'title' => 'Clanek', 'html_title' => 'Titulek', 'html_description' => 'Popis', 'visible' => 1, 'translation_locales' => ['en']]],
+            '/menu' => [200, [['menu_id' => 1, 'site_id' => 9, 'name' => 'Clanek', 'translation_locales' => []]]],
+        ]);
+        $findings = $this->pages($site)->check(5);
+        $codes = $this->codes($findings);
+        $this->assertSame('warning', $codes['page_translation_missing']);
+        $this->assertSame('warning', $codes['menu_translation_missing']);
+        $texts = array_column($findings, 'text', 'code');
+        $this->assertStringContainsString('for: de', $texts['page_translation_missing'], 'cs is the main language, en is translated, de is missing');
+        $this->assertStringContainsString('update_page', $texts['page_translation_missing']);
+        $this->assertStringContainsString('set_menu_entry', $texts['menu_translation_missing']);
+    }
+
+    public function testTranslatedPageAndMenuGiveNoWarningAndUnknownTranslationsAreNotGuessed(): void
+    {
+        $done = $this->site([
+            '/articles/5' => [200, ['id' => 5, 'site_id' => 9, 'bodytext' => 'text', 'introtext' => '', 'translations' => ['en' => [], 'de' => []], 'draft' => null]],
+            '/pages/9' => [200, ['site_id' => 9, 'link' => '/clanek/', 'title' => 'Clanek', 'html_title' => 'Titulek', 'html_description' => 'Popis', 'visible' => 1, 'translation_locales' => ['de', 'en']]],
+            '/menu' => [200, [['menu_id' => 1, 'site_id' => 9, 'name' => 'Clanek', 'translation_locales' => ['de', 'en']]]],
+        ]);
+        $this->assertSame([], $this->codes($this->pages($done)->check(5)));
+        $this->assertSame([], $this->codes($this->pages($this->site(['/articles/5' => [200, ['id' => 5, 'site_id' => 9, 'bodytext' => 't', 'introtext' => '', 'translations' => ['en' => [], 'de' => []], 'draft' => null]]]))->check(5)), 'a site that does not report the translations is not warned about');
+    }
 }
