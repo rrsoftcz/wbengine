@@ -219,18 +219,18 @@ Goals: from one request an editor gets a published article on a proper page with
 ### Work breakdown for release 6.4.0
 
 K. Protocol: prompts and resources in both eras; tool visibility by scope.
-- [ ] `Mcp/Server.php` and `Protocol.php`: `prompts/list`, `prompts/get`, `resources/list`, `resources/read`; capabilities; tests for both eras.
-- [ ] Tools are registered by scope (`/identity`), `site_info` extended with the readiness list.
+- [x] `Mcp/Server.php` and `Protocol.php`: `prompts/list`, `prompts/get`, `resources/list`, `resources/read`; capabilities; tests for both eras.
+- [x] Tools are registered by scope (`/identity`), `site_info` extended with the readiness list.
 L. Knowledge.
-- [ ] `Mcp/Guide/*.md`, `wbengine_guide`, resources, prompts, tests that keep them true.
+- [x] `Mcp/Guide/*.md`, `wbengine_guide`, resources, prompts, tests that keep them true.
 M. Article page workflow.
-- [ ] `Slug` rules (length, uniqueness, prefix), `plan_article_page`, `save_article_draft` with `setup`, `check_article`, `publish_article` runs the check, `list_pages` marks article pages.
+- [x] `Slug` rules (length, uniqueness, prefix), `plan_article_page`, `save_article_draft` with `setup`, `check_article`, `publish_article` runs the check, `list_pages` marks article pages.
 N. Page, menu and box tools.
-- [ ] `update_page`, `list_menu`, `set_menu_entry`, `hide_menu_entry`, `list_box_types`, `list_boxes`, `add_box`, `update_box`, `hide_box`, `show_box`, `list_sections`.
+- [x] `update_page`, `list_menu`, `set_menu_entry` (hiding an entry is `visible` false), `list_box_types`, `list_boxes`, `add_box`, `update_box`, `hide_box`, `show_box`, `list_sections`.
 O. Images.
-- [ ] `upload_image`, `list_images`; the live host gets the store directory.
+- [x] `upload_image`, `list_images`; the live host got the store directory (volume `images_data`, `WBENGINE_IMAGE_DIR`, skeleton PR #41).
 P. Key preset, skeleton, documentation.
-- [ ] Preset "Editor" and its tests, `ref-mcp.md`, README, CHANGELOG.
+- [x] Preset "Editor" and its tests, `ref-mcp.md`, README, CHANGELOG.
 - [ ] Skeleton: register `story` as an article renderer, content migration, README snippet, changelog, deploy.
 Q. Release 6.4.0: PRs with green CI, tag, release, phar checked, skeleton bump and deploy, live acceptance with the full key, Admin docs.
 

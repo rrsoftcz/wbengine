@@ -7,6 +7,10 @@ final class ToolRegistry
 {
     /** @var array<string, Tool> */
     private array $tools = [];
+    /** @var null|callable(): ?array<int, string> */
+    private $scopeProvider = null;
+    /** @var null|string[] */
+    private ?array $scopes = null;
 
     public function add(Tool $tool): self
     {
@@ -17,14 +21,35 @@ final class ToolRegistry
         return $this;
     }
 
+    /**
+     * Offer only the tools whose scopes the key has. The provider returns the scopes of the key, or null when
+     * they cannot be known (the site is unreachable): then every tool is offered and the API refuses what the key
+     * cannot do. A known answer is kept for the life of the process.
+     *
+     * @param callable(): ?array<int, string> $provider
+     */
+    public function filterByScopes(callable $provider): self
+    {
+        $this->scopeProvider = $provider;
+        return $this;
+    }
+
     public function get(string $name): ?Tool
     {
-        return $this->tools[$name] ?? null;
+        $tool = $this->tools[$name] ?? null;
+        return null !== $tool && $this->offered($tool) ? $tool : null;
     }
 
     /** @return Tool[] */
     public function all(): array
     {
-        return array_values($this->tools);
+        return array_values(array_filter($this->tools, fn(Tool $tool) => $this->offered($tool)));
+    }
+
+    private function offered(Tool $tool): bool
+    {
+        if ([] === $tool->scopes || null === $this->scopeProvider) { return true; }
+        $this->scopes ??= ($this->scopeProvider)();
+        return null === $this->scopes || [] === array_diff($tool->scopes, $this->scopes);
     }
 }

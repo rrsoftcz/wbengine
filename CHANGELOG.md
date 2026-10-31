@@ -7,6 +7,11 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (6.4.0)
+
+- MCP server for an editor who is not technical. Tools `wbengine_guide` (how the site works, shipped as texts and also offered as MCP resources and prompts), `plan_article_page` and `check_article` (address, browser title, description, article box, menu, languages; `publish_article` refuses a page that cannot show anything and reports what is still open), `update_page`, `list_menu`, `set_menu_entry`, `list_sections`, `list_box_types`, `list_boxes`, `add_box`, `update_box`, `hide_box`, `show_box`, `upload_image`, `list_images`. `save_article_draft` with `new_page` fills the SEO fields and attaches the box that shows the article. Tools are offered only when the key has their scopes; `site_info` says whether new article pages can be created. Nothing is deleted. See `ref-mcp.md`.
+- The Integrations page offers the preset "Editor with structure and statistics" (Content, Publishing, Structure and Images write, History read, Analytics).
+
 ### Fixed (6.3.1)
 
 - MCP server: `save_article_draft` and `publish_article` warn when the page of the article has no box that shows articles, which would leave the published address empty. A page created by `new_page` has none; the warning tells the agent to use a page that already shows articles or to ask the administrator for an article box.

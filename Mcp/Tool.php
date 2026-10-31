@@ -12,6 +12,7 @@ final class Tool
      * @param array<string, mixed> $inputSchema JSON Schema (2020-12 subset understood by Schema)
      * @param array{readOnly: bool, destructive: bool, idempotent: bool, openWorld?: bool} $hints
      * @param callable(array): ToolResult $handler
+     * @param string[] $scopes API scopes the tool needs; the tool is offered only when the key has all of them
      */
     public function __construct(
         public readonly string $name,
@@ -20,6 +21,7 @@ final class Tool
         public readonly array $inputSchema,
         private readonly array $hints,
         callable $handler,
+        public readonly array $scopes = [],
     ) {
         if (!preg_match('/^[A-Za-z0-9_.-]{1,128}$/', $name)) {
             throw new \InvalidArgumentException('Invalid tool name: ' . $name);

@@ -7,16 +7,17 @@ use Wbengine\Box\Integrations;
 /** The permission presets of the issue form and the MCP client configuration of the one-time screen. */
 final class IntegrationsPresetsTest extends TestCase
 {
-    public function testEveryPresetUsesRealGroupsAndLevelsAndNeverAnalytics(): void
+    public function testEveryPresetUsesRealGroupsAndLevelsAndOnlyTheEditorAsksForAnalytics(): void
     {
         foreach (Integrations::PRESETS as $id => $preset) {
-            $this->assertSame(array_keys(array_diff_key(Integrations::GROUPS, ['analytics' => 1])), array_keys($preset['levels']), $id . ' sets every group but analytics');
+            $groups = 'editor' === $id ? Integrations::GROUPS : array_diff_key(Integrations::GROUPS, ['analytics' => 1]);
+            $this->assertSame(array_keys($groups), array_keys($preset['levels']), $id . ' sets every group' . ('editor' === $id ? '' : ' but analytics'));
             foreach ($preset['levels'] as $group => $level) {
                 $this->assertTrue('off' === $level || array_key_exists($level, Integrations::GROUPS[$group]), $id . ': ' . $group . ' has no level ' . $level);
             }
             $this->assertNotSame('', $preset['name']);
             $this->assertLessThanOrEqual(128, strlen($preset['name']));
-            $this->assertNotContains('analytics:read', Integrations::scopesForGroups($preset['levels']), $id);
+            $this->assertSame('editor' === $id, in_array('analytics:read', Integrations::scopesForGroups($preset['levels']), true), $id);
         }
     }
 
@@ -24,6 +25,9 @@ final class IntegrationsPresetsTest extends TestCase
     {
         $scopes = static fn(string $id): array => Integrations::scopesForGroups(Integrations::PRESETS[$id]['levels']);
         $this->assertEqualsCanonicalizing(Integrations::PROFILE_SCOPES, $scopes('full'), 'full is the default profile');
+        $editor = $scopes('editor');
+        foreach (['articles:write', 'pages:write', 'menu:write', 'publish:write', 'images:write', 'boxes:write', 'boxes:read', 'sections:read', 'audit:read', 'analytics:read'] as $scope) { $this->assertContains($scope, $editor, $scope); }
+        foreach (['users:write', 'users:read', 'config:read', 'cache:write'] as $scope) { $this->assertNotContains($scope, $editor, $scope); }
         $agent = $scopes('agent');
         foreach (['articles:write', 'pages:write', 'menu:write', 'translations:write', 'publish:write', 'images:write', 'audit:read', 'preview:read'] as $scope) { $this->assertContains($scope, $agent, $scope); }
         foreach (['sections:write', 'boxes:write', 'users:write', 'users:read', 'config:read', 'cache:write', 'sections:read'] as $scope) { $this->assertNotContains($scope, $agent, $scope); }
