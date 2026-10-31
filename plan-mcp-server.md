@@ -1,6 +1,6 @@
 # Plan: MCP server for WBengine
 
-Status: approved by the owner. Release 6.2.0 (hide and unhide articles) is finished and deployed; release 6.3.0 (the MCP server itself) is the next work and has not been started. The section "Progress and how to resume" tells exactly where things stand and what to do next. Language of this document: English (project rule). Decisions of the owner are in the section "Decisions".
+Status: approved by the owner. Release 6.2.0 (hide and unhide articles) is finished and deployed; release 6.3.0 (the MCP server itself) is in progress (see the checkboxes in the work breakdown). The section "Progress and how to resume" tells exactly where things stand and what to do next. Language of this document: English (project rule). Decisions of the owner are in the section "Decisions".
 
 ## Goal
 
@@ -195,15 +195,15 @@ The skeleton application and the central Admin follow every release (the skeleto
 ### Work breakdown for release 6.3.0 (check the boxes in the commits that do the work)
 
 A. Protocol core, namespace `Wbengine\Mcp`, no dependency on the rest of the framework (no `Db`, no `Config`), so it can be packed alone into the phar.
-- [ ] Before coding, read the current MCP specification and pin its protocol revision in a constant and in `ref-mcp.md`. Do not rely on memory of the protocol: check `initialize` (capabilities, protocol version negotiation), `tools/list`, `tools/call` results (`content`, `structuredContent`, `isError`), tool annotations, `ping`, notifications such as `notifications/initialized`, JSON-RPC error codes and the stdio framing.
-- [ ] `Mcp/Server.php` (message loop, dispatch), `Mcp/Transport/Stdio.php` (reads lines from a stream, writes one JSON per line, logs only to stderr), `Mcp/Tool.php` (name, description, input schema, annotations, handler), `Mcp/ToolRegistry.php`.
-- [ ] Limits: maximum message size, maximum tool result size, malformed JSON gives a JSON-RPC error and the loop continues.
+- [x] Before coding, read the current MCP specification and pin its protocol revision in a constant and in `ref-mcp.md`. Done 2026-10-31: the current revision `2026-07-28` is stateless (no `initialize`, `_meta` on every request, `server/discover`), most clients still speak `2025-11-25` or `2025-06-18`, so the server is dual-era. Do not rely on memory of the protocol: check `initialize` (capabilities, protocol version negotiation), `tools/list`, `tools/call` results (`content`, `structuredContent`, `isError`), tool annotations, `ping`, notifications such as `notifications/initialized`, JSON-RPC error codes and the stdio framing.
+- [x] `Mcp/Server.php` (message loop, dispatch), `Mcp/Transport/Stdio.php` (reads lines from a stream, writes one JSON per line, logs only to stderr), `Mcp/Tool.php` (name, description, input schema, annotations, handler), `Mcp/ToolRegistry.php`.
+- [x] Limits: maximum message size, maximum tool result size, malformed JSON gives a JSON-RPC error and the loop continues.
 
 B. API client, `Mcp/Api/Client.php`.
-- [ ] HTTPS with certificate verification (PHP streams, no new Composer package), no redirects, connect and total timeouts, response size limit, JSON only. `http://localhost` and `http://127.0.0.1` only when `WBENGINE_MCP_ALLOW_INSECURE=1`.
-- [ ] Headers: `Authorization: Bearer <key>`, `X-WBengine-Actor`, `If-Match` when given, `Accept: application/json`. The key never appears in logs, results or exception messages (a test greps every output for it).
-- [ ] An injectable transport (a callable) so the tests call `Wbengine\Api\V2::handle()` in process.
-- [ ] Error mapping: `{code, message, status}` to a tool error with advice (`article_site_conflict`, `missing_site`, `precondition_failed` (reload and retry), `ip_not_allowed`, `forbidden` (the key lacks a group), `hide_unavailable` (site needs the update 6.2.0/012), `invalid_field`, `duplicate_link`).
+- [x] HTTPS with certificate verification (PHP streams, no new Composer package), no redirects, connect and total timeouts, response size limit, JSON only. `http://localhost` and `http://127.0.0.1` only when `WBENGINE_MCP_ALLOW_INSECURE=1`.
+- [x] Headers: `Authorization: Bearer <key>`, `X-WBengine-Actor`, `If-Match` when given, `Accept: application/json`. The key never appears in logs, results or exception messages (a test greps every output for it).
+- [x] An injectable transport (a callable) so the tests call `Wbengine\Api\V2::handle()` in process.
+- [x] Error mapping: `{code, message, status}` to a tool error with advice (`article_site_conflict`, `missing_site`, `precondition_failed` (reload and retry), `ip_not_allowed`, `forbidden` (the key lacks a group), `hide_unavailable` (site needs the update 6.2.0/012), `invalid_field`, `duplicate_link`).
 
 C. Tools (phase 1), file `Mcp/Tools/Articles.php` (or one class per tool). Every tool has annotations (read-only, destructive, idempotent) and a JSON schema; results contain a short text and a structured object.
 - [ ] `site_info`: `GET /capabilities` and `GET /identity`; returns languages, scopes of the key translated into the permission groups, whether images work, and whether publishing and hiding are allowed (so the model knows before it tries).
@@ -221,7 +221,7 @@ D. Entry point and configuration.
 E. Safety (see "Safety" above) implemented and tested: text read from the site is marked as data in the tool results, size limits, one write per call, no delete tool.
 
 F. Tests.
-- [ ] Unit: protocol framing and errors, schema validation of tool input, the client (redirect refused, oversize refused, invalid TLS refused, key never printed).
+- [x] Unit: protocol framing and errors, schema validation of tool input, the client (redirect refused, oversize refused, invalid TLS refused, key never printed).
 - [ ] Integration: every tool against the real controller through the in-process transport with temporary tables (pattern of `tests/Integration/ApiV2ArticleHideTest.php`).
 - [ ] End to end: start `bin/wbengine-mcp.php` as a process, run a stdio session against a test site served by the PHP built-in server (pattern of `ApiV2HttpTest`): create a draft with a new page, preview, publish, hide (URL 404), unhide, read the change feed with the actor.
 - [ ] The same session against the built phar.
