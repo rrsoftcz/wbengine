@@ -206,23 +206,23 @@ B. API client, `Mcp/Api/Client.php`.
 - [x] Error mapping: `{code, message, status}` to a tool error with advice (`article_site_conflict`, `missing_site`, `precondition_failed` (reload and retry), `ip_not_allowed`, `forbidden` (the key lacks a group), `hide_unavailable` (site needs the update 6.2.0/012), `invalid_field`, `duplicate_link`).
 
 C. Tools (phase 1), file `Mcp/Tools/Articles.php` (or one class per tool). Every tool has annotations (read-only, destructive, idempotent) and a JSON schema; results contain a short text and a structured object.
-- [ ] `site_info`: `GET /capabilities` and `GET /identity`; returns languages, scopes of the key translated into the permission groups, whether images work, and whether publishing and hiding are allowed (so the model knows before it tries).
-- [ ] `list_pages` (search, page), `list_articles` (search, hidden, has_draft, page), `get_article` (id; live content, translations, draft, state `draft` | `published` | `hidden`, ETag).
-- [ ] `save_article_draft`: create (`title`, `introtext`, `bodytext` Markdown, optional `locale` translations, `page_id` or a new page `{link, title}`) or update (`id`, changed fields, optional `expected_etag`). A new page is created hidden (`visible: 0`) and made visible by `publish_article`. Optional menu entry (`menu_name`). The tool chains ETags itself: create page, create or patch the draft, then one `PUT /translations/article/{id}/{locale}` per locale, always with the newest ETag. Derive the link from the title when absent (ASCII, lowercase, hyphens, `link_prefix` default `/`).
-- [ ] `preview_article` (id, locale): `GET .../preview`.
-- [ ] `publish_article` (id): publishes, then makes a page created by the tool visible; refuses clearly without the Publishing group; in `draft` mode the tool is not listed.
-- [ ] `hide_article`, `unhide_article` (id): call the hide and unhide endpoints; the result states that the URL answers 404 while hidden.
-- [ ] `list_changes` (resource, id, limit): `GET /changes` with the filters, needs `audit:read`.
+- [x] `site_info`: `GET /capabilities` and `GET /identity`; returns languages, scopes of the key translated into the permission groups, whether images work, and whether publishing and hiding are allowed (so the model knows before it tries).
+- [x] `list_pages` (search, page), `list_articles` (search, hidden, has_draft, page), `get_article` (id; live content, translations, draft, state `draft` | `published` | `hidden`, ETag).
+- [x] `save_article_draft`: create (`title`, `introtext`, `bodytext` Markdown, optional `locale` translations, `page_id` or a new page `{link, title}`) or update (`id`, changed fields, optional `expected_etag`). A new page is created hidden (`visible: 0`) and made visible by `publish_article`. Optional menu entry (`menu_name`). The tool chains ETags itself: create page, create or patch the draft, then one `PUT /translations/article/{id}/{locale}` per locale, always with the newest ETag. Derive the link from the title when absent (ASCII, lowercase, hyphens, `link_prefix` default `/`).
+- [x] `preview_article` (id, locale): `GET .../preview`.
+- [x] `publish_article` (id): publishes, then makes a page created by the tool visible; refuses clearly without the Publishing group; in `draft` mode the tool is not listed.
+- [x] `hide_article`, `unhide_article` (id): call the hide and unhide endpoints; the result states that the URL answers 404 while hidden.
+- [x] `list_changes` (resource, id, limit): `GET /changes` with the filters, needs `audit:read`.
 - [ ] Later in 6.4.0: `upload_image`, `set_page_visibility`, menu tools.
 
 D. Entry point and configuration.
 - [ ] `bin/wbengine-mcp.php`, registered in `composer.json` `bin`, so Composer exposes `vendor/bin/wbengine-mcp`. Environment variables as in the table above (`WBENGINE_MCP_URL`, `WBENGINE_MCP_KEY`, `WBENGINE_MCP_ACTOR`, `WBENGINE_MCP_MODE`, `WBENGINE_MCP_ALLOW_INSECURE`). Missing or invalid configuration prints a clear message on stderr and exits non-zero.
 
-E. Safety (see "Safety" above) implemented and tested: text read from the site is marked as data in the tool results, size limits, one write per call, no delete tool.
+E. Safety (see "Safety" above) implemented and tested: text read from the site is marked as data in the tool results, size limits, one write per call, no delete tool. Done: results wrap site text in BEGIN/END markers (`Tools\Untrusted`), field and translation limits, no delete tool; `save_article_draft` chains several API writes by design (see C).
 
 F. Tests.
 - [x] Unit: protocol framing and errors, schema validation of tool input, the client (redirect refused, oversize refused, invalid TLS refused, key never printed).
-- [ ] Integration: every tool against the real controller through the in-process transport with temporary tables (pattern of `tests/Integration/ApiV2ArticleHideTest.php`).
+- [x] Integration: every tool against the real controller through the in-process transport with temporary tables (pattern of `tests/Integration/ApiV2ArticleHideTest.php`).
 - [ ] End to end: start `bin/wbengine-mcp.php` as a process, run a stdio session against a test site served by the PHP built-in server (pattern of `ApiV2HttpTest`): create a draft with a new page, preview, publish, hide (URL 404), unhide, read the change feed with the actor.
 - [ ] The same session against the built phar.
 
@@ -253,3 +253,8 @@ J. Release 6.3.0: merge each part by PR with green CI, tag `v6.3.0`, GitHub rele
 - Documentation and code comments in English; the Czech texts only where a Czech translation of a user interface or of the public site is required. No em dashes and no icons in texts. Public skeleton documentation states only facts about what the system does and how to use it (no migration numbers, release history or how the text was made).
 - Commits and pull requests carry no AI co-author or attribution lines.
 - A new migration gets the next number in a folder named after the release (`migrations/6.3.0/013-...sql` if one is needed), is idempotent, is added to the skeleton scripts `bin/update-database.sh` and `bin/setup-production.sh`, and is reported by `doctor` as `migration.NNN`.
+
+### Findings while building the tools (2026-10-31)
+
+- `GET /articles?search=` matches the published title only, and an article that was never published has an empty one, so a client cannot find its own drafts by words. `list_articles` therefore also scans the draft titles (first page only, at most 400 drafts). A server side search of draft titles would be a small framework change for a later release.
+- The menu collection has no filter by page. `publish_article` makes the page visible when it was not, and then pages through `GET /menu` (at most 1000 items) to make that page's menu entries visible. A `site_id` filter on `/menu` would make this one request.

@@ -40,6 +40,12 @@ final class ClientTest extends TestCase
         $this->assertSame(1, $response->pagination['total']);
     }
 
+    public function testAnEmptyBodyIsSentAsAJsonObject(): void
+    {
+        $this->client($this->ok([]))->request('POST', '/articles/1/publish', [], [], '"e"');
+        $this->assertSame('{}', $this->seen['body']);
+    }
+
     public function testNoBodyNoIfMatchMeansNoSuchHeaders(): void
     {
         $this->client($this->ok([]))->request('GET', '/pages');
