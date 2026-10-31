@@ -2,7 +2,7 @@
 
 Address (link of the page)
 - Lowercase letters, digits and hyphens only; diacritics are removed (Příliš žluťoučký becomes prilis-zlutoucky). plan_article_page does this.
-- Short and readable: the words that matter from the title, at most 60 characters, no dates, no ids, no stop-word chains.
+- Short and readable: the words that matter from the title, at most 50 characters, whole words, no apostrophes (humanity's becomes humanitys), no dates, no ids, never ending in a function word such as and, the, of.
 - Under /blog/ for blog posts when the site has a blog page, otherwise at the top level. Always with the trailing slash.
 - Unique. plan_article_page adds -2, -3 when an address is taken.
 - Never change the address of a visible page casually: the site has no redirects, so links, bookmarks and search results to the old address break. update_page asks for confirm_link_change; explain the consequence to the user first. Fix the address before publishing, not after.

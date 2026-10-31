@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Fixed (6.5.3)
+
+- MCP server, found when it was used for a real article: the generated address no longer splits a word at an apostrophe (`humanity-s` is now `humanitys`), is at most 50 characters of whole words and never ends in a function word; the browser title and the menu name are cut at whole words and never end in "and", "the" or "into", the menu name is the part of the title before a colon when that is short. `check_article` warns when the page or its menu entry lacks the translation for a site language (the Czech page kept an English title and description). `site_report` writes "no comparison" instead of a misleading change when the period before starts before counting began.
+
 ### Changed (6.5.2)
 
 - MCP server: it says on stderr how it ends: `input closed by the client after N s and M messages` when the client closes the input and `fatal error` with the place when PHP fails, plus one `started` line with the process id and the versions. A process that disappears without either line was stopped from outside by a signal. Claude Code keeps the stderr of a server in its MCP log, so a disconnect can now be explained. Nothing else changes.

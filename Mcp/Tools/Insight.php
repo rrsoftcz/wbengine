@@ -109,7 +109,11 @@ final class Insight
         }
         $complete = !empty($cur['period']['complete']);
         $prevComplete = null !== $prev && !empty($prev['period']['complete']);
-        if (null !== $prev && !$prevComplete) { $prevNote = 'The comparison is unreliable: the period before starts before counting began, so its numbers are too low.'; }
+        if (null !== $prev && !$prevComplete) {
+            // Numbers from before counting began are not low, they are missing: a change against them would mislead.
+            $prevNote = 'There is no comparison: the period before starts before counting began, so it cannot be compared fairly.';
+            $prev = null;
+        }
         $out = ['# Site statistics, ' . $cur['period']['from'] . ' to ' . $cur['period']['to'], '', 'Timezone ' . $cur['timezone'] . ', ' . $days . ' days' . (null === $prev ? '' : ' compared with the ' . $days . ' days before') . '.', '', '## Totals', '', '| | This period |' . (null === $prev ? '' : ' Before | Change |'), '|---|---:|' . (null === $prev ? '' : '---:|---:|')];
         $changes = [];
         foreach (['page_views' => 'Page views', 'article_views' => 'Article views', 'box_appearances' => 'Box appearances'] as $key => $label) {
