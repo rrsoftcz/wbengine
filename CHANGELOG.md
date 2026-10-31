@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (6.5.0)
+
+- MCP server: `get_statistics`, `site_report` (Markdown report with the change against the period before and the limits of the numbers) and `analyze_activity` (the change log by actor, resource, action and day, repeated edits, refused writes by error). `list_changes` takes `actor`, `action`, `since`, `until` and `outcome` `rejected`. Prompts `weekly_report` and `find_problems`, guide topic `statistics`. A menu entry created by `save_article_draft` goes after the last entry instead of at the position 100. No framework change: `GET /changes` already had the filters and the refused writes. See `ref-mcp.md`.
+
 ### Fixed (6.4.1)
 
 - MCP server: requests to a host with an IPv4 address go over IPv4 first. PHP streams try IPv6 first and waited several seconds on a network whose IPv6 route is broken, which made every tool call about seven seconds slower. The host name and the certificate check are unchanged; without an IPv4 address, or when IPv4 fails, the default behaviour is used.

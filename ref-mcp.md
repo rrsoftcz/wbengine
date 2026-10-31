@@ -88,6 +88,16 @@ More tools, release 6.4.0. All of them are offered only when the key has the sco
 | `upload_image` | `alt`, `path` or `base64` and `mime` | uploads a PNG, JPEG or WebP (at most 512 KiB, 8192 pixels), returns the address and the Markdown; the file extension and content are checked first | `images:write` |
 | `list_images` | `page`, `per_page` | uploaded images | `images:read` |
 
+Release 6.5.0 adds statistics, reports and change log analysis. The figures are computed by the server from what the site returns.
+
+| Tool | Input | What it does | Needs |
+|------|-------|--------------|-------|
+| `get_statistics` | `days` (ending today, default 7) or `from` and `to` (YYYY-MM-DD), `granularity` (`day`, `week`, `month`) | page views, article views and box appearances for the period, the series, the top ten pages, articles and boxes, and the totals since counting began; says when the period starts before counting began (`period.complete` false) | `analytics:read` (the Analytics choice of the key) |
+| `site_report` | `days`, `compare` | a Markdown report: totals against the period before with the change, the busiest days, the top lists with their change, and the limits of the numbers (no unique visitors, top ten only, incomplete period, no comparison available) | `analytics:read` |
+| `analyze_activity` | `days`, `actor` | counts of the change log by actor, resource, action and day, what was changed three times or more, and the refused writes by error code and actor | `audit:read` |
+
+`list_changes` now also takes `actor`, `action`, `since` and `until` (dates, UTC, until included) and `outcome` `rejected`, which lists the writes the site refused with their error code. The site's `GET /changes` already provides these filters; no framework change was needed. The prompts `weekly_report` and `find_problems` guide a report and a search for problems; the guide topic `statistics` explains the limits. Logs of the web server and of PHP are not exposed.
+
 `save_article_draft` with `new_page` now does the whole technical job: it creates the invisible page with the browser title and description (from the title and the introduction unless given), attaches the box that shows the article (the registered type that renders articles, section `central`, switchable with `article_box: false`, overridable with `box_type` and `section`) and the menu entry when `menu_name` is given. When the box cannot be added (no such type, no Structure permission) the result says so and why. The tools never delete anything.
 
 Prompts (`prompts/list`, `prompts/get`): `publish_new_article`, `translate_article`, `seo_review`. Resources (`resources/list`, `resources/read`): the guide texts as `wbengine://guide/<topic>` in Markdown. Both are announced in the capabilities of both protocol eras; the guide texts live in `Mcp/Guide/` and are packed into the phar.

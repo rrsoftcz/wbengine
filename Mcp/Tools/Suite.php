@@ -16,6 +16,7 @@ final class Suite
         $articles->register($tools);
         (new Structure($api, $facts))->register($tools);
         (new Images($api, $facts))->register($tools);
+        (new Insight($api, $facts))->register($tools);
         (new Guide())->register($tools);
         $tools->filterByScopes(static function () use ($facts): ?array {
             try {

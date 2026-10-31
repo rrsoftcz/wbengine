@@ -51,7 +51,7 @@ final class McpToolsTest extends TestCase
         Db::query('ALTER TABLE cms_api_integrations ADD allowed_ips TEXT NULL, ADD last_used_ip VARCHAR(45) NULL');
         Db::insert('cms_users', ['user_id' => 11, 'username' => 'admin', 'role' => 'admin']);
         $model = new Model();
-        $this->fullKey = $model->provision(11, 'Agent', ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'translations:read', 'translations:write', 'preview:read', 'publish:write', 'images:read', 'images:write', 'audit:read', 'boxes:read', 'boxes:write', 'sections:read', 'sections:write'])['key'];
+        $this->fullKey = $model->provision(11, 'Agent', ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'translations:read', 'translations:write', 'preview:read', 'publish:write', 'images:read', 'images:write', 'audit:read', 'boxes:read', 'boxes:write', 'sections:read', 'sections:write', 'analytics:read'])['key'];
         $this->draftKey = $model->provision(11, 'Drafts', ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'pages:write', 'menu:read', 'menu:write', 'translations:read', 'translations:write', 'preview:read'])['key'];
         $this->dir = sys_get_temp_dir() . '/wb-mcp-' . bin2hex(random_bytes(4));
         mkdir($this->dir);
@@ -117,13 +117,14 @@ final class McpToolsTest extends TestCase
     {
         $names = static fn(ToolRegistry $r) => array_map(static fn($t) => $t->name, $r->all());
         $full = $names($this->tools());
-        $this->assertEqualsCanonicalizing(['site_info', 'list_pages', 'list_articles', 'get_article', 'save_article_draft', 'preview_article', 'publish_article', 'hide_article', 'unhide_article', 'list_changes', 'plan_article_page', 'check_article', 'update_page', 'list_menu', 'set_menu_entry', 'list_sections', 'list_box_types', 'list_boxes', 'add_box', 'update_box', 'hide_box', 'show_box', 'upload_image', 'list_images', 'wbengine_guide'], $full);
+        $this->assertEqualsCanonicalizing(['site_info', 'list_pages', 'list_articles', 'get_article', 'save_article_draft', 'preview_article', 'publish_article', 'hide_article', 'unhide_article', 'list_changes', 'plan_article_page', 'check_article', 'update_page', 'list_menu', 'set_menu_entry', 'list_sections', 'list_box_types', 'list_boxes', 'add_box', 'update_box', 'hide_box', 'show_box', 'upload_image', 'list_images', 'wbengine_guide', 'get_statistics', 'site_report', 'analyze_activity'], $full);
         $draft = $names($this->tools(null, 'draft'));
         foreach (['publish_article', 'hide_article', 'unhide_article'] as $tool) { $this->assertNotContains($tool, $draft); }
         $this->assertContains('add_box', $draft);
         $narrow = $names($this->tools($this->draftKey));
         foreach (['publish_article', 'add_box', 'update_box', 'list_sections', 'upload_image', 'list_changes'] as $tool) { $this->assertNotContains($tool, $narrow, $tool . ' is offered to a key that cannot use it'); }
         foreach (['save_article_draft', 'update_page', 'set_menu_entry', 'plan_article_page', 'check_article', 'list_box_types', 'wbengine_guide'] as $tool) { $this->assertContains($tool, $narrow); }
+        foreach (['get_statistics', 'site_report', 'analyze_activity'] as $tool) { $this->assertNotContains($tool, $narrow); }
     }
 
     public function testEveryToolHasASchemaAndHonestHints(): void
@@ -360,6 +361,60 @@ final class McpToolsTest extends TestCase
         $this->assertStringContainsString('shared on every page', $this->fails($tools, 'hide_box', ['id' => $id, 'page_id' => $page]));
     }
 
+    public function testTheChangeLogCanBeFilteredAndShowsRefusedWrites(): void
+    {
+        $tools = $this->tools();
+        $a = $this->call($tools, 'save_article_draft', ['title' => 'Log A', 'bodytext' => 'one', 'new_page' => ['link' => '/log-a/']]);
+        $b = $this->call($tools, 'save_article_draft', ['title' => 'Log B', 'bodytext' => 'one', 'new_page' => ['link' => '/log-b/']]);
+        $this->call($tools, 'publish_article', ['id' => $a['data']['id']]);
+        $stale = $this->fails($tools, 'save_article_draft', ['id' => $b['data']['id'], 'bodytext' => 'two', 'expected_etag' => '"stale"']);
+        $this->assertStringContainsString('changed since it was read', $stale);
+
+        $published = $this->call($tools, 'list_changes', ['action' => 'publish']);
+        $this->assertCount(1, $published['data']['changes']);
+        $this->assertSame((string) $a['data']['id'], (string) $published['data']['changes'][0]['id']);
+        $this->assertSame(1, $published['data']['total']);
+        $mine = $this->call($tools, 'list_changes', ['actor' => 'mcp:test', 'resource' => 'articles', 'id' => $b['data']['id']]);
+        $this->assertGreaterThan(0, count($mine['data']['changes']));
+        $this->assertSame([], $this->call($tools, 'list_changes', ['actor' => 'someone else'])['data']['changes'] ?? []);
+        $today = gmdate('Y-m-d');
+        $this->assertGreaterThan(0, count($this->call($tools, 'list_changes', ['since' => $today, 'until' => $today, 'limit' => 50])['data']['changes']));
+        $this->assertSame('No changes.', $this->call($tools, 'list_changes', ['since' => '2001-01-01', 'until' => '2001-01-31'])['text']);
+        $this->assertStringContainsString('not a date', $this->fails($tools, 'list_changes', ['since' => '2026-02-30']));
+
+        $refused = $this->call($tools, 'list_changes', ['outcome' => 'rejected']);
+        $this->assertSame(1, $refused['data']['total']);
+        $this->assertStringContainsString('refused: precondition_failed', $refused['text']);
+        $this->assertSame('precondition_failed', $refused['data']['changes'][0]['error']);
+    }
+
+    public function testActivityIsAnalyzedFromTheRealChangeLog(): void
+    {
+        $tools = $this->tools();
+        $a = $this->call($tools, 'save_article_draft', ['title' => 'Act A', 'bodytext' => 'one', 'new_page' => ['link' => '/act-a/']]);
+        foreach (['two', 'three'] as $text) { $this->call($tools, 'save_article_draft', ['id' => $a['data']['id'], 'bodytext' => $text]); }
+        $this->fails($tools, 'save_article_draft', ['id' => $a['data']['id'], 'bodytext' => 'x', 'expected_etag' => '"stale"']);
+        $r = $this->call($tools, 'analyze_activity', ['days' => 2]);
+        $this->assertGreaterThanOrEqual(5, $r['data']['changes']);
+        $this->assertSame(1, $r['data']['refused']);
+        $this->assertSame(['precondition_failed' => 1], (array) $r['data']['refused_by_error']);
+        $this->assertArrayHasKey('mcp:test', (array) $r['data']['by_actor']);
+        $this->assertArrayHasKey('articles ' . $a['data']['id'], (array) $r['data']['repeated'], 'an article saved three times is reported');
+        $this->assertStringContainsString('BEGIN SITE DATA', $r['text']);
+        $this->assertSame(0, $this->call($tools, 'analyze_activity', ['actor' => 'nobody'])['data']['changes']);
+    }
+
+    public function testANewMenuEntryFromSaveDraftGoesLast(): void
+    {
+        $tools = $this->tools();
+        $first = $this->call($tools, 'save_article_draft', ['title' => 'M1', 'bodytext' => 'x', 'new_page' => ['link' => '/m1/'], 'menu_name' => 'One']);
+        $second = $this->call($tools, 'save_article_draft', ['title' => 'M2', 'bodytext' => 'x', 'new_page' => ['link' => '/m2/'], 'menu_name' => 'Two']);
+        $order = array_column($this->call($tools, 'list_menu')['data']['entries'], 'order', 'name');
+        $this->assertSame(['One' => 1, 'Two' => 2], $order, 'after the last entry, not at an arbitrary 100');
+        $this->assertNotNull($second['data']['id']);
+        $this->assertNotNull($first['data']['id']);
+    }
+
     public function testImagesNeedAnAltTextAndAStore(): void
     {
         $tools = $this->tools();
@@ -391,7 +446,7 @@ final class McpToolsTest extends TestCase
             preg_match_all('/\b([a-z]+(?:_[a-z]+)+)\b/', $text, $m);
             foreach (array_unique($m[1]) as $word) {
                 $isTool = in_array($word, $names, true);
-                $isField = in_array($word, ['html_title', 'html_description', 'html_keywords', 'confirm_link_change', 'device_min', 'device_strict', 'page_id', 'page_ids', 'new_page', 'menu_name', 'article_box', 'precondition_failed', 'missing_site', 'hide_unavailable', 'addresses_and_seo', 'publish_article_steps', 'article_id', 'article_site_conflict', 'rate_limited', 'transport_error'], true);
+                $isField = in_array($word, ['html_title', 'html_description', 'html_keywords', 'confirm_link_change', 'device_min', 'device_strict', 'page_id', 'page_ids', 'new_page', 'menu_name', 'article_box', 'precondition_failed', 'missing_site', 'hide_unavailable', 'addresses_and_seo', 'publish_article_steps', 'article_id', 'article_site_conflict', 'rate_limited', 'transport_error', 'resource_in_use'], true);
                 $this->assertTrue($isTool || $isField || in_array($word, $guide->topics(), true), 'the guide topic ' . $topic . ' names "' . $word . '", which is no tool, topic or known field');
             }
         }

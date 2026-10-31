@@ -182,7 +182,7 @@ final class ServerTest extends TestCase
 
         $this->call($server, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'initialize', 'params' => ['protocolVersion' => '2025-11-25']]);
         $prompts = $this->call($server, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'prompts/list'])['result']['prompts'];
-        $this->assertSame(['publish_new_article', 'translate_article', 'seo_review'], array_column($prompts, 'name'));
+        $this->assertSame(['publish_new_article', 'translate_article', 'weekly_report', 'find_problems', 'seo_review'], array_column($prompts, 'name'));
         $prompt = $this->call($server, ['jsonrpc' => '2.0', 'id' => 5, 'method' => 'prompts/get', 'params' => ['name' => 'translate_article', 'arguments' => ['article_id' => 7, 'language' => 'cs']]])['result'];
         $this->assertStringContainsString('article #7 into cs', $prompt['messages'][0]['content']['text']);
         $read = $this->call($server, ['jsonrpc' => '2.0', 'id' => 6, 'method' => 'resources/read', 'params' => ['uri' => 'wbengine://guide/menu']])['result']['contents'][0];
