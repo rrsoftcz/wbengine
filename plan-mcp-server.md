@@ -156,6 +156,7 @@ README section, `ref-mcp.md` (tools, input schemas, errors, configuration), exam
 | 6.3.1 | warning when the page of an article has no box that shows articles (released) |
 | 6.4.0, 6.4.1 | the editor agent (released and deployed; 6.4.1 makes the client try IPv4 first): the server knows WBengine (guide, prompts, resources), prepares and checks the whole article page (address, SEO fields, article box, menu), page, menu and box tools, images, the Editor key preset, skeleton registers its box type as an article renderer (see "Release 6.4.0") |
 | 6.5.0 | insight (released and deployed): statistics, reports and change log analysis (see "Release 6.5.0") |
+| 6.5.1 to 6.5.3 | found by using the released server from Claude Code: the text of a result is also in `structuredContent` (6.5.1, the client shows only that part), stderr lifecycle lines (6.5.2), cleaner addresses, titles and menu names, translation warnings for the page and the menu entry, a report without a false comparison (6.5.3), all released and deployed |
 | later | curated and backed up settings changes with confirmation, multi-site MCP in the Admin (own plan, includes login and per-site roles) |
 | not planned | deployment of a site: it runs on the host (git and Docker) and needs a separate privileged tool with approvals |
 
@@ -389,3 +390,12 @@ J. Release 6.3.0 (done: all parts merged by PR with green CI, tag `v6.3.0`, the 
 - Actor labels are free text from clients: the live log has one label with a pasted header (`mcp:plan-research If-Match: "..."`) from a malformed request of this work. This is the reason the results mark actor text as data.
 - `GET /changes` already had every filter needed and the refused writes, so the planned `GET /api/v2/audit` was dropped.
 - Not done on the live site: the new menu order of `menu_name` (covered by an integration test, `testANewMenuEntryFromSaveDraftGoesLast`).
+
+### Findings of the first real use from Claude Code (2026-11-01)
+
+- Claude Code shows the model only `structuredContent` when a result has it. The guide, the report text, warnings and the marking of site text as data were lost until 6.5.1 put the text into `structuredContent.message`. Scripted tests could not find this; only a real client did.
+- A model-driven run of the editor scenario (plan, draft in two languages, previews, check, publish) worked end to end. It exposed weak generators: the proposed address split a word at an apostrophe and was 80 characters long, the browser title and the menu name were cut in the middle of a phrase, the Czech page kept an English title and description and nothing warned about it. All fixed in 6.5.3 with tests, and rechecked on the live site.
+- The Czech page and menu needed `update_page` and `set_menu_entry` translations; `check_article` now says so.
+- Not part of the server, found on the way: the skeleton pages have no `<link rel="canonical">`, and `/sitemap.xml` and `/robots.txt` answer 404.
+- The stdio server disconnects from Claude Code a few minutes after the last tool call. The server does not crash (tested with a modern client, idle for 140 s, full error reporting). The process was gone between 10 seconds and 3 minutes 50 seconds after the last call in one measured case and within 4 minutes 25 seconds in another; no reason is recorded in the client log. 6.5.2 logs how the server ends. Next step: record the exact time the process vanishes with an exact `ps` watcher and read the client log with `claude --debug`.
+- The test article (article 20, page 28 `/blog/first-steps-into-space/`, menu entry 10) stays published on the live demo until the owner asks for it to be hidden.
