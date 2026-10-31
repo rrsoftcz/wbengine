@@ -283,6 +283,8 @@ The owner issues a key with the preset Editor plus Analytics (or the full profil
 | 6.0.0 | unused settings removed (`codePage`, `cdnPath`, `cssFiles`, `ipAdmins`, `minimizeHtml`, `minimizeCss`, `minimizeJs`) | yes |
 | 6.1.0 | per-key IP address restriction (`allowed_ips`, `last_used_ip`, 403 `ip_not_allowed`, migration `6.1.0/011`) | yes |
 | 6.2.0 | hide and unhide articles (migration `6.2.0/012`, `Content\ArticleVisibility`, 404 of the page, menu item removed, article search and filters), hide control in the Admin | yes |
+| 6.3.0 | MCP server phase 1 (ten article tools), agent key presets and client block, `wbengine-mcp.phar` | yes |
+| 6.3.1 | warning when the page of an article has no box that shows articles | yes |
 
 The skeleton application and the central Admin follow every release (the skeleton pins the framework in `composer.json` and `.github/workflows/smoke.yml`, the Admin pilot pins a framework commit in `.github/workflows/ci.yml`; the Admin pilot is still on 6.0.0, which is fine).
 
@@ -350,7 +352,7 @@ J. Release 6.3.0 (done: all parts merged by PR with green CI, tag `v6.3.0`, the 
 1. Read this file, `git log --oneline -20` and `git tag --sort=-v:refname | head` in the framework, and the open pull requests, to see which of the boxes above are already done.
 2. Check that `master` is green and that the live demo runs the latest framework (`composer show wbengine/wbengine` inside the web container).
 3. Continue with the first unchecked box of the breakdown. Keep every step a pull request with green CI; releases are annotated tags plus a GitHub release; the skeleton and the Admin follow.
-4. Do not change the decisions without the owner. Questions that are still open: none for phase 1.
+4. Do not change the decisions without the owner. Next work is the breakdown K to Q (release 6.4.0), then the one of 6.5.0. Questions that are still open: whether a bounded reader of the application log is wanted (the recommendation is no) and whether a delete tool is ever wanted (the recommendation is no).
 
 ### Conventions that apply to all of this work
 
