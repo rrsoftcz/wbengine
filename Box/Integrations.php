@@ -68,6 +68,21 @@ class Integrations extends WbengineBoxAbstract
     /** Recommended name of the integration in the central Admin. */
     const DEFAULT_NAME = 'WBengine Admin';
 
+    /**
+     * Presets of the issue form: buttons that fill the permission matrix and the name. They are a
+     * convenience of the form, not a kind of key and not a security boundary: only the scopes the key
+     * really gets count. Analytics is not part of a preset.
+     */
+    const PRESETS = [
+        'full' => ['name' => self::DEFAULT_NAME, 'levels' => ['content' => 'write', 'publish' => 'write', 'structure' => 'write', 'images' => 'write', 'site' => 'write', 'history' => 'read']],
+        'agent' => ['name' => 'MCP agent', 'levels' => ['content' => 'write', 'publish' => 'write', 'structure' => 'off', 'images' => 'write', 'site' => 'off', 'history' => 'read']],
+        'drafts' => ['name' => 'MCP agent (drafts)', 'levels' => ['content' => 'write', 'publish' => 'off', 'structure' => 'off', 'images' => 'write', 'site' => 'off', 'history' => 'read']],
+        'readonly' => ['name' => 'Monitoring', 'levels' => ['content' => 'read', 'publish' => 'off', 'structure' => 'read', 'images' => 'read', 'site' => 'off', 'history' => 'read']],
+    ];
+
+    /** Where the MCP server file is expected on the machine of the client, in the generated configuration. */
+    const MCP_PHAR_PLACEHOLDER = '/path/to/wbengine-mcp.phar';
+
     /** @var string[]|null preflight result of this request */
     private ?array $problems = null;
 
@@ -258,6 +273,7 @@ class Integrations extends WbengineBoxAbstract
                 'key' => $state['issued']['key'],
                 'name' => $state['issued']['name'],
                 'address' => $address,
+                'mcp' => self::mcpClientConfig($address, (string) $state['issued']['key'], $issuedScopes),
                 'replaces' => $replaces ? I18n::t('wb.integrations.instr_replace', ['id' => $replaces['integration_id'], 'name' => $replaces['name']]) : '',
             ];
         }
@@ -299,6 +315,7 @@ class Integrations extends WbengineBoxAbstract
             'action' => $this->formAction(),
             'defaultName' => self::DEFAULT_NAME,
             'groupForm' => $this->groupForm(!$analyticsProblems),
+            'presets' => $this->presets(),
             'analytics' => ['available' => !$analyticsProblems, 'off' => (bool) $analyticsProblems, 'problems' => $analyticsMessages, 'docs' => self::ANALYTICS_DOCS],
             'integrations' => $list,
             'activeKeys' => array_values(array_filter($list, fn(array $row) => $row['active'])),
@@ -475,6 +492,45 @@ class Integrations extends WbengineBoxAbstract
         return $labels;
     }
 
+    /**
+     * The presets as the template needs them: id, label, help, the name to fill in and the levels in the
+     * same "group=level;group=level" form the rotation uses.
+     *
+     * @return array<int, array{id: string, label: string, help: string, name: string, levels: string}>
+     */
+    private function presets(): array
+    {
+        $presets = [];
+        foreach (self::PRESETS as $id => $preset) {
+            $levels = [];
+            foreach ($preset['levels'] as $group => $level) { $levels[] = $group . '=' . $level; }
+            $presets[] = ['id' => $id, 'label' => I18n::t('wb.integrations.preset.' . $id), 'help' => I18n::t('wb.integrations.preset_help.' . $id), 'name' => $preset['name'], 'levels' => implode(';', $levels)];
+        }
+        return $presets;
+    }
+
+    /**
+     * Ready-to-copy client configuration for the MCP server of this site: the JSON block for the
+     * mcpServers section of a client and the command for Claude Code. It carries the raw key, so it is
+     * built for the one response that issues the key and never stored. A key without the Publishing
+     * group gets the draft mode, which also hides the publish tools locally.
+     *
+     * @param string[] $scopes
+     * @return array{server: string, mode: string, json: string, command: string}
+     */
+    public static function mcpClientConfig(string $address, #[\SensitiveParameter] string $key, array $scopes): array
+    {
+        $mode = in_array('publish:write', $scopes, true) ? 'full' : 'draft';
+        $host = (string) parse_url($address, PHP_URL_HOST);
+        $server = 'wbengine-' . (trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($host)), '-') ?: 'site');
+        $env = ['WBENGINE_MCP_URL' => rtrim($address, '/'), 'WBENGINE_MCP_KEY' => $key, 'WBENGINE_MCP_MODE' => $mode];
+        $json = json_encode(['mcpServers' => [$server => ['command' => 'php', 'args' => [self::MCP_PHAR_PLACEHOLDER], 'env' => $env]]], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $command = 'claude mcp add';
+        foreach ($env as $name => $value) { $command .= ' --env ' . escapeshellarg($name . '=' . $value); }
+        $command .= ' --transport stdio ' . $server . ' -- php ' . self::MCP_PHAR_PLACEHOLDER;
+        return ['server' => $server, 'mode' => $mode, 'json' => $json, 'command' => $command];
+    }
+
     /** "content=write;site=read": the levels of a key, to preset the form when it is rotated. */
     private function levelsAttribute(array $scopes): string
     {
@@ -493,7 +549,7 @@ class Integrations extends WbengineBoxAbstract
             'col_by', 'col_last_used', 'col_scopes', 'col_status', 'revoke_submit', 'revoke_password', 'rotation_title', 'rotation_1',
             'rotation_2', 'rotation_3', 'issued_title', 'issued_warning', 'copy', 'copied', 'copy_failed', 'instr_title', 'instr_1',
             'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help', 'name_help', 'analytics_label',
-            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title', 'col_none', 'col_read', 'col_write', 'ips_title', 'ips_label', 'ips_help', 'ips_any', 'ips_your', 'col_allowed', 'col_last_ip', 'restrict_open', 'restrict_submit', 'ips_never', 'confirm_password', 'ips_card_hint'] as $key) {
+            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title', 'presets_title', 'presets_help', 'mcp_title', 'mcp_help', 'mcp_json', 'mcp_command', 'mcp_note', 'col_none', 'col_read', 'col_write', 'ips_title', 'ips_label', 'ips_help', 'ips_any', 'ips_your', 'col_allowed', 'col_last_ip', 'restrict_open', 'restrict_submit', 'ips_never', 'confirm_password', 'ips_card_hint'] as $key) {
             $texts[$key] = I18n::t('wb.integrations.' . $key);
         }
         return $texts;

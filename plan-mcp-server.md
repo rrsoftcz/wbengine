@@ -227,8 +227,8 @@ F. Tests.
 - [x] The same session against the built phar.
 
 G. Agent key preset on the Integrations page.
-- [ ] Buttons above the matrix in `Integrations.tpl` (the table in "Agent key preset"), filled by the script next to the paint function; texts in `I18n/messages/en.php` and `cs.php` and in `texts()`; no change on the server side; without JavaScript the form is unchanged.
-- [ ] After issuing a key, the one-time screen shows the client configuration block (JSON) and a command for Claude Code, with the site address and the key; the `draft` mode for the drafts-only preset. Add a test that the block appears only in the issue response, once, and contains the key only there.
+- [x] Buttons above the matrix in `Integrations.tpl` (the table in "Agent key preset", defined once in `Integrations::PRESETS`), filled by the script next to the paint function; texts in `I18n/messages/en.php` and `cs.php` and in `texts()`; no change on the server side; without JavaScript the form is unchanged.
+- [x] After issuing a key, the one-time screen shows the client configuration block (JSON) and a command for Claude Code, with the site address and the key; the `draft` mode for the drafts-only preset. Add a test that the block appears only in the issue response, once, and contains the key only there.
 
 H. The phar.
 - [x] `bin/build-phar.php` (run with `php -d phar.readonly=0`): packs `Mcp/` and a small autoloader stub, sets the entry point, signs with SHA-256, writes `build/wbengine-mcp.phar` (`build/` is git-ignored).
