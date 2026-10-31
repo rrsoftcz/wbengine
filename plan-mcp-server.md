@@ -1,6 +1,6 @@
 # Plan: MCP server for WBengine
 
-Status: proposed, not started. Language of this document: English (project rule). Decisions of the owner are in the section "Decisions".
+Status: approved by the owner. Release 6.2.0 (hide and unhide articles) is finished and deployed; release 6.3.0 (the MCP server itself) is the next work and has not been started. The section "Progress and how to resume" tells exactly where things stand and what to do next. Language of this document: English (project rule). Decisions of the owner are in the section "Decisions".
 
 ## Goal
 
@@ -13,7 +13,7 @@ An MCP (Model Context Protocol) server shipped with WBengine that lets an AI cli
 3. A published article must be hideable, the reverse of publishing. This needs a real flag in the framework (see "Framework changes").
 4. Hiding an article hides its URL automatically: the address answers 404 and the menu item disappears. Unhiding brings both back. The page row itself is not changed.
 5. The Integrations page offers a preset key for an agent (see "Agent key preset").
-6. The server is also released as one file, `wbengine-mcp.phar`, attached to each release, so a machine without the site's code can run it.
+6. The server is also released as one file, `wbengine-mcp.phar`, attached to each release, so a machine without the site's code can run it. Approved by the owner as a separate release asset.
 
 ## What exists today (verified in the code)
 
@@ -169,3 +169,87 @@ README section, `ref-mcp.md` (tools, input schemas, errors, configuration), exam
 - Prompt injection through article text cannot be removed, only contained by the rules above and by the key's permissions.
 - Dynamic IPs and IP-restricted keys conflict; document it.
 - The lookup of a hidden article adds a condition to the query that runs on every request. It uses an index and is measured with the existing content-lookup benchmark before release.
+
+## Progress and how to resume
+
+### Releases so far (all on `master` of the framework, tagged, with a GitHub release)
+
+| Release | Content | Deployed |
+|---------|---------|----------|
+| 5.0.0 | API v1 and the JWT dependency removed, API v2 is the only API | yes |
+| 5.1.0, 5.2.0 | permission groups for integration keys, `Integrations` box needs no application class (`Section::BUNDLED_BOXES`), `integrations:install`, permission matrix with None, Read, Write radio buttons colored red, blue, green | yes |
+| 6.0.0 | unused settings removed (`codePage`, `cdnPath`, `cssFiles`, `ipAdmins`, `minimizeHtml`, `minimizeCss`, `minimizeJs`) | yes |
+| 6.1.0 | per-key IP address restriction (`allowed_ips`, `last_used_ip`, 403 `ip_not_allowed`, migration `6.1.0/011`) | yes |
+| 6.2.0 | hide and unhide articles (migration `6.2.0/012`, `Content\ArticleVisibility`, 404 of the page, menu item removed, article search and filters), hide control in the Admin | yes |
+
+The skeleton application and the central Admin follow every release (the skeleton pins the framework in `composer.json` and `.github/workflows/smoke.yml`, the Admin pilot pins a framework commit in `.github/workflows/ci.yml`; the Admin pilot is still on 6.0.0, which is fine).
+
+### Building blocks that exist and that the MCP server relies on
+
+- `Wbengine\Api\V2` controller: routes for articles (`POST /articles` creates an empty live row plus a draft, `PATCH /articles/{id}` saves the draft, `GET .../preview`, `POST .../publish`, `POST .../hide`, `POST .../unhide`, `GET .../revisions`, `POST .../restore`), pages, menu, sections, boxes, translations (`PUT /translations/article/{id}/{locale}` writes into the draft), images, users, cache flush, config (read only), changes. All writes need `If-Match` with the latest ETag; every write response carries the new ETag in the `ETag` header. Success bodies are `{"success": true, "data": ..., "pagination": ...}`, errors `{"success": false, "error": {"code", "message"}}`.
+- The actor header `X-WBengine-Actor` (at most 128 characters, no control characters) is stored as `central_actor` in the change log. The Admin uses `admin:<id>`; any other value is shown as is, so `mcp:<client>` works without changes.
+- `Box\Integrations::GROUPS`, `scopesForGroups()`, `levelsOf()`, `levelsFromInput()`: the single definition of the permission groups. The form is a matrix (`groupForm()`, template `Box/Integrations/View/Integrations.tpl`, rows `.wb-mrow`, script `data-wb-matrix`), texts in `I18n/messages/en.php` and `cs.php` under `wb.integrations.*`, listed in `texts()`.
+- `Api\V2\IpList`, `Model::restrict()`, `Model::authenticate($token, $clientIp)`: address restriction per key.
+- Local test setup (see the framework README, "Development and tests"): Docker with PHP and MySQL; the HTTP tests run in CI.
+
+### Work breakdown for release 6.3.0 (check the boxes in the commits that do the work)
+
+A. Protocol core, namespace `Wbengine\Mcp`, no dependency on the rest of the framework (no `Db`, no `Config`), so it can be packed alone into the phar.
+- [ ] Before coding, read the current MCP specification and pin its protocol revision in a constant and in `ref-mcp.md`. Do not rely on memory of the protocol: check `initialize` (capabilities, protocol version negotiation), `tools/list`, `tools/call` results (`content`, `structuredContent`, `isError`), tool annotations, `ping`, notifications such as `notifications/initialized`, JSON-RPC error codes and the stdio framing.
+- [ ] `Mcp/Server.php` (message loop, dispatch), `Mcp/Transport/Stdio.php` (reads lines from a stream, writes one JSON per line, logs only to stderr), `Mcp/Tool.php` (name, description, input schema, annotations, handler), `Mcp/ToolRegistry.php`.
+- [ ] Limits: maximum message size, maximum tool result size, malformed JSON gives a JSON-RPC error and the loop continues.
+
+B. API client, `Mcp/Api/Client.php`.
+- [ ] HTTPS with certificate verification (PHP streams, no new Composer package), no redirects, connect and total timeouts, response size limit, JSON only. `http://localhost` and `http://127.0.0.1` only when `WBENGINE_MCP_ALLOW_INSECURE=1`.
+- [ ] Headers: `Authorization: Bearer <key>`, `X-WBengine-Actor`, `If-Match` when given, `Accept: application/json`. The key never appears in logs, results or exception messages (a test greps every output for it).
+- [ ] An injectable transport (a callable) so the tests call `Wbengine\Api\V2::handle()` in process.
+- [ ] Error mapping: `{code, message, status}` to a tool error with advice (`article_site_conflict`, `missing_site`, `precondition_failed` (reload and retry), `ip_not_allowed`, `forbidden` (the key lacks a group), `hide_unavailable` (site needs the update 6.2.0/012), `invalid_field`, `duplicate_link`).
+
+C. Tools (phase 1), file `Mcp/Tools/Articles.php` (or one class per tool). Every tool has annotations (read-only, destructive, idempotent) and a JSON schema; results contain a short text and a structured object.
+- [ ] `site_info`: `GET /capabilities` and `GET /identity`; returns languages, scopes of the key translated into the permission groups, whether images work, and whether publishing and hiding are allowed (so the model knows before it tries).
+- [ ] `list_pages` (search, page), `list_articles` (search, hidden, has_draft, page), `get_article` (id; live content, translations, draft, state `draft` | `published` | `hidden`, ETag).
+- [ ] `save_article_draft`: create (`title`, `introtext`, `bodytext` Markdown, optional `locale` translations, `page_id` or a new page `{link, title}`) or update (`id`, changed fields, optional `expected_etag`). A new page is created hidden (`visible: 0`) and made visible by `publish_article`. Optional menu entry (`menu_name`). The tool chains ETags itself: create page, create or patch the draft, then one `PUT /translations/article/{id}/{locale}` per locale, always with the newest ETag. Derive the link from the title when absent (ASCII, lowercase, hyphens, `link_prefix` default `/`).
+- [ ] `preview_article` (id, locale): `GET .../preview`.
+- [ ] `publish_article` (id): publishes, then makes a page created by the tool visible; refuses clearly without the Publishing group; in `draft` mode the tool is not listed.
+- [ ] `hide_article`, `unhide_article` (id): call the hide and unhide endpoints; the result states that the URL answers 404 while hidden.
+- [ ] `list_changes` (resource, id, limit): `GET /changes` with the filters, needs `audit:read`.
+- [ ] Later in 6.4.0: `upload_image`, `set_page_visibility`, menu tools.
+
+D. Entry point and configuration.
+- [ ] `bin/wbengine-mcp.php`, registered in `composer.json` `bin`, so Composer exposes `vendor/bin/wbengine-mcp`. Environment variables as in the table above (`WBENGINE_MCP_URL`, `WBENGINE_MCP_KEY`, `WBENGINE_MCP_ACTOR`, `WBENGINE_MCP_MODE`, `WBENGINE_MCP_ALLOW_INSECURE`). Missing or invalid configuration prints a clear message on stderr and exits non-zero.
+
+E. Safety (see "Safety" above) implemented and tested: text read from the site is marked as data in the tool results, size limits, one write per call, no delete tool.
+
+F. Tests.
+- [ ] Unit: protocol framing and errors, schema validation of tool input, the client (redirect refused, oversize refused, invalid TLS refused, key never printed).
+- [ ] Integration: every tool against the real controller through the in-process transport with temporary tables (pattern of `tests/Integration/ApiV2ArticleHideTest.php`).
+- [ ] End to end: start `bin/wbengine-mcp.php` as a process, run a stdio session against a test site served by the PHP built-in server (pattern of `ApiV2HttpTest`): create a draft with a new page, preview, publish, hide (URL 404), unhide, read the change feed with the actor.
+- [ ] The same session against the built phar.
+
+G. Agent key preset on the Integrations page.
+- [ ] Buttons above the matrix in `Integrations.tpl` (the table in "Agent key preset"), filled by the script next to the paint function; texts in `I18n/messages/en.php` and `cs.php` and in `texts()`; no change on the server side; without JavaScript the form is unchanged.
+- [ ] After issuing a key, the one-time screen shows the client configuration block (JSON) and a command for Claude Code, with the site address and the key; the `draft` mode for the drafts-only preset. Add a test that the block appears only in the issue response, once, and contains the key only there.
+
+H. The phar.
+- [ ] `bin/build-phar.php` (run with `php -d phar.readonly=0`): packs `Mcp/` and a small autoloader stub, sets the entry point, signs with SHA-256, writes `build/wbengine-mcp.phar` (`build/` is git-ignored).
+- [ ] `.github/workflows/release.yml`: on a published GitHub release, build the phar, run the stdio test against it, attach it to the release (`contents: write`). The README documents `php wbengine-mcp.phar` and the checksum.
+
+I. Documentation.
+- [ ] Framework: README section "MCP server", `ref-mcp.md` (tools with schemas, errors, configuration, safety, client examples for Claude Code and Claude Desktop), CHANGELOG, update this plan.
+- [ ] Skeleton: README, `docs/CHANGELOG.md`, public documentation page or paragraph (plain facts only: what the server does, how to connect, the agent key) through a guarded content migration `036-...` mirrored in the content dump; `composer.json` constraint, `bin/update-database.sh` needs no change.
+- [ ] Admin: a short note in `README.md` and `docs/book-connect-a-site-end-to-end.md` about keys for agents.
+
+J. Release 6.3.0: merge each part by PR with green CI, tag `v6.3.0`, GitHub release (the workflow attaches the phar), bump the skeleton, deploy, check that the phar asset exists and runs.
+
+### Resuming after an interruption
+
+1. Read this file, `git log --oneline -20` and `git tag --sort=-v:refname | head` in the framework, and the open pull requests, to see which of the boxes above are already done.
+2. Check that `master` is green and that the live demo runs the latest framework (`composer show wbengine/wbengine` inside the web container).
+3. Continue with the first unchecked box of the breakdown. Keep every step a pull request with green CI; releases are annotated tags plus a GitHub release; the skeleton and the Admin follow.
+4. Do not change the decisions without the owner. Questions that are still open: none for phase 1.
+
+### Conventions that apply to all of this work
+
+- Documentation and code comments in English; the Czech texts only where a Czech translation of a user interface or of the public site is required. No em dashes and no icons in texts. Public skeleton documentation states only facts about what the system does and how to use it (no migration numbers, release history or how the text was made).
+- Commits and pull requests carry no AI co-author or attribution lines.
+- A new migration gets the next number in a folder named after the release (`migrations/6.3.0/013-...sql` if one is needed), is idempotent, is added to the skeleton scripts `bin/update-database.sh` and `bin/setup-production.sh`, and is reported by `doctor` as `migration.NNN`.
