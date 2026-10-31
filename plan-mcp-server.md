@@ -155,7 +155,7 @@ README section, `ref-mcp.md` (tools, input schemas, errors, configuration), exam
 | 6.3.0 | MCP server phase 1 (articles), agent key preset with the client block, `wbengine-mcp.phar`, docs, CI end to end test |
 | 6.3.1 | warning when the page of an article has no box that shows articles (released) |
 | 6.4.0, 6.4.1 | the editor agent (released and deployed; 6.4.1 makes the client try IPv4 first): the server knows WBengine (guide, prompts, resources), prepares and checks the whole article page (address, SEO fields, article box, menu), page, menu and box tools, images, the Editor key preset, skeleton registers its box type as an article renderer (see "Release 6.4.0") |
-| 6.5.0 | insight: statistics, reports and change log analysis (see "Release 6.5.0") |
+| 6.5.0 | insight (released and deployed): statistics, reports and change log analysis (see "Release 6.5.0") |
 | later | curated and backed up settings changes with confirmation, multi-site MCP in the Admin (own plan, includes login and per-site roles) |
 | not planned | deployment of a site: it runs on the host (git and Docker) and needs a separate privileged tool with approvals |
 
@@ -234,7 +234,7 @@ P. Key preset, skeleton, documentation.
 - [ ] Skeleton: register `story` as an article renderer, content migration, README snippet, changelog, deploy.
 Q. Release 6.4.0 (done 2026-10-31: PR #39 with green CI, tag, release with the phar and checksum, skeleton PR #42 with the registration of `story` as an article renderer and the docs migration 036, deployed, live acceptance 35 of 35 checks with the Editor key, the site back to its baseline counts). Release 6.4.1 (client tries IPv4 first, see the findings) is released and deployed.
 - [x] Release, skeleton, deploy, live acceptance.
-- [ ] Admin docs mention the Editor preset (small follow-up).
+- [x] Admin docs mention the Editor preset (Admin PR #45).
 
 ## Release 6.5.0: insight (statistics, reports, logs)
 
@@ -252,7 +252,7 @@ Work breakdown 6.5.0 (check the boxes in the commits that do the work):
 - [x] No framework change needed: the existing `/changes` has the filters and `outcome=rejected`.
 - [x] `get_statistics`, `site_report`, tests with fixtures of known counts, the guide topic `statistics`, prompt `weekly_report`.
 - [x] `list_changes` filters (including `outcome=rejected`), `analyze_activity`, tests (the separate `list_audit_problems` is `list_changes` with `outcome` rejected).
-- [ ] Release, skeleton, deploy, live acceptance.
+- [x] Release 6.5.0 (PR #42, tag, release with the phar, skeleton PR #44), deployed, live check of the new tools with the Editor plus Analytics key (statistics, report, change log analysis, refused writes), Admin docs PR #45.
 
 ## Live acceptance procedure (for every release from 6.3.1)
 
@@ -382,3 +382,10 @@ J. Release 6.3.0 (done: all parts merged by PR with green CI, tag `v6.3.0`, the 
 - Deleting through the API needs the dependents removed first (a menu entry with children, a page with menu entries or boxes answers `resource_in_use`). The test harness deletes children before parents. The agent has no delete tool by decision.
 - The auto mode classifier blocked a cleanup script whose delete targets were computed at run time. Test cleanup is done as explicit deletes by id after the run.
 - Statistics were not exercised: the tools belong to 6.5.0. The key has `analytics:read` and `site_info` reports `statistics: yes`.
+
+### Findings of the live check of 6.5.0 (2026-10-31)
+
+- `get_statistics`, `site_report`, `analyze_activity` and `list_changes` (action, time window, outcome rejected) worked on the live site with real numbers: about 6900 page views since counting began on 2026-10-28, almost all on the home page, 0 article views and 0 box appearances in the daily figures (the site only counts pages there), 121 changes in seven days by four actors and four refused writes. `site_report` says that the comparison is unreliable when the period before starts before counting began (it did, so +1857% is not a trend), and that visitors are not identified.
+- Actor labels are free text from clients: the live log has one label with a pasted header (`mcp:plan-research If-Match: "..."`) from a malformed request of this work. This is the reason the results mark actor text as data.
+- `GET /changes` already had every filter needed and the refused writes, so the planned `GET /api/v2/audit` was dropped.
+- Not done on the live site: the new menu order of `menu_name` (covered by an integration test, `testANewMenuEntryFromSaveDraftGoesLast`).
