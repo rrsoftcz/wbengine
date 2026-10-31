@@ -328,7 +328,7 @@ class IntegrationsHttpTest extends DbTestCase
         $this->assertSame(3, preg_match_all('/wbv2_[a-f0-9]{64}/', $response['body'], $matches), 'key field, client JSON and Claude Code command');
         $key = $matches[0][0];
         $this->assertCount(1, array_unique($matches[0]));
-        $this->assertSame(1, substr_count($response['body'], 'WBENGINE_MCP_MODE": "full"'));
+        $this->assertSame(1, substr_count(html_entity_decode($response['body']), 'WBENGINE_MCP_MODE": "full"'));
         $this->assertSame(1, substr_count($response['body'], 'value="' . $key . '"'));
         // The central Admin instruction: address, recommended name, key.
         $this->assertStringContainsString('value="https://' . substr($this->origin, 7) . '/"', $response['body']);
