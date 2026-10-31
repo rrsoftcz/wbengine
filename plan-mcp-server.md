@@ -236,10 +236,12 @@ H. The phar.
 
 I. Documentation.
 - [x] Framework: README section "MCP server", `ref-mcp.md` (tools with schemas, errors, configuration, safety, client examples for Claude Code and Claude Desktop), CHANGELOG, update this plan.
-- [ ] Skeleton: README, `docs/CHANGELOG.md`, public documentation page or paragraph (plain facts only: what the server does, how to connect, the agent key) through a guarded content migration `036-...` mirrored in the content dump; `composer.json` constraint, `bin/update-database.sh` needs no change.
-- [ ] Admin: a short note in `README.md` and `docs/book-connect-a-site-end-to-end.md` about keys for agents.
+- [x] Skeleton: README, `docs/CHANGELOG.md`, public documentation page or paragraph (plain facts only: what the server does, how to connect, the agent key) through a guarded content migration `035-mcp-server-docs.sql` mirrored in the content dump; `composer.json` constraint, `bin/update-database.sh` needs no change.
+- [x] Admin: a short note in `README.md` and `docs/book-connect-a-site-end-to-end.md` about keys for agents.
 
-J. Release 6.3.0: merge each part by PR with green CI, tag `v6.3.0`, GitHub release (the workflow attaches the phar), bump the skeleton, deploy, check that the phar asset exists and runs.
+J. Release 6.3.0 (done: all parts merged by PR with green CI, tag `v6.3.0`, the release workflow attached the phar and its checksum, the downloaded phar passes the checksum and answers over HTTPS against the deployed site; skeleton and Admin are deployed).
+- [x] Release, skeleton bump, deploy.
+- [ ] Manual acceptance with a real key (write an article draft, preview, publish, hide) needs a key issued by the site owner.
 
 ### Resuming after an interruption
 
