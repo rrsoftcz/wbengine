@@ -154,7 +154,7 @@ README section, `ref-mcp.md` (tools, input schemas, errors, configuration), exam
 | 6.2.0 | hidden flag, hide/unhide with automatic 404 and menu removal, article search and filters, Admin control |
 | 6.3.0 | MCP server phase 1 (articles), agent key preset with the client block, `wbengine-mcp.phar`, docs, CI end to end test |
 | 6.3.1 | warning when the page of an article has no box that shows articles (released) |
-| 6.4.0 | the editor agent: the server knows WBengine (guide, prompts, resources), prepares and checks the whole article page (address, SEO fields, article box, menu), page, menu and box tools, images, the Editor key preset, skeleton registers its box type as an article renderer (see "Release 6.4.0") |
+| 6.4.0, 6.4.1 | the editor agent (released and deployed; 6.4.1 makes the client try IPv4 first): the server knows WBengine (guide, prompts, resources), prepares and checks the whole article page (address, SEO fields, article box, menu), page, menu and box tools, images, the Editor key preset, skeleton registers its box type as an article renderer (see "Release 6.4.0") |
 | 6.5.0 | insight: statistics, reports and change log analysis (see "Release 6.5.0") |
 | later | curated and backed up settings changes with confirmation, multi-site MCP in the Admin (own plan, includes login and per-site roles) |
 | not planned | deployment of a site: it runs on the host (git and Docker) and needs a separate privileged tool with approvals |
@@ -232,7 +232,9 @@ O. Images.
 P. Key preset, skeleton, documentation.
 - [x] Preset "Editor" and its tests, `ref-mcp.md`, README, CHANGELOG.
 - [ ] Skeleton: register `story` as an article renderer, content migration, README snippet, changelog, deploy.
-Q. Release 6.4.0: PRs with green CI, tag, release, phar checked, skeleton bump and deploy, live acceptance with the full key, Admin docs.
+Q. Release 6.4.0 (done 2026-10-31: PR #39 with green CI, tag, release with the phar and checksum, skeleton PR #42 with the registration of `story` as an article renderer and the docs migration 036, deployed, live acceptance 35 of 35 checks with the Editor key, the site back to its baseline counts). Release 6.4.1 (client tries IPv4 first, see the findings) is released and deployed.
+- [x] Release, skeleton, deploy, live acceptance.
+- [ ] Admin docs mention the Editor preset (small follow-up).
 
 ## Release 6.5.0: insight (statistics, reports, logs)
 
@@ -371,3 +373,12 @@ J. Release 6.3.0 (done: all parts merged by PR with green CI, tag `v6.3.0`, the 
 - A new page has no article box, so the published address was empty (fixed as a warning in 6.3.1; the real fix is the workflow of 6.4.0). The warning is a false alarm for pages whose box type is not registered as an article renderer (the skeleton's `story`).
 - Boxes, menu, page SEO fields and ordering work through API v2 with the structure scopes; the details are in the section "Release 6.4.0".
 - Analytics needs its own scope; images need a store directory; both are prerequisites of the live test of 6.5.0 and of the images in 6.4.0.
+
+### Findings of the live acceptance of 6.4.0 (2026-10-31)
+
+- 35 of 35 checks passed against www.wbengine.org with the released phar and a key with the Editor profile plus Analytics: 25 tools offered, resources and prompts, `site_info` readiness, plan with a clean address under `/blog/`, image upload (the image is public and shown in the article), draft with a new page and the article box, preview, check, publish (the page shows the text, the browser title, the description and the image, the menu entry becomes visible), menu order with room making, menu translation, box add, update, hide, show, refusal of an unregistered box type, page update with a translation, protection of the address of a visible page, hide and unhide, change log with the actor. The test objects were removed through the API and the counts are back to pages 18, menu 4, boxes 23, articles 13, images 0.
+- The first run was seven seconds per call slower than curl: the site publishes an IPv6 address and from some networks the IPv6 route is broken, and PHP streams try IPv6 first. 6.4.1 tries IPv4 first when the host has an IPv4 address (0.16 s instead of 7.2 s), the name and the certificate check are unchanged.
+- A menu entry created through `menu_name` of `save_article_draft` gets the order 100, which sorts after every other entry but is an arbitrary number (the live menu showed 102 after later inserts). A later change should use "last position + 1" like `set_menu_entry`.
+- Deleting through the API needs the dependents removed first (a menu entry with children, a page with menu entries or boxes answers `resource_in_use`). The test harness deletes children before parents. The agent has no delete tool by decision.
+- The auto mode classifier blocked a cleanup script whose delete targets were computed at run time. Test cleanup is done as explicit deletes by id after the run.
+- Statistics were not exercised: the tools belong to 6.5.0. The key has `analytics:read` and `site_info` reports `statistics: yes`.
