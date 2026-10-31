@@ -18,7 +18,10 @@ final class Stdio
 
     public function run(Server $server): void
     {
+        $started = microtime(true);
+        $messages = 0;
         while (null !== ($line = $this->readLine())) {
+            ++$messages;
             if (false === $line) {
                 $this->write('{"jsonrpc":"2.0","id":null,"error":{"code":' . Protocol::INVALID_REQUEST . ',"message":"The message is larger than ' . $this->maxMessageBytes . ' bytes and was discarded."}}');
                 continue;
@@ -27,6 +30,8 @@ final class Stdio
             $response = $server->handle($line);
             if (null !== $response) { $this->write($response); }
         }
+        // The only way the loop ends: the client closed its end. Said on stderr so a disconnect can be explained.
+        $this->log('input closed by the client after ' . (int) round(microtime(true) - $started) . ' s and ' . $messages . ' messages, stopping');
     }
 
     public function log(string $line): void

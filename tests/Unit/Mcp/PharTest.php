@@ -53,6 +53,8 @@ final class PharTest extends TestCase
         $this->assertContains('save_article_draft', $names);
         $this->assertNotContains('publish_article', $names);
         $this->assertStringNotContainsString('wbv2_testkey', $out . $err);
+        $this->assertMatchesRegularExpression('/started: pid \d+, server \d+\.\d+\.\d+, PHP /', $err);
+        $this->assertStringContainsString('input closed by the client', $err, 'a session that ends says how');
     }
 
     public function testTheGuideIsReadableFromInsideThePhar(): void

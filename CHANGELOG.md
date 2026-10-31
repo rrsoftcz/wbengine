@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Changed (6.5.2)
+
+- MCP server: it says on stderr how it ends: `input closed by the client after N s and M messages` when the client closes the input and `fatal error` with the place when PHP fails, plus one `started` line with the process id and the versions. A process that disappears without either line was stopped from outside by a signal. Claude Code keeps the stderr of a server in its MCP log, so a disconnect can now be explained. Nothing else changes.
+
 ### Fixed (6.5.1)
 
 - MCP server: the text of a tool result is also the `message` of its `structuredContent`. Claude Code shows the model only the structured part when there is one, so the guide texts, the Markdown report, the warnings and the marking of site text as data never reached it.
