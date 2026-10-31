@@ -10,7 +10,7 @@ namespace Wbengine\Mcp;
 final class Protocol
 {
     /** Version of the server, reported to clients. Keep equal to the release tag; the release workflow checks it. */
-    public const SERVER_VERSION = '6.3.0';
+    public const SERVER_VERSION = '6.3.1';
     public const MODERN = '2026-07-28';
     /** Legacy revisions, newest first. */
     public const LEGACY = ['2025-11-25', '2025-06-18'];

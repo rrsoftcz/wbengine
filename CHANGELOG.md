@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Fixed (6.3.1)
+
+- MCP server: `save_article_draft` and `publish_article` warn when the page of the article has no box that shows articles, which would leave the published address empty. A page created by `new_page` has none; the warning tells the agent to use a page that already shows articles or to ask the administrator for an article box.
+
 ### Added (6.3.0)
 
 - MCP server (`Wbengine\Mcp`, `bin/wbengine-mcp.php`, also built as the single signed file `wbengine-mcp.phar` and attached to every release with its checksum): stdio, speaks the stateless revision 2026-07-28 and the revisions 2025-11-25 and 2025-06-18 with `initialize`. Tools for one site: `site_info`, `list_pages`, `list_articles`, `get_article`, `save_article_draft`, `preview_article`, `publish_article`, `hide_article`, `unhide_article`, `list_changes`. It is a client of API v2 with verified TLS, no redirects, size and time limits; text from the site is returned marked as data; `WBENGINE_MCP_MODE=draft` removes the publish and hide tools. See `ref-mcp.md`.

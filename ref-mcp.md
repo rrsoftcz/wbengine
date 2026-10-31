@@ -69,6 +69,8 @@ All content is Markdown. Every tool declares the hints `readOnlyHint`, `destruct
 | `unhide_article` | `id`, `expected_etag` | shows it again | `articles:write`, `publish:write` |
 | `list_changes` | `resource` (`articles`, `pages`), `id`, `limit` | recent changes with time, action and actor | `audit:read` |
 
+A page shows an article only through a box that renders articles. `save_article_draft` (with `page_id` or `new_page`) and `publish_article` read the page and add a warning to the text when it has none (`article_box_ids` empty), because the published address would stay empty. A page created by `new_page` has no such box; use a page that already shows articles, or ask the site administrator to add an article box to it.
+
 Results carry a short text and `structuredContent`. `save_article_draft` returns `id`, `etag`, `page_id` and the list of `steps` done. When a later step fails after an earlier one succeeded, the error says what was already done. Without `expected_etag` an update reads the current etag itself; with it, a change made in between is refused with advice to reload and merge.
 
 An article that was never published has no published title, so the site cannot find it by title: `list_articles` therefore also searches the draft titles (first page, at most 400 drafts).
