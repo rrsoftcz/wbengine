@@ -42,6 +42,7 @@ final class Cli
         Suite::register($registry, $client, $config['mode']);
         $holder->server = new Server($registry, 'wbengine-mcp', Protocol::SERVER_VERSION, self::INSTRUCTIONS, [$stdio, 'log'], Server::MAX_RESULT_BYTES, new Catalog());
         $stdio->log('serving ' . $config['url'] . ' in ' . $config['mode'] . ' mode');
+        self::lifecycle($stdio, $config['key']);
         $stdio->run($holder->server);
         return 0;
     }
@@ -67,5 +68,21 @@ final class Cli
             throw new ApiError('invalid_configuration', 'WBENGINE_MCP_ACTOR must be at most 128 characters without control characters.');
         }
         return ['url' => $url, 'key' => $key, 'mode' => $mode, 'insecure' => '1' === ($env['WBENGINE_MCP_ALLOW_INSECURE'] ?? ''), 'actor' => $actor];
+    }
+
+    /**
+     * Say on stderr how the process started and, when PHP fails, why it stopped. A normal end is reported by the
+     * transport ("input closed by the client"). A process that vanishes without either line was stopped from outside
+     * by a signal; signals are deliberately not intercepted, because a blocked read would then ignore them.
+     */
+    private static function lifecycle(Stdio $stdio, string $key): void
+    {
+        $stdio->log('started: pid ' . getmypid() . ', server ' . Protocol::SERVER_VERSION . ', PHP ' . PHP_VERSION);
+        register_shutdown_function(static function () use ($stdio, $key): void {
+            $e = error_get_last();
+            if (null !== $e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+                $stdio->log('fatal error: ' . str_replace($key, '[key]', $e['message']) . ' in ' . basename($e['file']) . ':' . $e['line']);
+            }
+        });
     }
 }

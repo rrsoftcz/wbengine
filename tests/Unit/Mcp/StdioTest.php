@@ -51,4 +51,12 @@ final class StdioTest extends TestCase
         $this->assertSame('', stream_get_contents($out));
         $this->assertSame("[wbengine-mcp] multi line\n", stream_get_contents($err));
     }
+
+    public function testTheEndOfTheInputIsSaidOnStderrWithTheNumberOfMessages(): void
+    {
+        [, $err] = $this->session('{"jsonrpc":"2.0","id":1,"method":"ping"}' . "\n" . '{"jsonrpc":"2.0","id":2,"method":"ping"}' . "\n");
+        $this->assertMatchesRegularExpression('/input closed by the client after \d+ s and 2 messages, stopping/', $err);
+        [, $none] = $this->session('');
+        $this->assertStringContainsString('after 0 s and 0 messages', $none);
+    }
 }
