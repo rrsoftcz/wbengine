@@ -89,7 +89,9 @@ CREATE TABLE IF NOT EXISTS `cms_articles` (
   `published` int NOT NULL DEFAULT '0',
   `author` varchar(255) DEFAULT NULL,
   `source` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  `hidden` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `wb_articles_site` (`site_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `cms_site_translations` (

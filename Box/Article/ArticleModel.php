@@ -53,8 +53,9 @@ class ArticleModel extends ModelAbstract {
     {
         $sql = sprintf("SELECT a.*
                         FROM %s a
-                        WHERE  site_id = ? LIMIT 1;"
+                        WHERE  site_id = ?%s LIMIT 1;"
             ,S_TABLE_ARTICLES
+            ,\Wbengine\Content\ArticleVisibility::isSupported() ? ' AND hidden = 0' : ''
         );
 
 	    $article = ContentTranslations::overlayRow('article', Db::fetchObject($sql, array((int)$this->getSiteId($this))));

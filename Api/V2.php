@@ -126,11 +126,11 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
                 if (!isset($data['change_id'])) { throw new Problem('missing_field', 'change_id is required.'); }
                 return $this->resourceResponse($this->getContentModel()->restoreStructure($resource, $id, $data['change_id'], $ifMatch, $actor));
             }
-            if (preg_match('~^/api/v2/articles/([1-9][0-9]{0,9})/(revisions|restore|publish|preview|metrics)$~D', $path, $match)) {
+            if (preg_match('~^/api/v2/articles/([1-9][0-9]{0,9})/(revisions|restore|publish|preview|metrics|hide|unhide)$~D', $path, $match)) {
                 $id = Resources::id($match[1]); $action = $match[2];
                 $methods = in_array($action, ['revisions', 'preview', 'metrics'], true) ? ['GET'] : ['POST'];
                 $allow = implode(', ', $methods); $this->method($method, $methods);
-                $scopes = match ($action) { 'publish' => ['articles:write', 'publish:write'], 'preview' => ['articles:read', 'preview:read'], 'restore' => ['articles:write'], default => ['articles:read'] };
+                $scopes = match ($action) { 'publish', 'hide', 'unhide' => ['articles:write', 'publish:write'], 'preview' => ['articles:read', 'preview:read'], 'restore' => ['articles:write'], default => ['articles:read'] };
                 $actor = $this->authorize($scopes, 'articles.' . $action, $authorization, $secure, $centralActor, $clientIp);
                 $actor['central_actor'] = $centralActor;
                 $content = $this->getContentModel();
@@ -140,8 +140,10 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
                     if (isset($query['locale']) && !is_string($query['locale'])) { throw new Problem('invalid_locale', 'Invalid locale.'); }
                     return $this->readReply($this->response(Contract::success($content->preview($id, $query['locale'] ?? null))), $actor, 'articles.preview');
                 }
-                $data = Contract::objectBody($body, 'restore' === $action ? ['revision_id'] : []);
+                // Hiding and showing take no input: an empty body is as good as {}.
+                $data = in_array($action, ['hide', 'unhide'], true) && '' === trim($body) ? [] : Contract::objectBody($body, 'restore' === $action ? ['revision_id'] : []);
                 if ('restore' === $action && !isset($data['revision_id'])) { throw new Problem('missing_field', 'revision_id is required.'); }
+                if (in_array($action, ['hide', 'unhide'], true)) { return $this->resourceResponse($content->setArticleHidden($id, 'hide' === $action, $ifMatch, $actor)); }
                 return $this->resourceResponse('restore' === $action ? $content->restore($id, $data['revision_id'], $ifMatch, $actor) : $content->publish($id, $ifMatch, $actor));
             }
             if (preg_match('~^/api/v2/translations/(site|menu|article)/([1-9][0-9]{0,9})/([a-z]{2,3}(?:_[A-Z]{2})?)$~D', $path, $match)) {
@@ -250,7 +252,7 @@ class V2 extends WbengineRestapiAbstract implements WbengineRestapiInterface
         $resources['cache'] = ['read' => false, 'write' => true];
         $resources['config'] = ['read' => true, 'write' => false];
         $resources['analytics'] = ['read' => \Wbengine\Config::getAnalyticsSettings()['enabled'], 'write' => false];
-        return ['api_version' => '2.0', 'capabilities' => $resources, 'box_types' => $this->getContentModel()->boxTypes(), 'i18n' => ['default' => \Wbengine\I18n::translator()->getDefaultLocale(), 'locales' => array_values(\Wbengine\I18n::locales())], 'authentication' => ['type' => 'integration_bearer', 'https_required' => true], 'pagination' => ['type' => 'page', 'default_per_page' => 25, 'max_per_page' => 100], 'search' => ['resources' => ['pages', 'boxes'], 'max_length' => 100]];
+        return ['api_version' => '2.0', 'capabilities' => $resources, 'box_types' => $this->getContentModel()->boxTypes(), 'i18n' => ['default' => \Wbengine\I18n::translator()->getDefaultLocale(), 'locales' => array_values(\Wbengine\I18n::locales())], 'authentication' => ['type' => 'integration_bearer', 'https_required' => true], 'pagination' => ['type' => 'page', 'default_per_page' => 25, 'max_per_page' => 100], 'search' => ['resources' => ['pages', 'boxes', 'articles'], 'max_length' => 100]];
     }
 
     /** The effective settings for the central Admin: read-only, every secret-like value replaced, no database details. */

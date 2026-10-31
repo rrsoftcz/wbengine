@@ -11,6 +11,7 @@ final class Doctor
 
     /** Schema of migrations/4.8.0/008: change log source, local user and audit detail. */
     public const SCHEMA_INTEGRATIONS_IPS = ['cms_api_integrations'=>['allowed_ips','last_used_ip']];
+    public const SCHEMA_ARTICLE_HIDDEN = ['cms_articles'=>['hidden']];
     public const SCHEMA_CHANGE_LOG = ['cms_api_changes'=>['source','local_user_id'], 'cms_api_audit'=>['detail']];
 
     /** Schema of migrations/4.0.0/006: first-party analytics, shared with the integration screen preflight. */
@@ -67,6 +68,7 @@ final class Doctor
             '007'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_INTEGRATIONS_LAST_USED],
             '008'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_CHANGE_LOG],
             '011'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_INTEGRATIONS_IPS],
+            '012'=>[!empty($config['apiV2']['enabled']), self::SCHEMA_ARTICLE_HIDDEN],
         ];
         $databaseDown = false;
         foreach ($requirements as $number => [$enabled, $schema]) {
