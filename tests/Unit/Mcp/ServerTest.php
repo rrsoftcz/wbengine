@@ -164,4 +164,58 @@ final class ServerTest extends TestCase
         $this->assertStringNotContainsString("\n", $raw);
         $this->assertSame("said a\nb\u{00e9}", json_decode($raw, true)['result']['content'][0]['text']);
     }
+
+    private function withCatalog(): Server
+    {
+        return new Server(new ToolRegistry(), 'wbengine-mcp', '1.2.3', 'Use the tools.', null, Server::MAX_RESULT_BYTES, new \Wbengine\Mcp\Catalog());
+    }
+
+    public function testPromptsAndResourcesInBothEras(): void
+    {
+        $server = $this->withCatalog();
+        $discover = $this->call($server, ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'server/discover', 'params' => $this->modernMeta()])['result'];
+        $this->assertArrayHasKey('prompts', $discover['capabilities']);
+        $this->assertArrayHasKey('resources', $discover['capabilities']);
+        $modern = $this->call($server, ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'resources/list', 'params' => $this->modernMeta()])['result'];
+        $this->assertSame('complete', $modern['resultType']);
+        $this->assertContains('wbengine://guide/overview', array_column($modern['resources'], 'uri'));
+
+        $this->call($server, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'initialize', 'params' => ['protocolVersion' => '2025-11-25']]);
+        $prompts = $this->call($server, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'prompts/list'])['result']['prompts'];
+        $this->assertSame(['publish_new_article', 'translate_article', 'seo_review'], array_column($prompts, 'name'));
+        $prompt = $this->call($server, ['jsonrpc' => '2.0', 'id' => 5, 'method' => 'prompts/get', 'params' => ['name' => 'translate_article', 'arguments' => ['article_id' => 7, 'language' => 'cs']]])['result'];
+        $this->assertStringContainsString('article #7 into cs', $prompt['messages'][0]['content']['text']);
+        $read = $this->call($server, ['jsonrpc' => '2.0', 'id' => 6, 'method' => 'resources/read', 'params' => ['uri' => 'wbengine://guide/menu']])['result']['contents'][0];
+        $this->assertSame(['wbengine://guide/menu', 'text/markdown'], [$read['uri'], $read['mimeType']]);
+        $this->assertStringContainsString('Menu', $read['text']);
+    }
+
+    public function testPromptAndResourceProblemsAreProtocolErrors(): void
+    {
+        $server = $this->withCatalog();
+        $this->call($server, ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'initialize', 'params' => ['protocolVersion' => '2025-11-25']]);
+        $this->assertSame(Protocol::INVALID_PARAMS, $this->call($server, ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'prompts/get', 'params' => ['name' => 'nope']])['error']['code']);
+        $missing = $this->call($server, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'prompts/get', 'params' => ['name' => 'seo_review']]);
+        $this->assertStringContainsString('page_id', $missing['error']['message']);
+        $this->assertSame(Protocol::RESOURCE_NOT_FOUND, $this->call($server, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'resources/read', 'params' => ['uri' => 'wbengine://guide/../../etc/passwd']])['error']['code']);
+        $this->assertSame(Protocol::RESOURCE_NOT_FOUND, $this->call($server, ['jsonrpc' => '2.0', 'id' => 5, 'method' => 'resources/read', 'params' => ['uri' => 'file:///etc/passwd']])['error']['code']);
+        $this->assertSame(Protocol::METHOD_NOT_FOUND, $this->call($this->server(), ['jsonrpc' => '2.0', 'id' => 6, 'method' => 'prompts/list', 'params' => $this->modernMeta()])['error']['code'], 'without a catalog the methods do not exist');
+    }
+
+    public function testToolsAreOfferedByTheScopesOfTheKey(): void
+    {
+        $tool = static fn(string $name, array $scopes) => new Tool($name, $name, 'x', ['type' => 'object'], ['readOnly' => true, 'destructive' => false, 'idempotent' => true], static fn() => ToolResult::ok('ok'), $scopes);
+        $registry = (new ToolRegistry())->add($tool('open', []))->add($tool('read', ['a:read']))->add($tool('write', ['a:read', 'a:write']));
+        $registry->filterByScopes(static fn() => ['a:read']);
+        $this->assertSame(['open', 'read'], array_map(static fn($t) => $t->name, $registry->all()));
+        $this->assertNull($registry->get('write'));
+        $unknown = (new ToolRegistry())->add($tool('read', ['a:read']));
+        $unknown->filterByScopes(static fn() => null);
+        $this->assertCount(1, $unknown->all(), 'when the scopes cannot be known every tool is offered and the API decides');
+        $calls = 0;
+        $counted = (new ToolRegistry())->add($tool('read', ['a:read']));
+        $counted->filterByScopes(static function () use (&$calls) { ++$calls; return ['a:read']; });
+        $counted->all(); $counted->all(); $counted->get('read');
+        $this->assertSame(1, $calls, 'the scopes are asked for once');
+    }
 }

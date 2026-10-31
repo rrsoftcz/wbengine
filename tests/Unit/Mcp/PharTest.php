@@ -32,7 +32,9 @@ final class PharTest extends TestCase
         foreach (new \RecursiveIteratorIterator($phar) as $entry) { $names[] = substr($entry->getPathname(), strlen('phar://' . realpath($file) . '/')); }
         $this->assertContains('bin/wbengine-mcp.php', $names);
         $this->assertContains('Mcp/Server.php', $names);
+        $this->assertContains('Mcp/Guide/overview.md', $names, 'the guide texts are packed with the server');
         $this->assertSame([], array_filter($names, static fn(string $n) => !str_starts_with($n, 'Mcp/') && 'bin/wbengine-mcp.php' !== $n), 'nothing else is packed');
+        $this->assertSame([], array_filter($names, static fn(string $n) => !preg_match('~\\.(php|md)$~', $n)), 'only classes and guide texts');
         $this->assertSame(hash_file('sha256', $file) . '  wbengine-mcp.phar' . "\n", file_get_contents($file . '.sha256'));
     }
 
@@ -51,6 +53,18 @@ final class PharTest extends TestCase
         $this->assertContains('save_article_draft', $names);
         $this->assertNotContains('publish_article', $names);
         $this->assertStringNotContainsString('wbv2_testkey', $out . $err);
+    }
+
+    public function testTheGuideIsReadableFromInsideThePhar(): void
+    {
+        $process = proc_open([PHP_BINARY, $this->dir . '/wbengine-mcp.phar'], [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes, null, ['WBENGINE_MCP_URL' => 'https://site.example', 'WBENGINE_MCP_KEY' => 'wbv2_testkey', 'PATH' => getenv('PATH')]);
+        fwrite($pipes[0], '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}' . "\n" . '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"wbengine_guide","arguments":{"topic":"overview"}}}' . "\n" . '{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"wbengine://guide/boxes"}}' . "\n" . '{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"publish_new_article","arguments":{"topic":"bread"}}}' . "\n");
+        fclose($pipes[0]);
+        $lines = explode("\n", rtrim(stream_get_contents($pipes[1]), "\n"));
+        proc_close($process);
+        $this->assertStringContainsString('How a WBengine site works', json_decode($lines[1], true)['result']['content'][0]['text']);
+        $this->assertStringContainsString('# Boxes', json_decode($lines[2], true)['result']['contents'][0]['text']);
+        $this->assertStringContainsString('bread', json_decode($lines[3], true)['result']['messages'][0]['content']['text']);
     }
 
     public function testMissingConfigurationExitsWithTwo(): void

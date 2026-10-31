@@ -16,7 +16,7 @@ final class CliTest extends TestCase
         $seen = [];
         $transport = function (string $method, string $url, array $headers) use (&$seen): array {
             $seen[] = ['method' => $method, 'url' => $url, 'headers' => $headers];
-            $data = str_ends_with($url, '/identity') ? ['name' => 'Agent', 'scopes' => ['discovery:read', 'articles:read']] : ['api_version' => '2.0', 'capabilities' => ['images' => ['write' => false]], 'i18n' => ['default' => 'cs', 'locales' => ['cs', 'en']]];
+            $data = str_ends_with($url, '/identity') ? ['name' => 'Agent', 'scopes' => ['discovery:read', 'articles:read', 'articles:write', 'pages:read', 'publish:write']] : ['api_version' => '2.0', 'capabilities' => ['images' => ['write' => false]], 'i18n' => ['default' => 'cs', 'locales' => ['cs', 'en']]];
             return ['status' => 200, 'headers' => [], 'body' => json_encode(['success' => true, 'data' => $data])];
         };
         $in = fopen('php://memory', 'w+'); fwrite($in, implode("\n", array_map('json_encode', $messages)) . "\n"); rewind($in);

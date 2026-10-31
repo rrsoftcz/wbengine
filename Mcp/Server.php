@@ -4,7 +4,8 @@ namespace Wbengine\Mcp;
 
 /**
  * JSON-RPC 2.0 dispatcher for the MCP methods the server supports: initialize and ping (legacy
- * revisions), server/discover (modern revision), tools/list and tools/call. One message in, at most
+ * revisions), server/discover (modern revision), tools/list and tools/call, and with a Catalog
+ * prompts/list, prompts/get, resources/list and resources/read. One message in, at most
  * one message out. It knows nothing about the transport and nothing about WBengine.
  */
 final class Server
@@ -23,6 +24,7 @@ final class Server
         private readonly string $instructions = '',
         private $log = null,
         private readonly int $maxResultBytes = self::MAX_RESULT_BYTES,
+        private readonly ?Catalog $catalog = null,
     ) {
     }
 
@@ -88,7 +90,9 @@ final class Server
             return $this->initialize($id, $params);
         }
         $modern = isset($params['_meta']) && is_array($params['_meta']) && array_key_exists(Protocol::META_VERSION, $params['_meta']);
-        if (!in_array($method, ['server/discover', 'tools/list', 'tools/call'], true)) {
+        $methods = ['server/discover', 'tools/list', 'tools/call'];
+        if (null !== $this->catalog) { array_push($methods, 'prompts/list', 'prompts/get', 'resources/list', 'resources/read'); }
+        if (!in_array($method, $methods, true)) {
             return $this->error($id, Protocol::METHOD_NOT_FOUND, 'Method not found: ' . $method);
         }
         if ($modern) {
@@ -100,6 +104,10 @@ final class Server
         return match ($method) {
             'server/discover' => $this->result($id, ['supportedVersions' => Protocol::supported(), 'capabilities' => $this->capabilities(), 'instructions' => $this->instructions, 'ttlMs' => 0, 'cacheScope' => 'private'], true),
             'tools/list' => $this->toolsList($id, $params, $modern),
+            'prompts/list' => $this->listing($id, $params, $modern, 'prompts', $this->catalog->prompts()),
+            'prompts/get' => $this->promptGet($id, $params, $modern),
+            'resources/list' => $this->listing($id, $params, $modern, 'resources', $this->catalog->resources()),
+            'resources/read' => $this->resourceRead($id, $params, $modern),
             default => $this->toolsCall($id, $params, $modern),
         };
     }
@@ -135,7 +143,47 @@ final class Server
 
     private function capabilities(): array
     {
-        return ['tools' => ['listChanged' => false]];
+        $capabilities = ['tools' => ['listChanged' => false]];
+        if (null !== $this->catalog) {
+            $capabilities['prompts'] = ['listChanged' => false];
+            $capabilities['resources'] = ['subscribe' => false, 'listChanged' => false];
+        }
+        return $capabilities;
+    }
+
+    private function listing(int|string $id, array $params, bool $modern, string $key, array $items): array
+    {
+        if (isset($params['cursor']) && '' !== $params['cursor']) {
+            return $this->error($id, Protocol::INVALID_PARAMS, 'Unknown cursor: the list has one page.');
+        }
+        $result = [$key => $items];
+        if ($modern) { $result += ['ttlMs' => 0, 'cacheScope' => 'private']; }
+        return $this->result($id, $result, $modern);
+    }
+
+    private function promptGet(int|string $id, array $params, bool $modern): array
+    {
+        $name = $params['name'] ?? null;
+        $args = $params['arguments'] ?? [];
+        if (!is_string($name) || !is_array($args)) {
+            return $this->error($id, Protocol::INVALID_PARAMS, 'prompts/get needs a prompt name and an object of arguments.');
+        }
+        try {
+            $prompt = $this->catalog->prompt($name, array_map('strval', array_filter($args, 'is_scalar')));
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($id, Protocol::INVALID_PARAMS, $e->getMessage());
+        }
+        return null === $prompt ? $this->error($id, Protocol::INVALID_PARAMS, 'Unknown prompt: ' . $name) : $this->result($id, $prompt, $modern);
+    }
+
+    private function resourceRead(int|string $id, array $params, bool $modern): array
+    {
+        $uri = $params['uri'] ?? null;
+        if (!is_string($uri)) {
+            return $this->error($id, Protocol::INVALID_PARAMS, 'resources/read needs a uri.');
+        }
+        $resource = $this->catalog->resource($uri);
+        return null === $resource ? $this->error($id, Protocol::RESOURCE_NOT_FOUND, 'Resource not found.', ['uri' => $uri]) : $this->result($id, ['contents' => [$resource]], $modern);
     }
 
     private function toolsList(int|string $id, array $params, bool $modern): array

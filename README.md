@@ -788,7 +788,7 @@ are not pruned.
 
 ### MCP server
 
-An MCP (Model Context Protocol) server lets an AI client such as Claude write, preview, publish and hide the articles of one site. It is a client of API v2 over HTTPS, so the permissions, address restriction and change log of the integration key apply unchanged. It never opens the database. Issue a key on the Integrations page with the preset "Agent for content" (or "Agent, drafts only"), copy the client configuration the page shows once, and run the server with `php wbengine-mcp.phar` (a release asset with a checksum) or `vendor/bin/wbengine-mcp.php`. Configuration is read from `WBENGINE_MCP_URL`, `WBENGINE_MCP_KEY`, `WBENGINE_MCP_MODE` (`full` or `draft`), `WBENGINE_MCP_ACTOR` and `WBENGINE_MCP_ALLOW_INSECURE`. The tools, their inputs, the safety rules and client examples are in [`ref-mcp.md`](ref-mcp.md).
+An MCP (Model Context Protocol) server lets an AI client such as Claude write, preview, publish and hide the articles of one site, manage its pages, menu, boxes and images, and explain to a non-technical editor how the site works. It is a client of API v2 over HTTPS, so the permissions, address restriction and change log of the integration key apply unchanged. It never opens the database. Issue a key on the Integrations page with the preset "Editor with structure and statistics" (or "Agent for content", "Agent, drafts only"), copy the client configuration the page shows once, and run the server with `php wbengine-mcp.phar` (a release asset with a checksum) or `vendor/bin/wbengine-mcp.php`. Configuration is read from `WBENGINE_MCP_URL`, `WBENGINE_MCP_KEY`, `WBENGINE_MCP_MODE` (`full` or `draft`), `WBENGINE_MCP_ACTOR` and `WBENGINE_MCP_ALLOW_INSECURE`. The tools, their inputs, the safety rules and client examples are in [`ref-mcp.md`](ref-mcp.md).
 
 ## Authentication, sessions and users
 
@@ -1096,6 +1096,10 @@ Use `PHP_VERSION=8.3 docker compose build` (and `docker compose run --rm php com
 The integration tests create their tables from `tests/schema.sql`. They are skipped when the database is not reachable. For new installations use the `utf8mb4` connection charset: the older `utf8` alias is three bytes per character and cannot carry emoji.
 
 ## Upgrading
+
+### From 6.3 to 6.4
+
+* No migration. The MCP server offers more tools; a site whose agents should attach article boxes registers a box type that renders articles: `BoxRegistry::current()->register('story', 'blog', 'story', [], ['central'], ['renders' => 'article'])`. Images need `apiV2.imageDirectory` or `WBENGINE_IMAGE_DIR`.
 
 ### From 6.2 to 6.3
 

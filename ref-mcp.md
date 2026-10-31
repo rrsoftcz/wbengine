@@ -69,7 +69,28 @@ All content is Markdown. Every tool declares the hints `readOnlyHint`, `destruct
 | `unhide_article` | `id`, `expected_etag` | shows it again | `articles:write`, `publish:write` |
 | `list_changes` | `resource` (`articles`, `pages`), `id`, `limit` | recent changes with time, action and actor | `audit:read` |
 
-A page shows an article only through a box that renders articles. `save_article_draft` (with `page_id` or `new_page`) and `publish_article` read the page and add a warning to the text when it has none (`article_box_ids` empty), because the published address would stay empty. A page created by `new_page` has no such box; use a page that already shows articles, or ask the site administrator to add an article box to it.
+More tools, release 6.4.0. All of them are offered only when the key has the scopes in the last column (the scopes are read from `/identity` when the first tool list is requested; when the site cannot be reached every tool is listed and the API decides).
+
+| Tool | Input | What it does | Needs |
+|------|-------|--------------|-------|
+| `wbengine_guide` | `topic` | short texts about how the site works: `overview`, `publish_article`, `addresses_and_seo`, `boxes`, `menu`, `languages`, `images`, `troubleshooting`; without a topic it lists them | none |
+| `plan_article_page` | `title`, `introtext`, `prefix` | proposes, without writing, an address nobody uses (diacritics removed, at most 60 characters, `/blog/` when the site has a blog page), the browser title (at most 60), the description (at most 160, from the introduction), the box type and section, a menu name and the blockers; the `new_page` object goes to `save_article_draft` | `pages:read` |
+| `check_article` | `id` | blockers (no page, no box at all on the page, no text), warnings (no box marked as showing articles, inactive section, missing browser title, description or translation) and advice (too long fields, unclean address, no menu entry, hidden); `publish_article` runs it and refuses on blockers | `articles:read`, `pages:read` |
+| `update_page` | `id`, `title`, `html_title`, `html_description`, `html_keywords`, `visible`, `link`, `confirm_link_change`, `translations` | changes the fields of a page; the address of a visible page changes only with `confirm_link_change` because the site has no redirects; addresses are validated and unique | `pages:write` |
+| `list_menu` | `page_id` | menu entries by level and order | `menu:read` |
+| `set_menu_entry` | `id` or `page_id` and `name`; `description`, `order`, `parent`, `visible`, `translations` | adds or changes an entry; entries from `order` on move down, no clash; a new entry for an invisible page is hidden until it is published; hiding is `visible` false | `menu:read`, `menu:write` |
+| `list_sections` | none | the sections and whether they are active | `sections:read` |
+| `list_box_types` | none | the registered box types, which show articles and where they may be placed | none |
+| `list_boxes` | `page_id`, `search`, `page`, `per_page` | boxes with type, section, pages, order, device limit | `boxes:read` |
+| `add_box` | `name`, `type`, `section`, `page_ids`, `order` | adds a box of a registered type; unknown types and wrong sections are refused | `boxes:read`, `boxes:write`, `sections:read` |
+| `update_box` | `id`, `name`, `order`, `page_ids`, `device_min`, `device_strict` | changes a box and returns the earlier values | `boxes:read`, `boxes:write` |
+| `hide_box`, `show_box` | `id`, `page_id` | takes a box off one page and keeps it, and the reverse; names the pages before; a shared box is refused | `boxes:read`, `boxes:write` |
+| `upload_image` | `alt`, `path` or `base64` and `mime` | uploads a PNG, JPEG or WebP (at most 512 KiB, 8192 pixels), returns the address and the Markdown; the file extension and content are checked first | `images:write` |
+| `list_images` | `page`, `per_page` | uploaded images | `images:read` |
+
+`save_article_draft` with `new_page` now does the whole technical job: it creates the invisible page with the browser title and description (from the title and the introduction unless given), attaches the box that shows the article (the registered type that renders articles, section `central`, switchable with `article_box: false`, overridable with `box_type` and `section`) and the menu entry when `menu_name` is given. When the box cannot be added (no such type, no Structure permission) the result says so and why. The tools never delete anything.
+
+Prompts (`prompts/list`, `prompts/get`): `publish_new_article`, `translate_article`, `seo_review`. Resources (`resources/list`, `resources/read`): the guide texts as `wbengine://guide/<topic>` in Markdown. Both are announced in the capabilities of both protocol eras; the guide texts live in `Mcp/Guide/` and are packed into the phar.
 
 Results carry a short text and `structuredContent`. `save_article_draft` returns `id`, `etag`, `page_id` and the list of `steps` done. When a later step fails after an earlier one succeeded, the error says what was already done. Without `expected_etag` an update reads the current etag itself; with it, a change made in between is refused with advice to reload and merge.
 

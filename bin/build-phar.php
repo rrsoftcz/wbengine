@@ -1,6 +1,6 @@
 <?php
 // Builds the single-file MCP server: php -d phar.readonly=0 bin/build-phar.php [output-directory]
-// The archive holds the Wbengine\Mcp classes and the entry point, nothing else, and is signed with SHA-256.
+// The archive holds the Wbengine\Mcp classes, the guide texts and the entry point, nothing else, and is signed with SHA-256.
 // A file with the checksum is written next to it.
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 if (!Phar::canWrite()) {
@@ -20,7 +20,7 @@ $phar->startBuffering();
 $sources = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root . '/Mcp', FilesystemIterator::SKIP_DOTS));
 $paths = [];
 foreach ($sources as $path) {
-    if ($path->isFile() && 'php' === $path->getExtension()) { $paths[] = $path->getPathname(); }
+    if ($path->isFile() && ('php' === $path->getExtension() || 'md' === $path->getExtension())) { $paths[] = $path->getPathname(); }
 }
 $paths[] = $root . '/bin/wbengine-mcp.php';
 sort($paths);

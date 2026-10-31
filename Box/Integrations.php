@@ -71,10 +71,12 @@ class Integrations extends WbengineBoxAbstract
     /**
      * Presets of the issue form: buttons that fill the permission matrix and the name. They are a
      * convenience of the form, not a kind of key and not a security boundary: only the scopes the key
-     * really gets count. Analytics is not part of a preset.
+     * really gets count. Only the editor preset asks for Analytics; where the site cannot offer it the
+     * choice stays off.
      */
     const PRESETS = [
         'full' => ['name' => self::DEFAULT_NAME, 'levels' => ['content' => 'write', 'publish' => 'write', 'structure' => 'write', 'images' => 'write', 'site' => 'write', 'history' => 'read']],
+        'editor' => ['name' => 'MCP editor', 'levels' => ['content' => 'write', 'publish' => 'write', 'structure' => 'write', 'images' => 'write', 'site' => 'off', 'history' => 'read', 'analytics' => 'read']],
         'agent' => ['name' => 'MCP agent', 'levels' => ['content' => 'write', 'publish' => 'write', 'structure' => 'off', 'images' => 'write', 'site' => 'off', 'history' => 'read']],
         'drafts' => ['name' => 'MCP agent (drafts)', 'levels' => ['content' => 'write', 'publish' => 'off', 'structure' => 'off', 'images' => 'write', 'site' => 'off', 'history' => 'read']],
         'readonly' => ['name' => 'Monitoring', 'levels' => ['content' => 'read', 'publish' => 'off', 'structure' => 'read', 'images' => 'read', 'site' => 'off', 'history' => 'read']],

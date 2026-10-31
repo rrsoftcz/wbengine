@@ -10,7 +10,7 @@ namespace Wbengine\Mcp;
 final class Protocol
 {
     /** Version of the server, reported to clients. Keep equal to the release tag; the release workflow checks it. */
-    public const SERVER_VERSION = '6.3.1';
+    public const SERVER_VERSION = '6.4.0';
     public const MODERN = '2026-07-28';
     /** Legacy revisions, newest first. */
     public const LEGACY = ['2025-11-25', '2025-06-18'];
@@ -24,6 +24,7 @@ final class Protocol
     public const INVALID_REQUEST = -32600;
     public const METHOD_NOT_FOUND = -32601;
     public const INVALID_PARAMS = -32602;
+    public const RESOURCE_NOT_FOUND = -32002;
     public const INTERNAL_ERROR = -32603;
     public const UNSUPPORTED_VERSION = -32022;
 
