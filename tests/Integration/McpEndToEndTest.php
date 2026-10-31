@@ -103,7 +103,9 @@ final class McpEndToEndTest extends TestCase
         $this->assertSame('2025-11-25', $init['result']['protocolVersion']);
         $this->rpc('notifications/initialized', [], true);
         $names = array_column($this->rpc('tools/list')['result']['tools'], 'name');
-        $this->assertCount(17, $names, 'the tools this key may use, none of Structure, Images or Analytics');
+        $this->assertCount(18, $names, 'the tools this key may use, none of Structure, Images or statistics');
+        $this->assertContains('analyze_activity', $names);
+        $this->assertNotContains('get_statistics', $names);
         $this->assertContains('wbengine_guide', $names);
         $this->assertNotContains('add_box', $names);
 

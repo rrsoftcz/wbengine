@@ -246,12 +246,12 @@ Statistics: the API has `GET /analytics/overview` (scope `analytics:read`, the A
 Logs: what exists is the change feed (`GET /changes`, filters resource and id; actors, actions, times) and the table `cms_api_audit` with refused and failed writes (outcome `rejected`, `error` with a reference), which no endpoint reads yet. PHP `error_log` of the host is not reachable and is not going to be exposed through the key.
 - `list_changes` gets filters for actor, action and a time window, and the server pages through up to a bounded number of rows.
 - `analyze_activity(period)`: counts by actor, resource and action, a timeline, bursts, repeated failures; client side on the feed.
-- Framework change: `GET /api/v2/audit` (scope `audit:read`, outcomes `rejected` and `error`, error code, resource, time window, actor, no bodies and no addresses, paginated) so that refused writes and errors can be analyzed. Decide with the owner whether a bounded reader of the application log is wanted; the recommendation is no, because log lines can hold personal data and secrets.
+- No framework change is needed (checked 2026-10-31): `GET /changes` already filters by resource, id, action, source, actor and a time window and returns the refused writes with `outcome=rejected`. A bounded reader of the application log is not wanted; the recommendation stands, because log lines can hold personal data and secrets.
 
 Work breakdown 6.5.0 (check the boxes in the commits that do the work):
-- [ ] Framework: `GET /api/v2/audit`, docs, tests, migration none (the table exists).
-- [ ] `get_statistics`, `site_report`, tests with fixtures of known counts, the guide topic `statistics`, prompt `weekly_report`.
-- [ ] `list_changes` filters, `analyze_activity`, `list_audit_problems`, tests.
+- [x] No framework change needed: the existing `/changes` has the filters and `outcome=rejected`.
+- [x] `get_statistics`, `site_report`, tests with fixtures of known counts, the guide topic `statistics`, prompt `weekly_report`.
+- [x] `list_changes` filters (including `outcome=rejected`), `analyze_activity`, tests (the separate `list_audit_problems` is `list_changes` with `outcome` rejected).
 - [ ] Release, skeleton, deploy, live acceptance.
 
 ## Live acceptance procedure (for every release from 6.3.1)

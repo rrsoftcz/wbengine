@@ -1097,6 +1097,10 @@ The integration tests create their tables from `tests/schema.sql`. They are skip
 
 ## Upgrading
 
+### From 6.4 to 6.5
+
+* No migration and no setting. The MCP server reads statistics when the key has the Analytics choice and analytics is switched on for the site.
+
 ### From 6.3 to 6.4
 
 * No migration. The MCP server offers more tools; a site whose agents should attach article boxes registers a box type that renders articles: `BoxRegistry::current()->register('story', 'blog', 'story', [], ['central'], ['renders' => 'article'])`. Images need `apiV2.imageDirectory` or `WBENGINE_IMAGE_DIR`.
