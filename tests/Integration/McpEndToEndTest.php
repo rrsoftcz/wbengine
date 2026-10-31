@@ -112,10 +112,14 @@ final class McpEndToEndTest extends TestCase
         $info = $this->tool('site_info');
         $this->assertFalse($info['isError'], json_encode($info));
         $this->assertTrue($info['structuredContent']['can']['publish_and_hide']);
+        $this->assertStringContainsString('wbengine_guide', $info['structuredContent']['message'], 'the readiness text reaches clients that read only the structured part');
+        $guide = $this->tool('wbengine_guide', ['topic' => 'overview']);
+        $this->assertStringContainsString('How a WBengine site works', $guide['structuredContent']['message']);
 
         $saved = $this->tool('save_article_draft', ['title' => 'End to end', 'introtext' => 'Intro', 'bodytext' => 'Body **text**', 'new_page' => ['link' => '/e2e-mcp/'], 'translations' => ['en' => ['title' => 'English title', 'bodytext' => 'English body']]]);
         $this->assertFalse($saved['isError'], json_encode($saved));
         $id = $saved['structuredContent']['id'];
+        $this->assertStringContainsString('BEGIN SITE DATA', $this->tool('list_pages')['structuredContent']['message'], 'the data marking survives in the structured part too');
 
         $preview = $this->tool('preview_article', ['id' => $id, 'locale' => 'en']);
         $this->assertSame('English title', $preview['structuredContent']['title']);

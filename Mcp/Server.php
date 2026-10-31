@@ -230,7 +230,10 @@ final class Server
     private function toolResult(ToolResult $outcome): array
     {
         $result = ['content' => [['type' => 'text', 'text' => $outcome->text]], 'isError' => $outcome->isError];
-        if (null !== $outcome->structured) { $result['structuredContent'] = $outcome->structured; }
+        // Some clients (Claude Code among them) show the model only structuredContent when it is present and drop the
+        // text content. The text carries the explanations, the warnings and the marking of site text as data, so it
+        // goes into the structured result too.
+        if (null !== $outcome->structured) { $result['structuredContent'] = ['message' => $outcome->text] + $outcome->structured; }
         if (strlen((string) json_encode($result, JSON_INVALID_UTF8_SUBSTITUTE)) > $this->maxResultBytes) {
             return ['content' => [['type' => 'text', 'text' => 'The result is larger than ' . $this->maxResultBytes . ' bytes and was not returned. Ask for less (a smaller page, one article, one locale).']], 'isError' => true];
         }
