@@ -49,6 +49,7 @@
   },
   "bin": [
     "bin/wbengine.php",
-    "bin/migrate-content.php"
+    "bin/migrate-content.php",
+    "bin/wbengine-mcp.php"
   ]
 }

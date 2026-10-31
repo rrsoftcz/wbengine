@@ -216,14 +216,14 @@ C. Tools (phase 1), file `Mcp/Tools/Articles.php` (or one class per tool). Every
 - [ ] Later in 6.4.0: `upload_image`, `set_page_visibility`, menu tools.
 
 D. Entry point and configuration.
-- [ ] `bin/wbengine-mcp.php`, registered in `composer.json` `bin`, so Composer exposes `vendor/bin/wbengine-mcp`. Environment variables as in the table above (`WBENGINE_MCP_URL`, `WBENGINE_MCP_KEY`, `WBENGINE_MCP_ACTOR`, `WBENGINE_MCP_MODE`, `WBENGINE_MCP_ALLOW_INSECURE`). Missing or invalid configuration prints a clear message on stderr and exits non-zero.
+- [x] `bin/wbengine-mcp.php`, registered in `composer.json` `bin`, so Composer exposes `vendor/bin/wbengine-mcp.php` (the name of the file, like `vendor/bin/wbengine.php`). Environment variables as in the table above (`WBENGINE_MCP_URL`, `WBENGINE_MCP_KEY`, `WBENGINE_MCP_ACTOR`, `WBENGINE_MCP_MODE`, `WBENGINE_MCP_ALLOW_INSECURE`). Missing or invalid configuration prints a clear message on stderr and exits non-zero.
 
 E. Safety (see "Safety" above) implemented and tested: text read from the site is marked as data in the tool results, size limits, one write per call, no delete tool. Done: results wrap site text in BEGIN/END markers (`Tools\Untrusted`), field and translation limits, no delete tool; `save_article_draft` chains several API writes by design (see C).
 
 F. Tests.
 - [x] Unit: protocol framing and errors, schema validation of tool input, the client (redirect refused, oversize refused, invalid TLS refused, key never printed).
 - [x] Integration: every tool against the real controller through the in-process transport with temporary tables (pattern of `tests/Integration/ApiV2ArticleHideTest.php`).
-- [ ] End to end: start `bin/wbengine-mcp.php` as a process, run a stdio session against a test site served by the PHP built-in server (pattern of `ApiV2HttpTest`): create a draft with a new page, preview, publish, hide (URL 404), unhide, read the change feed with the actor.
+- [x] End to end: start `bin/wbengine-mcp.php` as a process, run a stdio session against a test site served by the PHP built-in server (pattern of `ApiV2HttpTest`): create a draft with a new page, preview, publish, hide, unhide, read the change feed with the actor. The public URL answering 404 while hidden is not part of this session (the fixture serves the API only); `ApiV2ArticleHideTest` covers it. The test runs the phar instead when `WB_MCP_PHAR` points to one.
 - [ ] The same session against the built phar.
 
 G. Agent key preset on the Integrations page.

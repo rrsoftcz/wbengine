@@ -22,7 +22,7 @@ final class Client
     public function __construct(
         string $baseUrl,
         #[\SensitiveParameter] private readonly string $key,
-        private readonly string $actor,
+        private readonly string|\Closure $actor,
         ?callable $transport = null,
         bool $allowInsecure = false,
         private readonly int $timeout = 30,
@@ -59,7 +59,7 @@ final class Client
     public function request(string $method, string $path, array $query = [], ?array $body = null, ?string $ifMatch = null): Response
     {
         $url = $this->base . '/api/v2' . $path . ([] === $query ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986));
-        $headers = ['Authorization' => 'Bearer ' . $this->key, 'Accept' => 'application/json', 'X-WBengine-Actor' => $this->actor];
+        $headers = ['Authorization' => 'Bearer ' . $this->key, 'Accept' => 'application/json', 'X-WBengine-Actor' => $this->actor instanceof \Closure ? ($this->actor)() : $this->actor];
         $payload = null;
         if (null !== $body) {
             $payload = json_encode([] === $body ? new \stdClass() : $body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRESERVE_ZERO_FRACTION);

@@ -13,6 +13,7 @@ final class Server
     public const MAX_RESULT_BYTES = 262144;
 
     private bool $legacyOpened = false;
+    private ?string $clientName = null;
 
     /** @param null|callable(string): void $log receives diagnostics (the transport sends them to stderr) */
     public function __construct(
@@ -29,6 +30,7 @@ final class Server
     public function handle(string $raw): ?string
     {
         $message = json_decode($raw, true, 64);
+        $this->rememberClient($message);
         if (JSON_ERROR_NONE !== json_last_error()) {
             return $this->encode($this->error(null, Protocol::PARSE_ERROR, 'Parse error: the message is not valid JSON.'));
         }
@@ -59,6 +61,22 @@ final class Server
             $this->log('internal error in ' . $message['method'] . ': ' . get_class($e));
             return $this->encode($this->error($id, Protocol::INTERNAL_ERROR, 'Internal error.'));
         }
+    }
+
+    /** The client name from initialize or from the per-request metadata, shortened to safe characters. */
+    private function rememberClient(mixed $message): void
+    {
+        if (!is_array($message)) { return; }
+        $info = $message['params']['clientInfo'] ?? $message['params']['_meta'][Protocol::META_CLIENT] ?? null;
+        $name = is_array($info) && is_string($info['name'] ?? null) ? preg_replace('/[^A-Za-z0-9._ -]/', '', $info['name']) : '';
+        $name = substr(trim((string) $name), 0, 64);
+        if ('' !== $name) { $this->clientName = $name; }
+    }
+
+    /** Name the client gave about itself (display only, never trusted), or null. */
+    public function clientName(): ?string
+    {
+        return $this->clientName;
     }
 
     private function dispatch(int|string $id, string $method, array $params): array
