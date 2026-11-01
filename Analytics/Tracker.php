@@ -14,12 +14,14 @@ class Tracker
     private int $eventCount = 0;
     private bool $flushed = false;
     private ?int $publicSiteId = null;
+    private string $locale = '';
 
     /** Begin counting only after the application confirms an anonymous public HTML response. */
-    public function beginPublicPage(int $siteId): void
+    public function beginPublicPage(int $siteId, string $locale = ''): void
     {
         if ($this->flushed || $siteId < 1) { return; }
         $this->publicSiteId = $siteId;
+        $this->locale = Schema::cleanLocale($locale);
         $this->record($siteId, 'page', $siteId);
     }
 
@@ -38,7 +40,7 @@ class Tracker
             return;
         }
         if ($this->eventCount >= self::MAX_EVENTS) { $this->logFailure(); return; }
-        $this->events[$key] = ['site_id' => $siteId, 'entity_type' => $type, 'entity_id' => $entityId, 'views' => 1];
+        $this->events[$key] = ['site_id' => $siteId, 'entity_type' => $type, 'entity_id' => $entityId, 'views' => 1, 'locale' => $this->locale];
         $this->eventCount++;
     }
 
@@ -59,16 +61,19 @@ class Tracker
     public static function flushMetadata(array $events, ?DateTimeImmutable $now = null): void
     {
         $page = null;
+        $locale = '';
         foreach ($events as $event) {
             if (is_array($event) && 'page' === ($event['entity_type'] ?? null)) {
                 $siteId = (int) ($event['site_id'] ?? 0);
                 $entityId = (int) ($event['entity_id'] ?? 0);
-                if ($siteId > 0 && $entityId === $siteId) { $page = $siteId; break; }
+                if ($siteId > 0 && $entityId === $siteId) { $page = $siteId; $locale = Schema::cleanLocale((string) ($event['locale'] ?? '')); break; }
             }
         }
         if (null === $page) { return; }
         $tracker = new self();
         $tracker->publicSiteId = $page;
+        // The language of the cached page travels with it, an entry stored before 6.7 has none.
+        $tracker->locale = $locale;
         $budget = self::MAX_EVENTS;
         foreach (array_slice($events, 0, self::MAX_EVENTS) as $event) {
             if ($budget < 1) { break; }
@@ -119,17 +124,20 @@ class Tracker
     {
         $rows = [];
         foreach ($events as $event) {
-            $key = implode(':', [$day, $event['site_id'], $event['entity_type'], $event['entity_id']]);
+            $key = implode(':', [$day, $event['site_id'], $event['entity_type'], $event['entity_id'], $event['locale'] ?? '']);
             if (!isset($rows[$key])) { $rows[$key] = ['day' => $day] + $event; }
             else { $rows[$key]['views'] += $event['views']; }
         }
+        $withLocale = Schema::hasLocale();
         $values = [];
         $params = [];
         foreach ($rows as $row) {
-            $values[] = '(?, ?, ?, ?, ?)';
-            array_push($params, $row['day'], $row['site_id'], $row['entity_type'], $row['entity_id'], $row['views']);
+            $values[] = $withLocale ? '(?, ?, ?, ?, ?, ?)' : '(?, ?, ?, ?, ?)';
+            array_push($params, $row['day'], $row['site_id'], $row['entity_type'], $row['entity_id']);
+            if ($withLocale) { $params[] = $row['locale'] ?? ''; }
+            $params[] = $row['views'];
         }
-        Db::query('INSERT INTO cms_analytics_daily (day, site_id, entity_type, entity_id, views) VALUES ' . implode(', ', $values) . ' ON DUPLICATE KEY UPDATE views = views + VALUES(views)', $params);
+        Db::query('INSERT INTO cms_analytics_daily (day, site_id, entity_type, entity_id, ' . ($withLocale ? 'locale, ' : '') . 'views) VALUES ' . implode(', ', $values) . ' ON DUPLICATE KEY UPDATE views = views + VALUES(views)', $params);
     }
 
     private static function upsertLifetime(array $events): void
@@ -137,18 +145,21 @@ class Tracker
         $rows = [];
         foreach ($events as $event) {
             if (!in_array($event['entity_type'], ['page', 'box'], true)) { continue; }
-            $key = implode(':', [$event['site_id'], $event['entity_type'], $event['entity_id']]);
+            $key = implode(':', [$event['site_id'], $event['entity_type'], $event['entity_id'], $event['locale'] ?? '']);
             if (!isset($rows[$key])) { $rows[$key] = $event; }
             else { $rows[$key]['views'] += $event['views']; }
         }
         if (!$rows) { return; }
+        $withLocale = Schema::hasLocale();
         $values = [];
         $params = [];
         foreach ($rows as $row) {
-            $values[] = '(?, ?, ?, ?)';
-            array_push($params, $row['site_id'], $row['entity_type'], $row['entity_id'], $row['views']);
+            $values[] = $withLocale ? '(?, ?, ?, ?, ?)' : '(?, ?, ?, ?)';
+            array_push($params, $row['site_id'], $row['entity_type'], $row['entity_id']);
+            if ($withLocale) { $params[] = $row['locale'] ?? ''; }
+            $params[] = $row['views'];
         }
-        Db::query('INSERT INTO cms_analytics_totals (site_id, entity_type, entity_id, views) VALUES ' . implode(', ', $values) . ' ON DUPLICATE KEY UPDATE views = views + VALUES(views)', $params);
+        Db::query('INSERT INTO cms_analytics_totals (site_id, entity_type, entity_id, ' . ($withLocale ? 'locale, ' : '') . 'views) VALUES ' . implode(', ', $values) . ' ON DUPLICATE KEY UPDATE views = views + VALUES(views)', $params);
     }
 
     private static function incrementCachedArticleViews(array $events): void

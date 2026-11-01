@@ -58,7 +58,7 @@ final class ConsoleCliTest extends TestCase
     {
         [$code,$output] = $this->cli(['migration:status','--config=' . dirname(__DIR__) . '/config/Settings.test.json']);
         self::assertSame(0, $code); $report = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
-        self::assertCount(8, $report); self::assertNotContains('fail', array_column($report, 'status'));
+        self::assertCount(9, $report); self::assertNotContains('fail', array_column($report, 'status'));
     }
     public function testMigrationStatusWithUnreachableDatabaseStaysCleanJson(): void
     {

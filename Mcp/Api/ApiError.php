@@ -23,6 +23,8 @@ final class ApiError extends \RuntimeException
         'analytics_disabled' => 'Statistics are not switched on for this site. The administrator enables analytics in the site settings.',
         'invalid_period' => 'That period is not available: it is in the future, or older than the site keeps statistics. Ask for fewer days or a more recent period.',
         'invalid_date' => 'A date must be written YYYY-MM-DD.',
+        'invalid_locale' => 'The language must be a locale such as en or cs.',
+        'locale_unavailable' => 'Views are not split by language on this site yet. The administrator applies the 6.7.0 database update first.',
         'invalid_filter' => 'A filter was not accepted by the site. Check the tool input.',
         'rate_limited' => 'The site is limiting requests. Wait a minute and retry.',
         'unavailable' => 'The API is switched off or not ready on this site.',

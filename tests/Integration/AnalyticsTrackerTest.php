@@ -15,6 +15,7 @@ class AnalyticsTrackerTest extends TestCase
     {
         try { Db::query('SELECT 1'); } catch (\Throwable) { $this->markTestSkipped('MySQL unavailable.'); }
         $this->oldConfig = Config::$config;
+        \Wbengine\Analytics\Schema::reset();
         Config::$config = (object) ['analytics' => (object) ['enabled' => true, 'timezone' => 'UTC', 'retentionDays' => 62]];
         Db::query('CREATE TEMPORARY TABLE cms_analytics_daily (day DATE NOT NULL, site_id INT UNSIGNED NOT NULL, entity_type ENUM(\'page\',\'article\',\'box\') NOT NULL, entity_id INT UNSIGNED NOT NULL, views BIGINT UNSIGNED NOT NULL DEFAULT 0, PRIMARY KEY(day,site_id,entity_type,entity_id)) ENGINE=InnoDB');
         Db::query('CREATE TEMPORARY TABLE cms_analytics_totals (site_id INT UNSIGNED NOT NULL, entity_type ENUM(\'page\',\'box\') NOT NULL, entity_id INT UNSIGNED NOT NULL, views BIGINT UNSIGNED NOT NULL DEFAULT 0, PRIMARY KEY(site_id,entity_type,entity_id)) ENGINE=InnoDB');
@@ -25,6 +26,7 @@ class AnalyticsTrackerTest extends TestCase
 
     protected function tearDown(): void
     {
+        \Wbengine\Analytics\Schema::reset();
         Db::query('DROP TEMPORARY TABLE IF EXISTS cms_analytics_daily,cms_analytics_totals,cms_analytics_meta,cms_articles');
         Config::$config = $this->oldConfig;
     }

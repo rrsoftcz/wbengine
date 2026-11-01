@@ -65,6 +65,51 @@ final class InsightTest extends TestCase
         $this->assertSame(6, (new \DateTimeImmutable($this->seen[0][1]['to']))->diff(new \DateTimeImmutable($this->seen[0][1]['from']))->days, 'seven days end to end');
     }
 
+    private function split(): array
+    {
+        return ['per_locale' => true, 'by_locale' => [
+            ['locale' => 'en', 'page_views' => 70, 'article_views' => 5, 'box_appearances' => 0],
+            ['locale' => 'cs', 'page_views' => 40, 'article_views' => 2, 'box_appearances' => 0],
+            ['locale' => null, 'page_views' => 10, 'article_views' => 0, 'box_appearances' => 0],
+        ]];
+    }
+
+    public function testStatisticsShowTheSplitByLanguageAndMarkViewsWithoutOne(): void
+    {
+        $tools = $this->tools(fn() => [200, $this->overview(120, $this->split())]);
+        $r = $this->call($tools, 'get_statistics', ['days' => 7]);
+        $this->assertStringContainsString("By language:\n  en: 70 page views, 5 article views\n  cs: 40 page views, 2 article views\n  not recorded per language: 10 page views", $r['text']);
+        $this->assertSame('cs', $r['data']['by_locale'][1]['locale']);
+        $this->assertNull($r['data']['by_locale'][2]['locale']);
+    }
+
+    public function testALanguageFilterIsSentToTheSiteOnlyWhenGiven(): void
+    {
+        $tools = $this->tools(fn() => [200, $this->overview(40, $this->split())]);
+        $this->call($tools, 'get_statistics', ['days' => 7, 'locale' => 'cs']);
+        $this->call($tools, 'get_statistics', ['days' => 7]);
+        $this->assertSame('cs', $this->seen[0][1]['locale']);
+        $this->assertArrayNotHasKey('locale', $this->seen[1][1]);
+    }
+
+    public function testTheReportHasALanguageTableAndExplainsRowsWithoutALanguage(): void
+    {
+        $tools = $this->tools(fn() => [200, $this->overview(120, $this->split())]);
+        $r = $this->call($tools, 'site_report', ['days' => 7, 'compare' => false]);
+        $this->assertStringContainsString("## By language\n\n| Language | Page views | Article views |\n|---|---:|---:|\n| en | 70 | 5 |\n| cs | 40 | 2 |\n| Not recorded per language | 10 | 0 |", $r['text']);
+        $this->assertStringContainsString('shown as not recorded per language. They are in the totals.', $r['text']);
+        $this->assertCount(3, $r['data']['by_locale']);
+    }
+
+    public function testASiteWithoutTheSplitSaysSoAndHasNoLanguageTable(): void
+    {
+        $tools = $this->tools(fn() => [200, $this->overview(120, ['per_locale' => false, 'by_locale' => []])]);
+        $report = $this->call($tools, 'site_report', ['days' => 7, 'compare' => false]);
+        $this->assertStringNotContainsString('## By language', $report['text']);
+        $this->assertStringContainsString('does not split views by language yet', $report['text']);
+        $this->assertStringNotContainsString('By language:', $this->call($tools, 'get_statistics', ['days' => 7])['text']);
+    }
+
     public function testAPeriodThatStartsBeforeCountingIsSaidToBeIncomplete(): void
     {
         $data = $this->overview(5);
