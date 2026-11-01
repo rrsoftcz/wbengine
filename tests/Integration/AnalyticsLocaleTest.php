@@ -156,7 +156,8 @@ class AnalyticsLocaleTest extends TestCase
         // A cache entry written before 6.7 has no language: counted, but in no language.
         Tracker::flushMetadata([['site_id' => 7, 'entity_type' => 'page', 'entity_id' => 7, 'views' => 1]], new \DateTimeImmutable(self::NOW, new \DateTimeZone('UTC')));
 
-        $by = array_column($this->overview()['by_locale'], 'page_views', 'locale');
+        $by = [];
+        foreach ($this->overview()['by_locale'] as $row) { $by[(string) $row['locale']] = $row['page_views']; }
         self::assertSame(1, $by['cs']);
         self::assertSame(1, $by['']);
     }
