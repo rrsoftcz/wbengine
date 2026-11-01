@@ -174,6 +174,10 @@ deployment so old entries cannot retain policies from the previous lifecycle.
 
 A typical anonymous page costs roughly eight to ten queries: the site, the sections, the menu, one box query per section, and the session. See the performance notes for how to cut that.
 
+### The version of the framework
+
+The layout variable `wbengine_version` holds the running version, for example `6.7.0`, for a header or footer: `{$wbengine_version}`. It comes from Composer and is `dev` when the framework is not an installed release (a checkout or a branch), never a made-up number. `Wbengine\Version::current()` returns the same value in PHP.
+
 ## Writing boxes
 
 A static box:

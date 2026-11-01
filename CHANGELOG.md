@@ -9,6 +9,7 @@ documented here, see the git tags.
 
 ### Added (6.7.0)
 
+- `Wbengine\Version::current()` and the layout variable `wbengine_version`: the version of the running framework (`6.7.0`), read from Composer, or `dev` when it is not an installed release.
 - Views per language. Migration `6.7.0/013-analytics-locale.sql` adds a `locale` column to `cms_analytics_daily` and `cms_analytics_totals` (part of the primary key, safe to rerun, leaves a site without analytics alone). `Analytics\Tracker` records the language of the request, and a cached page carries its language in the stored metadata, so a cache hit counts in the right language. The totals stay the sum of all languages. `/api/v2/analytics/overview` adds `per_locale` and `by_locale` and takes an optional `locale` filter (400 `invalid_locale`, 409 `locale_unavailable` without the migration). Rows counted before the migration have an empty language and are reported as `null`, never assigned to a language. A site that upgrades the framework and has not applied the migration keeps counting exactly as before (`Analytics\Schema::hasLocale()` probes the table once per process). `doctor` and `migration:status` report migration 013 when analytics is enabled.
 - MCP server: `get_statistics` takes `locale` and shows the split by language, `site_report` has a section By language, both say when views have no language or the site has no split.
 
