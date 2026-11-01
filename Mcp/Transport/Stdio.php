@@ -14,6 +14,9 @@ final class Stdio
     /** @param resource $in @param resource $out @param resource $err */
     public function __construct(private $in, private $out, private $err, private readonly int $maxMessageBytes = Server::MAX_MESSAGE_BYTES)
     {
+        // A client that starts the server over a socket pair (Node does) is subject to PHP's default_socket_timeout
+        // (60 s): without this a quiet minute would look like the end of the input and the server would stop.
+        stream_set_timeout($this->in, 86400 * 365);
     }
 
     public function run(Server $server): void
@@ -47,6 +50,8 @@ final class Stdio
         while (true) {
             $chunk = fgets($this->in, 8192);
             if (false === $chunk) {
+                // A read timeout is not the end of the input: only a closed stream ends the server.
+                if (!feof($this->in) && (stream_get_meta_data($this->in)['timed_out'] ?? false)) { continue; }
                 return '' === $buffer && !$tooLong ? null : ($tooLong ? false : $buffer);
             }
             $complete = str_ends_with($chunk, "\n");

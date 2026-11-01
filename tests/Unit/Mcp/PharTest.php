@@ -57,6 +57,25 @@ final class PharTest extends TestCase
         $this->assertStringContainsString('input closed by the client', $err, 'a session that ends says how');
     }
 
+    /** Node starts a server with a socket pair on stdin, where PHP applies default_socket_timeout (60 s) to a quiet client. */
+    public function testAQuietClientOnASocketPairDoesNotStopTheServer(): void
+    {
+        $pair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+        if (false === $pair) { $this->markTestSkipped('No socket pair on this platform.'); }
+        $process = proc_open([PHP_BINARY, '-d', 'default_socket_timeout=1', $this->dir . '/wbengine-mcp.phar'], [0 => $pair[0], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, ['WBENGINE_MCP_URL' => 'https://site.example', 'WBENGINE_MCP_KEY' => 'wbv2_testkey', 'PATH' => getenv('PATH')]);
+        fclose($pair[0]); // the child holds its own copy; with ours open it would never see the end of the input
+        fwrite($pair[1], '{"jsonrpc":"2.0","id":1,"method":"ping"}' . "\n");
+        sleep(3);
+        $this->assertTrue(proc_get_status($process)['running'], 'three quiet seconds with a one second socket timeout must not end the server');
+        fwrite($pair[1], '{"jsonrpc":"2.0","id":2,"method":"ping"}' . "\n");
+        $first = fgets($pipes[1]);
+        $second = fgets($pipes[1]);
+        proc_terminate($process);
+        proc_close($process);
+        $this->assertSame(1, json_decode((string) $first, true)['id']);
+        $this->assertSame(2, json_decode((string) $second, true)['id'], 'the request after the quiet time is answered');
+    }
+
     public function testTheGuideIsReadableFromInsideThePhar(): void
     {
         $process = proc_open([PHP_BINARY, $this->dir . '/wbengine-mcp.phar'], [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes, null, ['WBENGINE_MCP_URL' => 'https://site.example', 'WBENGINE_MCP_KEY' => 'wbv2_testkey', 'PATH' => getenv('PATH')]);

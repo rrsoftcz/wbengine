@@ -7,6 +7,10 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Fixed (6.5.4)
+
+- MCP server: it stopped by itself after 60 seconds without a request. A client that starts it over a socket pair (Claude Code, built on Node, does) puts PHP's `default_socket_timeout` of 60 seconds on the input, and the read timeout was taken for the end of the input, so the server logged `input closed by the client` and exited while the client still showed it as connected. The input timeout is now raised to a year and a read timeout no longer ends the loop; only a closed input does. A regression test runs the built phar on a socket pair with a one second timeout.
+
 ### Fixed (6.5.3)
 
 - MCP server, found when it was used for a real article: the generated address no longer splits a word at an apostrophe (`humanity-s` is now `humanitys`), is at most 50 characters of whole words and never ends in a function word; the browser title and the menu name are cut at whole words and never end in "and", "the" or "into", the menu name is the part of the title before a colon when that is short. `check_article` warns when the page or its menu entry lacks the translation for a site language (the Czech page kept an English title and description). `site_report` writes "no comparison" instead of a misleading change when the period before starts before counting began.
