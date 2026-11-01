@@ -88,6 +88,7 @@ return array(
     'wb.integrations.mcp_help' => 'Aby mohl AI klient, například Claude, spravovat tento web, spusťte MCP server WBengine na počítači klienta. Zkopírujte jeden ze dvou bloků níže. Obsahují klíč a zobrazí se jen teď.',
     'wb.integrations.mcp_json' => 'Konfigurace klienta (JSON)',
     'wb.integrations.mcp_command' => 'Příkaz pro Claude Code',
+    'wb.integrations.mcp_platforms' => 'Cesta je úplná cesta k souboru na počítači, kde běží klient, například /home/jmeno/wbengine-mcp.phar na Linuxu, /Users/jmeno/wbengine-mcp.phar na macOS nebo C:\\Users\\jmeno\\wbengine-mcp.phar ve Windows (v bloku JSON se zpětné lomítko píše dvakrát). Na PATH klienta musí být PHP 8.3 nebo novější. Ve Windows je doporučený postup spustit klienta i server uvnitř WSL2 a použít tam linuxovou cestu.',
     'wb.integrations.mcp_note' => 'Cestu /path/to/wbengine-mcp.phar nahraďte místem, kam jste uložili soubor wbengine-mcp.phar z vydání WBengine (nebo spusťte vendor/bin/wbengine-mcp.php z instalace přes Composer). Klíč bez skupiny Publikování dostane režim konceptů: agent smí psát koncepty, ale nástroje pro publikování mu nejsou nabídnuty.',
     'wb.integrations.ips_any' => 'Jakákoli adresa',
     'wb.integrations.ips_your' => 'Adresa vašeho prohlížeče, jak ji vidí tento web',

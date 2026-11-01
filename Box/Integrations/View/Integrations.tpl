@@ -108,6 +108,7 @@
             <div><button type="button" class="btn-outline" data-wb-copy="wb-mcp-command" data-done="{$view.t.copied}" data-fail="{$view.t.copy_failed}">{$view.t.copy}</button></div>
         </div>
         <p><small class="wb-hint">{$view.t.mcp_note}</small></p>
+        <p><small class="wb-hint">{$view.t.mcp_platforms}</small></p>
         <details class="wb-scopes">
             <summary>{$view.t.scopes_title} ({$view.issued.scope_count})</summary>
             <ul>

@@ -551,7 +551,7 @@ class Integrations extends WbengineBoxAbstract
             'col_by', 'col_last_used', 'col_scopes', 'col_status', 'revoke_submit', 'revoke_password', 'rotation_title', 'rotation_1',
             'rotation_2', 'rotation_3', 'issued_title', 'issued_warning', 'copy', 'copied', 'copy_failed', 'instr_title', 'instr_1',
             'instr_2', 'instr_site', 'instr_name', 'instr_key', 'instr_3', 'problem_title', 'problem_help', 'name_help', 'analytics_label',
-            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title', 'presets_title', 'presets_help', 'mcp_title', 'mcp_help', 'mcp_json', 'mcp_command', 'mcp_note', 'col_none', 'col_read', 'col_write', 'ips_title', 'ips_label', 'ips_help', 'ips_any', 'ips_your', 'col_allowed', 'col_last_ip', 'restrict_open', 'restrict_submit', 'ips_never', 'confirm_password', 'ips_card_hint'] as $key) {
+            'analytics_help', 'analytics_off', 'analytics_docs', 'analytics_badge', 'revoked_title', 'active_empty', 'col_revoked', 'revoke_open', 'groups_title', 'groups_help', 'analytics_title', 'presets_title', 'presets_help', 'mcp_title', 'mcp_help', 'mcp_json', 'mcp_command', 'mcp_note', 'mcp_platforms', 'col_none', 'col_read', 'col_write', 'ips_title', 'ips_label', 'ips_help', 'ips_any', 'ips_your', 'col_allowed', 'col_last_ip', 'restrict_open', 'restrict_submit', 'ips_never', 'confirm_password', 'ips_card_hint'] as $key) {
             $texts[$key] = I18n::t('wb.integrations.' . $key);
         }
         return $texts;
