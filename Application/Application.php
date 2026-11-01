@@ -227,6 +227,8 @@ class Application implements ComponentParentInterface, ResponseInterface
              * ("/cs/blog/") from the URL before anything else reads it.
              */
             $this->_localeRedirect = I18n::boot($appBaseDir);
+            // The version of the framework for a header or footer: {$wbengine_version}.
+            $this->getClassVars()->addValue('wbengine_version', \Wbengine\Version::current());
             if (I18n::isEnabled()) {
                 $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
                 $this->getClassVars()->addValue('locale', I18n::locale());
