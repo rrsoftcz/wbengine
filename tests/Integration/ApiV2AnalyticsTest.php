@@ -19,6 +19,7 @@ class ApiV2AnalyticsTest extends TestCase
         \Wbengine\User\AccountState::reset();
         try { Db::query('SELECT 1'); } catch (\Throwable $e) { $this->markTestSkipped('MySQL unavailable.'); }
         $this->oldConfig = Config::$config;
+        \Wbengine\Analytics\Schema::reset();
         Config::$config = (object) ['analytics' => (object) ['enabled' => true, 'timezone' => 'UTC', 'retentionDays' => 62]];
         Db::query('CREATE TEMPORARY TABLE cms_users (user_id INT PRIMARY KEY, role VARCHAR(16) NOT NULL) ENGINE=InnoDB');
         Db::insert('cms_users', ['user_id' => 11, 'role' => 'admin']);
@@ -56,6 +57,7 @@ class ApiV2AnalyticsTest extends TestCase
 
     protected function tearDown(): void
     {
+        \Wbengine\Analytics\Schema::reset();
         foreach (array_reverse($this->tables) as $table) { Db::query('DROP TEMPORARY TABLE IF EXISTS `' . $table . '`'); }
         Db::query('DROP TEMPORARY TABLE IF EXISTS cms_users,cms_sites,cms_articles,cms_boxes,cms_analytics_daily,cms_analytics_totals,cms_analytics_meta');
         Config::$config = $this->oldConfig;
@@ -96,6 +98,8 @@ class ApiV2AnalyticsTest extends TestCase
             'period' => ['from' => '2026-10-25', 'to' => '2026-10-27', 'granularity' => 'day', 'complete' => true],
             'totals' => ['page_views' => 5, 'article_views' => 3, 'box_appearances' => 4],
             'lifetime_totals' => ['page_views' => 90, 'article_views' => 123, 'box_appearances' => 40],
+            'per_locale' => false,
+            'by_locale' => [],
             'series' => [
                 ['period_start' => '2026-10-25', 'page_views' => 2, 'article_views' => 1, 'box_appearances' => 3],
                 ['period_start' => '2026-10-26', 'page_views' => 3, 'article_views' => 2, 'box_appearances' => 1],

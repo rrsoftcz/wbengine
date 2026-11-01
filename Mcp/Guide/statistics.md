@@ -7,6 +7,7 @@ Statistics (needs the Analytics choice on the key, and analytics switched on for
 - When the period starts before counting began, the earlier days show zero because nothing was counted. Say that, do not call it a drop.
 - Only the top ten of each list is returned. A page that is not listed may still have views.
 - Most counting is page views. Article views and box appearances can be zero on a site that does not count them: then read the pages.
+- A site that records views per language shows the split: the totals are the sum of all languages. Views counted before the split was switched on belong to no language and are listed as not recorded per language; they are in the totals. Ask for one language with locale (get_statistics). A site without the split says so in the report.
 - Retention is limited; a period older than the site keeps is refused with advice.
 
 Change log (needs the History permission)

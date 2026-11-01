@@ -7,6 +7,11 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (6.7.0)
+
+- Views per language. Migration `6.7.0/013-analytics-locale.sql` adds a `locale` column to `cms_analytics_daily` and `cms_analytics_totals` (part of the primary key, safe to rerun, leaves a site without analytics alone). `Analytics\Tracker` records the language of the request, and a cached page carries its language in the stored metadata, so a cache hit counts in the right language. The totals stay the sum of all languages. `/api/v2/analytics/overview` adds `per_locale` and `by_locale` and takes an optional `locale` filter (400 `invalid_locale`, 409 `locale_unavailable` without the migration). Rows counted before the migration have an empty language and are reported as `null`, never assigned to a language. A site that upgrades the framework and has not applied the migration keeps counting exactly as before (`Analytics\Schema::hasLocale()` probes the table once per process). `doctor` and `migration:status` report migration 013 when analytics is enabled.
+- MCP server: `get_statistics` takes `locale` and shows the split by language, `site_report` has a section By language, both say when views have no language or the site has no split.
+
 ### Added (6.6.0)
 
 - `Wbengine\Seo\Crawlers::register($app)` adds `/robots.txt` and `/sitemap.xml`, generated for each request and opt-in. The sitemap lists the pages that can be opened by their link (visible, public, without a hidden article) once per language with `hreflang` alternates, with `lastmod` from the newest published article of the page. `robots.txt` names the sitemap. Settings `seo.allowIndexing`, `seo.disallow` and `seo.sitemapExclude` (`Config::getSeoSettings()`). No migration.

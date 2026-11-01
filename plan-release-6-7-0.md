@@ -131,7 +131,11 @@ Decisions:
    by `cms_articles.views`, shown only when at least one article has views. All posts: a plain
    list by date, with a page size so a site with many posts stays fast.
 3. The demo article that is now the content of `/blog/` moves to its own page
-   `/blog/articles-with-the-bundled-box/`, so it appears in the list like any other post.
+   `/blog/articles-with-the-bundled-box/`, so it appears in the list like any other post. It is
+   rewritten at the same time: the present text is about the bundled box and a 2017 example;
+   the new text describes what the framework really gives a site (pages and boxes from the
+   database, languages, API v2 and keys, MCP for editors, the page cache, native analytics,
+   the sitemap), with only claims that the documentation backs.
    This changes what `/blog/` shows, not the address of any other page. Done by a guarded
    migration and documented.
 4. The MCP default for a new article stays under `/blog/`. `list_pages` then no longer marks
@@ -187,7 +191,9 @@ variables, and the command to add it to the client. The differences to document 
 
 - macOS and Linux: `php` from Homebrew or the package manager, a path such as
   `/home/name/wbengine-mcp.phar`, `claude mcp add` with the environment passed by `--env`.
-- Windows: `php.exe` from the PHP download or a package manager, a path with a drive letter
+- Windows, recommended: run Claude Code and the server inside WSL2. Then it is the Linux case
+  below and needs nothing special. The documentation leads with this.
+- Windows, native (second option): `php.exe` from the PHP download or a package manager, a path with a drive letter
   and backslashes (escaped in JSON), the quoting rules of the shell used (PowerShell and cmd
   differ), and the `phar` extension enabled in `php.ini`. Which of these needs a wrapper has to
   be found by running it, not by reading documentation.
@@ -222,7 +228,14 @@ Breakdown:
    and checked on the live site before the next.
 3. After each release: update the plan boxes, the memory notes and the live checks.
 
-## Open questions (with the recommendation, so a plain yes is enough)
+## Answers of the owner (2026-11-01)
+
+1. Blog previews: excerpts now, image previews later. Yes.
+2. Changelog: the framework only, English. Yes.
+3. The demo article moves to its own address, and it is rewritten so that it describes the real advantages of the framework (see D).
+4. Windows: the recommended way is to run Claude Code and the MCP server inside WSL2, where the Linux instructions apply. Native Windows stays documented as a second option, CI-verified. Running Claude Code on Windows with the server in WSL2 through `wsl.exe` is documented only if it is verified.
+
+## Open questions (answered above, kept for the record)
 
 1. Blog previews: excerpts only now, image previews later with a new article field.
    Recommended: yes, excerpts now. An image field changes the article model and API v2.

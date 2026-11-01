@@ -92,7 +92,7 @@ Release 6.5.0 adds statistics, reports and change log analysis. The figures are 
 
 | Tool | Input | What it does | Needs |
 |------|-------|--------------|-------|
-| `get_statistics` | `days` (ending today, default 7) or `from` and `to` (YYYY-MM-DD), `granularity` (`day`, `week`, `month`) | page views, article views and box appearances for the period, the series, the top ten pages, articles and boxes, and the totals since counting began; says when the period starts before counting began (`period.complete` false) | `analytics:read` (the Analytics choice of the key) |
+| `get_statistics` | `days` (ending today, default 7) or `from` and `to` (YYYY-MM-DD), `granularity` (`day`, `week`, `month`), `locale` (one language, for example `cs`) | page views, article views and box appearances for the period, the series, the top ten pages, articles and boxes, and the totals since counting began; the split by language when the site records it (views counted before the split are listed as not recorded per language); says when the period starts before counting began (`period.complete` false) | `analytics:read` (the Analytics choice of the key) |
 | `site_report` | `days`, `compare` | a Markdown report: totals against the period before with the change, the busiest days, the top lists with their change, and the limits of the numbers (no unique visitors, top ten only, incomplete period, no comparison available) | `analytics:read` |
 | `analyze_activity` | `days`, `actor` | counts of the change log by actor, resource, action and day, what was changed three times or more, and the refused writes by error code and actor | `audit:read` |
 

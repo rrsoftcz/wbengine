@@ -790,6 +790,7 @@ Database updates for the API, applied by the operator and never by a web request
 | `5.0.0/010-drop-refresh-tokens.sql` | removes the unused refresh token table |
 | `6.1.0/011-integration-ip-restriction.sql` | allowed addresses and last used address of a key |
 | `6.2.0/012-article-hidden.sql` | the `hidden` flag of articles and an index on `cms_articles.site_id` |
+| `6.7.0/013-analytics-locale.sql` | the language of a view in the analytics tables (only for analytics) |
 
 First-party aggregate analytics is opt-in. Before enabling it, apply
 [`migrations/4.0.0/006-analytics.sql`](migrations/4.0.0/006-analytics.sql),
@@ -1116,6 +1117,10 @@ Use `PHP_VERSION=8.3 docker compose build` (and `docker compose run --rm php com
 The integration tests create their tables from `tests/schema.sql`. They are skipped when the database is not reachable. For new installations use the `utf8mb4` connection charset: the older `utf8` alias is three bytes per character and cannot carry emoji.
 
 ## Upgrading
+
+### From 6.6 to 6.7
+
+* A site that uses analytics applies `migrations/6.7.0/013-analytics-locale.sql` (safe to rerun). Without it nothing breaks: counting goes on as before and the overview has `per_locale: false`. With it each view is recorded with the language of the request, the totals stay the sum of all languages, and `/api/v2/analytics/overview` adds `by_locale` and an optional `locale` filter. Views counted earlier keep an empty language and are reported as not recorded per language. `doctor` reports the migration when analytics is enabled.
 
 ### From 6.5 to 6.6
 

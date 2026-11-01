@@ -26,12 +26,15 @@ class Overview
         $fromText = $from->format('Y-m-d'); $toText = $to->format('Y-m-d');
         $trackingStart = Db::fetchAssoc('SELECT tracking_started_on FROM cms_analytics_meta WHERE id = 1');
         $complete = is_array($trackingStart) && $fromText >= (string) $trackingStart['tracking_started_on'];
+        $locale = $this->locale($query['locale'] ?? null);
+        $localeSql = null === $locale ? '' : ' AND locale = ?';
+        $localeParams = null === $locale ? [] : [$locale];
         $periodExpr = match ($granularity) {
             'week' => "DATE_SUB(day, INTERVAL WEEKDAY(day) DAY)",
             'month' => "DATE_FORMAT(day, '%Y-%m-01')",
             default => 'day',
         };
-        $rows = Db::fetchAllAssoc('SELECT ' . $periodExpr . ' AS period_start, entity_type, SUM(views) AS views FROM cms_analytics_daily WHERE day BETWEEN ? AND ? GROUP BY period_start, entity_type ORDER BY period_start', [$fromText, $toText]);
+        $rows = Db::fetchAllAssoc('SELECT ' . $periodExpr . ' AS period_start, entity_type, SUM(views) AS views FROM cms_analytics_daily WHERE day BETWEEN ? AND ?' . $localeSql . ' GROUP BY period_start, entity_type ORDER BY period_start', array_merge([$fromText, $toText], $localeParams));
         $series = $this->series($from, $to, $granularity, $rows);
         $totals = ['page_views' => 0, 'article_views' => 0, 'box_appearances' => 0];
         foreach ($series as $row) { foreach (array_keys($totals) as $key) { $totals[$key] += $row[$key]; } }
@@ -40,10 +43,12 @@ class Overview
             'period' => ['from' => $fromText, 'to' => $toText, 'granularity' => $granularity, 'complete' => $complete],
             'totals' => $totals,
             'lifetime_totals' => $this->lifetimeTotals(),
+            'per_locale' => Schema::hasLocale(),
+            'by_locale' => $this->byLocale($fromText, $toText, $locale),
             'series' => $series,
-            'top_pages' => $this->top('page', 'cms_sites', 'site_id', 'title', $fromText, $toText, 'views'),
-            'top_articles' => $this->topArticles($fromText, $toText),
-            'top_boxes' => $this->top('box', 'cms_boxes', 'id', 'name', $fromText, $toText, 'appearances'),
+            'top_pages' => $this->top('page', 'cms_sites', 'site_id', 'title', $fromText, $toText, 'views', $locale),
+            'top_articles' => $this->topArticles($fromText, $toText, $locale),
+            'top_boxes' => $this->top('box', 'cms_boxes', 'id', 'name', $fromText, $toText, 'appearances', $locale),
         ];
     }
 
@@ -80,15 +85,43 @@ class Overview
         return $totals;
     }
 
-    private function top(string $type, string $table, string $idColumn, string $nameColumn, string $from, string $to, string $countName): array
+    private function top(string $type, string $table, string $idColumn, string $nameColumn, string $from, string $to, string $countName, ?string $locale = null): array
     {
-        $rows = Db::fetchAllAssoc('SELECT e.' . Db::identifier($idColumn) . ' AS id, e.' . Db::identifier($nameColumn) . ' AS label, SUM(d.views) AS views FROM cms_analytics_daily d JOIN ' . Db::identifier($table) . ' e ON e.' . Db::identifier($idColumn) . ' = d.entity_id WHERE d.entity_type = ? AND d.day BETWEEN ? AND ? GROUP BY e.' . Db::identifier($idColumn) . ', e.' . Db::identifier($nameColumn) . ' ORDER BY views DESC, id ASC LIMIT 10', [$type, $from, $to]);
+        $rows = Db::fetchAllAssoc('SELECT e.' . Db::identifier($idColumn) . ' AS id, e.' . Db::identifier($nameColumn) . ' AS label, SUM(d.views) AS views FROM cms_analytics_daily d JOIN ' . Db::identifier($table) . ' e ON e.' . Db::identifier($idColumn) . ' = d.entity_id WHERE d.entity_type = ? AND d.day BETWEEN ? AND ?' . (null === $locale ? '' : ' AND d.locale = ?') . ' GROUP BY e.' . Db::identifier($idColumn) . ', e.' . Db::identifier($nameColumn) . ' ORDER BY views DESC, id ASC LIMIT 10', null === $locale ? [$type, $from, $to] : [$type, $from, $to, $locale]);
         return array_map(static fn($row) => ['id' => (int) $row['id'], ('page' === $type ? 'title' : 'name') => $row['label'], $countName => (int) $row['views']], $rows);
     }
 
-    private function topArticles(string $from, string $to): array
+    private function topArticles(string $from, string $to, ?string $locale = null): array
     {
-        $rows = Db::fetchAllAssoc('SELECT a.id, a.title, SUM(d.views) AS views FROM cms_analytics_daily d JOIN cms_articles a ON a.id = d.entity_id WHERE d.entity_type = ? AND d.day BETWEEN ? AND ? GROUP BY a.id, a.title ORDER BY views DESC, a.id ASC LIMIT 10', ['article', $from, $to]);
+        $rows = Db::fetchAllAssoc('SELECT a.id, a.title, SUM(d.views) AS views FROM cms_analytics_daily d JOIN cms_articles a ON a.id = d.entity_id WHERE d.entity_type = ? AND d.day BETWEEN ? AND ?' . (null === $locale ? '' : ' AND d.locale = ?') . ' GROUP BY a.id, a.title ORDER BY views DESC, a.id ASC LIMIT 10', null === $locale ? ['article', $from, $to] : ['article', $from, $to, $locale]);
         return array_map(static fn($row) => ['id' => (int) $row['id'], 'title' => $row['title'], 'views' => (int) $row['views']], $rows);
+    }
+    /** The optional language filter: null for all languages. A language needs migration 6.7.0/013. */
+    private function locale(mixed $value): ?string
+    {
+        if (null === $value || '' === $value) { return null; }
+        if (!is_string($value) || '' === Schema::cleanLocale($value)) { throw new Problem('invalid_locale', 'The language must be a locale such as en or cs.', 400); }
+        if (!Schema::hasLocale()) { throw new Problem('locale_unavailable', 'Views per language need the database update migrations/6.7.0/013-analytics-locale.sql.', 409); }
+        return $value;
+    }
+
+    /**
+     * The period split by language, most viewed first. The locale null is the views counted before the split
+     * existed (or on a site without languages): they are in the totals and belong to no language.
+     */
+    private function byLocale(string $from, string $to, ?string $locale): array
+    {
+        if (!Schema::hasLocale()) { return []; }
+        $rows = Db::fetchAllAssoc('SELECT locale, entity_type, SUM(views) AS views FROM cms_analytics_daily WHERE day BETWEEN ? AND ?' . (null === $locale ? '' : ' AND locale = ?') . ' GROUP BY locale, entity_type', null === $locale ? [$from, $to] : [$from, $to, $locale]);
+        $by = [];
+        foreach ($rows as $row) {
+            $key = (string) $row['locale'];
+            $by[$key] ??= ['locale' => '' === $key ? null : $key, 'page_views' => 0, 'article_views' => 0, 'box_appearances' => 0];
+            $field = match ($row['entity_type']) { 'page' => 'page_views', 'article' => 'article_views', default => 'box_appearances' };
+            $by[$key][$field] = (int) $row['views'];
+        }
+        $list = array_values($by);
+        usort($list, static fn(array $a, array $b): int => [$b['page_views'], (string) $a['locale']] <=> [$a['page_views'], (string) $b['locale']]);
+        return $list;
     }
 }
