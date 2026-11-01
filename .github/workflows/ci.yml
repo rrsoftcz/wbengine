@@ -146,3 +146,33 @@ jobs:
 
       - name: End to end session against the built phar
         run: WB_MCP_PHAR="$PWD/build/wbengine-mcp.phar" vendor/bin/phpunit tests/Integration/McpEndToEndTest.php
+
+  mcp-platforms:
+    name: MCP server on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, json, phar, openssl
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build the phar
+        run: php -d phar.readonly=0 bin/build-phar.php
+
+      # A client starts the server as a child process. This starts it from Node the way Claude Code does,
+      # stays quiet longer than PHP's 60 second default_socket_timeout and talks again. It catches a server
+      # that stops by itself on a platform, which a test that feeds a pipe from PHP cannot.
+      - name: A client session with a quiet minute
+        run: node tests/mcp-client/session.mjs build/wbengine-mcp.phar 65
