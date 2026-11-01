@@ -13,7 +13,14 @@ Application
 
 The framework is built with performance in mind: no ORM, no reflection-heavy container, one lazily created connection, compiled templates, and a built in debug bar that shows what a request really cost. A scoped, audited HTTP API (API v2) lets a central administration application manage a site server to server.
 
-A ready to run example application lives in the companion project `wbengine-skeleton-app`.
+A ready to run example application lives in the companion project [`wbengine-skeleton-app`](https://github.com/rrsoftcz/wbengine-skeleton-app).
+
+**See it running: [www.wbengine.org](https://www.wbengine.org).** That site is the skeleton application itself, so every page you read is built with the feature it describes.
+
+* [Documentation](https://www.wbengine.org/docs/) of every part of the framework, in English and Czech.
+* [Blog](https://www.wbengine.org/blog/) and [changelog](https://www.wbengine.org/changelog/) with every release.
+* [Performance](https://www.wbengine.org/docs/performance/): how long the core needs to assemble a page, and how that was measured.
+* [`wbengine-admin`](https://github.com/rrsoftcz/wbengine-admin): the optional central administration, a separate application that manages several sites through API v2.
 
 ## Contents
 
@@ -50,7 +57,7 @@ PHP has no long term support releases. 8.4 receives security fixes until the end
 composer require wbengine/wbengine
 ```
 
-The framework is a library: your application provides the entry point, templates, box classes and configuration. The quickest way to see it working is the skeleton application, which has a Docker setup and demo data.
+The framework is a library: your application provides the entry point, templates, box classes and configuration. The quickest way to see it working is the [skeleton application](https://github.com/rrsoftcz/wbengine-skeleton-app), which has a Docker setup and demo data and runs live at [www.wbengine.org](https://www.wbengine.org).
 
 A complete entry point (`public/index.php`) is short:
 
