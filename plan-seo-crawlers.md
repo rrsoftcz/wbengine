@@ -1,6 +1,6 @@
 # Plan: sitemap.xml and robots.txt (6.6.0)
 
-Status: planned. Release target: 6.6.0 (a new opt-in feature, no database change).
+Status: released as 6.6.0 on 2026-11-01 and live (framework PR #50, skeleton PR #49, content migration 037). Live check: 17 pages in 2 languages in the sitemap, login, profile and integrations left out.
 
 ## Why
 
@@ -85,12 +85,12 @@ show it in the MCP report and in the Admin. To be planned in its own file once 6
       the disallow list and with indexing off.
 - [x] Integration test against the test database: a visible page, a hidden page, a page with
       `acl`, a translated page.
-- [ ] HTTP check in the skeleton smoke test: `/sitemap.xml` is XML and lists the home page in
+- [x] HTTP check in the skeleton smoke test: `/sitemap.xml` is XML and lists the home page in
       both languages, `/robots.txt` names the sitemap, a hidden page is absent.
 - [x] `ref-*` and README sections, CHANGELOG 6.6.0.
-- [ ] Skeleton: bump to `^6.6`, register the routes, content migration for the documentation
+- [x] Skeleton: bump to `^6.6`, register the routes, content migration for the documentation
       (mirrored in the content dump), changelog, smoke ref.
-- [ ] Release v6.6.0, deploy to contabo, check `/sitemap.xml` and `/robots.txt` on the live
+- [x] Release v6.6.0, deploy to contabo, check `/sitemap.xml` and `/robots.txt` on the live
       site and both languages of the Apollo 11 article in the sitemap.
 - [x] MCP: a section in the `addresses_and_seo` guide topic. A `check_article` advice that
       reads `/sitemap.xml` was dropped: the MCP client only calls the API, the editor cannot
