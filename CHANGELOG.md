@@ -12,6 +12,10 @@ reads this file to show its changelog page, so the structure is checked by a tes
 
 ## [Unreleased]
 
+### Fixed
+
+- A built `build/wbengine-mcp.phar` (version 6.3.0) was committed by mistake although `build/` is ignored, so it shipped inside the Composer package of every release. It is no longer tracked. The release workflow builds the phar for each release and attaches it, as before.
+
 ## [6.7.0] - 2026-11-01
 
 ### Added
