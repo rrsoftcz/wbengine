@@ -325,6 +325,30 @@ class Config
     }
 
     /**
+     * Crawler settings for Seo\Crawlers (robots.txt and sitemap.xml), under "seo":
+     *   allowIndexing: false closes the whole site to crawlers (a staging copy), default true.
+     *   disallow: paths for robots.txt, each starting with "/".
+     *   sitemapExclude: links of pages to leave out of the sitemap, each starting with "/".
+     */
+    public static function getSeoSettings(): array
+    {
+        $value = self::$config->seo ?? null;
+        $settings = is_object($value) ? get_object_vars($value) : (is_array($value) ? $value : []);
+        $allow = $settings['allowIndexing'] ?? true;
+        if (!is_bool($allow)) { throw new \InvalidArgumentException('seo.allowIndexing must be true or false.'); }
+        $result = ['allowIndexing' => $allow];
+        foreach (['disallow', 'sitemapExclude'] as $name) {
+            $list = $settings[$name] ?? [];
+            if (!is_array($list)) { throw new \InvalidArgumentException('seo.' . $name . ' must be a list of paths.'); }
+            foreach ($list as $path) {
+                if (!is_string($path) || !preg_match('~^/[^\s]*$~D', $path)) { throw new \InvalidArgumentException('seo.' . $name . ' must be a list of paths starting with "/".'); }
+            }
+            $result[$name] = array_values($list);
+        }
+        return ['allowIndexing' => $result['allowIndexing'], 'disallow' => $result['disallow'], 'sitemapExclude' => $result['sitemapExclude']];
+    }
+
+    /**
      * Retention of the change log and the audit trail. Both default to 365 days.
      *   audit.retentionDays: cms_api_audit and cms_api_changes, 30 to 3650.
      *   audit.revisionRetentionDays: cms_api_revisions (article draft history), 30 to 3650.

@@ -31,47 +31,70 @@ so no site address may be written into a static file).
 2. `robots.txt` is generated per request: `User-agent: *`, `Disallow` lines for the paths the
    application lists (default: none), and `Sitemap: <origin>/sitemap.xml`. A site can turn
    crawling off completely with a setting, for staging copies.
-3. `sitemap.xml` lists every page with `visible = 1` and `acl = 0` that has a plain link
-   (no placeholders or login pages), once per language with `xhtml:link` alternates for the
+3. `sitemap.xml` lists every page that can be requested by its link (conditions in the
+   answers below) once per language with `xhtml:link` alternates for the
    other languages, so it agrees with the `hreflang` links already in the page head.
-4. `lastmod` is written only when a real modification date exists. `changefreq` and
+4. `lastmod` is written only when a real date exists (the newest published article of the page). `changefreq` and
    `priority` are not written: crawlers ignore them and a wrong value is worse than none.
 5. Both responses carry a short public cache header and are not stored in the page cache
    (`PageCache::bypass()`), so a newly published article appears at once.
 6. One sitemap file up to 50,000 addresses (the protocol limit). A site above it gets a
    clear log line and the first 50,000 entries, an index of several files is out of scope.
 
-## Open questions to verify before coding
+## Answers to the open questions (verified in the code and by the owner)
 
-- What `strict` means for matching a link, and whether such a page can be requested at the
-  listed address. A page that cannot be requested must not be listed.
-- Whether any page has no date column the API already uses for `lastmod` (articles have
-  publish dates, pages may not). If not, `lastmod` is left out for pages.
-- Whether the analytics tracker counts crawler requests for the two routes. They must not
-  count as page views.
+- `strict` (`SiteModel::getUrlCandidates`): a strict page answers only its exact link, every
+  other address is a 404. A page that is not strict is dynamic: the box behind `/addons/`
+  also receives `v21-2` and `server-1` of `/addons/v21-2/server-1/` as parameters and the
+  box or site decides which parameters are valid (and returns the 404 itself). Consequence
+  for the sitemap: the framework lists only the page link, never a parameter address, because
+  it cannot know which addresses a dynamic box accepts. The base link is listed for both
+  kinds. A box that can list its own addresses is a later extension (see out of scope).
+- The sitemap uses the same conditions as loading a page (`SiteModel::loadSiteData`):
+  `visible = 1` and no hidden article (`ArticleVisibility::pageCondition`), plus `acl = 0`,
+  because `acl >= 1` sends a visitor to `/login/`. A page that cannot be requested is never
+  listed.
+- Dates: `cms_sites` has no date column, only articles have `published` (a timestamp). So
+  `lastmod` of a page is the newest published, not hidden article of that page, and it is
+  left out for pages without an article.
+- The tracker (`Analytics\Tracker`) is started only by the CMS page render
+  (`beginPublicPage`), after the custom routes. The crawler routes are therefore not counted
+  as page views, nothing to change. A language prefix does not change the counted page: all
+  languages count to the same page.
+
+## Analytics per language (6.7.0, separate from 6.6.0)
+
+The owner wants the views of each language version recorded separately (useful for
+marketing) and summed in the totals. The daily and lifetime tables key on page and
+entity only, so this needs a `locale` column and a migration, which does not belong in the
+6.6.0 crawler release. Outline: add `locale` to `cms_analytics_daily` and
+`cms_analytics_totals` keys (existing rows get the default locale), record the request locale
+in `Tracker`, keep `/analytics/overview` totals as the sum and add a per-locale breakdown, then
+show it in the MCP report and in the Admin. To be planned in its own file once 6.6.0 is out.
 
 ## Breakdown
 
-- [ ] Read `Site`, `SiteModel` and the router to answer the open questions, and note the
-      answers here.
-- [ ] `Seo\Crawlers::register`, `Seo\Sitemap` (query and XML writer with escaping) and
+- [x] Read `Site`, `SiteModel`, the router and the tracker to answer the open questions; the
+      answers are above.
+- [x] `Seo\Crawlers::register`, `Seo\Sitemap` (query and XML writer with escaping) and
       `Seo\Robots`, no output code mixed with the query code.
-- [ ] Setting `seo.crawlers` (`enabled`, `disallow` list, `allowIndexing` for staging),
+- [x] Settings `seo.allowIndexing`, `seo.disallow`, `seo.sitemapExclude`,
       validated like the other settings, documented in the settings reference.
-- [ ] Unit tests: XML escaping, hidden and login pages left out, alternates per language,
+- [x] Unit tests: XML escaping, hidden and login pages left out, alternates per language,
       origin from `i18n.baseUrl` and from the host, the 50,000 limit, robots with and without
       the disallow list and with indexing off.
-- [ ] Integration test against the test database: a visible page, a hidden page, a page with
+- [x] Integration test against the test database: a visible page, a hidden page, a page with
       `acl`, a translated page.
 - [ ] HTTP check in the skeleton smoke test: `/sitemap.xml` is XML and lists the home page in
       both languages, `/robots.txt` names the sitemap, a hidden page is absent.
-- [ ] `ref-*` and README sections, CHANGELOG 6.6.0.
+- [x] `ref-*` and README sections, CHANGELOG 6.6.0.
 - [ ] Skeleton: bump to `^6.6`, register the routes, content migration for the documentation
       (mirrored in the content dump), changelog, smoke ref.
 - [ ] Release v6.6.0, deploy to contabo, check `/sitemap.xml` and `/robots.txt` on the live
       site and both languages of the Apollo 11 article in the sitemap.
-- [ ] MCP: `check_article` advice when the site has no sitemap, and a line in the
-      `addresses_and_seo` guide topic; the check reads the site's `/sitemap.xml`.
+- [x] MCP: a section in the `addresses_and_seo` guide topic. A `check_article` advice that
+      reads `/sitemap.xml` was dropped: the MCP client only calls the API, the editor cannot
+      change the setting, and the guide text is enough.
 
 ## Out of scope
 

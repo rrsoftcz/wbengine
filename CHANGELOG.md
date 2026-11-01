@@ -7,6 +7,11 @@ documented here, see the git tags.
 
 ## [Unreleased]
 
+### Added (6.6.0)
+
+- `Wbengine\Seo\Crawlers::register($app)` adds `/robots.txt` and `/sitemap.xml`, generated for each request and opt-in. The sitemap lists the pages that can be opened by their link (visible, public, without a hidden article) once per language with `hreflang` alternates, with `lastmod` from the newest published article of the page. `robots.txt` names the sitemap. Settings `seo.allowIndexing`, `seo.disallow` and `seo.sitemapExclude` (`Config::getSeoSettings()`). No migration.
+- MCP server: the guide topic `addresses_and_seo` says what the sitemap lists and that publishing is enough.
+
 ### Fixed (6.5.4)
 
 - MCP server: it stopped by itself after 60 seconds without a request. A client that starts it over a socket pair (Claude Code, built on Node, does) puts PHP's `default_socket_timeout` of 60 seconds on the input, and the read timeout was taken for the end of the input, so the server logged `input closed by the client` and exited while the client still showed it as connected. The input timeout is now raised to a year and a read timeout no longer ends the loop; only a closed input does. A regression test runs the built phar on a socket pair with a one second timeout.

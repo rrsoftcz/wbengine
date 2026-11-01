@@ -396,6 +396,25 @@ Search engines and Lighthouse require `hreflang` URLs to be absolute. The layout
 
 Set `i18n.baseUrl` in production. Without it the address comes from the `Host` header, which a client controls: it is accepted only when it looks like a host name, and the page cache then keeps one copy per host, so a forged `Host` cannot put its address into the page other visitors get. With `baseUrl` there is one copy and the header is ignored. If neither is known (no `Host`, as on the command line), `hreflangs` is empty. `I18n::origin()` and `I18n::hreflangs($path)` are the PHP side.
 
+### robots.txt and sitemap.xml
+
+`Wbengine\Seo\Crawlers::register($app)` adds `/robots.txt` and `/sitemap.xml`. It is opt-in: call it before `run()`, an application that does not call it changes nothing. Both are generated for each request, are not stored in the page cache and are not counted as page views.
+
+```php
+\Wbengine\Seo\Crawlers::register($App);
+$App->run();
+```
+
+The sitemap lists the pages a visitor can open by their link: visible, public (`acl` 0) and without a hidden article, the same conditions that load a page. A page is listed once per language, with `xhtml:link` alternates and `x-default`, in agreement with the `hreflang` links. The default language is always listed, another language only when the page has a translation. Only the link of a page is listed. A page that is not strict is a dynamic box that receives the rest of the address as parameters, and the framework cannot know which parameter addresses the box accepts. `lastmod` is the date of the newest published article of the page and is left out for a page without an article. `changefreq` and `priority` are never written. The sitemap needs the public address (`i18n.baseUrl` or the request host) and answers 404 without it; it lists up to 50,000 addresses.
+
+`robots.txt` allows everything, lists the paths of `seo.disallow` and names the sitemap. Settings under `seo`:
+
+| Key | Meaning |
+|-----|---------|
+| `allowIndexing` | `false` closes the whole site (`Disallow: /`, no sitemap), for a staging copy. Default `true` |
+| `disallow` | list of paths for `robots.txt`, each starting with `/` |
+| `sitemapExclude` | list of page links to leave out of the sitemap, each starting with `/`, for example `["/login/"]` |
+
 ### Catalogs
 
 One PHP file per locale in `src/Locale/` (`en.php`, `cs.php`, `pt_BR.php`). PHP arrays are compiled by opcache, so there is nothing to parse per request:
@@ -910,6 +929,7 @@ In the skeleton's container the binary is `vendor/bin/wbengine.php` in `/var/www
 | `recaptcha` | `secretKey` for the login form. Empty means captcha checks fail closed. `WBENGINE_RECAPTCHA_SECRET` overrides it |
 | `apiV2` | `enabled` (default `false`) switches on `/api/v2`; `imageDirectory` is the directory for uploaded images (`WBENGINE_IMAGE_DIR` overrides it) |
 | `analytics` | `enabled` (default `false`), `timezone` (default `UTC`), `retentionDays` (default `62`, allowed 31 to 365). Identity-free daily aggregates, needs migration `4.0.0/006-analytics.sql` |
+| `seo` | `allowIndexing` (default `true`), `disallow` and `sitemapExclude` (lists of paths starting with `/`) for `Seo\Crawlers`, see [robots.txt and sitemap.xml](#robotstxt-and-sitemapxml) |
 | `audit` | `retentionDays` (default `365`, allowed 30 to 3650) for `cms_api_audit` and `cms_api_changes`, `revisionRetentionDays` (default `365`, allowed 30 to 3650) for `cms_api_revisions`. Applied by `audit:prune` |
 
 An application may add keys of its own, and a key the framework does not read (for example one left from an older version) is ignored. The environment variables `WBENGINE_DEBUG`, `WBENGINE_RECAPTCHA_SECRET` and `WBENGINE_IMAGE_DIR` override the matching settings. Keep `Settings.json` out of version control.
@@ -1096,6 +1116,10 @@ Use `PHP_VERSION=8.3 docker compose build` (and `docker compose run --rm php com
 The integration tests create their tables from `tests/schema.sql`. They are skipped when the database is not reachable. For new installations use the `utf8mb4` connection charset: the older `utf8` alias is three bytes per character and cannot carry emoji.
 
 ## Upgrading
+
+### From 6.5 to 6.6
+
+* No migration. `/robots.txt` and `/sitemap.xml` exist only when the application calls `Wbengine\Seo\Crawlers::register($app)` before `run()`. The settings `seo.*` are optional.
 
 ### From 6.4 to 6.5
 

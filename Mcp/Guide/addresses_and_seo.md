@@ -23,3 +23,8 @@ Article text
 - Write translations as real translations, with their own title and introduction; the page can carry translated browser titles and descriptions through update_page.
 
 check_article reports missing or too long fields. update_page changes them.
+
+Sitemap and robots.txt
+- A site that has them lists a published page automatically in /sitemap.xml, once per language, and a hidden article or a page that needs a login is left out. The editor does nothing: publishing is enough.
+- A language version is listed only when the page has a translation, so a missing page translation (check_article warns about it) also means the language is missing from the sitemap.
+- Whether a site has a sitemap is a setting of the site owner, not something this connection changes.
