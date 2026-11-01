@@ -12,6 +12,8 @@ reads this file to show its changelog page, so the structure is checked by a tes
 
 ## [Unreleased]
 
+## [6.7.0] - 2026-11-01
+
 ### Added
 
 - The Integrations page tells where the MCP server file goes on Linux, macOS and Windows, that PHP 8.3 or newer must be on the PATH, and that on Windows the recommended way is WSL2. CI starts the built MCP server from Node on Linux, macOS and Windows runners, with a quiet minute in the session (`tests/mcp-client/session.mjs`).
