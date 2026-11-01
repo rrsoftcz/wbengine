@@ -1,6 +1,6 @@
 # Plan: release 6.7.0 and the skeleton that follows it
 
-Status: planned, nothing implemented. Written 2026-11-01 from the owner's requests after 6.6.0.
+Status: framework 6.7.0 released and live on 2026-11-01. Skeleton: version in the header, `/changelog/`, the blog overview with the rewritten demo post, and the MCP pages are done. Still open: the remaining documentation pages of the audit (SEO, statistics, API, Boxes, Caching and others). Written 2026-11-01 from the owner's requests after 6.6.0.
 
 Two repositories are involved. The framework (`wbengine`) gets 6.7.0. The skeleton
 (`wbengine-skeleton-app`) gets a release that uses it. The skeleton is also the public
@@ -69,13 +69,13 @@ Decisions:
    before it adds it), tested on MySQL 8.4 and MariaDB 10.11 and 11.4 like the other ones.
 
 Breakdown:
-- [ ] Check how the cached-hit path stores events and where the locale is known there.
-- [ ] Migration with a rerun test, `Tracker` change, `Overview` change (breakdown and filter).
-- [ ] Unit and integration tests: two languages on one page, totals equal the sum, old rows
+- [x] Check how the cached-hit path stores events and where the locale is known there.
+- [x] Migration with a rerun test, `Tracker` change, `Overview` change (breakdown and filter).
+- [x] Unit and integration tests: two languages on one page, totals equal the sum, old rows
       without a locale, a site without languages, retention pruning with the new key.
-- [ ] `ref-api-v2.md`, README and CHANGELOG, upgrade note (a migration is needed).
-- [ ] MCP: statistics and report with the split, tests, guide topic `statistics`.
-- [ ] Admin: the per language view where the overview is shown, `npm test` and `npm run check`.
+- [x] `ref-api-v2.md`, README and CHANGELOG, upgrade note (a migration is needed).
+- [x] MCP: statistics and report with the split, tests, guide topic `statistics`.
+- [x] Admin: the per language view where the overview is shown, `npm test` and `npm run check`.
 
 ## B. The version in the header (framework helper, skeleton display)
 
@@ -88,8 +88,8 @@ Decisions:
 3. The value is read once per process, not per request through the file system.
 
 Breakdown:
-- [ ] `Version` class and layout variable, tests with and without Composer data.
-- [ ] Skeleton `site.tpl` header, a smoke check that the shown version equals the locked one.
+- [x] `Version` class and layout variable, tests with and without Composer data.
+- [x] Skeleton `site.tpl` header, a smoke check that the shown version equals the locked one.
 
 ## C. The page /changelog/ (skeleton, with a framework CHANGELOG cleanup)
 
@@ -112,12 +112,12 @@ Decisions:
 5. The header version of B links to `/changelog/`.
 
 Breakdown:
-- [ ] Restructure `CHANGELOG.md` (script to move and date the sections, a test that every
+- [x] Restructure `CHANGELOG.md` (script to move and date the sections, a test that every
       heading has a version and a date and that no line was lost).
-- [ ] The parser and the box, with unit tests on a sample file and on the real file.
-- [ ] Migration 038 (page, menu entry, translations) mirrored at the end of the content dump,
+- [x] The parser and the box, with unit tests on a sample file and on the real file.
+- [x] Migration 038 (page, menu entry, translations) mirrored at the end of the content dump,
       checked on a scratch database like 037.
-- [ ] Smoke test: `/changelog/` returns 200 in both languages and lists the installed version.
+- [x] Smoke test: `/changelog/` returns 200 in both languages and lists the installed version.
 
 ## D. The overview of /blog/ (skeleton)
 
@@ -147,11 +147,11 @@ Decisions:
    lifetime old, which is acceptable for a ranking.
 
 Breakdown:
-- [ ] The box, its query (one query with the translation overlay, no per post query), the
+- [x] The box, its query (one query with the translation overlay, no per post query), the
       excerpt helper with unit tests (Markdown, short text, long text, empty introduction).
-- [ ] Template for the three blocks, responsive, both languages, tested in the smoke test.
-- [ ] Migration 039: move the demo article, switch the `/blog/` box, mirrored in the dump.
-- [ ] Check `list_pages` and `plan_article_page` against the new `/blog/`.
+- [x] Template for the three blocks, responsive, both languages, tested in the smoke test.
+- [x] Migration 039: move the demo article, switch the `/blog/` box, mirrored in the dump.
+- [x] Check `list_pages` and `plan_article_page` against the new `/blog/`.
 
 ## E. Documentation audit and new pages (skeleton)
 
@@ -177,7 +177,7 @@ Known gaps already found:
 - Statistics: how the numbers are counted, what they do not contain, the retention, the report.
 
 Breakdown:
-- [ ] The audit table (a file in the repository, reviewed with the owner).
+- [x] The audit table (a file in the repository, reviewed with the owner).
 - [ ] New and extended pages in English and Czech through guarded content migrations, each
       mirrored in the dump and verified on a scratch database.
 - [ ] A check that every page has both languages and that no page links to a missing page.
@@ -213,11 +213,11 @@ Verification:
    platform instead of the single placeholder, and says which part to replace.
 
 Breakdown:
-- [ ] CI job and the Node client script in the repository, green on all three platforms, with
+- [x] CI job and the Node client script in the repository, green on all three platforms, with
       any platform-specific fix found by the run.
-- [ ] Integrations page: per platform path hints and tests of the generated text.
-- [ ] Documentation page for the clients, English and Czech, with a "verified" line per
-      platform that states what was proven.
+- [x] Integrations page: per platform path hints and tests of the generated text.
+- [x] Documentation page for the clients, English and Czech, with a "verified" line per
+      platform that states what was proven (`/docs/mcp-clients/`, skeleton PR 54).
 
 ## Order of work and releases
 
