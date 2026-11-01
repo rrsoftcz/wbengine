@@ -5,78 +5,113 @@ All notable changes to WBengine are documented here. The format follows
 [Semantic Versioning](https://semver.org/). Versions before 3.1.0 are not
 documented here, see the git tags.
 
+Each release is one section `## [x.y.z] - YYYY-MM-DD`, newest first, with the groups Added, Changed,
+Deprecated, Removed, Fixed, Security, Documentation and Upgrade notes. Changes that are not released
+yet are under Unreleased and move into a new section when the version is tagged. The skeleton site
+reads this file to show its changelog page, so the structure is checked by a test.
+
 ## [Unreleased]
 
-### Added (6.7.0)
+### Added
 
 - `Wbengine\Version::current()` and the layout variable `wbengine_version`: the version of the running framework (`6.7.0`), read from Composer, or `dev` when it is not an installed release.
 - Views per language. Migration `6.7.0/013-analytics-locale.sql` adds a `locale` column to `cms_analytics_daily` and `cms_analytics_totals` (part of the primary key, safe to rerun, leaves a site without analytics alone). `Analytics\Tracker` records the language of the request, and a cached page carries its language in the stored metadata, so a cache hit counts in the right language. The totals stay the sum of all languages. `/api/v2/analytics/overview` adds `per_locale` and `by_locale` and takes an optional `locale` filter (400 `invalid_locale`, 409 `locale_unavailable` without the migration). Rows counted before the migration have an empty language and are reported as `null`, never assigned to a language. A site that upgrades the framework and has not applied the migration keeps counting exactly as before (`Analytics\Schema::hasLocale()` probes the table once per process). `doctor` and `migration:status` report migration 013 when analytics is enabled.
 - MCP server: `get_statistics` takes `locale` and shows the split by language, `site_report` has a section By language, both say when views have no language or the site has no split.
 
-### Added (6.6.0)
+## [6.6.0] - 2026-11-01
+
+### Added
 
 - `Wbengine\Seo\Crawlers::register($app)` adds `/robots.txt` and `/sitemap.xml`, generated for each request and opt-in. The sitemap lists the pages that can be opened by their link (visible, public, without a hidden article) once per language with `hreflang` alternates, with `lastmod` from the newest published article of the page. `robots.txt` names the sitemap. Settings `seo.allowIndexing`, `seo.disallow` and `seo.sitemapExclude` (`Config::getSeoSettings()`). No migration.
 - MCP server: the guide topic `addresses_and_seo` says what the sitemap lists and that publishing is enough.
 
-### Fixed (6.5.4)
+## [6.5.4] - 2026-11-01
+
+### Fixed
 
 - MCP server: it stopped by itself after 60 seconds without a request. A client that starts it over a socket pair (Claude Code, built on Node, does) puts PHP's `default_socket_timeout` of 60 seconds on the input, and the read timeout was taken for the end of the input, so the server logged `input closed by the client` and exited while the client still showed it as connected. The input timeout is now raised to a year and a read timeout no longer ends the loop; only a closed input does. A regression test runs the built phar on a socket pair with a one second timeout.
 
-### Fixed (6.5.3)
+## [6.5.3] - 2026-10-31
+
+### Fixed
 
 - MCP server, found when it was used for a real article: the generated address no longer splits a word at an apostrophe (`humanity-s` is now `humanitys`), is at most 50 characters of whole words and never ends in a function word; the browser title and the menu name are cut at whole words and never end in "and", "the" or "into", the menu name is the part of the title before a colon when that is short. `check_article` warns when the page or its menu entry lacks the translation for a site language (the Czech page kept an English title and description). `site_report` writes "no comparison" instead of a misleading change when the period before starts before counting began.
 
-### Changed (6.5.2)
+## [6.5.2] - 2026-10-31
+
+### Changed
 
 - MCP server: it says on stderr how it ends: `input closed by the client after N s and M messages` when the client closes the input and `fatal error` with the place when PHP fails, plus one `started` line with the process id and the versions. A process that disappears without either line was stopped from outside by a signal. Claude Code keeps the stderr of a server in its MCP log, so a disconnect can now be explained. Nothing else changes.
 
-### Fixed (6.5.1)
+## [6.5.1] - 2026-10-31
+
+### Fixed
 
 - MCP server: the text of a tool result is also the `message` of its `structuredContent`. Claude Code shows the model only the structured part when there is one, so the guide texts, the Markdown report, the warnings and the marking of site text as data never reached it.
 
-### Added (6.5.0)
+## [6.5.0] - 2026-10-31
+
+### Added
 
 - MCP server: `get_statistics`, `site_report` (Markdown report with the change against the period before and the limits of the numbers) and `analyze_activity` (the change log by actor, resource, action and day, repeated edits, refused writes by error). `list_changes` takes `actor`, `action`, `since`, `until` and `outcome` `rejected`. Prompts `weekly_report` and `find_problems`, guide topic `statistics`. A menu entry created by `save_article_draft` goes after the last entry instead of at the position 100. No framework change: `GET /changes` already had the filters and the refused writes. See `ref-mcp.md`.
 
-### Fixed (6.4.1)
+## [6.4.1] - 2026-10-31
+
+### Fixed
 
 - MCP server: requests to a host with an IPv4 address go over IPv4 first. PHP streams try IPv6 first and waited several seconds on a network whose IPv6 route is broken, which made every tool call about seven seconds slower. The host name and the certificate check are unchanged; without an IPv4 address, or when IPv4 fails, the default behaviour is used.
 
-### Added (6.4.0)
+## [6.4.0] - 2026-10-31
+
+### Added
 
 - MCP server for an editor who is not technical. Tools `wbengine_guide` (how the site works, shipped as texts and also offered as MCP resources and prompts), `plan_article_page` and `check_article` (address, browser title, description, article box, menu, languages; `publish_article` refuses a page that cannot show anything and reports what is still open), `update_page`, `list_menu`, `set_menu_entry`, `list_sections`, `list_box_types`, `list_boxes`, `add_box`, `update_box`, `hide_box`, `show_box`, `upload_image`, `list_images`. `save_article_draft` with `new_page` fills the SEO fields and attaches the box that shows the article. Tools are offered only when the key has their scopes; `site_info` says whether new article pages can be created. Nothing is deleted. See `ref-mcp.md`.
 - The Integrations page offers the preset "Editor with structure and statistics" (Content, Publishing, Structure and Images write, History read, Analytics).
 
-### Fixed (6.3.1)
+## [6.3.1] - 2026-10-31
+
+### Fixed
 
 - MCP server: `save_article_draft` and `publish_article` warn when the page of the article has no box that shows articles, which would leave the published address empty. A page created by `new_page` has none; the warning tells the agent to use a page that already shows articles or to ask the administrator for an article box.
 
-### Added (6.3.0)
+## [6.3.0] - 2026-10-31
+
+### Added
 
 - MCP server (`Wbengine\Mcp`, `bin/wbengine-mcp.php`, also built as the single signed file `wbengine-mcp.phar` and attached to every release with its checksum): stdio, speaks the stateless revision 2026-07-28 and the revisions 2025-11-25 and 2025-06-18 with `initialize`. Tools for one site: `site_info`, `list_pages`, `list_articles`, `get_article`, `save_article_draft`, `preview_article`, `publish_article`, `hide_article`, `unhide_article`, `list_changes`. It is a client of API v2 with verified TLS, no redirects, size and time limits; text from the site is returned marked as data; `WBENGINE_MCP_MODE=draft` removes the publish and hide tools. See `ref-mcp.md`.
 - The Integrations page offers presets for the permission matrix (Full management, Agent for content, Agent drafts only, Read only) and shows a client configuration (JSON and a `claude mcp add` command) with the key once, after a key is issued.
 
-### Added (6.2.0)
+## [6.2.0] - 2026-10-31
+
+### Added
 
 - Hiding articles: `POST /api/v2/articles/{id}/hide` and `/unhide` (scopes `articles:write` and `publish:write`, `If-Match`, idempotent, recorded in the change log as `hide` and `unhide`). A hidden article is not displayed, the page it belongs to is not found (404) and its menu item disappears; showing it again restores both. The article resource has a `hidden` field. Migration `6.2.0/012-article-hidden.sql` (also an index on `cms_articles.site_id`); `doctor` reports it as `migration.012`. Without it nothing changes and hiding answers 409 `hide_unavailable`.
 - The article list can be searched by title (`search`) and filtered (`hidden=0|1`, `has_draft=0|1`); the capabilities list `articles` among the searchable resources.
 
-### Added (6.1.0)
+## [6.1.0] - 2026-10-31
+
+### Added
 
 - Per-key address restriction: an integration key can be bound to IP addresses or CIDR ranges. The issue form has an optional field, every key card a form to change it, and the card shows the address the key was last used from. A call from another address is answered 403 `ip_not_allowed`. Migration `6.1.0/011-integration-ip-restriction.sql`; `doctor` reports it as `migration.011`. Without it nothing changes.
 
-### Removed (6.0.0, breaking)
+## [6.0.0] - 2026-10-30
+
+### Removed (breaking)
 
 - The unused settings `codePage`, `cdnPath`, `cssFiles`, `ipAdmins`, `minimizeHtml`, `minimizeCss` and `minimizeJs`, their `Config` getters (`getHtmlHeaderCharset()`, `getCdnPath()`, `getCssCollection()`, `getAdminIpCollection()`, `minimizeHtml()`, `minimizeCss()`, `minimizejs()`) and the `minimizeCss` template variable of `Site`. Nothing in the framework read them. An existing `Settings.json` with these keys still loads, the keys are ignored.
+
+## [5.2.0] - 2026-10-30
+
+### Changed
+
+- The permission groups of the issue form are one row each with radio buttons None, Read and Write (a group with one level has one button, Analytics is a row too). A row is red for none, blue for read and green for write; the key list uses the same colors on its group badges. Levels of single-level groups are now `write` (Publishing) and `read` (History, Analytics).
+
+## [5.1.0] - 2026-10-30
 
 ### Added
 
 - Permission groups when issuing an integration key: Content, Publishing, Structure, Images, Site administration and History, each with a level (no access, read, read and write), plus the Analytics choice. A key cannot be changed afterwards. The key cards list the groups instead of a count. Without a group field the full profile is still issued.
 - The Integrations box needs no class in the application: a `cms_boxes` row naming the module `integrations` is enough (`Section` resolves it to `Wbengine\Box\Integrations`). `integrations:install` no longer writes a class or needs `--root` and `--namespace`.
-
-### Changed
-
-- The permission groups of the issue form are one row each with radio buttons None, Read and Write (a group with one level has one button, Analytics is a row too). A row is red for none, blue for read and green for write; the key list uses the same colors on its group badges. Levels of single-level groups are now `write` (Publishing) and `read` (History, Analytics).
 
 ### Removed
 
@@ -86,41 +121,41 @@ documented here, see the git tags.
 
 - README brought up to date with 5.0: API v2 reference table and database updates, the complete configuration reference (`http`, `apiV2`, `i18n.baseUrl`, page cache paths), command line tools including `integrations:install`, an upgrade guide from 4.x, and version-specific wording removed.
 
-### Removed (5.0.0, breaking)
+## [5.0.0] - 2026-10-30
+
+### Removed (breaking)
 
 - API v1 (`/api/auth`, `/api/users`, `/api/sections`, `/api/translations`, `/api/cache/flush`) and the JWT login with refresh cookies. Users, sections, translations and the cache flush are API v2 resources; `Api::Initialize()`, the CORS and cookie settings of `Api`, `Wbengine\Auth`, `User::getJwtToken()` and `ApiSectionModel` are gone. Sign in on the web through `Box\Auth`.
 - The dependency `firebase/php-jwt`: the framework has no runtime Composer package. The `jwt` section of `Settings.json` and `WBENGINE_JWT_*` are ignored, and `doctor` no longer checks them.
 - The table `cms_refresh_tokens` (migration `5.0.0/010-drop-refresh-tokens.sql`).
 - The change log keeps `v1` as a valid historic source of old rows; new rows use `v2` or `cli`.
 
+## [4.11.0] - 2026-10-30
+
 ### Added
 
 - `integrations:install` command: previews, and with `--apply` creates, the application class, page, section and box record for the built-in Integrations screen, never changes existing records or files, and reports what still blocks issuing keys.
+
+## [4.10.1] - 2026-10-30
 
 ### Changed
 
 - The integrations page lists active keys as cards (name, creation, last use, permissions, revoke behind a disclosure) with revoked keys folded into a closed section, and marks keys issued before the latest permissions as older keys.
 
-### Added (remote users, cache and settings)
+## [4.10.0] - 2026-10-30
+
+### Added
 
 - API v2 users: list, read, create, change the role, disable and enable, issue a password link; scopes `users:read` and `users:write`. One-time password links (`cms_password_resets`, 48 hours, only the hash stored) are used on the login page (`/login/?reset=TOKEN`). Disabled accounts (`cms_users.disabled_at`) cannot sign in, get tokens or keep a web session. Migration `4.10.0/009-remote-users.sql`; without it nothing is disabled and nothing breaks.
 - `POST /api/v2/cache/flush` (scope `cache:write`) and `GET /api/v2/config` (scope `config:read`, secrets replaced). The fixed integration profile has 22 scopes; keys issued earlier gain the new ones by rotation.
 
-### Added (change feed)
+## [4.9.0] - 2026-10-30
+
+### Added
 
 - `GET /api/v2/changes` with the new scope `audit:read` (capability `audit.read`): a paginated, filterable feed of the change log (`resource`, `resource_id`, `action`, `source`, `actor`, `since`, `until`) and, with `outcome=rejected`, of rejected and failed writes, without before/after bodies. `audit:read` is part of the fixed integration profile (18 scopes); keys issued earlier gain it by rotation.
 
-Target: **4.1.0**.
-
-### Changed
-
-- Box device limits are now enforced: `device_min` and `device_strict` hide a box on devices below
-  (or, when strict, other than) the minimum. The stored default (`device_min` 1, not strict) still
-  shows every box everywhere. The full page cache key now contains the device type
-  (`PageCache::cacheKey($path, $device)`), so a page is cached once per device class.
-- `BoxRegistry::register()` takes an optional `$metadata` argument (`['renders' => 'article']`) and the
-  discovery catalog lists `renders` for each box type.
-- All documentation (plans, references, guides) is in English.
+## [4.8.0] - 2026-10-29
 
 ### Added
 
@@ -144,46 +179,38 @@ Target: **4.1.0**.
 - `audit.retentionDays` and `audit.revisionRetentionDays` settings (default 365, 30 to 3650) and the CLI
   commands `audit:prune [--days=N] [--dry-run]` (batched; keeps the newest change per resource and
   revisions referenced by drafts) and `audit:list [--limit=N] [--resource=X] [--actor=X]`.
+
+### Changed
+
+- Box device limits are now enforced: `device_min` and `device_strict` hide a box on devices below
+  (or, when strict, other than) the minimum. The stored default (`device_min` 1, not strict) still
+  shows every box everywhere. The full page cache key now contains the device type
+  (`PageCache::cacheKey($path, $device)`), so a page is cached once per device class.
+- `BoxRegistry::register()` takes an optional `$metadata` argument (`['renders' => 'article']`) and the
+  discovery catalog lists `renders` for each box type.
+
+## [4.7.1] - 2026-10-29
+
+### Changed
+
+- All documentation (plans, references, guides) is in English.
+
+## [4.7.0] - 2026-10-29
+
+### Added
+
 - Pages, menu items and articles in API v2 lists and reads carry `translation_locales`, the languages
   that have a translation, computed with one query per page of results. A client can show "3 of 20
   languages" without asking for every language of every record.
+
+## [4.6.0] - 2026-10-29
+
+### Added
+
 - `GET /api/v2/capabilities` lists `i18n.default` and `i18n.locales` (the locales the site really
   serves), so a client can offer a fixed choice of translation languages instead of free text.
-- Optional "Analytics" choice when issuing an integration key: adds `analytics:read` to the
-  fixed 17 scope profile (18 in total, `PROFILE_SCOPES` is unchanged and a key without the
-  choice is issued exactly as before). It is offered only when analytics is enabled in
-  `Settings.json` and the schema of `migrations/4.0.0/006-analytics.sql` exists
-  (`Preflight::analyticsProblems()`, `Doctor::SCHEMA_ANALYTICS`); otherwise it is disabled
-  with instructions and the server refuses it. The permission list shows the real count,
-  the key list marks keys with analytics, and a rotation presets the choice from the old key.
-  Also the integration name explanation is now actually rendered.
-- User management CLI: `user:create`, `user:password`, `user:list` and `user:delete`
-  (`--email` or `--example` for RFC 2606/6761 demo addresses, `--dry-run`). Passwords are
-  read from a no-echo terminal prompt or one line of standard input, never from an
-  argument or the environment. Validation, hashing and token revocation reuse
-  `ApiUserModel`; deletion keeps at least one active administrator and removes refresh
-  tokens and sessions in one transaction. Documented in the README, including the first
-  administrator on a fresh install.
-- Opt-in first-party analytics with daily aggregate page, article and box counts,
-  long-lived totals, configurable timezone, bounded retention and no visitor identity.
-- Read-only `GET /api/v2/analytics/overview` for integrations with the
-  `analytics:read` scope, including daily, weekly and monthly series and top content.
-- `analytics:prune` CLI command for bounded removal of expired daily aggregates.
-- Public-page measurement start marker. API responses distinguish dates before
-  measurement from dates with zero recorded views.
-- Local integration key management: `Box\Integrations` screen (ADMIN role read from the
-  database, POST only, action-bound CSRF, fresh password confirmation, one-time key in a
-  `private, no-store` response with `Referrer-Policy: same-origin`, scope descriptions in cs
-  and en, preflight with operator instructions, revoke and rotation order). The issued
-  profile is a fixed list of 17 scopes and never includes `analytics:read`.
-- `User\PasswordConfirmation`: rate-limited, constant-time password re-check for the session
-  user, never logging the password.
-- `Api\V2\Model::list()` (non-secret metadata only) and `last_used_at`, written at most
-  once per 60 seconds per key and never failing a request. Migration
-  `migrations/4.0.0/007-api-integration-last-used.sql` (idempotent, no runtime DDL);
-  `doctor` checks it as `migration.007`; `tests/schema.sql` now contains the
-  API v2 tables.
-- `Api\V2\Preflight`: read-only check of API v2 configuration, schema and HTTPS.
+
+## [4.5.0] - 2026-10-28
 
 ### Changed
 
@@ -199,23 +226,84 @@ Target: **4.1.0**.
   line at all without both. Template variables `source_text`, `source_href`,
   `source_external` and `byline` are prepared by `Box\Article::sourceView()`.
 
-### Upgrade notes
+### Fixed
 
-- Apply `migrations/4.0.0/007-api-integration-last-used.sql` (idempotent) before using the
-  Integrations screen; `doctor` reports it as `migration.007`.
-- Apply `migrations/4.0.0/006-analytics.sql` before enabling `analytics.enabled`.
-- Analytics is disabled by default. See the README for timezone, retention,
-  administration scope and the regular `analytics:prune` command.
+- `Url::getHostName()` derived the scheme from `SERVER_PROTOCOL` (the HTTP version), so
+  it always returned `http://`, for example in the Location of configured site
+  redirections behind a TLS proxy. It now uses the same HTTPS detection as the rest of the
+  framework, honouring `http.trustedProxies` and `http.forwardedHeaders`.
+
+## [4.4.0] - 2026-10-28
+
+### Added
+
+- Optional "Analytics" choice when issuing an integration key: adds `analytics:read` to the
+  fixed 17 scope profile (18 in total, `PROFILE_SCOPES` is unchanged and a key without the
+  choice is issued exactly as before). It is offered only when analytics is enabled in
+  `Settings.json` and the schema of `migrations/4.0.0/006-analytics.sql` exists
+  (`Preflight::analyticsProblems()`, `Doctor::SCHEMA_ANALYTICS`); otherwise it is disabled
+  with instructions and the server refuses it. The permission list shows the real count,
+  the key list marks keys with analytics, and a rotation presets the choice from the old key.
+  Also the integration name explanation is now actually rendered.
+
+## [4.3.0] - 2026-10-28
+
+### Added
+
+- User management CLI: `user:create`, `user:password`, `user:list` and `user:delete`
+  (`--email` or `--example` for RFC 2606/6761 demo addresses, `--dry-run`). Passwords are
+  read from a no-echo terminal prompt or one line of standard input, never from an
+  argument or the environment. Validation, hashing and token revocation reuse
+  `ApiUserModel`; deletion keeps at least one active administrator and removes refresh
+  tokens and sessions in one transaction. Documented in the README, including the first
+  administrator on a fresh install.
+
+## [4.2.0] - 2026-10-28
+
+### Added
+
+- Local integration key management: `Box\Integrations` screen (ADMIN role read from the
+  database, POST only, action-bound CSRF, fresh password confirmation, one-time key in a
+  `private, no-store` response with `Referrer-Policy: same-origin`, scope descriptions in cs
+  and en, preflight with operator instructions, revoke and rotation order). The issued
+  profile is a fixed list of 17 scopes and never includes `analytics:read`.
+- `User\PasswordConfirmation`: rate-limited, constant-time password re-check for the session
+  user, never logging the password.
+- `Api\V2\Model::list()` (non-secret metadata only) and `last_used_at`, written at most
+  once per 60 seconds per key and never failing a request. Migration
+  `migrations/4.0.0/007-api-integration-last-used.sql` (idempotent, no runtime DDL);
+  `doctor` checks it as `migration.007`; `tests/schema.sql` now contains the
+  API v2 tables.
+- `Api\V2\Preflight`: read-only check of API v2 configuration, schema and HTTPS.
 
 ### Fixed
 
 - `doctor` and `MigrationStatus` never detected a missing column (`Db::fetchOne()` returns
   column metadata, not a value) and the database check called an undefined
   `Db::setCredentials()`. Both now inspect the schema read-only as documented.
-- `Url::getHostName()` derived the scheme from `SERVER_PROTOCOL` (the HTTP version), so
-  it always returned `http://`, for example in the Location of configured site
-  redirections behind a TLS proxy. It now uses the same HTTPS detection as the rest of the
-  framework, honouring `http.trustedProxies` and `http.forwardedHeaders`.
+
+### Upgrade notes
+
+- Apply `migrations/4.0.0/007-api-integration-last-used.sql` (idempotent) before using the
+  Integrations screen; `doctor` reports it as `migration.007`.
+
+## [4.1.0] - 2026-10-27
+
+### Added
+
+- Opt-in first-party analytics with daily aggregate page, article and box counts,
+  long-lived totals, configurable timezone, bounded retention and no visitor identity.
+- Read-only `GET /api/v2/analytics/overview` for integrations with the
+  `analytics:read` scope, including daily, weekly and monthly series and top content.
+- `analytics:prune` CLI command for bounded removal of expired daily aggregates.
+- Public-page measurement start marker. API responses distinguish dates before
+  measurement from dates with zero recorded views.
+
+### Upgrade notes
+
+- Apply `migrations/4.0.0/006-analytics.sql` before enabling `analytics.enabled`.
+- Analytics is disabled by default. See the README for timezone, retention,
+  administration scope and the regular `analytics:prune` command.
 
 ## [4.0.2] - 2026-10-27
 
