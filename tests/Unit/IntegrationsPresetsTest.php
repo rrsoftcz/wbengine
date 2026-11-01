@@ -48,7 +48,7 @@ final class IntegrationsPresetsTest extends TestCase
                 $this->assertArrayHasKey('wb.integrations.preset.' . $id, $messages, $locale);
                 $this->assertArrayHasKey('wb.integrations.preset_help.' . $id, $messages, $locale);
             }
-            foreach (['presets_title', 'presets_help', 'mcp_title', 'mcp_help', 'mcp_json', 'mcp_command', 'mcp_note'] as $key) {
+            foreach (['presets_title', 'presets_help', 'mcp_title', 'mcp_help', 'mcp_json', 'mcp_command', 'mcp_note', 'mcp_platforms'] as $key) {
                 $this->assertArrayHasKey('wb.integrations.' . $key, $messages, $locale);
             }
             $this->assertStringContainsString($locale === 'en' ? 'should not be bound' : 'neměl být vázán', $messages['wb.integrations.ips_help']);

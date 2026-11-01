@@ -88,6 +88,7 @@ return array(
     'wb.integrations.mcp_help' => 'To let an AI client such as Claude manage this site, run the WBengine MCP server on the machine of the client. Copy one of the two blocks below. They contain the key and are shown only now.',
     'wb.integrations.mcp_json' => 'Client configuration (JSON)',
     'wb.integrations.mcp_command' => 'Command for Claude Code',
+    'wb.integrations.mcp_platforms' => 'The path is the full path of the file on the machine that runs the client, for example /home/name/wbengine-mcp.phar on Linux, /Users/name/wbengine-mcp.phar on macOS or C:\\Users\\name\\wbengine-mcp.phar on Windows (in the JSON block a backslash is written twice). PHP 8.3 or newer must be on the PATH of the client. On Windows the recommended way is to run the client and the server inside WSL2 and use a Linux path there.',
     'wb.integrations.mcp_note' => 'Replace /path/to/wbengine-mcp.phar with the place where you saved the file wbengine-mcp.phar from the WBengine release (or run vendor/bin/wbengine-mcp.php of a Composer installation). A key without the Publishing group gets the draft mode: the agent can write drafts but is not offered the publish tools.',
     'wb.integrations.ips_any' => 'Any address',
     'wb.integrations.ips_your' => 'Your browser address as this site sees it',
