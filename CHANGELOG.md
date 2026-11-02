@@ -12,13 +12,16 @@ reads this file to show its changelog page, so the structure is checked by a tes
 
 ## [Unreleased]
 
-### Fixed
-
-- The `homepage` of the Composer package pointed to `www.wbengine.com`, which is an unrelated website, and Packagist showed it as the home page of the framework. It is now `https://www.wbengine.org`, the live skeleton application. It reaches Packagist with the next release.
+## [6.7.1] - 2026-11-02
 
 ### Fixed
 
+- The `homepage` of the Composer package pointed to a domain that the project no longer uses, and Packagist showed it as the home page of the framework. It is now `https://www.wbengine.org`, the live skeleton application.
 - A built `build/wbengine-mcp.phar` (version 6.3.0) was committed by mistake although `build/` is ignored, so it shipped inside the Composer package of every release. It is no longer tracked. The release workflow builds the phar for each release and attaches it, as before.
+
+### Documentation
+
+- The README links the skeleton repository, the live skeleton application at `www.wbengine.org` (with its documentation, blog, changelog and performance page) and the repository of the central administration.
 
 ## [6.7.0] - 2026-11-01
 
